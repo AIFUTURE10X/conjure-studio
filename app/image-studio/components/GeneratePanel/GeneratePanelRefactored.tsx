@@ -16,6 +16,7 @@ import { CombinedPromptCard } from './CombinedPromptCard'
 import { ModelSelector, type GenerationModel, type ImageSize } from './ModelSelector'
 import { ReferenceImageUpload, type ReferenceImage } from './ReferenceImageUpload'
 import { PromptInputs } from './PromptInputs'
+import { downloadImageAsFile } from '../../utils/export-utils'
 
 // Re-export types for convenience
 export type { GenerationModel, ImageSize, ReferenceImage }
@@ -124,10 +125,18 @@ export const GeneratePanelRefactored = forwardRef<{ triggerGenerate: () => void;
       } catch (e) { console.error('[v0] Generation error:', e) }
     }
 
-    const handleDownload = (url: string, i: number, prompt?: string) => {
-      const a = document.createElement('a'); a.href = url
-      a.download = prompt ? `${prompt.substring(0, 50).replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.png` : `generated-${i + 1}-${Date.now()}.png`
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    const handleDownload = async (url: string, i: number, prompt?: string) => {
+      const filename = prompt
+        ? `${prompt.substring(0, 50).replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.png`
+        : `generated-${i + 1}-${Date.now()}.png`
+
+      try {
+        await downloadImageAsFile(url, filename)
+        toast.success('Image downloaded')
+      } catch (error) {
+        console.error('[v0] Download failed:', error)
+        toast.error('Download failed')
+      }
     }
 
     const handleUpscale = async (i: number) => {

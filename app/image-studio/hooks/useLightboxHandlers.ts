@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback } from 'react'
+import { toast } from 'sonner'
+import { downloadImageAsFile } from '../utils/export-utils'
 import type { GeneratedImage } from './useImageStudioState'
 
 interface UseLightboxHandlersOptions {
@@ -41,16 +43,17 @@ export function useLightboxHandlers({
     }
   }, [generatedImages.length, setLightboxIndex])
 
-  const handleDownloadFromLightbox = useCallback(() => {
+  const handleDownloadFromLightbox = useCallback(async () => {
     const imageUrl = generatedImages[lightboxIndex]?.url
     if (!imageUrl) return
 
-    const link = document.createElement('a')
-    link.href = imageUrl
-    link.download = `generated-image-${lightboxIndex + 1}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    try {
+      await downloadImageAsFile(imageUrl, `generated-image-${lightboxIndex + 1}.png`)
+      toast.success('Image downloaded')
+    } catch (error) {
+      console.error('[v0] Lightbox download failed:', error)
+      toast.error('Download failed')
+    }
   }, [generatedImages, lightboxIndex])
 
   return {

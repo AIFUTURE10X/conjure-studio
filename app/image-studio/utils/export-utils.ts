@@ -52,6 +52,10 @@ export async function urlToBase64(url: string): Promise<string> {
 export async function downloadImageAsFile(url: string, filename: string): Promise<void> {
   // Fetch the image and create a blob URL for proper download
   const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image for download: ${response.status}`)
+  }
+
   const blob = await response.blob()
   const blobUrl = URL.createObjectURL(blob)
 
@@ -62,8 +66,8 @@ export async function downloadImageAsFile(url: string, filename: string): Promis
   link.click()
   document.body.removeChild(link)
 
-  // Clean up the blob URL
-  URL.revokeObjectURL(blobUrl)
+  // Let the browser start the download before revoking the object URL.
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
 }
 
 /**

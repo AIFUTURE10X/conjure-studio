@@ -19,6 +19,7 @@ import { ModelSelector, type GenerationModel, type ImageSize } from './GenerateP
 import { ReferenceImageUpload, type ReferenceImage } from './GeneratePanel/ReferenceImageUpload'
 import { PromptInputs } from './GeneratePanel/PromptInputs'
 import { PresetControls } from './GeneratePanel/PresetControls'
+import { downloadImageAsFile } from '../utils/export-utils'
 
 export type { GenerationModel, ImageSize, ReferenceImage }
 
@@ -139,10 +140,18 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       } catch (e) { console.error('[v0] Generation error:', e) }
     }
 
-    const handleDownload = (url: string, i: number, prompt?: string) => {
-      const a = document.createElement('a'); a.href = url
-      a.download = prompt ? `${prompt.substring(0, 50).replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.png` : `generated-${i + 1}-${Date.now()}.png`
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    const handleDownload = async (url: string, i: number, prompt?: string) => {
+      const filename = prompt
+        ? `${prompt.substring(0, 50).replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.png`
+        : `generated-${i + 1}-${Date.now()}.png`
+
+      try {
+        await downloadImageAsFile(url, filename)
+        toast.success('Image downloaded')
+      } catch (error) {
+        console.error('[v0] Download failed:', error)
+        toast.error('Download failed')
+      }
     }
 
     const handleRemoveBackground = async (index: number) => {
