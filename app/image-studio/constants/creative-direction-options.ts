@@ -130,6 +130,7 @@ export const FONT_FILL_OPTIONS: CreativeDirectionOption[] = [
 
 export const DIMENSIONAL_STYLE_OPTIONS: CreativeDirectionOption[] = [
   { value: 'debossed', label: 'Debossed', promptText: 'debossed lettering stamped down into the material' },
+  { value: 'embossed', label: 'Embossed', promptText: 'embossed raised lettering standing proud from the material' },
   { value: 'engraved', label: 'Engraved', promptText: 'engraved lettering carved out with sharp fine detailed lines' },
   { value: 'letterpress', label: 'Letterpress', promptText: 'letterpress ink pressed firmly into a shallow crater' },
   { value: 'chiseled', label: 'Chiseled', promptText: 'chiseled lettering carved like stone with sharp angular bevels' },

@@ -442,6 +442,7 @@ const getHeadlineStyle = (creativeDirection: CreativeDirectionState, palette: Pr
 
   const dimensionalStyles: Record<string, CSSProperties> = {
     debossed: { textShadow: '0 1px 0 rgba(255,255,255,0.45), 0 -2px 1px rgba(0,0,0,0.26)' },
+    embossed: { textShadow: '-1px -1px 0 rgba(255,255,255,0.58), 0 2px 0 rgba(0,0,0,0.3), 0 7px 12px rgba(0,0,0,0.18)' },
     engraved: { textShadow: '0 1px 0 rgba(255,255,255,0.42), 1px 0 0 rgba(0,0,0,0.28)' },
     letterpress: { textShadow: '0 2px 0 rgba(255,255,255,0.5), 0 -1px 1px rgba(0,0,0,0.35)' },
     chiseled: { textShadow: '2px 2px 0 rgba(0,0,0,0.24), -1px -1px 0 rgba(255,255,255,0.38)' },
@@ -705,14 +706,14 @@ const DecorationLayer = ({
 
   if (visibleElements.length === 0) {
     return (
-      <div className="absolute bottom-4 right-4 h-12 w-12 rounded-full border opacity-30" style={{ borderColor: palette.muted }}>
+      <div className="absolute right-5 top-[48%] h-12 w-12 rounded-full border opacity-30" style={{ borderColor: palette.muted }}>
         <div className="absolute inset-3 rounded-full border" style={{ borderColor: palette.muted }} />
       </div>
     )
   }
 
   return (
-    <div className="absolute bottom-5 right-5 flex max-w-[62%] flex-wrap justify-end gap-2">
+    <div className="absolute right-5 top-[46%] flex max-w-[62%] flex-wrap justify-end gap-2">
       {visibleElements.map((value) => (
         <span
           key={value}
