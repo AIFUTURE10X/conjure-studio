@@ -11,6 +11,8 @@ export interface CreativeDirectionState {
   adPreset: string
   typographyStyle: string
   fontFill: string
+  dimensionalStyle: string
+  visualEffectStyle: string
   backgroundScenery: string
   paperEffect: string
   textureStrength: string
@@ -27,6 +29,8 @@ export const DEFAULT_CREATIVE_DIRECTION: CreativeDirectionState = {
   adPreset: '',
   typographyStyle: '',
   fontFill: '',
+  dimensionalStyle: '',
+  visualEffectStyle: '',
   backgroundScenery: '',
   paperEffect: '',
   textureStrength: '',
@@ -124,6 +128,20 @@ export const FONT_FILL_OPTIONS: CreativeDirectionOption[] = [
   { value: 'sunlit-orange-gradient', label: 'Sunlit orange gradient', promptText: 'sunlit orange gradient letter fill' },
 ]
 
+export const DIMENSIONAL_STYLE_OPTIONS: CreativeDirectionOption[] = [
+  { value: 'debossed', label: 'Debossed', promptText: 'debossed lettering stamped down into the material' },
+  { value: 'engraved', label: 'Engraved', promptText: 'engraved lettering carved out with sharp fine detailed lines' },
+  { value: 'letterpress', label: 'Letterpress', promptText: 'letterpress ink pressed firmly into a shallow crater' },
+  { value: 'chiseled', label: 'Chiseled', promptText: 'chiseled lettering carved like stone with sharp angular bevels' },
+]
+
+export const VISUAL_EFFECT_STYLE_OPTIONS: CreativeDirectionOption[] = [
+  { value: 'beveled', label: 'Beveled', promptText: 'beveled angled edges catching highlights and casting shadows' },
+  { value: '3d-extruded', label: '3D Extruded', promptText: '3D extruded blocky letter extensions with physical depth' },
+  { value: 'drop-shadow', label: 'Drop Shadow', promptText: 'offset drop shadow shape implying elevated lettering' },
+  { value: 'skeuomorphic', label: 'Skeuomorphic', promptText: 'skeuomorphic real-world material texture treatment' },
+]
+
 export const BACKGROUND_SCENERY_OPTIONS: CreativeDirectionOption[] = [
   { value: 'torn-parchment-paper', label: 'Torn parchment paper', promptText: 'torn parchment paper background' },
   { value: 'layered-paper-cutout', label: 'Layered paper cutout', promptText: 'layered paper cutout background' },
@@ -198,6 +216,8 @@ export const CREATIVE_DIRECTION_SINGLE_GROUPS: Array<{
   { key: 'adPreset', label: 'Ad Preset', options: AD_PRESET_OPTIONS },
   { key: 'typographyStyle', label: 'Typography Style', options: TYPOGRAPHY_STYLE_OPTIONS },
   { key: 'fontFill', label: 'Font Fill / Inlay', options: FONT_FILL_OPTIONS },
+  { key: 'dimensionalStyle', label: 'Dimensional Style', options: DIMENSIONAL_STYLE_OPTIONS },
+  { key: 'visualEffectStyle', label: 'Visual Effect', options: VISUAL_EFFECT_STYLE_OPTIONS },
   { key: 'backgroundScenery', label: 'Background Scenery', options: BACKGROUND_SCENERY_OPTIONS },
   { key: 'paperEffect', label: 'Paper Effect', options: PAPER_EFFECT_OPTIONS },
   { key: 'textureStrength', label: 'Texture Strength', options: TEXTURE_STRENGTH_OPTIONS },
@@ -212,6 +232,8 @@ const OPTION_LOOKUP = new Map<string, CreativeDirectionOption>(
     ...AD_PRESET_OPTIONS,
     ...TYPOGRAPHY_STYLE_OPTIONS,
     ...FONT_FILL_OPTIONS,
+    ...DIMENSIONAL_STYLE_OPTIONS,
+    ...VISUAL_EFFECT_STYLE_OPTIONS,
     ...BACKGROUND_SCENERY_OPTIONS,
     ...PAPER_EFFECT_OPTIONS,
     ...TEXTURE_STRENGTH_OPTIONS,
@@ -259,6 +281,8 @@ export function buildCreativeDirectionSummary(input: Partial<CreativeDirectionSt
   const preferredValues = [
     creativeDirection.adType,
     creativeDirection.fontFill,
+    creativeDirection.dimensionalStyle,
+    creativeDirection.visualEffectStyle,
     creativeDirection.backgroundScenery,
     creativeDirection.adPreset,
     creativeDirection.typographyStyle,
