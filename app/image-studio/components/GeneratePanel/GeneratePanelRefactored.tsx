@@ -17,6 +17,11 @@ import { ModelSelector, type GenerationModel, type ImageSize } from './ModelSele
 import { ReferenceImageUpload, type ReferenceImage } from './ReferenceImageUpload'
 import { PromptInputs } from './PromptInputs'
 import { downloadImageAsFile } from '../../utils/export-utils'
+import {
+  buildCreativeDirectionPrompt,
+  normalizeCreativeDirection,
+  type CreativeDirectionState,
+} from '../../constants/creative-direction-options'
 
 // Re-export types for convenience
 export type { GenerationModel, ImageSize, ReferenceImage }
@@ -54,6 +59,7 @@ export interface GeneratePanelProps {
   selectedModel?: GenerationModel
   setSelectedModel?: (model: GenerationModel) => void
   generationMode?: 'fast' | 'quality'
+  creativeDirection?: CreativeDirectionState
 }
 
 export const GeneratePanelRefactored = forwardRef<{ triggerGenerate: () => void; isGenerating: boolean }, GeneratePanelProps>(
@@ -66,7 +72,7 @@ export const GeneratePanelRefactored = forwardRef<{ triggerGenerate: () => void;
       generatedImages, setGeneratedImages, onOpenLightbox,
       seed: controlledSeed, setSeed: setControlledSeed,
       imageSize = '1K', setImageSize, selectedModel = 'gemini-3.1-flash-image-preview', setSelectedModel,
-      generationMode = 'quality',
+      generationMode = 'quality', creativeDirection,
     } = props
 
     const { combinedPrompt, hasPrompt } = usePromptBuilder(subjectImages, analysisResults)
@@ -113,18 +119,21 @@ export const GeneratePanelRefactored = forwardRef<{ triggerGenerate: () => void;
     const handleGenerate = async () => {
       const finalPrompt = mainPrompt.trim() || combinedPrompt.trim() || 'a beautiful scene'
       const imageQuality = generationMode === 'fast' ? 'low' : 'auto'
-      onParametersSave?.({ mainPrompt: finalPrompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, seed: activeSeed })
+      const normalizedCreativeDirection = normalizeCreativeDirection(creativeDirection)
+      onParametersSave?.({ mainPrompt: finalPrompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, seed: activeSeed, creativeDirection: normalizedCreativeDirection })
 
       let prompt = finalPrompt
       if (selectedStylePreset !== 'Realistic') prompt += `. Style: ${selectedStylePreset}`
       if (selectedCameraAngle) prompt += `. Camera angle: ${selectedCameraAngle}`
       if (selectedCameraLens) prompt += `. Camera lens: ${selectedCameraLens}`
       prompt += `. ${{ subtle: 'subtle', moderate: 'moderate', strong: 'strong' }[styleStrength]} style influence`
+      const creativePrompt = buildCreativeDirectionPrompt(normalizedCreativeDirection)
+      if (creativePrompt) prompt += `. ${creativePrompt}`
       if (negativePrompt.trim()) prompt += `\n\nIMPORTANT: Do NOT include: ${negativePrompt.trim()}`
 
       try {
         const imgs = await generateImages({ prompt, count: imageCount, aspectRatio, seed: activeSeed, referenceImage: referenceImage?.file, model: selectedModel, imageSize, imageQuality })
-        if (imgs?.length) { for (const img of imgs) { const m = await getImageMetadata(img.url); await saveToHistory(finalPrompt, aspectRatio, [img.url], { style: selectedStylePreset, dimensions: m.dimensions, fileSize: m.fileSize }) } }
+        if (imgs?.length) { for (const img of imgs) { const m = await getImageMetadata(img.url); await saveToHistory(finalPrompt, aspectRatio, [img.url], { style: selectedStylePreset, dimensions: m.dimensions, fileSize: m.fileSize, creativeDirection: normalizedCreativeDirection }) } }
       } catch (e) { console.error('[v0] Generation error:', e) }
     }
 
@@ -213,9 +222,9 @@ export const GeneratePanelRefactored = forwardRef<{ triggerGenerate: () => void;
             <div className="grid grid-cols-2 gap-4">
               {generatedImages.map((img, i) => (
                 <GeneratedImageCard key={i} imageUrl={img.url} imagePrompt={img.prompt} imageTimestamp={img.timestamp} index={i} aspectRatio={aspectRatio} selectedStylePreset={selectedStylePreset}
-                  parameters={{ mainPrompt: img.prompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength }}
+                  parameters={{ mainPrompt: img.prompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, creativeDirection: normalizeCreativeDirection(creativeDirection) }}
                   isFavorite={isFavorite(img.url)}
-                  onToggleFavorite={async () => { const m = await getImageMetadata(img.url); toggleFavorite(img.url, { ratio: aspectRatio, style: selectedStylePreset, ...m, prompt: img.prompt, timestamp: img.timestamp, parameters: { mainPrompt: img.prompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength } }) }}
+                  onToggleFavorite={async () => { const m = await getImageMetadata(img.url); toggleFavorite(img.url, { ratio: aspectRatio, style: selectedStylePreset, ...m, prompt: img.prompt, timestamp: img.timestamp, parameters: { mainPrompt: img.prompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, creativeDirection: normalizeCreativeDirection(creativeDirection) } }) }}
                   onDownload={() => handleDownload(img.url, i, img.prompt)} onOpenLightbox={() => onOpenLightbox(i)} onRestoreParameters={onRestoreParameters}
                   onUpscale={handleUpscale}
                 />

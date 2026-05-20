@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Save, FolderOpen } from 'lucide-react'
 import type { GeneratePreset, SavedGenerateParams } from '../../constants/settings-defaults'
+import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 
 interface PresetControlsProps {
   mainPrompt: string
@@ -19,6 +20,7 @@ interface PresetControlsProps {
   styleStrength: 'subtle' | 'moderate' | 'strong'
   imageSize: string
   selectedModel: string
+  creativeDirection: CreativeDirectionState
   presets: GeneratePreset[]
   onSavePreset?: (name: string, params: SavedGenerateParams) => void
   onLoadPreset?: (preset: GeneratePreset) => void
@@ -36,6 +38,7 @@ export function PresetControls({
   styleStrength,
   imageSize,
   selectedModel,
+  creativeDirection,
   presets,
   onSavePreset,
   onLoadPreset,
@@ -58,6 +61,7 @@ export function PresetControls({
         styleStrength,
         imageSize,
         selectedModel,
+        creativeDirection,
       })
       setPresetName('')
       setShowPresetModal(false)

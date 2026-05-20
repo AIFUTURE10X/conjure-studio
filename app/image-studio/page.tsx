@@ -64,6 +64,8 @@ export default function ImageStudioPage() {
             stylePopoverOpen={state.stylePopoverOpen}
             onStylePopoverOpenChange={state.setStylePopoverOpen}
             stylePresets={stylePresets}
+            creativeDirection={state.creativeDirection}
+            onCreativeDirectionChange={state.setCreativeDirection}
             onGenerate={handleGenerate}
             isGenerating={generatePanelRef.current?.isGenerating || false}
             selectedCameraAngle={state.selectedCameraAngle}

@@ -1,4 +1,5 @@
 import { getUserId } from '@/lib/user-id'
+import type { CreativeDirectionState } from '@/app/image-studio/constants/creative-direction-options'
 
 export type HistoryItem = {
   id: string
@@ -10,6 +11,7 @@ export type HistoryItem = {
     style?: string
     dimensions?: string
     fileSize?: string
+    creativeDirection?: CreativeDirectionState
   }
 }
 
@@ -43,7 +45,7 @@ export async function saveToHistory(
   prompt: string,
   aspectRatio: string,
   imageUrls: string[],
-  metadata?: { style?: string; dimensions?: string; fileSize?: string }
+  metadata?: { style?: string; dimensions?: string; fileSize?: string; creativeDirection?: CreativeDirectionState }
 ): Promise<void> {
   try {
     const newItem: HistoryItem = {

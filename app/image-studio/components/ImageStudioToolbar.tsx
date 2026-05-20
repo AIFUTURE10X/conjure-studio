@@ -6,7 +6,8 @@ import { Upload, Wand2, Loader2 } from 'lucide-react'
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AnalysisModeSelector } from './AnalysisModeSelector'
 import { ToolbarHintBar } from './ToolbarHintBar'
-import { AspectRatioPopover, StylePopover, AdvancedSettingsPopover } from './Toolbar'
+import { AspectRatioPopover, StylePopover, CreativeDirectionPopover, AdvancedSettingsPopover } from './Toolbar'
+import type { CreativeDirectionState } from '../constants/creative-direction-options'
 
 interface ToolbarProps {
   showUploadSection: boolean
@@ -24,6 +25,8 @@ interface ToolbarProps {
   stylePopoverOpen: boolean
   onStylePopoverOpenChange: (open: boolean) => void
   stylePresets: Array<{ value: string; label: string; thumbnail: string; description: string }>
+  creativeDirection: CreativeDirectionState
+  onCreativeDirectionChange: (creativeDirection: CreativeDirectionState) => void
   onGenerate: () => void
   isGenerating?: boolean
   selectedCameraAngle: string
@@ -38,7 +41,7 @@ export function ImageStudioToolbar({
   showUploadSection, onToggleUpload, analysisMode, onAnalysisModeChange,
   imageCount, onImageCountChange, aspectRatio, onAspectRatioChange,
   ratiosPopoverOpen, onRatiosPopoverOpenChange, selectedStylePreset, onStylePresetChange,
-  stylePopoverOpen, onStylePopoverOpenChange, stylePresets, onGenerate, isGenerating = false,
+  stylePopoverOpen, onStylePopoverOpenChange, stylePresets, creativeDirection, onCreativeDirectionChange, onGenerate, isGenerating = false,
   selectedCameraAngle, onCameraAngleChange, selectedCameraLens, onCameraLensChange,
   styleStrength, onStyleStrengthChange,
 }: ToolbarProps) {
@@ -107,6 +110,14 @@ export function ImageStudioToolbar({
             open={stylePopoverOpen}
             onOpenChange={onStylePopoverOpenChange}
             onHover={(h) => setHoveredButton(h ? 'style' : null)}
+          />
+
+          <div className="w-px bg-zinc-700 mx-2" />
+
+          <CreativeDirectionPopover
+            creativeDirection={creativeDirection}
+            onCreativeDirectionChange={onCreativeDirectionChange}
+            onHover={(h) => setHoveredButton(h ? 'creative' : null)}
           />
 
           <div className="w-px bg-zinc-700 mx-2" />

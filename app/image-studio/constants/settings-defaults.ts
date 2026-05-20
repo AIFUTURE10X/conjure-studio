@@ -1,4 +1,5 @@
 // Image Studio Settings - Defaults and Configuration
+import type { CreativeDirectionState } from './creative-direction-options'
 
 // ===== APP SETTINGS TYPE =====
 export interface ImageStudioSettings {
@@ -97,6 +98,8 @@ export interface SavedGenerateParams {
   styleStrength: 'subtle' | 'moderate' | 'strong'
   imageSize: '1K' | '2K' | '4K'
   selectedModel: string
+  generationMode?: 'fast' | 'quality'
+  creativeDirection?: CreativeDirectionState
 }
 
 // ===== PRESETS STORAGE =====

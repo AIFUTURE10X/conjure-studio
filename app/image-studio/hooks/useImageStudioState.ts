@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import { SETTINGS_STORAGE_KEY } from '../constants/settings-defaults'
+import {
+  DEFAULT_CREATIVE_DIRECTION,
+  normalizeCreativeDirection,
+  type CreativeDirectionState,
+} from '../constants/creative-direction-options'
 
 type ActiveTab = 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings'
 
@@ -85,6 +90,8 @@ export interface ImageStudioState {
   setImageSize: (size: '1K' | '2K' | '4K') => void
   selectedModel: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
   setSelectedModel: (model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2') => void
+  creativeDirection: CreativeDirectionState
+  setCreativeDirection: (creativeDirection: CreativeDirectionState | ((prev: CreativeDirectionState) => CreativeDirectionState)) => void
 
   // Camera settings
   selectedCameraAngle: string
@@ -154,6 +161,15 @@ export function useImageStudioState(): ImageStudioState {
   const [seed, setSeed] = useState<number | null>(null)
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K')
   const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'>('gemini-3.1-flash-image-preview')
+  const [creativeDirectionState, setCreativeDirectionState] = useState<CreativeDirectionState>(DEFAULT_CREATIVE_DIRECTION)
+  const setCreativeDirection = useCallback((
+    value: CreativeDirectionState | ((prev: CreativeDirectionState) => CreativeDirectionState),
+  ) => {
+    setCreativeDirectionState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value
+      return normalizeCreativeDirection(next)
+    })
+  }, [])
 
   // Debug: Log whenever mainPrompt changes
   useEffect(() => {
@@ -197,6 +213,7 @@ export function useImageStudioState(): ImageStudioState {
     seed, setSeed,
     imageSize, setImageSize,
     selectedModel, setSelectedModel,
+    creativeDirection: creativeDirectionState, setCreativeDirection,
 
     // Camera settings
     selectedCameraAngle, setSelectedCameraAngle,

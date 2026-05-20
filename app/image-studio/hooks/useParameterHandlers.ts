@@ -2,6 +2,11 @@
 
 import { useCallback } from 'react'
 import type { AnalysisResultsState } from './useImageStudioState'
+import {
+  DEFAULT_CREATIVE_DIRECTION,
+  normalizeCreativeDirection,
+  type CreativeDirectionState,
+} from '../constants/creative-direction-options'
 
 interface UseParameterHandlersOptions {
   loadParameters: () => any
@@ -17,6 +22,7 @@ interface UseParameterHandlersOptions {
   setSeed: (seed: number | null) => void
   setImageSize: (size: '1K' | '2K' | '4K') => void
   setSelectedModel: (model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2') => void
+  setCreativeDirection: (creativeDirection: CreativeDirectionState) => void
   setAnalysisResults: (results: AnalysisResultsState) => void
   setGeneratedImages: (images: any[]) => void
 }
@@ -57,6 +63,7 @@ export function useParameterHandlers({
   setSeed,
   setImageSize,
   setSelectedModel,
+  setCreativeDirection,
   setAnalysisResults,
   setGeneratedImages,
 }: UseParameterHandlersOptions): ParameterHandlers {
@@ -79,6 +86,7 @@ export function useParameterHandlers({
         : 'gemini-3.1-flash-image-preview'
       setImageSize(normalizeImageSizeForModel(paramsToRestore.imageSize, selectedModel))
       if (paramsToRestore.selectedModel) setSelectedModel(selectedModel)
+      setCreativeDirection(normalizeCreativeDirection(paramsToRestore.creativeDirection))
 
       console.log('[v0] Restored parameters:', paramsToRestore)
     }
@@ -110,6 +118,7 @@ export function useParameterHandlers({
     setSeed(null)
     setImageSize('1K')
     setSelectedModel('gemini-3.1-flash-image-preview')
+    setCreativeDirection(DEFAULT_CREATIVE_DIRECTION)
     setAnalysisResults({
       subjects: [],
       scene: null,
@@ -129,6 +138,7 @@ export function useParameterHandlers({
     setSeed,
     setImageSize,
     setSelectedModel,
+    setCreativeDirection,
     setAnalysisResults,
     setGeneratedImages,
   ])

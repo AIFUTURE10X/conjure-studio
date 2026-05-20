@@ -20,6 +20,7 @@ import { useLightboxHandlers } from './useLightboxHandlers'
 import { useStyleAutoDetection } from './useStyleAutoDetection'
 import { useCameraAutoDetection } from './useCameraAutoDetection'
 import { stylePresets } from '../constants/camera-options'
+import { normalizeCreativeDirection } from '../constants/creative-direction-options'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import type { GeneratePreset } from '../constants/settings-defaults'
 
@@ -46,7 +47,7 @@ export function usePageState() {
   const { saveParameters, loadParameters, hasStoredParams } = useParameters()
   const { favorites, toggleFavorite, isFavorite, clearAll } = useFavorites()
   const state = useImageStudioState()
-  const { settings, updateSetting, resetSettings, saveGenerateParams, loadSavedParams } = useAppSettings()
+  const { settings, updateSetting, resetSettings, saveGenerateParams } = useAppSettings()
   const { presets, savePreset, deletePreset, updatePreset, clearAllPresets } = usePresets()
 
   const [showPhotoGenerator, setShowPhotoGenerator] = useState(false)
@@ -68,6 +69,7 @@ export function usePageState() {
         const selectedModel = savedParams.selectedModel ? migrateModelName(savedParams.selectedModel) : state.selectedModel
         state.setImageSize(normalizeImageSizeForModel(savedParams.imageSize, selectedModel))
         if (savedParams.selectedModel) state.setSelectedModel(selectedModel as any)
+        state.setCreativeDirection(normalizeCreativeDirection(savedParams.creativeDirection))
       }
     } catch (e) {
       console.error('[Settings] Failed to restore saved params:', e)
@@ -89,6 +91,7 @@ export function usePageState() {
     setSeed: state.setSeed,
     setImageSize: state.setImageSize,
     setSelectedModel: state.setSelectedModel,
+    setCreativeDirection: state.setCreativeDirection,
     setAnalysisResults: state.setAnalysisResults,
     setGeneratedImages: state.setGeneratedImages,
   })
@@ -162,6 +165,7 @@ export function usePageState() {
     const selectedModel = p.selectedModel ? migrateModelName(p.selectedModel) : state.selectedModel
     state.setImageSize(normalizeImageSizeForModel(p.imageSize, selectedModel))
     if (p.selectedModel) state.setSelectedModel(selectedModel as any)
+    state.setCreativeDirection(normalizeCreativeDirection(p.creativeDirection))
     state.setActiveTab('generate')
   }
 

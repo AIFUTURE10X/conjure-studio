@@ -11,6 +11,7 @@ import { ImageStudioToolbar } from '../ImageStudioToolbar'
 import { GeneratePanel } from '../GeneratePanel'
 import type { UploadedImage, AnalysisResult } from '../../types'
 import type { GeneratePreset, SavedGenerateParams } from '../../constants/settings-defaults'
+import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 
 interface GenerateTabProps {
   // Toolbar props
@@ -29,6 +30,8 @@ interface GenerateTabProps {
   stylePopoverOpen: boolean
   onStylePopoverOpenChange: (open: boolean) => void
   stylePresets: Array<{ name: string; icon: any; description: string }>
+  creativeDirection: CreativeDirectionState
+  onCreativeDirectionChange: (creativeDirection: CreativeDirectionState) => void
   onGenerate: () => void
   isGenerating: boolean
   selectedCameraAngle: string
@@ -82,7 +85,8 @@ export function GenerateTab(props: GenerateTabProps) {
   const {
     showUploadSection, onToggleUpload, analysisMode, onAnalysisModeChange, imageCount, onImageCountChange,
     aspectRatio, onAspectRatioChange, ratiosPopoverOpen, onRatiosPopoverOpenChange, selectedStylePreset,
-    onStylePresetChange, stylePopoverOpen, onStylePopoverOpenChange, stylePresets, onGenerate, isGenerating,
+    onStylePresetChange, stylePopoverOpen, onStylePopoverOpenChange, stylePresets, creativeDirection,
+    onCreativeDirectionChange, onGenerate, isGenerating,
     selectedCameraAngle, onCameraAngleChange, selectedCameraLens, onCameraLensChange, styleStrength,
     onStyleStrengthChange, uploadState, onResetAll, analyzing, generatePanelRef, subjectImages, analysisResults,
     onClearSubjectAnalysis, onClearSceneAnalysis, onClearStyleAnalysis, negativePrompt, setNegativePrompt,
@@ -110,6 +114,8 @@ export function GenerateTab(props: GenerateTabProps) {
         stylePopoverOpen={stylePopoverOpen}
         onStylePopoverOpenChange={onStylePopoverOpenChange}
         stylePresets={stylePresets}
+        creativeDirection={creativeDirection}
+        onCreativeDirectionChange={onCreativeDirectionChange}
         onGenerate={onGenerate}
         isGenerating={isGenerating}
         selectedCameraAngle={selectedCameraAngle}
@@ -186,6 +192,7 @@ export function GenerateTab(props: GenerateTabProps) {
           selectedModel={selectedModel as any}
           setSelectedModel={setSelectedModel}
           generationMode={analysisMode}
+          creativeDirection={creativeDirection}
           setGeneratedImages={setGeneratedImages}
           onOpenLightbox={onOpenLightbox}
           seed={seed}

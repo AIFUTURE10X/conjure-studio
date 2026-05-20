@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import type { CreativeDirectionState } from '../constants/creative-direction-options'
 
 export interface GenerationParameters {
   mainPrompt: string
@@ -11,6 +12,9 @@ export interface GenerationParameters {
   styleStrength: 'subtle' | 'moderate' | 'strong'
   analysisMode: 'fast' | 'quality'
   seed: number | null // Add seed to parameters
+  imageSize?: '1K' | '2K' | '4K'
+  selectedModel?: string
+  creativeDirection?: CreativeDirectionState
   timestamp: number
 }
 
