@@ -43,6 +43,17 @@ export function CreativeDirectionPopover({
 }: CreativeDirectionPopoverProps) {
   const summary = buildCreativeDirectionSummary(creativeDirection)
   const [openKey, setOpenKey] = useState<CreativeDirectionKey | null>(null)
+  const [openDecorativeElements, setOpenDecorativeElements] = useState(false)
+
+  const selectedDecorativeLabels = creativeDirection.decorativeElements
+    .map((value) => getCreativeDirectionOption(value)?.label)
+    .filter((label): label is string => Boolean(label))
+
+  const decorativeSummary = selectedDecorativeLabels.length === 0
+    ? 'None'
+    : selectedDecorativeLabels.length === 1
+      ? selectedDecorativeLabels[0]
+      : `${selectedDecorativeLabels.length} selected`
 
   const updateSingle = (key: CreativeDirectionKey, value: string) => {
     onCreativeDirectionChange({ ...creativeDirection, [key]: value })
@@ -64,6 +75,7 @@ export function CreativeDirectionPopover({
 
   const clearAll = () => {
     setOpenKey(null)
+    setOpenDecorativeElements(false)
     onCreativeDirectionChange(DEFAULT_CREATIVE_DIRECTION)
   }
 
@@ -126,7 +138,10 @@ export function CreativeDirectionPopover({
                           <span className="text-sm font-medium text-[#c99850] mb-2 block">{group.label}</span>
                           <button
                             type="button"
-                            onClick={() => setOpenKey(isOpen ? null : key)}
+                            onClick={() => {
+                              setOpenDecorativeElements(false)
+                              setOpenKey(isOpen ? null : key)
+                            }}
                             aria-expanded={isOpen}
                             className={`w-full h-12 px-4 rounded-lg text-sm bg-zinc-900 text-white border text-left flex items-center justify-between gap-3 transition-colors ${
                               isOpen ? 'border-[#c99850]' : 'border-[#c99850]/30 hover:border-[#c99850]/70'
@@ -187,26 +202,62 @@ export function CreativeDirectionPopover({
             <section>
               <h4 className="text-sm font-bold uppercase tracking-wide text-zinc-500 mb-3">Details</h4>
               <div>
-                <span className="text-sm font-medium text-[#c99850] mb-3 block">Decorative Elements</span>
-                <div className="flex flex-wrap gap-2.5">
-                  {DECORATIVE_ELEMENT_OPTIONS.map((option) => {
-                    const selected = creativeDirection.decorativeElements.includes(option.value)
-                    return (
+                <span className="text-sm font-medium text-[#c99850] mb-2 block">Decorative Elements</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenKey(null)
+                    setOpenDecorativeElements((current) => !current)
+                  }}
+                  aria-expanded={openDecorativeElements}
+                  className={`w-full max-w-[420px] h-12 px-4 rounded-lg text-sm bg-zinc-900 text-white border text-left flex items-center justify-between gap-3 transition-colors ${
+                    openDecorativeElements ? 'border-[#c99850]' : 'border-[#c99850]/30 hover:border-[#c99850]/70'
+                  }`}
+                >
+                  <span className="truncate">{decorativeSummary}</span>
+                  <ChevronDown className={`w-4 h-4 shrink-0 text-zinc-400 transition-transform ${openDecorativeElements ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDecorativeElements && (
+                  <div className="mt-4 rounded-lg border border-[#c99850]/30 bg-zinc-900/95 p-3 shadow-xl">
+                    <div className="grid grid-cols-3 gap-3">
                       <button
-                        key={option.value}
                         type="button"
-                        onClick={() => toggleDecorativeElement(option.value)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                          selected
-                            ? 'bg-[#c99850] text-black border-[#c99850]'
-                            : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-[#c99850]/70 hover:text-white'
+                        onClick={() => onCreativeDirectionChange({ ...creativeDirection, decorativeElements: [] })}
+                        className={`min-h-11 rounded-md border px-4 py-2 text-left text-sm transition-colors ${
+                          creativeDirection.decorativeElements.length === 0
+                            ? 'border-[#c99850] bg-[#c99850] text-black'
+                            : 'border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-[#c99850]/70 hover:text-white'
                         }`}
                       >
-                        {option.label}
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="truncate">None</span>
+                          {creativeDirection.decorativeElements.length === 0 && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        </span>
                       </button>
-                    )
-                  })}
-                </div>
+                      {DECORATIVE_ELEMENT_OPTIONS.map((option) => {
+                        const selected = creativeDirection.decorativeElements.includes(option.value)
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => toggleDecorativeElement(option.value)}
+                            className={`min-h-11 rounded-md border px-4 py-2 text-left text-sm transition-colors ${
+                              selected
+                                ? 'bg-[#c99850] text-black border-[#c99850]'
+                                : 'bg-zinc-950 text-zinc-200 border-zinc-700 hover:border-[#c99850]/70 hover:text-white'
+                            }`}
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="truncate">{option.label}</span>
+                              {selected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
           </div>
