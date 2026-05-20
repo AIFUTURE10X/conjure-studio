@@ -11,6 +11,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAIHelper, type AIHelperMode } from '../hooks/useAIHelper'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
+import type { CreativeDirectionState } from '../constants/creative-direction-options'
 
 // Sub-components
 import { AIHelperHeader, EmptyState } from './AIHelper/AIHelperHeader'
@@ -32,6 +33,7 @@ interface AIHelperSidebarProps {
     currentAspectRatio?: string
     styleStrength?: string
     promptMode?: string
+    creativeDirection?: CreativeDirectionState
   }
   onApplySuggestions?: (suggestions: any) => void
   onApplyLogoConfig?: (config: Partial<DotMatrixConfig>) => void

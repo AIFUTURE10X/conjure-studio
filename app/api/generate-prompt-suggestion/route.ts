@@ -1,6 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { NextResponse } from "next/server"
 import { buildLogoSystemPrompt } from "@/app/image-studio/constants/ai-logo-knowledge"
+import {
+  CREATIVE_DIRECTION_SINGLE_GROUPS,
+  DECORATIVE_ELEMENT_OPTIONS,
+  buildCreativeDirectionPrompt,
+  getCreativeDirectionOption,
+  hasCreativeDirection,
+  normalizeCreativeDirection,
+  type CreativeDirectionState,
+} from "@/app/image-studio/constants/creative-direction-options"
 import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
 
 // Initialize Gemini with API key check
@@ -9,6 +18,40 @@ if (!apiKey) {
   console.error(`[v0 API] ${getGeminiApiKeyNames()} is not set in environment variables`)
 }
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
+
+const CREATIVE_DIRECTION_OPTION_CONTEXT = [
+  ...CREATIVE_DIRECTION_SINGLE_GROUPS.map((group) => (
+    `${group.label}: ${group.options.map((option) => option.label).join(", ")}`
+  )),
+  `Decorative Elements: ${DECORATIVE_ELEMENT_OPTIONS.map((option) => option.label).join(", ")}`,
+].join("\n")
+
+function formatCreativeDirectionContext(input: Partial<CreativeDirectionState> | null | undefined): string {
+  const creativeDirection = normalizeCreativeDirection(input)
+  if (!hasCreativeDirection(creativeDirection)) return "None selected"
+
+  const selectedLines = CREATIVE_DIRECTION_SINGLE_GROUPS
+    .map((group) => {
+      const option = getCreativeDirectionOption(creativeDirection[group.key])
+      return option ? `- ${group.label}: ${option.label}` : null
+    })
+    .filter((line): line is string => Boolean(line))
+
+  const decorativeLabels = creativeDirection.decorativeElements
+    .map((value) => getCreativeDirectionOption(value)?.label)
+    .filter((label): label is string => Boolean(label))
+
+  if (decorativeLabels.length > 0) {
+    selectedLines.push(`- Decorative Elements: ${decorativeLabels.join(", ")}`)
+  }
+
+  const promptModifier = buildCreativeDirectionPrompt(creativeDirection)
+  if (promptModifier) {
+    selectedLines.push(`- Generation prompt modifier: ${promptModifier}`)
+  }
+
+  return selectedLines.join("\n")
+}
 
 export async function POST(request: Request) {
   try {
@@ -22,6 +65,7 @@ export async function POST(request: Request) {
       currentAspectRatio,
       styleStrength,
       promptMode,
+      creativeDirection,
       conversationHistory,
       mode, // NEW: 'image' | 'logo'
       logoAnalysis, // NEW: analysis from reference logo image
@@ -69,6 +113,7 @@ export async function POST(request: Request) {
     const lastGeneratedPrompt = lastAssistantMsg?.suggestions?.prompt || null
 
     const hasImageAnalysis = message?.includes("REFERENCE IMAGES ANALYSIS")
+    const creativeDirectionContext = formatCreativeDirectionContext(creativeDirection)
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -81,6 +126,11 @@ Current Settings:
 - Aspect Ratio: ${currentAspectRatio || "None"}
 - Style Strength: ${styleStrength || "None"}
 - Prompt Mode: ${promptMode || "None"}
+- Current Creative Direction:
+${creativeDirectionContext}
+
+Available Creative Direction controls:
+${CREATIVE_DIRECTION_OPTION_CONTEXT}
 
 Recent Conversation:
 ${contextMessages || "None"}
@@ -99,10 +149,10 @@ ${
     ? `
 IMPORTANT: The user has provided image analysis data above. You MUST:
 1. Extract ALL specific visual details from the "REFERENCE IMAGES ANALYSIS" section
-2. Create a detailed prompt that EXACTLY replicates the character/subject described
-3. Include ALL unique features: facial features, clothing, accessories, pose, expression
-4. Be extremely specific and detailed - this is for recreating an existing character
-5. Do NOT give generic advice - use the specific details from the analysis
+2. If the uploaded image is an ad, flyer, poster, social creative, landing graphic, or branded design, focus on design direction: ad type, typography, dimensional lettering, font fill/inlay, layout, CTA, background scenery, paper effects, texture, decorative elements, and color palette.
+3. If the uploaded image is a character/subject reference, create a detailed prompt that replicates the exact character/subject described, including features, clothing, accessories, pose, and expression.
+4. Recommend concrete Creative Direction settings by label when they match the uploaded ad/design or when they would help the requested iteration.
+5. Be extremely specific and detailed. Do NOT give generic advice - use the specific details from the analysis.
 
 Your response should acknowledge the image analysis and provide a detailed prompt based on it.
 `
@@ -118,6 +168,11 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 6. Recommended camera lens (use "None" if not applicable)
 7. Recommended aspect ratio
 8. Style strength (subtle, moderate, or strong - how much to apply the style)
+
+Creative Direction guidance:
+- Treat the selected Creative Direction settings as active context. Do not contradict them unless the user asks to change direction.
+- If the user asks what style to use, or uploads an ad/design to iterate on, name the closest Creative Direction controls to use in the conversational "message".
+- Keep the JSON schema unchanged. Put Creative Direction recommendations in the conversational message and incorporate visual direction into the improved prompt.
 
 Format your response as JSON:
 {

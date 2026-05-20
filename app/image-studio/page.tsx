@@ -176,6 +176,7 @@ export default function ImageStudioPage() {
           currentCameraLens: state.selectedCameraLens,
           currentAspectRatio: state.aspectRatio,
           styleStrength: state.styleStrength,
+          creativeDirection: state.creativeDirection,
         }}
         onApplySuggestions={handleApplyAISuggestions}
         onApplyLogoConfig={handleApplyLogoConfig}
