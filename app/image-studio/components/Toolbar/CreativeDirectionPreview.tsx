@@ -608,7 +608,7 @@ const LayoutDetails = ({
 
   if (layout === 'before-after-layout') {
     return (
-      <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold uppercase tracking-wide">
+      <div className="grid grid-cols-2 gap-2 text-xs font-semibold uppercase tracking-wide">
         <div className="rounded border px-2 py-2" style={{ borderColor: palette.line, color: palette.ink }}>Before</div>
         <div className="rounded border px-2 py-2" style={{ borderColor: palette.line, color: palette.ink }}>After</div>
       </div>
@@ -617,7 +617,7 @@ const LayoutDetails = ({
 
   if (layout === 'menu-list-layout') {
     return (
-      <div className="space-y-1 text-[10px]" style={{ color: palette.ink }}>
+      <div className="space-y-1.5 text-xs" style={{ color: palette.ink }}>
         {['Signature Set', 'Seasonal Feature', 'House Special'].map((item) => (
           <div key={item} className="flex items-center justify-between gap-2 border-b pb-1" style={{ borderColor: palette.line }}>
             <span>{item}</span>
@@ -630,7 +630,7 @@ const LayoutDetails = ({
 
   if (layout === 'testimonial-quote-layout') {
     return (
-      <div className="rounded-md border px-3 py-2 text-[10px] italic" style={{ borderColor: palette.line, color: palette.ink }}>
+      <div className="rounded-md border px-3 py-2 text-xs italic" style={{ borderColor: palette.line, color: palette.ink }}>
         "Premium, polished, and ready to book."
       </div>
     )
@@ -638,7 +638,7 @@ const LayoutDetails = ({
 
   if (layout === 'map-location-focused') {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-[10px]" style={{ borderColor: palette.line, color: palette.ink }}>
+      <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs" style={{ borderColor: palette.line, color: palette.ink }}>
         <span>Location map</span>
         <span className="h-6 w-6 rounded-full border" style={{ borderColor: palette.accent, background: palette.accent }} />
       </div>
@@ -647,7 +647,7 @@ const LayoutDetails = ({
 
   if (layout === 'contact-card-footer') {
     return (
-      <div className="rounded-lg px-3 py-2 text-[10px]" style={{ background: palette.dark, color: palette.paper }}>
+      <div className="rounded-lg px-4 py-3 text-xs" style={{ background: palette.dark, color: palette.paper }}>
         <div className="flex items-center justify-between gap-2">
           <span>{ctaLabel}</span>
           <span>+66 00 000 0000</span>
@@ -669,7 +669,7 @@ const LayoutDetails = ({
       {badgeLabels.map((label) => (
         <span
           key={label}
-          className="rounded border px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
+          className="rounded border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide"
           style={{ borderColor: palette.line, color: palette.ink, background: 'rgba(255,255,255,0.16)' }}
         >
           {label}
@@ -698,11 +698,11 @@ const DecorationLayer = ({
   }
 
   return (
-    <div className="absolute bottom-4 right-4 flex max-w-[58%] flex-wrap justify-end gap-1.5">
+    <div className="absolute bottom-5 right-5 flex max-w-[62%] flex-wrap justify-end gap-2">
       {visibleElements.map((value) => (
         <span
           key={value}
-          className="rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-wide"
+          className="rounded-full border px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wide"
           style={{ borderColor: palette.line, color: palette.ink, background: `${palette.paper}cc` }}
         >
           {DECORATIVE_BADGES[value] || getCreativeDirectionOption(value)?.label || value}
@@ -710,7 +710,7 @@ const DecorationLayer = ({
       ))}
       {extraCount > 0 && (
         <span
-          className="rounded-full px-2 py-1 text-[8px] font-bold"
+          className="rounded-full px-2.5 py-1.5 text-[9px] font-bold"
           style={{ color: palette.paper, background: palette.dark }}
         >
           +{extraCount}
@@ -734,14 +734,14 @@ export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectio
     'Neutral Creative'
 
   return (
-    <aside className="lg:sticky lg:top-0">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-bold uppercase tracking-wide text-zinc-500">Live Preview</span>
-        <span className="max-w-[160px] truncate text-[11px] text-zinc-500">{selectedLabel}</span>
+    <aside className="xl:sticky xl:top-0">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-sm font-bold uppercase tracking-wide text-zinc-500">Live Preview</span>
+        <span className="max-w-[220px] truncate text-sm text-zinc-500">{selectedLabel}</span>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-3">
-        <div className="relative mx-auto aspect-[4/5] w-full max-w-[292px]">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-[390px]">
           {creativeDirection.paperEffect === 'layered-paper-shadow' && (
             <div className="absolute inset-3 rotate-2 rounded-xl" style={{ background: palette.paperAlt, opacity: 0.45 }} />
           )}
@@ -765,36 +765,36 @@ export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectio
               }}
             />
 
-            <div className="relative z-10 flex h-full flex-col justify-between p-5">
+            <div className="relative z-10 flex h-full flex-col justify-between p-7">
               <div>
                 <div
-                  className="mb-3 inline-flex rounded-full border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em]"
+                  className="mb-4 inline-flex rounded-full border px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
                   style={{ borderColor: palette.line, color: palette.muted, background: 'rgba(255,255,255,0.14)' }}
                 >
                   {copy.kicker}
                 </div>
 
                 <h4
-                  className="max-w-[12ch] text-4xl font-bold leading-[0.9]"
+                  className="max-w-[12ch] text-5xl font-bold leading-[0.9]"
                   style={headlineStyle}
                 >
                   {copy.headline}
                 </h4>
 
                 {creativeDirection.informationLayout !== 'hero-headline-only' && (
-                  <p className="mt-3 max-w-[18ch] text-[11px] leading-snug" style={{ color: palette.ink }}>
+                  <p className="mt-4 max-w-[19ch] text-sm leading-snug" style={{ color: palette.ink }}>
                     {copy.subtitle}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <LayoutDetails creativeDirection={creativeDirection} copy={copy} palette={palette} />
-                <div className="flex items-center justify-between gap-3 border-t pt-3" style={{ borderColor: palette.line }}>
-                  <span className="truncate text-[10px] font-semibold uppercase tracking-wide" style={{ color: palette.muted }}>
+                <div className="flex items-center justify-between gap-4 border-t pt-4" style={{ borderColor: palette.line }}>
+                  <span className="truncate text-xs font-semibold uppercase tracking-wide" style={{ color: palette.muted }}>
                     {layoutLabel}
                   </span>
-                  <span className="rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-wide" style={{ background: palette.accent, color: palette.paper }}>
+                  <span className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide" style={{ background: palette.accent, color: palette.paper }}>
                     {getCreativeDirectionOption(creativeDirection.ctaStyle)?.label || copy.cta}
                   </span>
                 </div>
@@ -805,9 +805,9 @@ export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectio
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-zinc-500">
-          <span className="truncate rounded border border-zinc-800 px-2 py-1">{getCreativeDirectionOption(creativeDirection.colorPalette)?.label || 'Neutral palette'}</span>
-          <span className="truncate rounded border border-zinc-800 px-2 py-1">{getCreativeDirectionOption(creativeDirection.textureStrength)?.label || 'Balanced texture'}</span>
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-zinc-500">
+          <span className="truncate rounded border border-zinc-800 px-3 py-2">{getCreativeDirectionOption(creativeDirection.colorPalette)?.label || 'Neutral palette'}</span>
+          <span className="truncate rounded border border-zinc-800 px-3 py-2">{getCreativeDirectionOption(creativeDirection.textureStrength)?.label || 'Balanced texture'}</span>
         </div>
       </div>
     </aside>

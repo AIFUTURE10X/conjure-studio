@@ -79,26 +79,32 @@ export function CreativeDirectionPopover({
           <span className="truncate">{summary ? `Creative: ${summary}` : 'Creative'}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent side="bottom" align="start" sideOffset={12} className="w-[calc(100vw-32px)] max-w-[1080px] max-h-[78vh] overflow-y-auto bg-zinc-950 border-zinc-800 p-4">
-        <div className="flex items-center justify-between gap-3 mb-4">
+      <PopoverContent
+        side="bottom"
+        align="center"
+        sideOffset={14}
+        collisionPadding={16}
+        className="w-[calc(100vw-32px)] max-w-[1360px] max-h-[84vh] overflow-y-auto bg-zinc-950 border-zinc-800 p-6"
+      >
+        <div className="flex items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-sm font-bold text-[#c99850]">Creative Direction</h3>
-            <p className="text-xs text-zinc-500 mt-1">Shape the ad format, typography, texture, and commercial intent.</p>
+            <h3 className="text-lg font-bold text-[#c99850]">Creative Direction</h3>
+            <p className="text-sm text-zinc-500 mt-1">Shape the ad format, typography, texture, and commercial intent.</p>
           </div>
           <Button
             type="button"
             onClick={clearAll}
             variant="ghost"
             size="sm"
-            className="h-8 px-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800"
+            className="h-9 px-3 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800"
           >
-            <X className="w-3 h-3 mr-1" />
+            <X className="w-4 h-4 mr-1.5" />
             Clear
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-5 min-w-0">
+        <div className="grid grid-cols-1 gap-7 xl:grid-cols-[minmax(0,1fr)_430px]">
+          <div className="space-y-7 min-w-0">
             {GROUP_SECTIONS.map((section) => {
               const activeGroup = openKey && section.keys.includes(openKey)
                 ? CREATIVE_DIRECTION_SINGLE_GROUPS.find((item) => item.key === openKey)
@@ -106,8 +112,8 @@ export function CreativeDirectionPopover({
 
               return (
                 <section key={section.title}>
-                  <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-2">{section.title}</h4>
-                  <div className="grid grid-cols-3 gap-3">
+                  <h4 className="text-sm font-bold uppercase tracking-wide text-zinc-500 mb-3">{section.title}</h4>
+                  <div className="grid grid-cols-3 gap-5">
                     {section.keys.map((key) => {
                       const group = CREATIVE_DIRECTION_SINGLE_GROUPS.find((item) => item.key === key)
                       if (!group) return null
@@ -117,12 +123,12 @@ export function CreativeDirectionPopover({
 
                       return (
                         <div key={key} className="block min-w-0">
-                          <span className="text-xs font-medium text-[#c99850] mb-1.5 block">{group.label}</span>
+                          <span className="text-sm font-medium text-[#c99850] mb-2 block">{group.label}</span>
                           <button
                             type="button"
                             onClick={() => setOpenKey(isOpen ? null : key)}
                             aria-expanded={isOpen}
-                            className={`w-full h-10 px-3 rounded-lg text-xs bg-zinc-900 text-white border text-left flex items-center justify-between gap-2 transition-colors ${
+                            className={`w-full h-12 px-4 rounded-lg text-sm bg-zinc-900 text-white border text-left flex items-center justify-between gap-3 transition-colors ${
                               isOpen ? 'border-[#c99850]' : 'border-[#c99850]/30 hover:border-[#c99850]/70'
                             }`}
                           >
@@ -135,12 +141,12 @@ export function CreativeDirectionPopover({
                   </div>
 
                   {activeGroup && (
-                    <div className="mt-3 rounded-lg border border-[#c99850]/30 bg-zinc-900/95 p-2 shadow-xl">
-                      <div className="grid grid-cols-3 gap-2">
+                    <div className="mt-4 rounded-lg border border-[#c99850]/30 bg-zinc-900/95 p-3 shadow-xl">
+                      <div className="grid grid-cols-3 gap-3">
                         <button
                           type="button"
                           onClick={() => updateSingle(activeGroup.key, '')}
-                          className={`min-h-10 rounded-md border px-3 py-2 text-left text-xs transition-colors ${
+                          className={`min-h-11 rounded-md border px-4 py-2 text-left text-sm transition-colors ${
                             creativeDirection[activeGroup.key] === ''
                               ? 'border-[#c99850] bg-[#c99850] text-black'
                               : 'border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-[#c99850]/70 hover:text-white'
@@ -158,7 +164,7 @@ export function CreativeDirectionPopover({
                               key={option.value}
                               type="button"
                               onClick={() => updateSingle(activeGroup.key, option.value)}
-                              className={`min-h-10 rounded-md border px-3 py-2 text-left text-xs transition-colors ${
+                              className={`min-h-11 rounded-md border px-4 py-2 text-left text-sm transition-colors ${
                                 selected
                                   ? 'border-[#c99850] bg-[#c99850] text-black'
                                   : 'border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-[#c99850]/70 hover:text-white'
@@ -179,10 +185,10 @@ export function CreativeDirectionPopover({
             })}
 
             <section>
-              <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-2">Details</h4>
+              <h4 className="text-sm font-bold uppercase tracking-wide text-zinc-500 mb-3">Details</h4>
               <div>
-                <span className="text-xs font-medium text-[#c99850] mb-2 block">Decorative Elements</span>
-                <div className="flex flex-wrap gap-2">
+                <span className="text-sm font-medium text-[#c99850] mb-3 block">Decorative Elements</span>
+                <div className="flex flex-wrap gap-2.5">
                   {DECORATIVE_ELEMENT_OPTIONS.map((option) => {
                     const selected = creativeDirection.decorativeElements.includes(option.value)
                     return (
@@ -190,7 +196,7 @@ export function CreativeDirectionPopover({
                         key={option.value}
                         type="button"
                         onClick={() => toggleDecorativeElement(option.value)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
                           selected
                             ? 'bg-[#c99850] text-black border-[#c99850]'
                             : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-[#c99850]/70 hover:text-white'
