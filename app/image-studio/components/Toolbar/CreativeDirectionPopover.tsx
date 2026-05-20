@@ -71,7 +71,7 @@ export function CreativeDirectionPopover({
           <span className="truncate">{summary ? `Creative: ${summary}` : 'Creative'}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent side="bottom" align="center" sideOffset={12} className="w-[92vw] sm:w-[760px] lg:w-[920px] max-h-[78vh] overflow-y-auto bg-zinc-950 border-zinc-800 p-4">
+      <PopoverContent side="bottom" align="start" sideOffset={12} className="w-[1080px] max-w-none max-h-[78vh] overflow-y-auto bg-zinc-950 border-zinc-800 p-4">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-bold text-[#c99850]">Creative Direction</h3>
@@ -93,7 +93,7 @@ export function CreativeDirectionPopover({
           {GROUP_SECTIONS.map((section) => (
             <section key={section.title}>
               <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-2">{section.title}</h4>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {section.keys.map((key) => {
                   const group = CREATIVE_DIRECTION_SINGLE_GROUPS.find((item) => item.key === key)
                   if (!group) return null
