@@ -929,7 +929,7 @@ export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectio
       </div>
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
-        <div className="relative mx-auto aspect-[4/5] w-full max-w-[390px]">
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-[450px]">
           {creativeDirection.paperEffect === 'layered-paper-shadow' && (
             <div className="absolute inset-3 rotate-2 rounded-xl" style={{ background: palette.paperAlt, opacity: 0.45 }} />
           )}

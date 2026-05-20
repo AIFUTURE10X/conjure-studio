@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Check, ChevronDown, Palette, X } from 'lucide-react'
 import {
   CREATIVE_DIRECTION_SINGLE_GROUPS,
@@ -91,12 +91,13 @@ export function CreativeDirectionPopover({
           <span className="truncate">{summary ? `Creative: ${summary}` : 'Creative'}</span>
         </Button>
       </PopoverTrigger>
+      <PopoverAnchor className="fixed left-1/2 top-[104px] h-px w-px -translate-x-1/2" />
       <PopoverContent
         side="bottom"
         align="center"
         sideOffset={14}
-        collisionPadding={16}
-        className="w-[calc(100vw-32px)] max-w-[1360px] max-h-[84vh] overflow-y-auto bg-zinc-950 border-zinc-800 p-6"
+        collisionPadding={8}
+        className="w-[calc(100vw-24px)] max-w-[1520px] max-h-[calc(100vh-128px)] overflow-y-auto bg-zinc-950 border-zinc-800 p-7"
       >
         <div className="flex items-center justify-between gap-4 mb-6">
           <div>
@@ -115,7 +116,7 @@ export function CreativeDirectionPopover({
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-7 xl:grid-cols-[minmax(0,1fr)_430px]">
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_500px]">
           <div className="space-y-7 min-w-0">
             {GROUP_SECTIONS.map((section) => {
               const activeGroup = openKey && section.keys.includes(openKey)
