@@ -1,8 +1,8 @@
 "use client"
 
+import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
-  DEFAULT_CREATIVE_DIRECTION,
   getCreativeDirectionOption,
   type CreativeDirectionState,
 } from '../../constants/creative-direction-options'
@@ -29,6 +29,20 @@ interface PreviewCopy {
   detail: string
   cta: string
 }
+
+type PreviewDesignKey = 'poster' | 'collage' | 'editorial' | 'offer'
+
+interface PreviewDesignOption {
+  value: PreviewDesignKey
+  label: string
+}
+
+const PREVIEW_DESIGNS: PreviewDesignOption[] = [
+  { value: 'poster', label: 'Poster' },
+  { value: 'collage', label: 'Cutout' },
+  { value: 'editorial', label: 'Editorial' },
+  { value: 'offer', label: 'Offer' },
+]
 
 const DEFAULT_PALETTE: PreviewPalette = {
   paper: '#e9ddc8',
@@ -720,7 +734,114 @@ const DecorationLayer = ({
   )
 }
 
+const PreviewDesignThumbnail = ({
+  design,
+  selected,
+  palette,
+  onSelect,
+}: {
+  design: PreviewDesignOption
+  selected: boolean
+  palette: PreviewPalette
+  onSelect: () => void
+}) => {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`group rounded-lg border p-1.5 text-left transition-colors ${
+        selected
+          ? 'border-[#c99850] bg-[#c99850]/10'
+          : 'border-zinc-800 bg-zinc-950/70 hover:border-[#c99850]/60'
+      }`}
+    >
+      <span
+        className="relative block aspect-[4/3] overflow-hidden rounded-md border"
+        style={{ borderColor: selected ? palette.accent : 'rgba(113, 113, 122, 0.45)', background: palette.paper }}
+      >
+        <span
+          className="absolute inset-0 opacity-35"
+          style={{
+            backgroundImage: `radial-gradient(${palette.line} 1px, transparent 1px)`,
+            backgroundSize: '6px 6px',
+          }}
+        />
+        {design.value === 'poster' && (
+          <>
+            <span className="absolute left-2 top-2 h-2 w-9 rounded-full" style={{ background: palette.line }} />
+            <span className="absolute left-2 top-5 h-2.5 w-12 rounded-sm" style={{ background: palette.ink }} />
+            <span className="absolute left-2 bottom-2 h-2 w-11 rounded-full" style={{ background: palette.accent }} />
+          </>
+        )}
+        {design.value === 'collage' && (
+          <>
+            <span className="absolute -left-2 top-2 h-7 w-[120%] -rotate-6" style={{ background: palette.paperAlt }} />
+            <span className="absolute right-2 top-2 h-7 w-7 rounded-full" style={{ background: palette.accent }} />
+            <span className="absolute left-3 bottom-3 h-2.5 w-14 rounded-sm" style={{ background: palette.ink }} />
+          </>
+        )}
+        {design.value === 'editorial' && (
+          <>
+            <span className="absolute inset-y-0 left-0 w-[42%]" style={{ background: palette.paperAlt }} />
+            <span className="absolute left-2 top-3 h-8 w-8 rounded-full" style={{ background: palette.accent }} />
+            <span className="absolute right-2 top-3 h-2.5 w-10 rounded-sm" style={{ background: palette.ink }} />
+            <span className="absolute right-2 bottom-3 h-2 w-12 rounded-full" style={{ background: palette.line }} />
+          </>
+        )}
+        {design.value === 'offer' && (
+          <>
+            <span className="absolute inset-x-2 top-2 h-5 rounded-md" style={{ background: palette.dark }} />
+            <span className="absolute left-3 top-8 h-2.5 w-12 rounded-sm" style={{ background: palette.ink }} />
+            <span className="absolute bottom-2 right-2 h-5 w-12 rounded-full" style={{ background: palette.accent }} />
+          </>
+        )}
+      </span>
+      <span className={`mt-1 block truncate text-center text-[10px] font-semibold ${selected ? 'text-[#c99850]' : 'text-zinc-500'}`}>
+        {design.label}
+      </span>
+    </button>
+  )
+}
+
+const PreviewDesignOverlay = ({
+  designKey,
+  palette,
+}: {
+  designKey: PreviewDesignKey
+  palette: PreviewPalette
+}) => {
+  if (designKey === 'poster') return null
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+      {designKey === 'collage' && (
+        <>
+          <div className="absolute -left-8 top-14 h-16 w-[120%] -rotate-3 opacity-80" style={{ background: palette.paper, boxShadow: '0 8px 18px rgba(0,0,0,0.16)' }} />
+          <div className="absolute -right-8 top-4 h-24 w-24 rounded-full opacity-70" style={{ background: palette.accent }} />
+          <div className="absolute left-5 bottom-24 h-14 w-24 rotate-6 rounded-lg border opacity-45" style={{ borderColor: palette.line }} />
+        </>
+      )}
+      {designKey === 'editorial' && (
+        <>
+          <div className="absolute inset-y-0 left-0 w-[34%] opacity-70" style={{ background: palette.paperAlt }} />
+          <div className="absolute left-6 top-8 h-20 w-20 rounded-full opacity-80" style={{ background: palette.accent }} />
+          <div className="absolute right-7 top-7 h-24 w-24 rounded-full border opacity-35" style={{ borderColor: palette.line }} />
+        </>
+      )}
+      {designKey === 'offer' && (
+        <>
+          <div className="absolute inset-x-0 top-0 h-24 opacity-90" style={{ background: palette.dark }} />
+          <div className="absolute right-6 top-14 h-20 w-20 rounded-full opacity-70" style={{ background: palette.accent }} />
+          <div className="absolute inset-x-7 bottom-16 h-16 rounded-xl opacity-18" style={{ background: palette.accentAlt }} />
+        </>
+      )}
+    </div>
+  )
+}
+
 export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectionPreviewProps) {
+  const [previewDesign, setPreviewDesign] = useState<PreviewDesignKey>('poster')
   const palette = PALETTE_MAP[creativeDirection.colorPalette] || DEFAULT_PALETTE
   const copy = getPreviewCopy(creativeDirection)
   const headlineStyle = getHeadlineStyle(creativeDirection, palette)
@@ -740,6 +861,18 @@ export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectio
         <span className="max-w-[220px] truncate text-sm text-zinc-500">{selectedLabel}</span>
       </div>
 
+      <div className="mb-4 grid grid-cols-4 gap-2">
+        {PREVIEW_DESIGNS.map((design) => (
+          <PreviewDesignThumbnail
+            key={design.value}
+            design={design}
+            selected={previewDesign === design.value}
+            palette={palette}
+            onSelect={() => setPreviewDesign(design.value)}
+          />
+        ))}
+      </div>
+
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
         <div className="relative mx-auto aspect-[4/5] w-full max-w-[390px]">
           {creativeDirection.paperEffect === 'layered-paper-shadow' && (
@@ -755,6 +888,7 @@ export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectio
           >
             <BackgroundScene backgroundScenery={creativeDirection.backgroundScenery} palette={palette} />
             <PaperDetails paperEffect={creativeDirection.paperEffect} palette={palette} />
+            <PreviewDesignOverlay designKey={previewDesign} palette={palette} />
 
             <div
               className="pointer-events-none absolute inset-0 mix-blend-multiply"
@@ -768,21 +902,35 @@ export function CreativeDirectionPreview({ creativeDirection }: CreativeDirectio
             <div className="relative z-10 flex h-full flex-col justify-between p-7">
               <div>
                 <div
-                  className="mb-4 inline-flex rounded-full border px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
-                  style={{ borderColor: palette.line, color: palette.muted, background: 'rgba(255,255,255,0.14)' }}
+                  className={`mb-4 inline-flex rounded-full border px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                    previewDesign === 'offer' ? 'border-white/20' : ''
+                  }`}
+                  style={{
+                    borderColor: previewDesign === 'offer' ? 'rgba(255,255,255,0.24)' : palette.line,
+                    color: previewDesign === 'offer' ? palette.paper : palette.muted,
+                    background: 'rgba(255,255,255,0.14)',
+                  }}
                 >
                   {copy.kicker}
                 </div>
 
                 <h4
-                  className="max-w-[12ch] text-5xl font-bold leading-[0.9]"
-                  style={headlineStyle}
+                  className={`max-w-[12ch] font-bold leading-[0.9] ${
+                    previewDesign === 'editorial' ? 'ml-[28%] text-4xl' : 'text-5xl'
+                  }`}
+                  style={{
+                    ...headlineStyle,
+                    ...(previewDesign === 'offer' ? { color: palette.paper } : {}),
+                  }}
                 >
                   {copy.headline}
                 </h4>
 
                 {creativeDirection.informationLayout !== 'hero-headline-only' && (
-                  <p className="mt-4 max-w-[19ch] text-sm leading-snug" style={{ color: palette.ink }}>
+                  <p
+                    className={`mt-4 max-w-[19ch] text-sm leading-snug ${previewDesign === 'editorial' ? 'ml-[28%]' : ''}`}
+                    style={{ color: previewDesign === 'offer' ? palette.paper : palette.ink }}
+                  >
                     {copy.subtitle}
                   </p>
                 )}
