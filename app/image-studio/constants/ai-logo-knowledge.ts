@@ -241,6 +241,7 @@ When suggesting logo settings, ALWAYS respond with a JSON object in this format:
     { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest logo and fix the prompt" },
     { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest logo" },
     { "type": "compare_to_reference", "label": "Compare Reference", "description": "Compare the latest logo to the remembered reference" },
+    { "type": "restore_memory_prompt", "label": "Restore Last Prompt", "description": "Restore the last remembered logo prompt" },
     { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
   ]
 }

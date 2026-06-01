@@ -137,6 +137,24 @@ const checks = [
         /GitCompare/.test(actionBar)
     },
   },
+  {
+    name: 'AI helper can restore remembered prompts and generate three variations',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const page = read('app/image-studio/page.tsx')
+      return /restore_memory_prompt/.test(hook) &&
+        /generate_variation_set/.test(hook) &&
+        /getLastPersistentGeneration/.test(route) &&
+        /Restore Last Prompt/.test(route) &&
+        /Generate 3 Variations/.test(route) &&
+        /onGenerateFromAIHelper\?: \(mode: AIHelperMode, options\?: \{ imageCount\?: number \}\)/.test(sidebar) &&
+        /action\.type === 'restore_memory_prompt'/.test(sidebar) &&
+        /action\.type === 'generate_variation_set'/.test(sidebar) &&
+        /options\?\.imageCount/.test(page)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

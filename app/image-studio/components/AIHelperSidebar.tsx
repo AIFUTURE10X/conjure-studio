@@ -48,7 +48,7 @@ interface AIHelperSidebarProps {
   onApplySuggestions?: (suggestions: any) => void
   onApplyLogoSuggestions?: (suggestions: any) => void
   onApplyLogoConfig?: (config: Partial<DotMatrixConfig>) => void
-  onGenerateFromAIHelper?: (mode: AIHelperMode) => void
+  onGenerateFromAIHelper?: (mode: AIHelperMode, options?: { imageCount?: number }) => void
 }
 
 export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, latestOutputs = {}, onApplySuggestions, onApplyLogoSuggestions, onApplyLogoConfig, onGenerateFromAIHelper }: AIHelperSidebarProps) {
@@ -99,8 +99,20 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
   const handleEditCancel = () => { setEditingIndex(null); setEditedSuggestions({}) }
 
-  const applySuggestionsForMessage = (suggestions: any, idx: number) => {
-    const isLogoSuggestion = messages[idx]?.mode === 'logo'
+  const buildActionSuggestions = (action: AIHelperAction, message?: AIMessage) => ({
+    prompt: action.prompt || message?.suggestions?.prompt || currentPromptSettings.currentPrompt || '',
+    negativePrompt: action.negativePrompt || message?.suggestions?.negativePrompt || currentPromptSettings.currentNegativePrompt || '',
+    style: message?.suggestions?.style || currentPromptSettings.currentStyle || '',
+    aspectRatio: message?.suggestions?.aspectRatio || currentPromptSettings.currentAspectRatio || '1:1',
+    cameraAngle: message?.suggestions?.cameraAngle || currentPromptSettings.currentCameraAngle || 'None',
+    cameraLens: message?.suggestions?.cameraLens || currentPromptSettings.currentCameraLens || 'None',
+    styleStrength: message?.suggestions?.styleStrength || currentPromptSettings.styleStrength || 'moderate',
+    resolution: message?.suggestions?.resolution || '1K',
+    _appliedAt: Date.now(),
+  })
+
+  const applySuggestionsForMessage = (suggestions: any, idx: number, targetMode?: AIHelperMode) => {
+    const isLogoSuggestion = (targetMode || messages[idx]?.mode) === 'logo'
     const applyHandler = isLogoSuggestion ? (onApplyLogoSuggestions || onApplySuggestions) : onApplySuggestions
     if (!applyHandler) { alert('Error: Apply callback is not connected.'); return false }
     applyHandler(suggestions)
@@ -160,6 +172,27 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       if (!applySuggestionsForMessage({ ...message.suggestions, _appliedAt: Date.now() }, idx)) return
       setAppliedIndex(idx)
       onGenerateFromAIHelper?.(message.mode === 'logo' ? 'logo' : 'image')
+      return
+    }
+
+    if (action.type === 'restore_memory_prompt') {
+      const targetMode = action.target || (message.mode === 'logo' ? 'logo' : mode)
+      const restoredSuggestions = buildActionSuggestions(action, message)
+      if (!restoredSuggestions.prompt.trim()) return
+      if (!applySuggestionsForMessage(restoredSuggestions, idx, targetMode)) return
+      setMode(targetMode)
+      setAppliedIndex(idx)
+      setTimeout(() => setAppliedIndex(null), 2000)
+      return
+    }
+
+    if (action.type === 'generate_variation_set') {
+      const targetMode = action.target || (message.mode === 'logo' ? 'logo' : 'image')
+      const variationSuggestions = buildActionSuggestions(action, message)
+      if (!variationSuggestions.prompt.trim()) return
+      if (!applySuggestionsForMessage(variationSuggestions, idx, targetMode)) return
+      setAppliedIndex(idx)
+      onGenerateFromAIHelper?.(targetMode, targetMode === 'image' ? { imageCount: 3 } : undefined)
       return
     }
 

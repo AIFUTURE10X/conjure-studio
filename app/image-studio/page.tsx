@@ -36,15 +36,18 @@ export default function ImageStudioPage() {
     }
   }
 
-  const handleAIGenerateRequest = (mode: 'image' | 'logo') => {
+  const handleAIGenerateRequest = (mode: 'image' | 'logo', options?: { imageCount?: number }) => {
     if (mode === 'logo') {
       state.setActiveTab('logo')
       window.setTimeout(() => logoPanelRef.current?.triggerGenerate(), 150)
       return
     }
 
+    if (options?.imageCount) {
+      state.setImageCount(options.imageCount)
+    }
     state.setActiveTab('generate')
-    window.setTimeout(() => generatePanelRef.current?.triggerGenerate(), 150)
+    window.setTimeout(() => generatePanelRef.current?.triggerGenerate(), options?.imageCount ? 250 : 150)
   }
 
   const latestImageOutput = state.generatedImages.length > 0

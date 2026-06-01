@@ -32,6 +32,8 @@ export type AIHelperActionType =
   | 'critique_last_output'
   | 'make_variation'
   | 'compare_to_reference'
+  | 'restore_memory_prompt'
+  | 'generate_variation_set'
   | 'copy_prompt'
   | 'switch_to_image'
   | 'switch_to_logo'
@@ -42,6 +44,7 @@ export interface AIHelperAction {
   label: string
   description?: string
   prompt?: string
+  negativePrompt?: string
   target?: AIHelperMode
 }
 

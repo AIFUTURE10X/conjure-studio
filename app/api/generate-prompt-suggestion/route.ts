@@ -33,6 +33,8 @@ type HelperActionType =
   | 'critique_last_output'
   | 'make_variation'
   | 'compare_to_reference'
+  | 'restore_memory_prompt'
+  | 'generate_variation_set'
   | 'copy_prompt'
   | 'switch_to_image'
   | 'switch_to_logo'
@@ -43,6 +45,7 @@ interface HelperAction {
   label: string
   description?: string
   prompt?: string
+  negativePrompt?: string
   target?: 'image' | 'logo'
 }
 
@@ -53,6 +56,8 @@ const HELPER_ACTION_TYPES = new Set<HelperActionType>([
   'critique_last_output',
   'make_variation',
   'compare_to_reference',
+  'restore_memory_prompt',
+  'generate_variation_set',
   'copy_prompt',
   'switch_to_image',
   'switch_to_logo',
@@ -70,6 +75,8 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - Use "critique_last_output" when a generated output is available and the user may want diagnosis
 - Use "make_variation" when a generated output is available and the user may want the next iteration
 - Use "compare_to_reference" when there is a latest output and a remembered reference analysis
+- Use "restore_memory_prompt" when a remembered prompt exists and the user may want to go back
+- Use "generate_variation_set" for image mode when the user may want several options at once
 - Use "copy_prompt" when the prompt is useful but should not immediately change settings
 - Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
 - Use "ask_follow_up" only when one short answer is required before making a good prompt`
@@ -92,12 +99,13 @@ function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperActi
         label,
         ...(typeof action.description === 'string' && action.description.trim() ? { description: action.description.trim() } : {}),
         ...(typeof action.prompt === 'string' && action.prompt.trim() ? { prompt: action.prompt.trim() } : {}),
+        ...(typeof action.negativePrompt === 'string' && action.negativePrompt.trim() ? { negativePrompt: action.negativePrompt.trim() } : {}),
         ...(action.target === 'image' || action.target === 'logo' ? { target: action.target } : {}),
       }
     })
     .filter((action): action is HelperAction => Boolean(action))
 
-  return actions.length > 0 ? actions.slice(0, 5) : fallbackActions
+  return actions.length > 0 ? actions.slice(0, 7) : fallbackActions
 }
 
 function hasLatestOutput(currentPromptSettings: unknown): boolean {
@@ -120,7 +128,28 @@ function hasReferenceMemory(agentMemory: unknown): boolean {
   )
 }
 
-function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, hasLogoConfig = false, hasOutput = false, hasReference = false): HelperAction[] {
+function getLastPersistentGeneration(agentMemory: unknown): { prompt: string; negativePrompt?: string } | null {
+  if (!agentMemory || typeof agentMemory !== 'object') return null
+  const persistentGenerations = (agentMemory as Record<string, unknown>).persistentGenerations
+  if (!Array.isArray(persistentGenerations)) return null
+  const lastGeneration = [...persistentGenerations]
+    .reverse()
+    .find((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && typeof (item as Record<string, unknown>).prompt === 'string'))
+  if (!lastGeneration?.prompt) return null
+  return {
+    prompt: String(lastGeneration.prompt).trim(),
+    ...(typeof lastGeneration.negativePrompt === 'string' && lastGeneration.negativePrompt.trim() ? { negativePrompt: lastGeneration.negativePrompt.trim() } : {}),
+  }
+}
+
+function defaultHelperActions(
+  mode: 'image' | 'logo',
+  hasSuggestions: boolean,
+  hasLogoConfig = false,
+  hasOutput = false,
+  hasReference = false,
+  lastPersistentGeneration: { prompt: string; negativePrompt?: string } | null = null
+): HelperAction[] {
   const actions: HelperAction[] = []
   if (hasSuggestions) {
     actions.push({
@@ -139,6 +168,24 @@ function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, h
       type: 'copy_prompt',
       label: 'Copy Prompt',
       description: 'Copy the generated prompt',
+      target: mode,
+    })
+    if (mode === 'image') {
+      actions.push({
+        type: 'generate_variation_set',
+        label: 'Generate 3 Variations',
+        description: 'Apply this prompt and generate three image options',
+        target: mode,
+      })
+    }
+  }
+  if (lastPersistentGeneration) {
+    actions.push({
+      type: 'restore_memory_prompt',
+      label: 'Restore Last Prompt',
+      description: 'Restore the last remembered prompt from helper memory',
+      prompt: lastPersistentGeneration.prompt,
+      ...(lastPersistentGeneration.negativePrompt ? { negativePrompt: lastPersistentGeneration.negativePrompt } : {}),
       target: mode,
     })
   }
@@ -286,6 +333,7 @@ export async function POST(request: Request) {
     const agentMemoryContext = formatAgentMemory(agentMemory)
     const hasOutput = hasLatestOutput(currentPromptSettings)
     const hasReference = hasReferenceMemory(agentMemory)
+    const lastPersistentGeneration = getLastPersistentGeneration(agentMemory)
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -381,9 +429,11 @@ Format your response as JSON:
   "actions": [
     { "type": "apply_suggestions", "label": "Apply to Image Generator", "description": "Use this prompt and settings" },
     { "type": "apply_and_generate", "label": "Apply and Generate Image", "description": "Use this prompt and start generation" },
+    { "type": "generate_variation_set", "label": "Generate 3 Variations", "description": "Use this prompt to create three options" },
     { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest output and fix the prompt" },
     { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest output" },
     { "type": "compare_to_reference", "label": "Compare Reference", "description": "Compare the latest output to the remembered reference" },
+    { "type": "restore_memory_prompt", "label": "Restore Last Prompt", "description": "Restore the last remembered prompt" },
     { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the improved prompt" }
   ]
 }
@@ -409,7 +459,7 @@ Available style strengths: subtle, moderate, strong`
       const hasSuggestions = Boolean(jsonResponse.suggestions?.prompt)
       return NextResponse.json({
         ...jsonResponse,
-        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference)),
+        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration)),
       })
     }
 
@@ -425,7 +475,7 @@ Available style strengths: subtle, moderate, strong`
         aspectRatio: currentAspectRatio || "1:1",
         styleStrength: styleStrength || "moderate",
       },
-      actions: defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference),
+      actions: defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference, lastPersistentGeneration),
     })
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
@@ -557,6 +607,7 @@ async function handleLogoMode(
     const agentMemoryContext = formatAgentMemory(agentMemory)
     const hasOutput = hasLatestOutput(currentPromptSettings)
     const hasReference = hasReferenceMemory(agentMemory)
+    const lastPersistentGeneration = getLastPersistentGeneration(agentMemory)
 
     const fullPrompt = `${logoSystemPrompt}
 
@@ -622,6 +673,7 @@ Action schema:
   { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest logo and fix the prompt" },
   { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest logo" },
   { "type": "compare_to_reference", "label": "Compare Reference", "description": "Compare the latest logo to the remembered reference" },
+  { "type": "restore_memory_prompt", "label": "Restore Last Prompt", "description": "Restore the last remembered logo prompt" },
   { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
 ]`
 
@@ -647,7 +699,7 @@ Action schema:
           designBrief: jsonResponse.designBrief || null,
           suggestions: logoSuggestions,
           logoConfig,
-          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference)),
+          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration)),
           mode: 'logo'
         })
       } catch (parseError) {
@@ -660,7 +712,7 @@ Action schema:
     return NextResponse.json({
       message: responseText,
       logoConfig: {},
-      actions: defaultHelperActions('logo', false, false, hasOutput, hasReference),
+      actions: defaultHelperActions('logo', false, false, hasOutput, hasReference, lastPersistentGeneration),
       mode: 'logo'
     })
   } catch (error: any) {
