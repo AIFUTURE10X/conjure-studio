@@ -163,7 +163,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       return
     }
 
-    if (action.type === 'critique_last_output' || action.type === 'make_variation') {
+    if (action.type === 'critique_last_output' || action.type === 'make_variation' || action.type === 'compare_to_reference') {
       const actionMode = message.mode === 'logo' ? 'logo' : mode
       const latestOutput = actionMode === 'logo' ? latestOutputs.logo : latestOutputs.image
       if (!latestOutput?.url) {

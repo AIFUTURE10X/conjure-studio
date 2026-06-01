@@ -13,7 +13,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
-import { loadStoredMessages, saveMessages, clearStoredMessages } from './useAIHelperPersistence'
+import {
+  clearStoredAgentMemory,
+  clearStoredMessages,
+  loadStoredAgentMemory,
+  loadStoredMessages,
+  saveAgentMemory,
+  saveMessages,
+} from './useAIHelperPersistence'
 import { analyzeUploadedImage } from './useImageCompression'
 
 export type AIHelperMode = 'image' | 'logo'
@@ -24,6 +31,7 @@ export type AIHelperActionType =
   | 'apply_logo_config'
   | 'critique_last_output'
   | 'make_variation'
+  | 'compare_to_reference'
   | 'copy_prompt'
   | 'switch_to_image'
   | 'switch_to_logo'
@@ -62,7 +70,19 @@ export interface AIHelperAgentMemory {
   lastLogoPrompt?: string
   lastNegativePrompt?: string
   lastAssistantSummary?: string
+  lastReferenceAnalysis?: string
+  persistentGenerations: AIHelperMemorySnapshot[]
   recentUserRequests: string[]
+}
+
+export interface AIHelperMemorySnapshot {
+  mode: AIHelperMode
+  kind: 'suggestion' | 'reference'
+  timestamp: number
+  prompt?: string
+  negativePrompt?: string
+  summary?: string
+  analysis?: string
 }
 
 export interface AIHelperLatestOutput {
@@ -71,7 +91,11 @@ export interface AIHelperLatestOutput {
   timestamp?: number
 }
 
-export function buildAgentMemory(messages: AIMessage[], mode: AIHelperMode): AIHelperAgentMemory {
+export function buildAgentMemory(
+  messages: AIMessage[],
+  mode: AIHelperMode,
+  generationMemory: AIHelperMemorySnapshot[] = []
+): AIHelperAgentMemory {
   const recentUserRequests = messages
     .filter((message) => message.role === 'user' && (!message.mode || message.mode === mode))
     .slice(-4)
@@ -88,6 +112,12 @@ export function buildAgentMemory(messages: AIMessage[], mode: AIHelperMode): AIH
   const lastAssistant = [...messages]
     .reverse()
     .find((message) => message.role === 'assistant' && (!message.mode || message.mode === mode))
+  const persistentGenerations = generationMemory
+    .filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'suggestion')
+    .slice(-5)
+  const lastReferenceAnalysis = [...generationMemory]
+    .reverse()
+    .find((snapshot) => snapshot.mode === mode && snapshot.kind === 'reference')?.analysis
 
   return {
     mode,
@@ -95,6 +125,8 @@ export function buildAgentMemory(messages: AIMessage[], mode: AIHelperMode): AIH
     lastLogoPrompt: lastLogoSuggestion?.suggestions?.prompt,
     lastNegativePrompt: lastLogoSuggestion?.suggestions?.negativePrompt || lastImageSuggestion?.suggestions?.negativePrompt,
     lastAssistantSummary: lastAssistant?.content,
+    lastReferenceAnalysis,
+    persistentGenerations,
     recentUserRequests,
   }
 }
@@ -104,6 +136,7 @@ export function useAIHelper() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [generationMemory, setGenerationMemory] = useState<AIHelperMemorySnapshot[]>([])
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
   const [mode, setMode] = useState<AIHelperMode>('image')
 
@@ -113,6 +146,11 @@ export function useAIHelper() {
     if (storedMessages.length > 0) {
       console.log(`[AI Helper] Loaded ${storedMessages.length} messages from history`)
       setMessages(storedMessages)
+    }
+    const storedMemory = loadStoredAgentMemory()
+    if (storedMemory.length > 0) {
+      console.log(`[AI Helper] Loaded ${storedMemory.length} memory snapshots`)
+      setGenerationMemory(storedMemory)
     }
     setIsInitialized(true)
   }, [])
@@ -136,8 +174,30 @@ export function useAIHelper() {
     console.log('[AI Helper] Clearing chat history')
     setMessages([])
     setUploadedImages([])
+    setGenerationMemory([])
     clearStoredMessages()
+    clearStoredAgentMemory()
   }, [])
+
+  const rememberMemorySnapshot = useCallback((snapshot: AIHelperMemorySnapshot) => {
+    setGenerationMemory(prev => {
+      const next = [...prev, snapshot].slice(-40)
+      saveAgentMemory(next)
+      return next
+    })
+  }, [])
+
+  const rememberAssistantSuggestion = useCallback((data: any, assistantMode: AIHelperMode) => {
+    if (!data?.suggestions?.prompt) return
+    rememberMemorySnapshot({
+      mode: assistantMode,
+      kind: 'suggestion',
+      timestamp: Date.now(),
+      prompt: data.suggestions.prompt,
+      negativePrompt: data.suggestions.negativePrompt,
+      summary: typeof data.message === 'string' ? data.message : undefined,
+    })
+  }, [rememberMemorySnapshot])
 
   const updateMessageSuggestions = useCallback((index: number, newSuggestions: any) => {
     console.log('[v0] Updating message', index, 'with new suggestions:', newSuggestions)
@@ -177,6 +237,9 @@ export function useAIHelper() {
       const successfulAnalyses = analyses.filter((a): a is NonNullable<typeof a> => a !== null && !a.error)
 
       if (successfulAnalyses.length > 0) {
+        const referenceSummary = successfulAnalyses
+          .map(a => `[IMAGE ${a.index}]\n${a.analysis}`)
+          .join('\n\n')
         imageAnalysisContext = `\n\n=== REFERENCE IMAGES ANALYSIS ===\n${successfulAnalyses
           .map(a => `\n[IMAGE ${a.index}] - STYLE AND SUBJECT ANALYSIS:\n${a.analysis}`)
           .join('\n\n')}\n\nCRITICAL INSTRUCTIONS:
@@ -186,6 +249,12 @@ export function useAIHelper() {
 4. Recommend which Creative Direction controls would best match the reference or support the user's requested style change, including Text Outline / Rim for gold rims, keylines, inset strokes, or foil edges.
 5. When they mention "this character", "the image", etc., replicate the exact character/subject from the analysis.
 6. Include the detected artistic or commercial style in your style recommendation.`
+        rememberMemorySnapshot({
+          mode: 'image',
+          kind: 'reference',
+          timestamp: Date.now(),
+          analysis: referenceSummary,
+        })
       }
       setUploadedImages([])
     }
@@ -198,13 +267,14 @@ export function useAIHelper() {
           message: userInput + imageAnalysisContext,
           ...currentPromptSettings,
           currentPromptSettings,
-          agentMemory: buildAgentMemory(messages, 'image'),
+          agentMemory: buildAgentMemory(messages, 'image', generationMemory),
           conversationHistory: messages
         })
       })
 
       if (response.ok) {
         const data = await response.json()
+        rememberAssistantSuggestion(data, 'image')
         setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -216,7 +286,7 @@ export function useAIHelper() {
     } finally {
       setIsLoading(false)
     }
-  }, [uploadedImages, messages])
+  }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot])
 
   const sendLogoMessage = useCallback(async (userInput: string, currentPromptSettings: any = {}) => {
     const displayMessage = userInput.trim() || '📷 [Logo reference uploaded]'
@@ -232,6 +302,14 @@ export function useAIHelper() {
         const result = await analyzeUploadedImage(currentImages[index], index, 'logo')
         if (result) logoAnalysis += `\n[Logo Reference ${result.index}]:\n${result.analysis}\n`
       }
+      if (logoAnalysis.trim()) {
+        rememberMemorySnapshot({
+          mode: 'logo',
+          kind: 'reference',
+          timestamp: Date.now(),
+          analysis: logoAnalysis.trim(),
+        })
+      }
       setUploadedImages([])
     }
 
@@ -244,13 +322,14 @@ export function useAIHelper() {
           mode: 'logo',
           logoAnalysis: logoAnalysis || undefined,
           currentPromptSettings,
-          agentMemory: buildAgentMemory(messages, 'logo'),
+          agentMemory: buildAgentMemory(messages, 'logo', generationMemory),
           conversationHistory: messages.filter(m => m.mode === 'logo')
         })
       })
 
       if (response.ok) {
         const data = await response.json()
+        rememberAssistantSuggestion(data, 'logo')
         setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', logoConfig: data.logoConfig, suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -262,19 +341,25 @@ export function useAIHelper() {
     } finally {
       setIsLoading(false)
     }
-  }, [uploadedImages, messages])
+  }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot])
 
   const sendActionMessage = useCallback(async (
-    actionType: Extract<AIHelperActionType, 'critique_last_output' | 'make_variation'>,
+    actionType: Extract<AIHelperActionType, 'critique_last_output' | 'make_variation' | 'compare_to_reference'>,
     currentPromptSettings: any = {},
     latestOutput?: AIHelperLatestOutput | null,
     targetMode: AIHelperMode = mode
   ) => {
     const isLogo = targetMode === 'logo'
-    const actionLabel = actionType === 'critique_last_output' ? 'Critique latest output' : 'Make a variation'
+    const actionLabel = actionType === 'critique_last_output'
+      ? 'Critique latest output'
+      : actionType === 'compare_to_reference'
+        ? 'Compare latest output to reference'
+        : 'Make a variation'
     const userInput = actionType === 'critique_last_output'
       ? `Critique the latest generated ${isLogo ? 'logo' : 'image'} against my prompt, reference goals, and previous requests. Explain what missed, then give me a corrected prompt and settings.`
-      : `Make a new variation from the latest generated ${isLogo ? 'logo' : 'image'}. Keep what works, fix weak parts, and give me the next prompt and settings.`
+      : actionType === 'compare_to_reference'
+        ? `Compare the latest generated ${isLogo ? 'logo' : 'image'} against my most recent reference analysis. Identify exact mismatches and give me a corrected prompt and settings.`
+        : `Make a new variation from the latest generated ${isLogo ? 'logo' : 'image'}. Keep what works, fix weak parts, and give me the next prompt and settings.`
 
     setMessages(prev => [...prev, { role: 'user', content: actionLabel, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
     setIsLoading(true)
@@ -303,13 +388,14 @@ export function useAIHelper() {
             } : { hasOutput: false },
           },
           latestOutputAnalysis: latestOutputAnalysis || undefined,
-          agentMemory: buildAgentMemory(messages, isLogo ? 'logo' : 'image'),
+          agentMemory: buildAgentMemory(messages, isLogo ? 'logo' : 'image', generationMemory),
           conversationHistory: isLogo ? messages.filter(m => m.mode === 'logo') : messages,
         })
       })
 
       if (response.ok) {
         const data = await response.json()
+        rememberAssistantSuggestion(data, isLogo ? 'logo' : 'image')
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: data.message,
@@ -329,7 +415,7 @@ export function useAIHelper() {
     } finally {
       setIsLoading(false)
     }
-  }, [messages, mode])
+  }, [messages, mode, generationMemory, rememberAssistantSuggestion])
 
   return {
     messages, uploadedImages, isLoading, mode, setMode,

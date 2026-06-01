@@ -32,6 +32,7 @@ type HelperActionType =
   | 'apply_logo_config'
   | 'critique_last_output'
   | 'make_variation'
+  | 'compare_to_reference'
   | 'copy_prompt'
   | 'switch_to_image'
   | 'switch_to_logo'
@@ -51,6 +52,7 @@ const HELPER_ACTION_TYPES = new Set<HelperActionType>([
   'apply_logo_config',
   'critique_last_output',
   'make_variation',
+  'compare_to_reference',
   'copy_prompt',
   'switch_to_image',
   'switch_to_logo',
@@ -67,6 +69,7 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - Use "apply_and_generate" when the user asks you to do it, run it, try it, make it, or generate the next version
 - Use "critique_last_output" when a generated output is available and the user may want diagnosis
 - Use "make_variation" when a generated output is available and the user may want the next iteration
+- Use "compare_to_reference" when there is a latest output and a remembered reference analysis
 - Use "copy_prompt" when the prompt is useful but should not immediately change settings
 - Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
 - Use "ask_follow_up" only when one short answer is required before making a good prompt`
@@ -108,7 +111,16 @@ function hasLatestOutput(currentPromptSettings: unknown): boolean {
   return Boolean(latestLogoOutput && typeof latestLogoOutput === 'object' && (latestLogoOutput as Record<string, unknown>).hasOutput)
 }
 
-function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, hasLogoConfig = false, hasOutput = false): HelperAction[] {
+function hasReferenceMemory(agentMemory: unknown): boolean {
+  return Boolean(
+    agentMemory &&
+    typeof agentMemory === 'object' &&
+    typeof (agentMemory as Record<string, unknown>).lastReferenceAnalysis === 'string' &&
+    ((agentMemory as Record<string, unknown>).lastReferenceAnalysis as string).trim()
+  )
+}
+
+function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, hasLogoConfig = false, hasOutput = false, hasReference = false): HelperAction[] {
   const actions: HelperAction[] = []
   if (hasSuggestions) {
     actions.push({
@@ -143,6 +155,14 @@ function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, h
       description: 'Create a new prompt from the latest output',
       target: mode,
     })
+    if (hasReference) {
+      actions.push({
+        type: 'compare_to_reference',
+        label: 'Compare Reference',
+        description: 'Compare the latest output against the remembered reference',
+        target: mode,
+      })
+    }
   }
   if (mode === 'logo' && hasLogoConfig) {
     actions.push({
@@ -164,6 +184,10 @@ function formatAgentMemory(agentMemory: unknown): string {
     lastLogoPrompt: memory.lastLogoPrompt || '',
     lastNegativePrompt: memory.lastNegativePrompt || '',
     lastAssistantSummary: memory.lastAssistantSummary || '',
+    lastReferenceAnalysis: memory.lastReferenceAnalysis || '',
+    persistentGenerations: Array.isArray(memory.persistentGenerations)
+      ? memory.persistentGenerations.slice(-5)
+      : [],
     recentUserRequests: Array.isArray(memory.recentUserRequests) ? memory.recentUserRequests.slice(-4) : [],
   }, null, 2)
 }
@@ -261,6 +285,7 @@ export async function POST(request: Request) {
     const creativeDirectionContext = formatCreativeDirectionContext(creativeDirection)
     const agentMemoryContext = formatAgentMemory(agentMemory)
     const hasOutput = hasLatestOutput(currentPromptSettings)
+    const hasReference = hasReferenceMemory(agentMemory)
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -292,6 +317,11 @@ This is the current output to critique or iterate from, not a new reference targ
 ${latestOutputAnalysis}
 
 If the user asks for critique, diagnose mismatches between this output, the current prompt, and prior requests. If the user asks for a variation, preserve the strongest parts and change only the requested/weak parts.
+` : ''}
+
+${latestOutputAnalysis && hasReference ? `
+=== REFERENCE MATCH COMPARISON ===
+The AGENT MEMORY includes the most recent reference analysis. Compare the latest output against that reference when the user asks to compare, match, fix drift, or get closer to the reference.
 ` : ''}
 
 Recent Conversation:
@@ -353,6 +383,7 @@ Format your response as JSON:
     { "type": "apply_and_generate", "label": "Apply and Generate Image", "description": "Use this prompt and start generation" },
     { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest output and fix the prompt" },
     { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest output" },
+    { "type": "compare_to_reference", "label": "Compare Reference", "description": "Compare the latest output to the remembered reference" },
     { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the improved prompt" }
   ]
 }
@@ -378,7 +409,7 @@ Available style strengths: subtle, moderate, strong`
       const hasSuggestions = Boolean(jsonResponse.suggestions?.prompt)
       return NextResponse.json({
         ...jsonResponse,
-        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput)),
+        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference)),
       })
     }
 
@@ -394,7 +425,7 @@ Available style strengths: subtle, moderate, strong`
         aspectRatio: currentAspectRatio || "1:1",
         styleStrength: styleStrength || "moderate",
       },
-      actions: defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput),
+      actions: defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference),
     })
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
@@ -525,6 +556,7 @@ async function handleLogoMode(
     const logoSystemPrompt = buildLogoSystemPrompt()
     const agentMemoryContext = formatAgentMemory(agentMemory)
     const hasOutput = hasLatestOutput(currentPromptSettings)
+    const hasReference = hasReferenceMemory(agentMemory)
 
     const fullPrompt = `${logoSystemPrompt}
 
@@ -542,6 +574,11 @@ This is the current generated logo to critique or iterate from, not the user's o
 ${latestOutputAnalysis}
 
 If the user asks for critique, diagnose typography, layout, background, color, readability, and reference-match misses. If the user asks for a variation, keep the strongest brand direction and correct the weak parts.
+` : ''}
+
+${latestOutputAnalysis && hasReference ? `
+=== REFERENCE MATCH COMPARISON ===
+The AGENT MEMORY includes the most recent logo reference analysis. Compare the latest generated logo against that reference for typography, spacing, palette, background, composition, and text accuracy.
 ` : ''}
 
 ${logoAnalysis ? `
@@ -584,6 +621,7 @@ Action schema:
   { "type": "apply_and_generate", "label": "Apply and Generate Logo", "description": "Use this prompt and start generation" },
   { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest logo and fix the prompt" },
   { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest logo" },
+  { "type": "compare_to_reference", "label": "Compare Reference", "description": "Compare the latest logo to the remembered reference" },
   { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
 ]`
 
@@ -609,7 +647,7 @@ Action schema:
           designBrief: jsonResponse.designBrief || null,
           suggestions: logoSuggestions,
           logoConfig,
-          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput)),
+          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference)),
           mode: 'logo'
         })
       } catch (parseError) {
@@ -622,7 +660,7 @@ Action schema:
     return NextResponse.json({
       message: responseText,
       logoConfig: {},
-      actions: defaultHelperActions('logo', false, false, hasOutput),
+      actions: defaultHelperActions('logo', false, false, hasOutput, hasReference),
       mode: 'logo'
     })
   } catch (error: any) {

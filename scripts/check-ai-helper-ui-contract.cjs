@@ -106,6 +106,37 @@ const checks = [
         /latestLogoOutput/.test(page)
     },
   },
+  {
+    name: 'AI helper persists generation memory for cross-session iteration',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const persistence = read('app/image-studio/hooks/useAIHelperPersistence.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /AIHelperMemorySnapshot/.test(hook) &&
+        /generationMemory/.test(hook) &&
+        /rememberAssistantSuggestion/.test(hook) &&
+        /loadStoredAgentMemory/.test(persistence) &&
+        /saveAgentMemory/.test(persistence) &&
+        /clearStoredAgentMemory/.test(persistence) &&
+        /persistentGenerations/.test(route)
+    },
+  },
+  {
+    name: 'AI helper can compare latest output against the last reference',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const actionBar = read('app/image-studio/components/AIHelper/SmartActionBar.tsx')
+      return /compare_to_reference/.test(hook) &&
+        /lastReferenceAnalysis/.test(hook) &&
+        /REFERENCE MATCH COMPARISON/.test(route) &&
+        /hasReferenceMemory/.test(route) &&
+        /Compare Reference/.test(route) &&
+        /compare_to_reference/.test(sidebar) &&
+        /GitCompare/.test(actionBar)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
