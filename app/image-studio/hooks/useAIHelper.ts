@@ -22,6 +22,8 @@ export type AIHelperActionType =
   | 'apply_suggestions'
   | 'apply_and_generate'
   | 'apply_logo_config'
+  | 'critique_last_output'
+  | 'make_variation'
   | 'copy_prompt'
   | 'switch_to_image'
   | 'switch_to_logo'
@@ -61,6 +63,12 @@ export interface AIHelperAgentMemory {
   lastNegativePrompt?: string
   lastAssistantSummary?: string
   recentUserRequests: string[]
+}
+
+export interface AIHelperLatestOutput {
+  url?: string
+  prompt?: string
+  timestamp?: number
 }
 
 export function buildAgentMemory(messages: AIMessage[], mode: AIHelperMode): AIHelperAgentMemory {
@@ -256,9 +264,76 @@ export function useAIHelper() {
     }
   }, [uploadedImages, messages])
 
+  const sendActionMessage = useCallback(async (
+    actionType: Extract<AIHelperActionType, 'critique_last_output' | 'make_variation'>,
+    currentPromptSettings: any = {},
+    latestOutput?: AIHelperLatestOutput | null,
+    targetMode: AIHelperMode = mode
+  ) => {
+    const isLogo = targetMode === 'logo'
+    const actionLabel = actionType === 'critique_last_output' ? 'Critique latest output' : 'Make a variation'
+    const userInput = actionType === 'critique_last_output'
+      ? `Critique the latest generated ${isLogo ? 'logo' : 'image'} against my prompt, reference goals, and previous requests. Explain what missed, then give me a corrected prompt and settings.`
+      : `Make a new variation from the latest generated ${isLogo ? 'logo' : 'image'}. Keep what works, fix weak parts, and give me the next prompt and settings.`
+
+    setMessages(prev => [...prev, { role: 'user', content: actionLabel, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
+    setIsLoading(true)
+
+    let latestOutputAnalysis = ''
+    if (latestOutput?.url) {
+      const analysis = await analyzeUploadedImage(latestOutput.url, 0, isLogo ? 'logo' : 'style')
+      if (analysis?.analysis) {
+        latestOutputAnalysis = `\n[Latest Generated ${isLogo ? 'Logo' : 'Image'}]\n${analysis.analysis}`
+      }
+    }
+
+    try {
+      const response = await fetch('/api/generate-prompt-suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userInput,
+          ...(isLogo ? { mode: 'logo' } : currentPromptSettings),
+          currentPromptSettings: {
+            ...currentPromptSettings,
+            latestOutput: latestOutput ? {
+              hasOutput: Boolean(latestOutput.url),
+              prompt: latestOutput.prompt || '',
+              timestamp: latestOutput.timestamp,
+            } : { hasOutput: false },
+          },
+          latestOutputAnalysis: latestOutputAnalysis || undefined,
+          agentMemory: buildAgentMemory(messages, isLogo ? 'logo' : 'image'),
+          conversationHistory: isLogo ? messages.filter(m => m.mode === 'logo') : messages,
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message,
+          timestamp: Date.now(),
+          mode: isLogo ? 'logo' : 'image',
+          logoConfig: data.logoConfig,
+          suggestions: data.suggestions,
+          actions: data.actions,
+        }])
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
+      }
+    } catch (error) {
+      console.error('[v0] AI Helper action error:', error)
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I could not inspect the latest output. Please try again.', timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [messages, mode])
+
   return {
     messages, uploadedImages, isLoading, mode, setMode,
-    sendMessage, sendLogoMessage, addImage, removeImage,
+    sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage,
     clearHistory, updateMessageSuggestions, updateMessageLogoConfig
   }
 }

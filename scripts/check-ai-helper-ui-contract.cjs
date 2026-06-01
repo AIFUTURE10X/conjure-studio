@@ -89,6 +89,23 @@ const checks = [
         /triggerGenerate:\s*handleGenerate/.test(logoPanel)
     },
   },
+  {
+    name: 'AI helper can critique and vary the latest generated output',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const page = read('app/image-studio/page.tsx')
+      return /critique_last_output/.test(hook) &&
+        /make_variation/.test(hook) &&
+        /sendActionMessage/.test(hook) &&
+        /LATEST GENERATED OUTPUT ANALYSIS/.test(route) &&
+        /latestOutputAnalysis/.test(route) &&
+        /latestOutputs/.test(sidebar) &&
+        /sendActionMessage\(action\.type/.test(sidebar) &&
+        /latestLogoOutput/.test(page)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Sparkles, ImageIcon } from 'lucide-react'
 import { MockupPhotoGenerator } from './components/Logo/MockupPreview/MockupPhotoGenerator'
@@ -19,6 +19,7 @@ import { usePageState } from './hooks/usePageState'
 export default function ImageStudioPage() {
   const generatePanelRef = useRef<{ triggerGenerate: () => void; isGenerating: boolean }>(null)
   const logoPanelRef = useRef<LogoPanelRef>(null)
+  const [latestLogoOutput, setLatestLogoOutput] = useState<{ url: string; prompt?: string; timestamp: number } | null>(null)
 
   const {
     uploadState, analyzing, favorites, toggleFavorite, isFavorite, clearAll, state, hasStoredParams,
@@ -45,6 +46,10 @@ export default function ImageStudioPage() {
     state.setActiveTab('generate')
     window.setTimeout(() => generatePanelRef.current?.triggerGenerate(), 150)
   }
+
+  const latestImageOutput = state.generatedImages.length > 0
+    ? state.generatedImages[state.generatedImages.length - 1]
+    : null
 
   return (
     <div className="min-h-screen bg-linear-to-br from-zinc-950 via-black to-zinc-950">
@@ -129,6 +134,7 @@ export default function ImageStudioPage() {
             externalNegativePrompt={state.negativePrompt}
             pendingLogoConfig={state.pendingLogoConfig}
             onClearPendingConfig={() => state.setPendingLogoConfig(null)}
+            onLogoGenerated={(url) => setLatestLogoOutput({ url, prompt: state.mainPrompt, timestamp: Date.now() })}
           />
         )}
 
@@ -190,6 +196,20 @@ export default function ImageStudioPage() {
           currentAspectRatio: state.aspectRatio,
           styleStrength: state.styleStrength,
           creativeDirection: state.creativeDirection,
+          latestImageOutput: latestImageOutput ? {
+            hasOutput: true,
+            prompt: latestImageOutput.prompt || state.mainPrompt,
+            timestamp: latestImageOutput.timestamp,
+          } : { hasOutput: false },
+          latestLogoOutput: latestLogoOutput ? {
+            hasOutput: true,
+            prompt: latestLogoOutput.prompt || state.mainPrompt,
+            timestamp: latestLogoOutput.timestamp,
+          } : { hasOutput: false },
+        }}
+        latestOutputs={{
+          image: latestImageOutput,
+          logo: latestLogoOutput,
         }}
         onApplySuggestions={handleApplyAISuggestions}
         onApplyLogoSuggestions={handleApplyLogoSuggestions}

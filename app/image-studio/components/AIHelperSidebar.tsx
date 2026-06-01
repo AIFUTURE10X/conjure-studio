@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useAIHelper, type AIHelperAction, type AIHelperMode, type AIMessage } from '../hooks/useAIHelper'
+import { useAIHelper, type AIHelperAction, type AIHelperLatestOutput, type AIHelperMode, type AIMessage } from '../hooks/useAIHelper'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import type { CreativeDirectionState } from '../constants/creative-direction-options'
 
@@ -38,6 +38,12 @@ interface AIHelperSidebarProps {
     styleStrength?: string
     promptMode?: string
     creativeDirection?: CreativeDirectionState
+    latestImageOutput?: { hasOutput: boolean; prompt?: string; timestamp?: number }
+    latestLogoOutput?: { hasOutput: boolean; prompt?: string; timestamp?: number }
+  }
+  latestOutputs?: {
+    image?: AIHelperLatestOutput | null
+    logo?: AIHelperLatestOutput | null
   }
   onApplySuggestions?: (suggestions: any) => void
   onApplyLogoSuggestions?: (suggestions: any) => void
@@ -45,7 +51,7 @@ interface AIHelperSidebarProps {
   onGenerateFromAIHelper?: (mode: AIHelperMode) => void
 }
 
-export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, onApplySuggestions, onApplyLogoSuggestions, onApplyLogoConfig, onGenerateFromAIHelper }: AIHelperSidebarProps) {
+export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, latestOutputs = {}, onApplySuggestions, onApplyLogoSuggestions, onApplyLogoConfig, onGenerateFromAIHelper }: AIHelperSidebarProps) {
   const [input, setInput] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -54,7 +60,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
   const [isExpanded, setIsExpanded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, addImage, removeImage, clearHistory, updateMessageSuggestions } = useAIHelper()
+  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions } = useAIHelper()
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -154,6 +160,20 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
       if (!applySuggestionsForMessage({ ...message.suggestions, _appliedAt: Date.now() }, idx)) return
       setAppliedIndex(idx)
       onGenerateFromAIHelper?.(message.mode === 'logo' ? 'logo' : 'image')
+      return
+    }
+
+    if (action.type === 'critique_last_output' || action.type === 'make_variation') {
+      const actionMode = message.mode === 'logo' ? 'logo' : mode
+      const latestOutput = actionMode === 'logo' ? latestOutputs.logo : latestOutputs.image
+      if (!latestOutput?.url) {
+        setInput(actionMode === 'logo'
+          ? 'Generate a logo first, then critique the latest output and improve the prompt.'
+          : 'Generate an image first, then critique the latest output and improve the prompt.'
+        )
+        return
+      }
+      void sendActionMessage(action.type, currentPromptSettings, latestOutput, actionMode)
     }
   }
 

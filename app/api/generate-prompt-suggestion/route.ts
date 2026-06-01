@@ -30,6 +30,8 @@ type HelperActionType =
   | 'apply_suggestions'
   | 'apply_and_generate'
   | 'apply_logo_config'
+  | 'critique_last_output'
+  | 'make_variation'
   | 'copy_prompt'
   | 'switch_to_image'
   | 'switch_to_logo'
@@ -47,6 +49,8 @@ const HELPER_ACTION_TYPES = new Set<HelperActionType>([
   'apply_suggestions',
   'apply_and_generate',
   'apply_logo_config',
+  'critique_last_output',
+  'make_variation',
   'copy_prompt',
   'switch_to_image',
   'switch_to_logo',
@@ -61,6 +65,8 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - Prefer useful action buttons over long instructions; include 1-3 actions that match the response
 - Use "apply_suggestions" when you generated a prompt/settings payload the app should apply
 - Use "apply_and_generate" when the user asks you to do it, run it, try it, make it, or generate the next version
+- Use "critique_last_output" when a generated output is available and the user may want diagnosis
+- Use "make_variation" when a generated output is available and the user may want the next iteration
 - Use "copy_prompt" when the prompt is useful but should not immediately change settings
 - Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
 - Use "ask_follow_up" only when one short answer is required before making a good prompt`
@@ -88,10 +94,21 @@ function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperActi
     })
     .filter((action): action is HelperAction => Boolean(action))
 
-  return actions.length > 0 ? actions.slice(0, 4) : fallbackActions
+  return actions.length > 0 ? actions.slice(0, 5) : fallbackActions
 }
 
-function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, hasLogoConfig = false): HelperAction[] {
+function hasLatestOutput(currentPromptSettings: unknown): boolean {
+  if (!currentPromptSettings || typeof currentPromptSettings !== 'object') return false
+  const settings = currentPromptSettings as Record<string, unknown>
+  const latestOutput = settings.latestOutput
+  if (latestOutput && typeof latestOutput === 'object' && (latestOutput as Record<string, unknown>).hasOutput) return true
+  const latestImageOutput = settings.latestImageOutput
+  if (latestImageOutput && typeof latestImageOutput === 'object' && (latestImageOutput as Record<string, unknown>).hasOutput) return true
+  const latestLogoOutput = settings.latestLogoOutput
+  return Boolean(latestLogoOutput && typeof latestLogoOutput === 'object' && (latestLogoOutput as Record<string, unknown>).hasOutput)
+}
+
+function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, hasLogoConfig = false, hasOutput = false): HelperAction[] {
   const actions: HelperAction[] = []
   if (hasSuggestions) {
     actions.push({
@@ -110,6 +127,20 @@ function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, h
       type: 'copy_prompt',
       label: 'Copy Prompt',
       description: 'Copy the generated prompt',
+      target: mode,
+    })
+  }
+  if (hasOutput) {
+    actions.push({
+      type: 'critique_last_output',
+      label: 'Critique Latest',
+      description: 'Analyze the latest generated output and fix the prompt',
+      target: mode,
+    })
+    actions.push({
+      type: 'make_variation',
+      label: 'Make Variation',
+      description: 'Create a new prompt from the latest output',
       target: mode,
     })
   }
@@ -178,6 +209,7 @@ export async function POST(request: Request) {
       promptMode,
       creativeDirection,
       currentPromptSettings,
+      latestOutputAnalysis,
       agentMemory,
       conversationHistory,
       mode, // NEW: 'image' | 'logo'
@@ -202,7 +234,7 @@ export async function POST(request: Request) {
 
     // Handle logo mode separately
     if (mode === 'logo') {
-      return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory)
+      return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory, latestOutputAnalysis)
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
@@ -228,6 +260,7 @@ export async function POST(request: Request) {
     const hasImageAnalysis = message?.includes("REFERENCE IMAGES ANALYSIS")
     const creativeDirectionContext = formatCreativeDirectionContext(creativeDirection)
     const agentMemoryContext = formatAgentMemory(agentMemory)
+    const hasOutput = hasLatestOutput(currentPromptSettings)
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -252,6 +285,14 @@ ${CREATIVE_DIRECTION_OPTION_CONTEXT}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+${latestOutputAnalysis ? `
+=== LATEST GENERATED OUTPUT ANALYSIS ===
+This is the current output to critique or iterate from, not a new reference target:
+${latestOutputAnalysis}
+
+If the user asks for critique, diagnose mismatches between this output, the current prompt, and prior requests. If the user asks for a variation, preserve the strongest parts and change only the requested/weak parts.
+` : ''}
 
 Recent Conversation:
 ${contextMessages || "None"}
@@ -310,6 +351,8 @@ Format your response as JSON:
   "actions": [
     { "type": "apply_suggestions", "label": "Apply to Image Generator", "description": "Use this prompt and settings" },
     { "type": "apply_and_generate", "label": "Apply and Generate Image", "description": "Use this prompt and start generation" },
+    { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest output and fix the prompt" },
+    { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest output" },
     { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the improved prompt" }
   ]
 }
@@ -335,7 +378,7 @@ Available style strengths: subtle, moderate, strong`
       const hasSuggestions = Boolean(jsonResponse.suggestions?.prompt)
       return NextResponse.json({
         ...jsonResponse,
-        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions)),
+        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput)),
       })
     }
 
@@ -351,7 +394,7 @@ Available style strengths: subtle, moderate, strong`
         aspectRatio: currentAspectRatio || "1:1",
         styleStrength: styleStrength || "moderate",
       },
-      actions: defaultHelperActions('image', Boolean(currentPrompt)),
+      actions: defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput),
     })
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
@@ -429,7 +472,8 @@ async function handleLogoMode(
   conversationHistory: any[],
   logoAnalysis?: string,
   currentPromptSettings?: unknown,
-  agentMemory?: unknown
+  agentMemory?: unknown,
+  latestOutputAnalysis?: string
 ) {
   try {
     // Check if Gemini is available
@@ -480,6 +524,7 @@ async function handleLogoMode(
     // Get the dynamic system prompt from ai-logo-knowledge.ts
     const logoSystemPrompt = buildLogoSystemPrompt()
     const agentMemoryContext = formatAgentMemory(agentMemory)
+    const hasOutput = hasLatestOutput(currentPromptSettings)
 
     const fullPrompt = `${logoSystemPrompt}
 
@@ -490,6 +535,14 @@ ${JSON.stringify(currentPromptSettings || {}, null, 2)}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+${latestOutputAnalysis ? `
+=== LATEST GENERATED OUTPUT ANALYSIS ===
+This is the current generated logo to critique or iterate from, not the user's original reference target:
+${latestOutputAnalysis}
+
+If the user asks for critique, diagnose typography, layout, background, color, readability, and reference-match misses. If the user asks for a variation, keep the strongest brand direction and correct the weak parts.
+` : ''}
 
 ${logoAnalysis ? `
 === REFERENCE LOGO ANALYSIS ===
@@ -529,6 +582,8 @@ Action schema:
 "actions": [
   { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
   { "type": "apply_and_generate", "label": "Apply and Generate Logo", "description": "Use this prompt and start generation" },
+  { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest logo and fix the prompt" },
+  { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest logo" },
   { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
 ]`
 
@@ -554,7 +609,7 @@ Action schema:
           designBrief: jsonResponse.designBrief || null,
           suggestions: logoSuggestions,
           logoConfig,
-          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig)),
+          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput)),
           mode: 'logo'
         })
       } catch (parseError) {
@@ -567,7 +622,7 @@ Action schema:
     return NextResponse.json({
       message: responseText,
       logoConfig: {},
-      actions: defaultHelperActions('logo', false),
+      actions: defaultHelperActions('logo', false, false, hasOutput),
       mode: 'logo'
     })
   } catch (error: any) {

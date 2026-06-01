@@ -1,6 +1,6 @@
 'use client'
 
-import { Clipboard, CornerDownRight, ImageIcon, Settings2, Sparkles } from 'lucide-react'
+import { Clipboard, CornerDownRight, ImageIcon, RefreshCw, SearchCheck, Settings2, Sparkles } from 'lucide-react'
 import type { AIHelperAction } from '../../hooks/useAIHelper'
 
 interface SmartActionBarProps {
@@ -12,6 +12,8 @@ const ACTION_ICONS: Record<AIHelperAction['type'], typeof Settings2> = {
   apply_suggestions: CornerDownRight,
   apply_and_generate: Sparkles,
   apply_logo_config: Settings2,
+  critique_last_output: SearchCheck,
+  make_variation: RefreshCw,
   copy_prompt: Clipboard,
   switch_to_image: ImageIcon,
   switch_to_logo: Sparkles,
@@ -23,7 +25,7 @@ export function SmartActionBar({ actions, onRunAction }: SmartActionBarProps) {
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {actions.slice(0, 4).map((action, index) => {
+      {actions.slice(0, 5).map((action, index) => {
         const Icon = ACTION_ICONS[action.type] || CornerDownRight
         return (
           <button
