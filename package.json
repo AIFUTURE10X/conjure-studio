@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "check:ai-helper-ui": "node scripts/check-ai-helper-ui-contract.cjs",
     "check:image-references": "node scripts/check-image-references-ui.cjs",
     "check:logo": "node scripts/check-logo-generator-contract.cjs",
     "dev": "next dev",

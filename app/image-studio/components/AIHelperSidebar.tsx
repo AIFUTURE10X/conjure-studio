@@ -21,6 +21,9 @@ import { SuggestionCard, SUGGESTION_APPLY_LABELS } from './AIHelper/SuggestionCa
 import { ImageUploadPreview } from './AIHelper/ImageUploadPreview'
 import { ChatInput } from './AIHelper/ChatInput'
 
+const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
+const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
+
 interface AIHelperSidebarProps {
   isOpen: boolean
   onClose: () => void
@@ -46,6 +49,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editedSuggestions, setEditedSuggestions] = useState<any>({})
   const [appliedIndex, setAppliedIndex] = useState<number | null>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, addImage, removeImage, clearHistory, updateMessageSuggestions } = useAIHelper()
@@ -118,11 +122,21 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
   const suggestionMessages = messages.filter(m => m.suggestions)
 
   return (
-    <div className="fixed right-0 top-0 h-full w-[400px] bg-zinc-900 border-l border-[#c99850]/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 z-50">
-      <AIHelperHeader mode={mode} setMode={setMode} onClearHistory={clearHistory} onClose={onClose} />
+    <div
+      className="fixed right-0 top-0 z-50 flex h-full max-w-full flex-col border-l border-[#c99850]/30 bg-zinc-900 shadow-2xl transition-[width] duration-300 animate-in slide-in-from-right"
+      style={{ width: isExpanded ? AI_HELPER_PANEL_EXPANDED_WIDTH : AI_HELPER_PANEL_WIDTH }}
+    >
+      <AIHelperHeader
+        mode={mode}
+        setMode={setMode}
+        isExpanded={isExpanded}
+        onToggleExpanded={() => setIsExpanded((value) => !value)}
+        onClearHistory={clearHistory}
+        onClose={onClose}
+      />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
         {messages.length === 0 && !isLoading && <EmptyState mode={mode} />}
 
         {messages.map((msg, idx) => (

@@ -45,7 +45,7 @@ export function SuggestionCard({
   onEditStart, onEditCancel, onEditSave, onApply, onCopy, copiedField, updateEditedField
 }: SuggestionCardProps) {
   return (
-    <div className="mt-2 bg-zinc-800 border border-[#c99850]/30 rounded-lg p-3 space-y-2">
+    <div className="mt-3 bg-zinc-800 border border-[#c99850]/30 rounded-lg p-4 space-y-3">
       {isLatest && (
         <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#c99850]/20">
           <span className="px-2 py-1 text-xs font-bold bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black rounded">LATEST</span>
@@ -91,8 +91,8 @@ function EditableForm({ editedSuggestions, applyLabel, updateEditedField, onSave
         <textarea
           value={editedSuggestions.prompt || ''}
           onChange={(e) => updateEditedField('prompt', e.target.value)}
-          className="w-full px-2 py-1.5 bg-zinc-900 border border-[#c99850]/30 rounded text-xs text-white resize-none"
-          rows={3}
+          className="w-full px-3 py-2 bg-zinc-900 border border-[#c99850]/30 rounded text-sm leading-6 text-white resize-none"
+          rows={5}
         />
       </div>
       <div>
@@ -100,11 +100,11 @@ function EditableForm({ editedSuggestions, applyLabel, updateEditedField, onSave
         <textarea
           value={editedSuggestions.negativePrompt || ''}
           onChange={(e) => updateEditedField('negativePrompt', e.target.value)}
-          className="w-full px-2 py-1.5 bg-zinc-900 border border-[#c99850]/30 rounded text-xs text-white resize-none"
-          rows={2}
+          className="w-full px-3 py-2 bg-zinc-900 border border-[#c99850]/30 rounded text-sm leading-6 text-white resize-none"
+          rows={3}
         />
       </div>
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#c99850]/20">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2 border-t border-[#c99850]/20">
         <SelectField label="Style:" value={editedSuggestions.style || '3D Render'} options={STYLE_OPTIONS.map(s => ({ value: s, label: s }))} onChange={(v) => updateEditedField('style', v)} />
         <SelectField label="Aspect Ratio:" value={editedSuggestions.aspectRatio || '1:1'} options={ASPECT_RATIO_OPTIONS} onChange={(v) => updateEditedField('aspectRatio', v)} />
         <SelectField label="Camera Angle:" value={editedSuggestions.cameraAngle || 'None'} options={CAMERA_ANGLE_OPTIONS.map(a => ({ value: a, label: a }))} onChange={(v) => updateEditedField('cameraAngle', v)} />
@@ -142,7 +142,7 @@ function DisplayForm({ suggestions, idx, isApplied, applyLabel, onEditStart, onA
             {copiedField === `prompt-${idx}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
           </button>
         </div>
-        <p className="text-xs text-zinc-300">{suggestions.prompt}</p>
+        <PromptBody>{suggestions.prompt}</PromptBody>
       </div>
 
       {suggestions.negativePrompt && (
@@ -153,11 +153,11 @@ function DisplayForm({ suggestions, idx, isApplied, applyLabel, onEditStart, onA
               {copiedField === `neg-${idx}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             </button>
           </div>
-          <p className="text-xs text-zinc-300">{suggestions.negativePrompt}</p>
+          <PromptBody>{suggestions.negativePrompt}</PromptBody>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#c99850]/20">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-3 border-t border-[#c99850]/20">
         <DisplayField label="Style:" value={suggestions.style} />
         <DisplayField label="Aspect Ratio:" value={suggestions.aspectRatio || '1:1'} />
         <DisplayField label="Camera Angle:" value={suggestions.cameraAngle} />
@@ -200,5 +200,13 @@ function DisplayField({ label, value }: { label: string; value?: string }) {
       <label className="text-xs font-bold text-[#c99850]">{label}</label>
       <p className="text-xs text-zinc-300">{value || '-'}</p>
     </div>
+  )
+}
+
+function PromptBody({ children }: { children: string }) {
+  return (
+    <p className="rounded-md bg-zinc-900/70 border border-zinc-700/70 px-3 py-2 text-sm leading-6 text-zinc-200 whitespace-pre-wrap">
+      {children}
+    </p>
   )
 }

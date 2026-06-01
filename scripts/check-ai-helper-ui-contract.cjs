@@ -1,0 +1,66 @@
+const fs = require('fs')
+const path = require('path')
+
+const root = process.cwd()
+
+const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
+
+const checks = [
+  {
+    name: 'AI helper drawer uses a wide responsive panel instead of the narrow legacy width',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /AI_HELPER_PANEL_WIDTH\s*=\s*'min\(720px, 100vw\)'/.test(sidebar) &&
+        /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'min\(960px, 100vw\)'/.test(sidebar) &&
+        !/w-\[400px\]/.test(sidebar)
+    },
+  },
+  {
+    name: 'AI helper header exposes an expand collapse control',
+    pass: () => {
+      const header = read('app/image-studio/components/AIHelper/AIHelperHeader.tsx')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /isExpanded/.test(header) &&
+        /onToggleExpanded/.test(header) &&
+        /Maximize2/.test(header) &&
+        /Minimize2/.test(header) &&
+        /setIsExpanded/.test(sidebar)
+    },
+  },
+  {
+    name: 'AI helper suggestion cards use the wider layout',
+    pass: () => {
+      const card = read('app/image-studio/components/AIHelper/SuggestionCard.tsx')
+      return /md:grid-cols-3/.test(card) &&
+        /text-sm leading-6/.test(card) &&
+        /PromptBody/.test(card)
+    },
+  },
+  {
+    name: 'AI helper composer is optimized for the wider drawer',
+    pass: () => {
+      const input = read('app/image-studio/components/AIHelper/ChatInput.tsx')
+      return /items-end/.test(input) &&
+        /min-h-\[96px\]/.test(input) &&
+        /w-12/.test(input)
+    },
+  },
+]
+
+const failures = checks.filter((check) => {
+  try {
+    return !check.pass()
+  } catch {
+    return true
+  }
+})
+
+if (failures.length > 0) {
+  console.error('AI helper UI contract checks failed:')
+  for (const failure of failures) {
+    console.error(`- ${failure.name}`)
+  }
+  process.exit(1)
+}
+
+console.log('AI helper UI contract checks passed')
