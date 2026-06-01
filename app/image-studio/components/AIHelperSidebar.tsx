@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useAIHelper, type AIHelperMode } from '../hooks/useAIHelper'
+import { useAIHelper, type AIHelperAction, type AIHelperMode, type AIMessage } from '../hooks/useAIHelper'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import type { CreativeDirectionState } from '../constants/creative-direction-options'
 
@@ -20,6 +20,7 @@ import { LogoConfigCard } from './AIHelper/LogoConfigCard'
 import { SuggestionCard, SUGGESTION_APPLY_LABELS } from './AIHelper/SuggestionCard'
 import { ImageUploadPreview } from './AIHelper/ImageUploadPreview'
 import { ChatInput } from './AIHelper/ChatInput'
+import { SmartActionBar } from './AIHelper/SmartActionBar'
 
 const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
 const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
@@ -61,7 +62,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
     if (isLoading) return
     const userInput = input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
     setInput('')
-    mode === 'logo' ? await sendLogoMessage(userInput) : await sendMessage(userInput, currentPromptSettings)
+    mode === 'logo' ? await sendLogoMessage(userInput, currentPromptSettings) : await sendMessage(userInput, currentPromptSettings)
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,6 +116,39 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
     setAppliedIndex(idx); setTimeout(() => setAppliedIndex(null), 2000)
   }
 
+  const handleRunAction = (action: AIHelperAction, idx: number, message: AIMessage) => {
+    if (action.type === 'switch_to_logo') {
+      setMode('logo')
+      return
+    }
+
+    if (action.type === 'switch_to_image') {
+      setMode('image')
+      return
+    }
+
+    if (action.type === 'ask_follow_up' && action.prompt) {
+      setInput(action.prompt)
+      return
+    }
+
+    if (action.type === 'copy_prompt' && message.suggestions?.prompt) {
+      void handleCopy(message.suggestions.prompt, `prompt-action-${idx}`)
+      return
+    }
+
+    if (action.type === 'apply_logo_config' && message.logoConfig && onApplyLogoConfig) {
+      onApplyLogoConfig(message.logoConfig)
+      setAppliedIndex(idx)
+      setTimeout(() => setAppliedIndex(null), 2000)
+      return
+    }
+
+    if (action.type === 'apply_suggestions' && message.suggestions) {
+      handleApplyClick(message.suggestions, idx)
+    }
+  }
+
   const updateEditedField = (field: string, value: string) => setEditedSuggestions((prev: any) => ({ ...prev, [field]: value }))
 
   if (!isOpen) return null
@@ -142,6 +176,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
         {messages.map((msg, idx) => (
           <div key={idx}>
             <MessageBubble role={msg.role} content={msg.content} />
+
+            {msg.actions && msg.actions.length > 0 && (
+              <SmartActionBar actions={msg.actions} onRunAction={(action) => handleRunAction(action, idx, msg)} />
+            )}
 
             {msg.logoConfig && Object.keys(msg.logoConfig).length > 0 && onApplyLogoConfig && (
               <LogoConfigCard

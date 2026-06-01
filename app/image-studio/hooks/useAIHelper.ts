@@ -18,6 +18,22 @@ import { analyzeUploadedImage } from './useImageCompression'
 
 export type AIHelperMode = 'image' | 'logo'
 
+export type AIHelperActionType =
+  | 'apply_suggestions'
+  | 'apply_logo_config'
+  | 'copy_prompt'
+  | 'switch_to_image'
+  | 'switch_to_logo'
+  | 'ask_follow_up'
+
+export interface AIHelperAction {
+  type: AIHelperActionType
+  label: string
+  description?: string
+  prompt?: string
+  target?: AIHelperMode
+}
+
 export interface AIMessage {
   role: 'user' | 'assistant'
   content: string
@@ -34,6 +50,44 @@ export interface AIMessage {
     resolution?: string
   }
   logoConfig?: Partial<DotMatrixConfig>
+  actions?: AIHelperAction[]
+}
+
+export interface AIHelperAgentMemory {
+  mode: AIHelperMode
+  lastImagePrompt?: string
+  lastLogoPrompt?: string
+  lastNegativePrompt?: string
+  lastAssistantSummary?: string
+  recentUserRequests: string[]
+}
+
+export function buildAgentMemory(messages: AIMessage[], mode: AIHelperMode): AIHelperAgentMemory {
+  const recentUserRequests = messages
+    .filter((message) => message.role === 'user' && (!message.mode || message.mode === mode))
+    .slice(-4)
+    .map((message) => message.content)
+
+  const lastImageSuggestion = [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && message.mode !== 'logo' && message.suggestions?.prompt)
+
+  const lastLogoSuggestion = [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && message.mode === 'logo' && message.suggestions?.prompt)
+
+  const lastAssistant = [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && (!message.mode || message.mode === mode))
+
+  return {
+    mode,
+    lastImagePrompt: lastImageSuggestion?.suggestions?.prompt,
+    lastLogoPrompt: lastLogoSuggestion?.suggestions?.prompt,
+    lastNegativePrompt: lastLogoSuggestion?.suggestions?.negativePrompt || lastImageSuggestion?.suggestions?.negativePrompt,
+    lastAssistantSummary: lastAssistant?.content,
+    recentUserRequests,
+  }
 }
 
 export function useAIHelper() {
@@ -134,13 +188,15 @@ export function useAIHelper() {
         body: JSON.stringify({
           message: userInput + imageAnalysisContext,
           ...currentPromptSettings,
+          currentPromptSettings,
+          agentMemory: buildAgentMemory(messages, 'image'),
           conversationHistory: messages
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), suggestions: data.suggestions }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now() }])
@@ -153,7 +209,7 @@ export function useAIHelper() {
     }
   }, [uploadedImages, messages])
 
-  const sendLogoMessage = useCallback(async (userInput: string) => {
+  const sendLogoMessage = useCallback(async (userInput: string, currentPromptSettings: any = {}) => {
     const displayMessage = userInput.trim() || '📷 [Logo reference uploaded]'
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now(), mode: 'logo' }
     setMessages(prev => [...prev, userMessage])
@@ -178,13 +234,15 @@ export function useAIHelper() {
           message: userInput,
           mode: 'logo',
           logoAnalysis: logoAnalysis || undefined,
+          currentPromptSettings,
+          agentMemory: buildAgentMemory(messages, 'logo'),
           conversationHistory: messages.filter(m => m.mode === 'logo')
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', logoConfig: data.logoConfig, suggestions: data.suggestions }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', logoConfig: data.logoConfig, suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: 'logo' }])

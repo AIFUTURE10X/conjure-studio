@@ -234,7 +234,11 @@ When suggesting logo settings, ALWAYS respond with a JSON object in this format:
   },
   "logoConfig": {
     "brandName": "Exact brand name when available"
-  }
+  },
+  "actions": [
+    { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
+    { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
+  ]
 }
 
 IMPORTANT:

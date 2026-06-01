@@ -45,6 +45,33 @@ const checks = [
         /w-12/.test(input)
     },
   },
+  {
+    name: 'AI helper supports Codex-style structured agent actions',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /export interface AIHelperAction/.test(hook) &&
+        /actions\?: AIHelperAction\[\]/.test(hook) &&
+        /AGENTIC AI HELPER CONTRACT/.test(route) &&
+        /normalizeHelperActions/.test(route) &&
+        /actions: normalizeHelperActions/.test(route) &&
+        /SmartActionBar/.test(sidebar)
+    },
+  },
+  {
+    name: 'AI helper sends current context and memory to logo mode',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /agentMemory/.test(hook) &&
+        /buildAgentMemory/.test(hook) &&
+        /sendLogoMessage\(userInput, currentPromptSettings\)/.test(sidebar) &&
+        /currentPromptSettings/.test(route) &&
+        /AGENT MEMORY/.test(route)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

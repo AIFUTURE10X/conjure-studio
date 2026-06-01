@@ -26,6 +26,108 @@ const CREATIVE_DIRECTION_OPTION_CONTEXT = [
   `Decorative Elements: ${DECORATIVE_ELEMENT_OPTIONS.map((option) => option.label).join(", ")}`,
 ].join("\n")
 
+type HelperActionType =
+  | 'apply_suggestions'
+  | 'apply_logo_config'
+  | 'copy_prompt'
+  | 'switch_to_image'
+  | 'switch_to_logo'
+  | 'ask_follow_up'
+
+interface HelperAction {
+  type: HelperActionType
+  label: string
+  description?: string
+  prompt?: string
+  target?: 'image' | 'logo'
+}
+
+const HELPER_ACTION_TYPES = new Set<HelperActionType>([
+  'apply_suggestions',
+  'apply_logo_config',
+  'copy_prompt',
+  'switch_to_image',
+  'switch_to_logo',
+  'ask_follow_up',
+])
+
+const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
+- Act like a smart in-app creative agent, not a generic prompt writer
+- Read the current generator settings, uploaded reference analysis, AGENT MEMORY, and recent conversation before answering
+- Preserve what the user liked from previous prompts and change only what the user asks to change
+- If the user reports a miss such as wrong font, wrong background, wrong colors, or poor reference match, diagnose the likely cause and return a corrected prompt/settings
+- Prefer useful action buttons over long instructions; include 1-3 actions that match the response
+- Use "apply_suggestions" when you generated a prompt/settings payload the app should apply
+- Use "copy_prompt" when the prompt is useful but should not immediately change settings
+- Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
+- Use "ask_follow_up" only when one short answer is required before making a good prompt`
+
+function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperAction[] = []): HelperAction[] {
+  if (!Array.isArray(rawActions)) return fallbackActions
+
+  const actions = rawActions
+    .map((rawAction): HelperAction | null => {
+      if (!rawAction || typeof rawAction !== 'object') return null
+      const action = rawAction as Record<string, unknown>
+      const type = typeof action.type === 'string' ? action.type : ''
+      if (!HELPER_ACTION_TYPES.has(type as HelperActionType)) return null
+      const label = typeof action.label === 'string' && action.label.trim()
+        ? action.label.trim()
+        : type.replace(/_/g, ' ')
+
+      return {
+        type: type as HelperActionType,
+        label,
+        ...(typeof action.description === 'string' && action.description.trim() ? { description: action.description.trim() } : {}),
+        ...(typeof action.prompt === 'string' && action.prompt.trim() ? { prompt: action.prompt.trim() } : {}),
+        ...(action.target === 'image' || action.target === 'logo' ? { target: action.target } : {}),
+      }
+    })
+    .filter((action): action is HelperAction => Boolean(action))
+
+  return actions.length > 0 ? actions.slice(0, 4) : fallbackActions
+}
+
+function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, hasLogoConfig = false): HelperAction[] {
+  const actions: HelperAction[] = []
+  if (hasSuggestions) {
+    actions.push({
+      type: 'apply_suggestions',
+      label: mode === 'logo' ? 'Apply to Logo Generator' : 'Apply to Image Generator',
+      description: 'Use this prompt and settings in the generator',
+      target: mode,
+    })
+    actions.push({
+      type: 'copy_prompt',
+      label: 'Copy Prompt',
+      description: 'Copy the generated prompt',
+      target: mode,
+    })
+  }
+  if (mode === 'logo' && hasLogoConfig) {
+    actions.push({
+      type: 'apply_logo_config',
+      label: 'Apply Logo Effects',
+      description: 'Apply the suggested configurator settings',
+      target: 'logo',
+    })
+  }
+  return actions
+}
+
+function formatAgentMemory(agentMemory: unknown): string {
+  if (!agentMemory || typeof agentMemory !== 'object') return 'None yet'
+  const memory = agentMemory as Record<string, unknown>
+  return JSON.stringify({
+    mode: memory.mode || 'unknown',
+    lastImagePrompt: memory.lastImagePrompt || '',
+    lastLogoPrompt: memory.lastLogoPrompt || '',
+    lastNegativePrompt: memory.lastNegativePrompt || '',
+    lastAssistantSummary: memory.lastAssistantSummary || '',
+    recentUserRequests: Array.isArray(memory.recentUserRequests) ? memory.recentUserRequests.slice(-4) : [],
+  }, null, 2)
+}
+
 function formatCreativeDirectionContext(input: Partial<CreativeDirectionState> | null | undefined): string {
   const creativeDirection = normalizeCreativeDirection(input)
   if (!hasCreativeDirection(creativeDirection)) return "None selected"
@@ -66,6 +168,8 @@ export async function POST(request: Request) {
       styleStrength,
       promptMode,
       creativeDirection,
+      currentPromptSettings,
+      agentMemory,
       conversationHistory,
       mode, // NEW: 'image' | 'logo'
       logoAnalysis, // NEW: analysis from reference logo image
@@ -89,7 +193,7 @@ export async function POST(request: Request) {
 
     // Handle logo mode separately
     if (mode === 'logo') {
-      return handleLogoMode(message, conversationHistory, logoAnalysis)
+      return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory)
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
@@ -114,8 +218,11 @@ export async function POST(request: Request) {
 
     const hasImageAnalysis = message?.includes("REFERENCE IMAGES ANALYSIS")
     const creativeDirectionContext = formatCreativeDirectionContext(creativeDirection)
+    const agentMemoryContext = formatAgentMemory(agentMemory)
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
+
+${AGENTIC_AI_HELPER_CONTRACT}
 
 Current Settings:
 - Prompt: ${currentPrompt || "None"}
@@ -128,9 +235,14 @@ Current Settings:
 - Prompt Mode: ${promptMode || "None"}
 - Current Creative Direction:
 ${creativeDirectionContext}
+- Raw currentPromptSettings snapshot:
+${JSON.stringify(currentPromptSettings || {}, null, 2)}
 
 Available Creative Direction controls:
 ${CREATIVE_DIRECTION_OPTION_CONTEXT}
+
+AGENT MEMORY:
+${agentMemoryContext}
 
 Recent Conversation:
 ${contextMessages || "None"}
@@ -185,7 +297,11 @@ Format your response as JSON:
     "cameraLens": "camera_lens_value or None",
     "aspectRatio": "aspect_ratio_value",
     "styleStrength": "moderate"
-  }
+  },
+  "actions": [
+    { "type": "apply_suggestions", "label": "Apply to Image Generator", "description": "Use this prompt and settings" },
+    { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the improved prompt" }
+  ]
 }
 
 Available styles (MUST use exact values): Realistic, Cartoon Style, Pixar, PhotoReal, Anime, Oil Painting, Watercolor, 3D Render, Sketch, Comic Book, Studio Ghibli, Makoto Shinkai, Disney Modern 3D, Sony Spider-Verse, Laika Stop-Motion, Cartoon Saloon, Studio Trigger, Ufotable, Kyoto Animation
@@ -206,7 +322,11 @@ Available style strengths: subtle, moderate, strong`
     if (jsonMatch) {
       const jsonResponse = JSON.parse(jsonMatch[0])
       console.log("[v0 API] Successfully parsed JSON response")
-      return NextResponse.json(jsonResponse)
+      const hasSuggestions = Boolean(jsonResponse.suggestions?.prompt)
+      return NextResponse.json({
+        ...jsonResponse,
+        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions)),
+      })
     }
 
     console.warn("[v0 API] Failed to parse JSON, using fallback response")
@@ -221,6 +341,7 @@ Available style strengths: subtle, moderate, strong`
         aspectRatio: currentAspectRatio || "1:1",
         styleStrength: styleStrength || "moderate",
       },
+      actions: defaultHelperActions('image', Boolean(currentPrompt)),
     })
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
@@ -296,7 +417,9 @@ function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSugg
 async function handleLogoMode(
   message: string,
   conversationHistory: any[],
-  logoAnalysis?: string
+  logoAnalysis?: string,
+  currentPromptSettings?: unknown,
+  agentMemory?: unknown
 ) {
   try {
     // Check if Gemini is available
@@ -346,8 +469,17 @@ async function handleLogoMode(
 
     // Get the dynamic system prompt from ai-logo-knowledge.ts
     const logoSystemPrompt = buildLogoSystemPrompt()
+    const agentMemoryContext = formatAgentMemory(agentMemory)
 
     const fullPrompt = `${logoSystemPrompt}
+
+${AGENTIC_AI_HELPER_CONTRACT}
+
+Current Logo/Image Studio Settings:
+${JSON.stringify(currentPromptSettings || {}, null, 2)}
+
+AGENT MEMORY:
+${agentMemoryContext}
 
 ${logoAnalysis ? `
 === REFERENCE LOGO ANALYSIS ===
@@ -381,7 +513,13 @@ User Request: ${message}
 
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
-Remember to respond with a JSON object containing "message", "designBrief", "suggestions", and "logoConfig" as specified above.`
+Remember to respond with a JSON object containing "message", "designBrief", "suggestions", "logoConfig", and "actions" as specified above.
+
+Action schema:
+"actions": [
+  { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
+  { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
+]`
 
     console.log("[v0 API] Logo mode - calling Gemini with dynamic system prompt")
 
@@ -396,13 +534,16 @@ Remember to respond with a JSON object containing "message", "designBrief", "sug
       try {
         const jsonResponse = JSON.parse(jsonMatch[0])
         const logoSuggestions = normalizeLogoPromptSuggestions(jsonResponse.suggestions)
+        const logoConfig = jsonResponse.logoConfig || {}
+        const hasLogoConfig = Boolean(logoConfig && Object.keys(logoConfig).length > 0)
         console.log("[v0 API] Logo mode - Successfully parsed JSON response with config keys:",
-          jsonResponse.logoConfig ? Object.keys(jsonResponse.logoConfig) : 'none')
+          hasLogoConfig ? Object.keys(logoConfig) : 'none')
         return NextResponse.json({
           message: jsonResponse.message || "Here are my logo design suggestions.",
           designBrief: jsonResponse.designBrief || null,
           suggestions: logoSuggestions,
-          logoConfig: jsonResponse.logoConfig || {},
+          logoConfig,
+          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig)),
           mode: 'logo'
         })
       } catch (parseError) {
@@ -415,6 +556,7 @@ Remember to respond with a JSON object containing "message", "designBrief", "sug
     return NextResponse.json({
       message: responseText,
       logoConfig: {},
+      actions: defaultHelperActions('logo', false),
       mode: 'logo'
     })
   } catch (error: any) {
