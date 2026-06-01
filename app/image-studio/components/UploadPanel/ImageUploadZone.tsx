@@ -45,7 +45,7 @@ export function ImageUploadZone({
   }
 
   return (
-    <section className="rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
+    <section className="flex h-full flex-col rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <h3 className="text-base font-semibold text-white">{title}</h3>
@@ -78,7 +78,7 @@ export function ImageUploadZone({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={() => !image && inputRef.current?.click()}
-        className={`min-h-[120px] border border-dashed rounded-lg p-3 text-center transition-colors flex items-center justify-center ${
+        className={`min-h-[120px] flex-1 border border-dashed rounded-lg p-3 text-center transition-colors flex items-center justify-center ${
           isDragging
             ? 'border-[#c99850] bg-[#c99850]/10'
             : 'border-[#c99850]/40 bg-zinc-950/20 hover:border-[#c99850]/80 hover:bg-zinc-950/40'

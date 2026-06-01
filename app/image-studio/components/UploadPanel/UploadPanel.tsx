@@ -121,89 +121,88 @@ export function UploadPanel({
               <ReferenceStatus label="Style" value={styleImage ? 'Added' : 'Optional'} active={!!styleImage} />
             </div>
 
-            {/* Subject Images Section */}
-            <section className="rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-3">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#c99850]/25 bg-[#c99850]/10">
-                    <Images className="h-4 w-4 text-[#dbb56e]" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-semibold text-white">Subject Images</h3>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button className="text-zinc-500 hover:text-[#c99850] transition-colors">
-                            <Info className="w-4 h-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="max-w-xs bg-black border-[#c99850] text-[#c99850]">
-                          <p className="text-sm">
-                            Upload multiple subjects to combine them in your generation.
-                            Select which subjects to include by clicking on them.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              {/* Subject Images Section */}
+              <section className="flex h-full flex-col rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:flex-col 2xl:flex-row 2xl:items-start 2xl:justify-between mb-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#c99850]/25 bg-[#c99850]/10">
+                      <Images className="h-4 w-4 text-[#dbb56e]" />
                     </div>
-                    <p className="text-sm text-zinc-500">People, products, or objects to include</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-white">Subject Images</h3>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="text-zinc-500 hover:text-[#c99850] transition-colors">
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs bg-black border-[#c99850] text-[#c99850]">
+                            <p className="text-sm">
+                              Upload multiple subjects to combine them in your generation.
+                              Select which subjects to include by clicking on them.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <p className="text-sm text-zinc-500">People, products, or objects to include</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {hasAnyReference && clearAllImages && (
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {hasAnyReference && clearAllImages && (
+                      <Button
+                        onClick={handleClearAll}
+                        variant="outline"
+                        size="sm"
+                        className="font-semibold text-zinc-400 border-zinc-700 hover:text-white hover:border-zinc-600"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1.5" />
+                        Clear All
+                      </Button>
+                    )}
                     <Button
-                      onClick={handleClearAll}
-                      variant="outline"
+                      onClick={() => subjectInputRef.current?.click()}
                       size="sm"
-                      className="font-semibold text-zinc-400 border-zinc-700 hover:text-white hover:border-zinc-600"
+                      className="font-semibold text-black"
+                      style={{
+                        background: "linear-gradient(135deg, #c99850 0%, #dbb56e 25%, #f4d698 50%, #dbb56e 75%, #c99850 100%)",
+                      }}
                     >
-                      <X className="w-3.5 h-3.5 mr-1.5" />
-                      Clear All
+                      <Upload className="w-3.5 h-3.5 mr-1.5" />
+                      Add Subjects
                     </Button>
-                  )}
-                  <Button
-                    onClick={() => subjectInputRef.current?.click()}
-                    size="sm"
-                    className="font-semibold text-black"
-                    style={{
-                      background: "linear-gradient(135deg, #c99850 0%, #dbb56e 25%, #f4d698 50%, #dbb56e 75%, #c99850 100%)",
-                    }}
-                  >
-                    <Upload className="w-3.5 h-3.5 mr-1.5" />
-                    Add Subjects
-                  </Button>
+                  </div>
+                  <input
+                    ref={subjectInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSubjectFileInput}
+                  />
                 </div>
-                <input
-                  ref={subjectInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleSubjectFileInput}
-                />
-              </div>
 
-              {/* Drop Zone */}
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, 'subject')}
-                onClick={() => subjectImages.length === 0 && subjectInputRef.current?.click()}
-                className={`border border-dashed rounded-lg p-3 text-center transition-colors ${
-                  isDragging
-                    ? 'border-[#c99850] bg-[#c99850]/10'
-                    : 'border-[#c99850]/40 bg-zinc-950/20 hover:border-[#c99850]/80 hover:bg-zinc-950/40'
-                } ${subjectImages.length === 0 ? 'cursor-pointer' : ''}`}
-              >
-                <SubjectImageGrid
-                  subjectImages={subjectImages}
-                  onToggleSelection={toggleSubjectSelection}
-                  onRemove={removeSubjectImage}
-                />
-              </div>
-            </section>
+                {/* Drop Zone */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, 'subject')}
+                  onClick={() => subjectImages.length === 0 && subjectInputRef.current?.click()}
+                  className={`flex-1 border border-dashed rounded-lg p-3 text-center transition-colors ${
+                    isDragging
+                      ? 'border-[#c99850] bg-[#c99850]/10'
+                      : 'border-[#c99850]/40 bg-zinc-950/20 hover:border-[#c99850]/80 hover:bg-zinc-950/40'
+                  } ${subjectImages.length === 0 ? 'cursor-pointer' : ''}`}
+                >
+                  <SubjectImageGrid
+                    subjectImages={subjectImages}
+                    onToggleSelection={toggleSubjectSelection}
+                    onRemove={removeSubjectImage}
+                  />
+                </div>
+              </section>
 
-            {/* Scene & Style Images */}
-            <div className="grid md:grid-cols-2 gap-4">
               <ImageUploadZone
                 title="Scene/Background"
                 subtitle="Where the image should feel set"

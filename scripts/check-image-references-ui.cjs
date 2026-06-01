@@ -20,6 +20,11 @@ const checks = [
     pass: () => /min-h-\[120px\]/.test(read('app/image-studio/components/UploadPanel/ImageUploadZone.tsx')) &&
       /Browse/.test(read('app/image-studio/components/UploadPanel/ImageUploadZone.tsx')),
   },
+  {
+    name: 'reference cards sit in one desktop row',
+    pass: () => /lg:grid-cols-\[minmax\(0,1\.25fr\)_minmax\(0,1fr\)_minmax\(0,1fr\)\]/.test(read('app/image-studio/components/UploadPanel/UploadPanel.tsx')) &&
+      !/grid md:grid-cols-2 gap-4/.test(read('app/image-studio/components/UploadPanel/UploadPanel.tsx')),
+  },
 ]
 
 const failures = checks.filter((check) => {
