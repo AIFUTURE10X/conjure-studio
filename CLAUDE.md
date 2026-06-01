@@ -19,6 +19,7 @@ These MUST be set in Vercel → Settings → Environment Variables (for ALL envi
 | Variable | Description |
 |----------|-------------|
 | `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
+| `PHOTOROOM_API_KEY` | PhotoRoom API key for default professional logo PNG background removal |
 | `REPLICATE_API_TOKEN` | Replicate API key |
 | `GOOGLE_AI_API_KEY` | Google Gemini API key |
 

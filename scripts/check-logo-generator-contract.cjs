@@ -102,8 +102,8 @@ const checks = [
     pass: () => /Native transparent PNG requires ChatGPT Images 2\.0/.test(read('app/api/generate-logo/route.ts')),
   },
   {
-    name: 'default logo background removal bypasses Replicate',
-    pass: () => /bgRemovalMethod:\s*'smart'/.test(read('lib/logo-generation-contract.ts')) &&
+    name: 'default logo background removal uses PhotoRoom without Replicate',
+    pass: () => /bgRemovalMethod:\s*'photoroom'/.test(read('lib/logo-generation-contract.ts')) &&
       !/bgRemovalMethod:\s*'replicate'/.test(read('lib/logo-generation-contract.ts')),
   },
   {
@@ -113,9 +113,9 @@ const checks = [
       !/Skip background removal by default/.test(read('app/image-studio/hooks/useLogoGeneration.ts')),
   },
   {
-    name: 'logo panel defaults and reset use smart background removal',
-    pass: () => /useState<BgRemovalMethod>\('smart'\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
-      /setBgRemovalMethod\('smart'\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')),
+    name: 'logo panel defaults and reset follow shared background removal default',
+    pass: () => /useState<BgRemovalMethod>\(DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
+      /setBgRemovalMethod\(DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')),
   },
   {
     name: 'manual background removal defaults avoid Replicate',
@@ -132,6 +132,25 @@ const checks = [
     name: 'logo pipeline handles smart removal without Replicate',
     pass: () => /removeBackgroundSmart/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
       /request\.bgRemovalMethod === 'smart'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
+  },
+  {
+    name: 'advanced logo settings expose PhotoRoom cleanup',
+    pass: () => /value:\s*'photoroom'/.test(read('app/image-studio/constants/logo-constants.ts')) &&
+      /PhotoRoom/.test(read('app/image-studio/constants/logo-constants.ts')),
+  },
+  {
+    name: 'logo pipeline calls PhotoRoom for selected cleanup with smart fallback',
+    pass: () => /removeBackgroundWithPhotoRoom/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      /isPhotoRoomBgRemovalAvailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      /request\.bgRemovalMethod === 'photoroom'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      /PhotoRoom unavailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
+  },
+  {
+    name: 'logo API returns the actual background removal method used',
+    pass: () => /LogoBackgroundRemovalResult/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      /processedLogo\.imageBase64/.test(read('app/api/generate-logo/route.ts')) &&
+      /bgRemovalMethod:\s*processedLogo\.bgRemovalMethod/.test(read('app/api/generate-logo/route.ts')) &&
+      /bgRemovalMethod:\s*data\.bgRemovalMethod \|\| options\.bgRemovalMethod/.test(read('app/image-studio/hooks/useLogoGeneration.ts')),
   },
   {
     name: 'upscale defaults avoid Replicate',

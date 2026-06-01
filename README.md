@@ -61,6 +61,7 @@ cp .env.example .env.local
 
 # Add your API keys to .env.local
 # GEMINI_API_KEY=your_gemini_key
+# PHOTOROOM_API_KEY=your_photoroom_key
 # REPLICATE_API_TOKEN=your_replicate_token
 
 # Run development server
@@ -97,6 +98,7 @@ v0promptsgenie/
 | Variable | Description |
 |----------|-------------|
 | `GEMINI_API_KEY` | Google Gemini API key for AI analysis |
+| `PHOTOROOM_API_KEY` | PhotoRoom API key for default professional logo PNG background removal |
 | `REPLICATE_API_TOKEN` | Replicate API token for image generation |
 | `PIXELCUT_API_KEY` | PixelCut API for background removal (optional) |
 

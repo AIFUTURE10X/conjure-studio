@@ -2,6 +2,7 @@ import { hasTransparency, removeBackground, type BackgroundRemovalMethod } from 
 import { removeBackgroundCloud, removeBackgroundPixian } from '@/lib/cloud-bg-removal'
 import { generateImageWithRetry } from '@/lib/gemini-client'
 import { generateOpenAIImage } from '@/lib/openai-image-client'
+import { isPhotoRoomBgRemovalAvailable, removeBackgroundWithPhotoRoom } from '@/lib/photoroom-bg-removal'
 import { removeBackgroundWithPixelcut } from '@/lib/pixelcut-bg-removal'
 import { removeBackgroundWithReplicate } from '@/lib/replicate-bg-removal'
 import { removeBackgroundSmart } from '@/lib/smart-bg-removal'
@@ -16,6 +17,11 @@ export interface LogoGenerationResult {
   seed?: number
 }
 
+export interface LogoBackgroundRemovalResult {
+  imageBase64: string
+  bgRemovalMethod: ParsedLogoGenerationRequest['bgRemovalMethod']
+}
+
 export function isOpenAIImageModel(model: ParsedLogoGenerationRequest['model']): model is 'gpt-image-2' {
   return model === 'gpt-image-2'
 }
@@ -25,6 +31,7 @@ export function shouldUseFreeFormPrompt(request: ParsedLogoGenerationRequest): b
     request.bgRemovalMethod === 'pixelcut' ||
     request.bgRemovalMethod === 'replicate' ||
     request.bgRemovalMethod === '851-labs' ||
+    (request.bgRemovalMethod === 'photoroom' && (!!request.cloudApiKey || isPhotoRoomBgRemovalAvailable())) ||
     ((request.bgRemovalMethod === 'pixian' || request.bgRemovalMethod === 'cloud') && !!request.cloudApiKey)
 
   return request.skipBgRemoval || cloudRemovalAvailable
@@ -84,56 +91,76 @@ export async function generateLogoBaseImage(
 export async function removeLogoBackgroundIfNeeded(
   request: ParsedLogoGenerationRequest,
   imageBase64: string
-): Promise<string> {
+): Promise<LogoBackgroundRemovalResult> {
+  const result = (
+    processedBase64: string,
+    bgRemovalMethod: ParsedLogoGenerationRequest['bgRemovalMethod'] = request.bgRemovalMethod
+  ): LogoBackgroundRemovalResult => ({
+    imageBase64: processedBase64,
+    bgRemovalMethod,
+  })
+
   if (request.bgRemovalMethod === 'native-transparent') {
     console.log('[Logo API] Verifying OpenAI native transparent PNG output')
-    return ensureNativeTransparentLogo(imageBase64)
+    return result(await ensureNativeTransparentLogo(imageBase64))
   }
 
   if (request.skipBgRemoval) {
     console.log('[Logo API] Skipping background removal (will be done later if needed)')
-    return imageBase64
+    return result(imageBase64)
   }
 
   if (request.bgRemovalMethod === 'none') {
     console.log('[Logo API] Background removal method is none; using original image')
-    return imageBase64
+    return result(imageBase64)
   }
 
   console.log(`[Logo API] Removing background with method: ${request.bgRemovalMethod}...`)
 
   if (request.bgRemovalMethod === 'pixelcut') {
-    return removeBackgroundWithPixelcut(imageBase64)
+    return result(await removeBackgroundWithPixelcut(imageBase64))
   }
 
   if (request.bgRemovalMethod === 'replicate') {
-    return removeBackgroundWithReplicate(imageBase64, 'bria')
+    return result(await removeBackgroundWithReplicate(imageBase64, 'bria'))
   }
 
   if (request.bgRemovalMethod === '851-labs') {
-    return removeBackgroundWithReplicate(imageBase64, '851-labs')
+    return result(await removeBackgroundWithReplicate(imageBase64, '851-labs'))
+  }
+
+  if (request.bgRemovalMethod === 'photoroom') {
+    if (request.cloudApiKey || isPhotoRoomBgRemovalAvailable()) {
+      return result(await removeBackgroundWithPhotoRoom(imageBase64, request.cloudApiKey || undefined, request.resolution !== '1K'))
+    }
+
+    console.warn('[Logo API] PhotoRoom unavailable (missing PHOTOROOM_API_KEY); using local smart fallback')
+    return result(await removeBackgroundSmart(imageBase64, {
+      tolerance: 25,
+      edgeSmoothing: false,
+    }), 'smart')
   }
 
   if (request.bgRemovalMethod === 'smart') {
-    return removeBackgroundSmart(imageBase64, {
+    return result(await removeBackgroundSmart(imageBase64, {
       tolerance: 25,
       edgeSmoothing: false,
-    })
+    }))
   }
 
   if (request.bgRemovalMethod === 'pixian' && request.cloudApiKey) {
-    return removeBackgroundPixian(imageBase64, request.cloudApiKey)
+    return result(await removeBackgroundPixian(imageBase64, request.cloudApiKey))
   }
 
   if (request.bgRemovalMethod === 'cloud' && request.cloudApiKey) {
-    return removeBackgroundCloud(imageBase64, { apiKey: request.cloudApiKey })
+    return result(await removeBackgroundCloud(imageBase64, { apiKey: request.cloudApiKey }))
   }
 
-  return removeBackground(imageBase64, {
+  return result(await removeBackground(imageBase64, {
     method: request.bgRemovalMethod as BackgroundRemovalMethod,
     tolerance: 12,
     edgeSmoothing: true,
-  })
+  }))
 }
 
 export async function upscaleLogoIfNeeded(

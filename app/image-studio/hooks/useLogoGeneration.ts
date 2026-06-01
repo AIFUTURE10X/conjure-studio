@@ -86,7 +86,7 @@ export function useLogoGeneration() {
         style: options.style,
         aspectRatio: data.aspectRatio || options.aspectRatio || DEFAULT_LOGO_GENERATION_SETTINGS.aspectRatio,
         textMode: data.textMode || options.textMode || DEFAULT_LOGO_GENERATION_SETTINGS.textMode,
-        bgRemovalMethod: options.bgRemovalMethod || DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod,
+        bgRemovalMethod: data.bgRemovalMethod || options.bgRemovalMethod || DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod,
         timestamp: Date.now(),
         seed: data.seed // Include seed from API response
       }

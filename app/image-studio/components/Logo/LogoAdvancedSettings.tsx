@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { Settings2, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
+import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
 import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from '../../hooks/useLogoGeneration'
 import {
   LogoResolution,
@@ -58,7 +59,7 @@ export function LogoAdvancedSettings({
 
   useEffect(() => {
     if (bgRemovalMethod === 'native-transparent' && selectedModel !== 'gpt-image-2') {
-      setBgRemovalMethod('smart')
+      setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
     }
   }, [bgRemovalMethod, selectedModel, setBgRemovalMethod])
 

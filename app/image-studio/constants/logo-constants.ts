@@ -58,6 +58,12 @@ export const BG_REMOVAL_METHODS: Array<{
     badge: 'Recommended'
   },
   {
+    value: 'photoroom',
+    label: 'PhotoRoom',
+    description: 'Professional API cleanup for the cleanest transparent PNG edges',
+    badge: 'Best'
+  },
+  {
     value: 'replicate',
     label: 'BRIA AI (Replicate)',
     description: 'Optional Replicate cleanup for difficult backgrounds',

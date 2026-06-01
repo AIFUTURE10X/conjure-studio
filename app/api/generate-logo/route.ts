@@ -67,14 +67,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const processedBase64 = await removeLogoBackgroundIfNeeded(logoRequest, result.imageBase64)
-    const finalBase64 = await upscaleLogoIfNeeded(logoRequest, processedBase64)
+    const processedLogo = await removeLogoBackgroundIfNeeded(logoRequest, result.imageBase64)
+    const finalBase64 = await upscaleLogoIfNeeded(logoRequest, processedLogo.imageBase64)
 
     return NextResponse.json({
       success: true,
       image: toPngDataUrl(finalBase64),
       style: logoRequest.style,
-      bgRemovalMethod: logoRequest.bgRemovalMethod,
+      bgRemovalMethod: processedLogo.bgRemovalMethod,
       aspectRatio: logoRequest.aspectRatio,
       resolution: logoRequest.resolution,
       textMode: logoRequest.textMode,

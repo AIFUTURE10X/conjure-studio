@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
+import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
 import type { BgRemovalMethod, GeneratedLogo, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from './useLogoGeneration'
 import { LogoConcept, RenderStyle, LogoResolution } from '../constants/logo-constants'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
@@ -27,7 +28,7 @@ export function useLogoPanelState({
   const [selectedRenders, setSelectedRenders] = useState<RenderStyle[]>([])
 
   // Settings state
-  const [bgRemovalMethod, setBgRemovalMethod] = useState<BgRemovalMethod>('smart')
+  const [bgRemovalMethod, setBgRemovalMethod] = useState<BgRemovalMethod>(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
   const [aspectRatio, setAspectRatio] = useState<LogoAspectRatio>('1:1')
   const [resolution, setResolution] = useState<LogoResolution>('1K')
   const [selectedModel, setSelectedModel] = useState<LogoGenerationModel>('gemini-3.1-flash-image-preview')
@@ -85,7 +86,7 @@ export function useLogoPanelState({
     setNegativePrompt('')
     setSelectedConcept(null)
     setSelectedRenders([])
-    setBgRemovalMethod('smart')
+    setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
     setAspectRatio('1:1')
     setResolution('1K')
     setSelectedModel('gemini-3.1-flash-image-preview')
