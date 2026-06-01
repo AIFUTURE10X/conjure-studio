@@ -222,13 +222,27 @@ export function buildFreeFormLogoPrompt(
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
   const textRequirements = getTextHandlingRequirements(textMode)
+  const isNativeTransparent = backgroundMode === 'native-transparent'
 
   // Determine best background for the style
-  const bgInstruction = backgroundMode === 'native-transparent'
+  const bgInstruction = isNativeTransparent
     ? 'Use the native transparent PNG background. Do not draw any visible background or scene.'
     : render === 'neon'
       ? 'Place on a dark charcoal or black background to make the glow pop'
       : 'Place on a subtle dark gradient background (dark blue-gray to black) for premium presentation'
+
+  const depthInstruction = isNativeTransparent
+    ? 'Use internal highlights, bevels, and material texture only inside the logo shapes; no cast shadows, floor shadows, halos, or background lighting.'
+    : 'Add realistic shadows, highlights, and depth only when the selected style calls for it'
+
+  const visualStyleInspiration = isNativeTransparent
+    ? `- Clean standalone brand asset on transparent canvas
+- Rich material effects must stay clipped inside the logo mark and lettering
+- No presentation backdrop, vignette, spotlight, wall, paper, mockup, or scene`
+    : `- Like logos you'd see for successful tech startups, real estate companies, or premium brands
+- Rich 3D effects with realistic lighting and shadows
+- Clean, memorable iconography that tells a story
+- Professional composition with enough breathing room around the mark`
 
   return `Create a polished professional logo concept suitable for a real brand identity system:
 
@@ -244,17 +258,14 @@ PROFESSIONAL LOGO REQUIREMENTS:
 1. DISTINCTIVE MARK: Create a memorable symbol, icon, badge, or mark that can stand alone
 2. PERFECT COMPOSITION: Icon and text should be balanced and work together harmoniously
 3. COLOR HARMONY: Use 2-3 complementary colors that create visual impact (gradients are encouraged for 3D styles)
-4. DEPTH & DIMENSION: Add realistic shadows, highlights, and depth only when the selected style calls for it
+4. DEPTH & DIMENSION: ${depthInstruction}
 5. SCALABILITY: Keep the main shape readable from app-icon size to large signage
 6. PRODUCTION CLEANLINESS: No extra badges, fake UI, watermarks, signatures, or mockup context
 
 ${textRequirements}
 
 VISUAL STYLE INSPIRATION:
-- Like logos you'd see for successful tech startups, real estate companies, or premium brands
-- Rich 3D effects with realistic lighting and shadows
-- Clean, memorable iconography that tells a story
-- Professional composition with enough breathing room around the mark
+${visualStyleInspiration}
 
 BACKGROUND:
 ${bgInstruction}

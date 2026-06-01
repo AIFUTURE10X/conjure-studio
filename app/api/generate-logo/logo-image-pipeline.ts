@@ -1,4 +1,4 @@
-import { removeBackground, type BackgroundRemovalMethod } from '@/lib/background-removal'
+import { hasTransparency, removeBackground, type BackgroundRemovalMethod } from '@/lib/background-removal'
 import { removeBackgroundCloud, removeBackgroundPixian } from '@/lib/cloud-bg-removal'
 import { generateImageWithRetry } from '@/lib/gemini-client'
 import { generateOpenAIImage } from '@/lib/openai-image-client'
@@ -28,6 +28,19 @@ export function shouldUseFreeFormPrompt(request: ParsedLogoGenerationRequest): b
     ((request.bgRemovalMethod === 'pixian' || request.bgRemovalMethod === 'cloud') && !!request.cloudApiKey)
 
   return request.skipBgRemoval || cloudRemovalAvailable
+}
+
+async function ensureNativeTransparentLogo(imageBase64: string): Promise<string> {
+  if (await hasTransparency(imageBase64)) {
+    console.log('[Logo API] Native transparent PNG output contains alpha')
+    return imageBase64
+  }
+
+  console.warn('[Logo API] OpenAI returned an opaque PNG for native transparency; applying local smart fallback')
+  return removeBackgroundSmart(imageBase64, {
+    tolerance: 35,
+    edgeSmoothing: false,
+  })
 }
 
 export async function generateLogoBaseImage(
@@ -73,8 +86,8 @@ export async function removeLogoBackgroundIfNeeded(
   imageBase64: string
 ): Promise<string> {
   if (request.bgRemovalMethod === 'native-transparent') {
-    console.log('[Logo API] Using OpenAI native transparent PNG output; skipping background removal')
-    return imageBase64
+    console.log('[Logo API] Verifying OpenAI native transparent PNG output')
+    return ensureNativeTransparentLogo(imageBase64)
   }
 
   if (request.skipBgRemoval) {
