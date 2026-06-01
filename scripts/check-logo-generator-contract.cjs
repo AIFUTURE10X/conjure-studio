@@ -49,6 +49,20 @@ const checks = [
     pass: () => /negativePrompt/.test(read('app/api/enhance-logo-prompt/route.ts')) &&
       /setNegativePrompt\(data\.negativePrompt\)/.test(read('app/image-studio/components/Logo/LogoPromptSection.tsx')),
   },
+  {
+    name: 'AI helper has a separate logo suggestion apply callback',
+    pass: () => /onApplyLogoSuggestions/.test(read('app/image-studio/components/AIHelperSidebar.tsx')) &&
+      /handleApplyLogoSuggestions/.test(read('app/image-studio/hooks/usePageState.ts')),
+  },
+  {
+    name: 'logo suggestions switch to the logo generator when applied',
+    pass: () => /handleApplyLogoSuggestions[\s\S]*setActiveTab\('logo'\)/.test(read('app/image-studio/hooks/usePageState.ts')),
+  },
+  {
+    name: 'suggestion cards label their apply destination',
+    pass: () => /Apply to Logo Generator/.test(read('app/image-studio/components/AIHelper/SuggestionCard.tsx')) &&
+      /Apply to Image Generator/.test(read('app/image-studio/components/AIHelper/SuggestionCard.tsx')),
+  },
 ]
 
 const failures = checks.filter((check) => {

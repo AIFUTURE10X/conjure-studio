@@ -4,6 +4,14 @@ import { Copy, Check, Edit2 } from 'lucide-react'
 import { useState } from 'react'
 import { STYLE_OPTIONS, ASPECT_RATIO_OPTIONS, CAMERA_ANGLE_OPTIONS, CAMERA_LENS_OPTIONS, RESOLUTION_OPTIONS } from './constants'
 
+const APPLY_TO_IMAGE_GENERATOR_LABEL = 'Apply to Image Generator'
+const APPLY_TO_LOGO_GENERATOR_LABEL = 'Apply to Logo Generator'
+
+export const SUGGESTION_APPLY_LABELS = {
+  image: APPLY_TO_IMAGE_GENERATOR_LABEL,
+  logo: APPLY_TO_LOGO_GENERATOR_LABEL,
+} as const
+
 interface Suggestions {
   prompt: string
   negativePrompt?: string
@@ -21,6 +29,7 @@ interface SuggestionCardProps {
   isLatest: boolean
   isEditing: boolean
   isApplied: boolean
+  applyLabel: string
   editedSuggestions: any
   onEditStart: (idx: number, suggestions: Suggestions) => void
   onEditCancel: () => void
@@ -32,7 +41,7 @@ interface SuggestionCardProps {
 }
 
 export function SuggestionCard({
-  suggestions, idx, isLatest, isEditing, isApplied, editedSuggestions,
+  suggestions, idx, isLatest, isEditing, isApplied, applyLabel, editedSuggestions,
   onEditStart, onEditCancel, onEditSave, onApply, onCopy, copiedField, updateEditedField
 }: SuggestionCardProps) {
   return (
@@ -47,6 +56,7 @@ export function SuggestionCard({
       {isEditing ? (
         <EditableForm
           editedSuggestions={editedSuggestions}
+          applyLabel={applyLabel}
           updateEditedField={updateEditedField}
           onSave={() => onEditSave(idx)}
           onCancel={onEditCancel}
@@ -56,6 +66,7 @@ export function SuggestionCard({
           suggestions={suggestions}
           idx={idx}
           isApplied={isApplied}
+          applyLabel={applyLabel}
           onEditStart={() => onEditStart(idx, suggestions)}
           onApply={() => onApply(suggestions, idx)}
           onCopy={onCopy}
@@ -66,8 +77,9 @@ export function SuggestionCard({
   )
 }
 
-function EditableForm({ editedSuggestions, updateEditedField, onSave, onCancel }: {
+function EditableForm({ editedSuggestions, applyLabel, updateEditedField, onSave, onCancel }: {
   editedSuggestions: any
+  applyLabel: string
   updateEditedField: (field: string, value: string) => void
   onSave: () => void
   onCancel: () => void
@@ -101,7 +113,7 @@ function EditableForm({ editedSuggestions, updateEditedField, onSave, onCancel }
       </div>
       <div className="flex gap-2 mt-2">
         <button onClick={onSave} className="flex-1 px-3 py-1.5 bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black text-xs font-bold rounded hover:from-[#dbb56e] hover:to-[#f4d698] transition-all">
-          Apply Changes
+          {applyLabel}
         </button>
         <button onClick={onCancel} className="px-3 py-1.5 bg-zinc-700 text-white text-xs font-bold rounded hover:bg-zinc-600 transition-all">
           Cancel
@@ -111,10 +123,11 @@ function EditableForm({ editedSuggestions, updateEditedField, onSave, onCancel }
   )
 }
 
-function DisplayForm({ suggestions, idx, isApplied, onEditStart, onApply, onCopy, copiedField }: {
+function DisplayForm({ suggestions, idx, isApplied, applyLabel, onEditStart, onApply, onCopy, copiedField }: {
   suggestions: Suggestions
   idx: number
   isApplied: boolean
+  applyLabel: string
   onEditStart: () => void
   onApply: () => void
   onCopy: (text: string, field: string) => void
@@ -162,7 +175,7 @@ function DisplayForm({ suggestions, idx, isApplied, onEditStart, onApply, onCopy
             isApplied ? 'bg-green-500 text-white' : 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#f4d698]'
           }`}
         >
-          {isApplied ? <><Check className="w-3 h-3" /> Applied!</> : 'Apply All'}
+          {isApplied ? <><Check className="w-3 h-3" /> Applied!</> : applyLabel}
         </button>
       </div>
     </>

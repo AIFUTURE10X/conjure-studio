@@ -17,7 +17,7 @@ import type { CreativeDirectionState } from '../constants/creative-direction-opt
 import { AIHelperHeader, EmptyState } from './AIHelper/AIHelperHeader'
 import { MessageBubble, LoadingIndicator } from './AIHelper/MessageBubble'
 import { LogoConfigCard } from './AIHelper/LogoConfigCard'
-import { SuggestionCard } from './AIHelper/SuggestionCard'
+import { SuggestionCard, SUGGESTION_APPLY_LABELS } from './AIHelper/SuggestionCard'
 import { ImageUploadPreview } from './AIHelper/ImageUploadPreview'
 import { ChatInput } from './AIHelper/ChatInput'
 
@@ -36,10 +36,11 @@ interface AIHelperSidebarProps {
     creativeDirection?: CreativeDirectionState
   }
   onApplySuggestions?: (suggestions: any) => void
+  onApplyLogoSuggestions?: (suggestions: any) => void
   onApplyLogoConfig?: (config: Partial<DotMatrixConfig>) => void
 }
 
-export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, onApplySuggestions, onApplyLogoConfig }: AIHelperSidebarProps) {
+export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, onApplySuggestions, onApplyLogoSuggestions, onApplyLogoConfig }: AIHelperSidebarProps) {
   const [input, setInput] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -86,21 +87,27 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
 
   const handleEditCancel = () => { setEditingIndex(null); setEditedSuggestions({}) }
 
+  const applySuggestionsForMessage = (suggestions: any, idx: number) => {
+    const isLogoSuggestion = messages[idx]?.mode === 'logo'
+    const applyHandler = isLogoSuggestion ? (onApplyLogoSuggestions || onApplySuggestions) : onApplySuggestions
+    if (!applyHandler) { alert('Error: Apply callback is not connected.'); return false }
+    applyHandler(suggestions)
+    return true
+  }
+
   const handleEditSave = (idx: number) => {
-    if (!onApplySuggestions) { alert('Error: Apply callback is not connected.'); return }
-    onApplySuggestions(editedSuggestions)
+    if (!applySuggestionsForMessage(editedSuggestions, idx)) return
     updateMessageSuggestions(idx, editedSuggestions)
     setEditingIndex(null); setEditedSuggestions({})
   }
 
   const handleApplyClick = (suggestions: any, idx: number) => {
-    if (!onApplySuggestions) { alert('Error: Apply callback is not connected.'); return }
     const freshSuggestions = {
       prompt: suggestions.prompt || '', negativePrompt: suggestions.negativePrompt || '', style: suggestions.style || '',
       aspectRatio: suggestions.aspectRatio || '1:1', cameraAngle: suggestions.cameraAngle || 'None',
       cameraLens: suggestions.cameraLens || 'None', styleStrength: suggestions.styleStrength || 'moderate', resolution: suggestions.resolution || '1K', _appliedAt: Date.now()
     }
-    onApplySuggestions(freshSuggestions)
+    if (!applySuggestionsForMessage(freshSuggestions, idx)) return
     setAppliedIndex(idx); setTimeout(() => setAppliedIndex(null), 2000)
   }
 
@@ -130,13 +137,14 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
               />
             )}
 
-            {msg.suggestions && onApplySuggestions && (
+            {msg.suggestions && (onApplySuggestions || onApplyLogoSuggestions) && (
               <SuggestionCard
                 suggestions={msg.suggestions}
                 idx={idx}
                 isLatest={idx === suggestionMessages.length - 1 && suggestionMessages.length > 1}
                 isEditing={editingIndex === idx}
                 isApplied={appliedIndex === idx}
+                applyLabel={msg.mode === 'logo' ? SUGGESTION_APPLY_LABELS.logo : SUGGESTION_APPLY_LABELS.image}
                 editedSuggestions={editedSuggestions}
                 onEditStart={handleEditStart}
                 onEditCancel={handleEditCancel}

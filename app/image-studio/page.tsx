@@ -24,7 +24,7 @@ export default function ImageStudioPage() {
     settings, updateSetting, resetSettings, saveGenerateParams, presets, savePreset, deletePreset,
     updatePreset, clearAllPresets, handleRestoreParameters, handleResetAll, openLightbox, closeLightbox,
     navigateLightbox, handleDownloadFromLightbox, handleClearSubjectAnalysis, handleClearSceneAnalysis,
-    handleClearStyleAnalysis, handleApplyAISuggestions, handleApplyLogoConfig, handleLoadPreset,
+    handleClearStyleAnalysis, handleApplyAISuggestions, handleApplyLogoSuggestions, handleApplyLogoConfig, handleLoadPreset,
     saveParameters, showPhotoGenerator, setShowPhotoGenerator, stylePresets,
   } = usePageState()
 
@@ -179,6 +179,7 @@ export default function ImageStudioPage() {
           creativeDirection: state.creativeDirection,
         }}
         onApplySuggestions={handleApplyAISuggestions}
+        onApplyLogoSuggestions={handleApplyLogoSuggestions}
         onApplyLogoConfig={handleApplyLogoConfig}
       />
 

@@ -146,6 +146,13 @@ export function usePageState() {
     setImageSize: state.setImageSize,
   })
 
+  const handleApplyLogoSuggestions = useCallback((suggestions: { prompt?: string; negativePrompt?: string }) => {
+    if (!suggestions) return
+    if (suggestions.prompt !== undefined) state.setMainPrompt(suggestions.prompt)
+    if (suggestions.negativePrompt !== undefined) state.setNegativePrompt(suggestions.negativePrompt)
+    state.setActiveTab('logo')
+  }, [state.setMainPrompt, state.setNegativePrompt, state.setActiveTab])
+
   // Logo config handler
   const handleApplyLogoConfig = useCallback((config: Partial<DotMatrixConfig>) => {
     state.setPendingLogoConfig(config)
@@ -208,6 +215,7 @@ export function usePageState() {
     handleClearSceneAnalysis,
     handleClearStyleAnalysis,
     handleApplyAISuggestions,
+    handleApplyLogoSuggestions,
     handleApplyLogoConfig,
     handleLoadPreset,
     saveParameters,
