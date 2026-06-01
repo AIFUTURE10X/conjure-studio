@@ -56,6 +56,15 @@ export function LogoAdvancedSettings({
 }: LogoAdvancedSettingsProps) {
   const isDisabled = isGenerating || isRemovingBackground
   const seedDisabled = isDisabled || selectedModel === 'gpt-image-2'
+  const backgroundRemovalEnabled = bgRemovalMethod !== 'none'
+  const handleBackgroundRemovalToggle = (enabled: boolean) => {
+    if (enabled) {
+      setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
+      return
+    }
+
+    setBgRemovalMethod('none')
+  }
 
   useEffect(() => {
     if (bgRemovalMethod === 'native-transparent' && selectedModel !== 'gpt-image-2') {
@@ -246,23 +255,35 @@ export function LogoAdvancedSettings({
           {/* Background Removal Method */}
           <div className="space-y-1">
             <label className="text-[10px] text-zinc-400">Background Removal</label>
-            <select
-              value={bgRemovalMethod}
-              onChange={(e) => setBgRemovalMethod(e.target.value as BgRemovalMethod)}
-              disabled={isGenerating}
-              className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-white focus:outline-none focus:border-[#c99850]"
-            >
-              {BG_REMOVAL_METHODS.map((method) => (
-                <option
-                  key={method.value}
-                  value={method.value}
-                  disabled={!!method.requiresModel && method.requiresModel !== selectedModel}
-                >
-                  {method.label} - {method.description}
-                </option>
-              ))}
-            </select>
-            {bgRemovalMethod === 'native-transparent' && (
+            <label className="flex items-center gap-2 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-white">
+              <input
+                type="checkbox"
+                checked={bgRemovalMethod !== 'none'}
+                onChange={(e) => handleBackgroundRemovalToggle(e.target.checked)}
+                disabled={isDisabled}
+                className="h-3.5 w-3.5 accent-[#c99850]"
+              />
+              Transparent PNG
+            </label>
+            {bgRemovalMethod !== 'none' && (
+              <select
+                value={bgRemovalMethod}
+                onChange={(e) => setBgRemovalMethod(e.target.value as BgRemovalMethod)}
+                disabled={isGenerating}
+                className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-white focus:outline-none focus:border-[#c99850]"
+              >
+                {BG_REMOVAL_METHODS.map((method) => (
+                  <option
+                    key={method.value}
+                    value={method.value}
+                    disabled={!!method.requiresModel && method.requiresModel !== selectedModel}
+                  >
+                    {method.label} - {method.description}
+                  </option>
+                ))}
+              </select>
+            )}
+            {backgroundRemovalEnabled && bgRemovalMethod === 'native-transparent' && (
               <p className="text-[9px] text-zinc-500">
                 Uses ChatGPT Images 2.0 native transparency and skips post-generation background removal.
               </p>

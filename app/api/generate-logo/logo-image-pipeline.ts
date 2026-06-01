@@ -34,7 +34,7 @@ export function shouldUseFreeFormPrompt(request: ParsedLogoGenerationRequest): b
     (request.bgRemovalMethod === 'photoroom' && (!!request.cloudApiKey || isPhotoRoomBgRemovalAvailable())) ||
     ((request.bgRemovalMethod === 'pixian' || request.bgRemovalMethod === 'cloud') && !!request.cloudApiKey)
 
-  return request.skipBgRemoval || cloudRemovalAvailable
+  return request.skipBgRemoval || request.bgRemovalMethod === 'none' || cloudRemovalAvailable
 }
 
 async function ensureNativeTransparentLogo(imageBase64: string): Promise<string> {

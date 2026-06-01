@@ -139,11 +139,23 @@ const checks = [
       /PhotoRoom/.test(read('app/image-studio/constants/logo-constants.ts')),
   },
   {
+    name: 'advanced logo settings can disable background removal for normal logo backgrounds',
+    pass: () => /checked=\{bgRemovalMethod !== 'none'\}/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      /setBgRemovalMethod\('none'\)/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      /DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      /bgRemovalMethod !== 'none' &&/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
+  },
+  {
     name: 'logo pipeline calls PhotoRoom for selected cleanup with smart fallback',
     pass: () => /removeBackgroundWithPhotoRoom/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
       /isPhotoRoomBgRemovalAvailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
       /request\.bgRemovalMethod === 'photoroom'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
       /PhotoRoom unavailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
+  },
+  {
+    name: 'normal background logos use free-form presentation prompt',
+    pass: () => /request\.bgRemovalMethod === 'none'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      /return request\.skipBgRemoval \|\| request\.bgRemovalMethod === 'none' \|\| cloudRemovalAvailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
   },
   {
     name: 'logo API returns the actual background removal method used',
