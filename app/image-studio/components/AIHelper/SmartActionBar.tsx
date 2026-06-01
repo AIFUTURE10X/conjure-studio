@@ -10,6 +10,7 @@ interface SmartActionBarProps {
 
 const ACTION_ICONS: Record<AIHelperAction['type'], typeof Settings2> = {
   apply_suggestions: CornerDownRight,
+  apply_and_generate: Sparkles,
   apply_logo_config: Settings2,
   copy_prompt: Clipboard,
   switch_to_image: ImageIcon,

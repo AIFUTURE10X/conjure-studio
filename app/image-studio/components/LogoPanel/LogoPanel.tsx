@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { forwardRef, useImperativeHandle, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { useLogoGeneration } from '../../hooks/useLogoGeneration'
@@ -30,13 +30,18 @@ interface LogoPanelProps {
   onClearPendingConfig?: () => void
 }
 
-export function LogoPanel({
+export interface LogoPanelRef {
+  triggerGenerate: () => void
+  isGenerating: boolean
+}
+
+export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoPanel({
   onLogoGenerated,
   externalPrompt,
   externalNegativePrompt,
   pendingLogoConfig,
   onClearPendingConfig
-}: LogoPanelProps) {
+}, ref) {
   // Use extracted state hook
   const state = useLogoPanelState({
     externalPrompt,
@@ -89,6 +94,8 @@ export function LogoPanel({
     generatedLogo,
     toggleFavorite,
   })
+
+  useImperativeHandle(ref, () => ({ triggerGenerate: handleGenerate, isGenerating }), [handleGenerate, isGenerating])
 
   const handleClearAll = () => { state.handleClearAll(); clearLogo() }
 
@@ -334,4 +341,4 @@ export function LogoPanel({
       />
     </Card>
   )
-}
+})

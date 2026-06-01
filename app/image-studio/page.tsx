@@ -7,7 +7,7 @@ import { MockupPhotoGenerator } from './components/Logo/MockupPreview/MockupPhot
 import { ProductMockupsPanel } from './components/Logo/MockupPreview/ProductMockupsPanel'
 import { ImageStudioHeader } from './components/ImageStudioHeader'
 import { ImageLightbox } from './components/ImageLightbox'
-import { LogoPanel } from './components/LogoPanel'
+import { LogoPanel, type LogoPanelRef } from './components/LogoPanel'
 import { BackgroundRemoverPanel } from './components/BackgroundRemover'
 import { AIHelperSidebar } from './components/AIHelperSidebar'
 import { FavoritesModal } from './components/SimpleFavorites'
@@ -18,6 +18,7 @@ import { usePageState } from './hooks/usePageState'
 
 export default function ImageStudioPage() {
   const generatePanelRef = useRef<{ triggerGenerate: () => void; isGenerating: boolean }>(null)
+  const logoPanelRef = useRef<LogoPanelRef>(null)
 
   const {
     uploadState, analyzing, favorites, toggleFavorite, isFavorite, clearAll, state, hasStoredParams,
@@ -32,6 +33,17 @@ export default function ImageStudioPage() {
     if (generatePanelRef.current?.triggerGenerate) {
       generatePanelRef.current.triggerGenerate()
     }
+  }
+
+  const handleAIGenerateRequest = (mode: 'image' | 'logo') => {
+    if (mode === 'logo') {
+      state.setActiveTab('logo')
+      window.setTimeout(() => logoPanelRef.current?.triggerGenerate(), 150)
+      return
+    }
+
+    state.setActiveTab('generate')
+    window.setTimeout(() => generatePanelRef.current?.triggerGenerate(), 150)
   }
 
   return (
@@ -112,6 +124,7 @@ export default function ImageStudioPage() {
 
         {state.activeTab === 'logo' && (
           <LogoPanel
+            ref={logoPanelRef}
             externalPrompt={state.mainPrompt}
             externalNegativePrompt={state.negativePrompt}
             pendingLogoConfig={state.pendingLogoConfig}
@@ -181,6 +194,7 @@ export default function ImageStudioPage() {
         onApplySuggestions={handleApplyAISuggestions}
         onApplyLogoSuggestions={handleApplyLogoSuggestions}
         onApplyLogoConfig={handleApplyLogoConfig}
+        onGenerateFromAIHelper={handleAIGenerateRequest}
       />
 
       {state.showFavorites && (

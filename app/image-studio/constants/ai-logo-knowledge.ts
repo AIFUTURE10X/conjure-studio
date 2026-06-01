@@ -237,6 +237,7 @@ When suggesting logo settings, ALWAYS respond with a JSON object in this format:
   },
   "actions": [
     { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
+    { "type": "apply_and_generate", "label": "Apply and Generate Logo", "description": "Use this prompt and start generation" },
     { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
   ]
 }

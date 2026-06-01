@@ -72,6 +72,23 @@ const checks = [
         /AGENT MEMORY/.test(route)
     },
   },
+  {
+    name: 'AI helper can apply suggestions and trigger generation',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const page = read('app/image-studio/page.tsx')
+      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
+      return /apply_and_generate/.test(hook) &&
+        /apply_and_generate/.test(route) &&
+        /onGenerateFromAIHelper/.test(sidebar) &&
+        /handleAIGenerateRequest/.test(page) &&
+        /logoPanelRef/.test(page) &&
+        /forwardRef<LogoPanelRef/.test(logoPanel) &&
+        /triggerGenerate:\s*handleGenerate/.test(logoPanel)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

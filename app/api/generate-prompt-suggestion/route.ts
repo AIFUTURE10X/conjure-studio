@@ -28,6 +28,7 @@ const CREATIVE_DIRECTION_OPTION_CONTEXT = [
 
 type HelperActionType =
   | 'apply_suggestions'
+  | 'apply_and_generate'
   | 'apply_logo_config'
   | 'copy_prompt'
   | 'switch_to_image'
@@ -44,6 +45,7 @@ interface HelperAction {
 
 const HELPER_ACTION_TYPES = new Set<HelperActionType>([
   'apply_suggestions',
+  'apply_and_generate',
   'apply_logo_config',
   'copy_prompt',
   'switch_to_image',
@@ -58,6 +60,7 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - If the user reports a miss such as wrong font, wrong background, wrong colors, or poor reference match, diagnose the likely cause and return a corrected prompt/settings
 - Prefer useful action buttons over long instructions; include 1-3 actions that match the response
 - Use "apply_suggestions" when you generated a prompt/settings payload the app should apply
+- Use "apply_and_generate" when the user asks you to do it, run it, try it, make it, or generate the next version
 - Use "copy_prompt" when the prompt is useful but should not immediately change settings
 - Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
 - Use "ask_follow_up" only when one short answer is required before making a good prompt`
@@ -95,6 +98,12 @@ function defaultHelperActions(mode: 'image' | 'logo', hasSuggestions: boolean, h
       type: 'apply_suggestions',
       label: mode === 'logo' ? 'Apply to Logo Generator' : 'Apply to Image Generator',
       description: 'Use this prompt and settings in the generator',
+      target: mode,
+    })
+    actions.push({
+      type: 'apply_and_generate',
+      label: mode === 'logo' ? 'Apply and Generate Logo' : 'Apply and Generate Image',
+      description: 'Apply these settings and start generation',
       target: mode,
     })
     actions.push({
@@ -300,6 +309,7 @@ Format your response as JSON:
   },
   "actions": [
     { "type": "apply_suggestions", "label": "Apply to Image Generator", "description": "Use this prompt and settings" },
+    { "type": "apply_and_generate", "label": "Apply and Generate Image", "description": "Use this prompt and start generation" },
     { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the improved prompt" }
   ]
 }
@@ -518,6 +528,7 @@ Remember to respond with a JSON object containing "message", "designBrief", "sug
 Action schema:
 "actions": [
   { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
+  { "type": "apply_and_generate", "label": "Apply and Generate Logo", "description": "Use this prompt and start generation" },
   { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
 ]`
 

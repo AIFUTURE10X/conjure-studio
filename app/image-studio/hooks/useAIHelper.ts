@@ -20,6 +20,7 @@ export type AIHelperMode = 'image' | 'logo'
 
 export type AIHelperActionType =
   | 'apply_suggestions'
+  | 'apply_and_generate'
   | 'apply_logo_config'
   | 'copy_prompt'
   | 'switch_to_image'

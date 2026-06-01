@@ -42,9 +42,10 @@ interface AIHelperSidebarProps {
   onApplySuggestions?: (suggestions: any) => void
   onApplyLogoSuggestions?: (suggestions: any) => void
   onApplyLogoConfig?: (config: Partial<DotMatrixConfig>) => void
+  onGenerateFromAIHelper?: (mode: AIHelperMode) => void
 }
 
-export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, onApplySuggestions, onApplyLogoSuggestions, onApplyLogoConfig }: AIHelperSidebarProps) {
+export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, onApplySuggestions, onApplyLogoSuggestions, onApplyLogoConfig, onGenerateFromAIHelper }: AIHelperSidebarProps) {
   const [input, setInput] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -146,6 +147,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, o
 
     if (action.type === 'apply_suggestions' && message.suggestions) {
       handleApplyClick(message.suggestions, idx)
+      return
+    }
+
+    if (action.type === 'apply_and_generate' && message.suggestions) {
+      if (!applySuggestionsForMessage({ ...message.suggestions, _appliedAt: Date.now() }, idx)) return
+      setAppliedIndex(idx)
+      onGenerateFromAIHelper?.(message.mode === 'logo' ? 'logo' : 'image')
     }
   }
 
