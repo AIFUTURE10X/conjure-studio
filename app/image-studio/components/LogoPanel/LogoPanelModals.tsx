@@ -11,7 +11,7 @@ import { MockupPreview } from '../Logo/MockupPreview'
 import { ComparisonView, LogoHistoryItem } from '../Logo/LogoHistory'
 import { RealFontOverlay } from '../Logo/RealFontOverlay'
 import { BatchGenerationOptions } from '../../hooks/useBatchGeneration'
-import { GeneratedLogo, BgRemovalMethod, LogoResolution } from '../../hooks/useLogoGeneration'
+import { GeneratedLogo, BgRemovalMethod, LogoAspectRatio, LogoResolution } from '../../hooks/useLogoGeneration'
 import type { DotMatrixConfig } from '../../constants/dot-matrix-config'
 import type { UnifiedLogoConfig } from '../../constants/preset-schemas'
 import { buildFullPrompt, buildNegativePromptForPreset } from '../../constants/preset-schemas'
@@ -32,7 +32,7 @@ interface LogoPanelModalsProps {
   comparisonItems: LogoHistoryItem[]; setComparisonItems: (items: LogoHistoryItem[]) => void
   showRealFontOverlay: boolean; setShowRealFontOverlay: (show: boolean) => void
   generatedLogo: GeneratedLogo | null; setLogo: (logo: GeneratedLogo) => void
-  bgRemovalMethod: BgRemovalMethod; resolution: LogoResolution
+  bgRemovalMethod: BgRemovalMethod; aspectRatio: LogoAspectRatio; resolution: LogoResolution
   seedLocked: boolean; seedValue: number | undefined; setSeedValue: (value: number | undefined) => void
   setPrompt: (prompt: string) => void; setNegativePrompt: (prompt: string) => void
   setSelectedConcept: (concept: any) => void; setSelectedRenders: (renders: any[]) => void
@@ -57,7 +57,7 @@ export function LogoPanelModals({
   comparisonItems, setComparisonItems,
   showRealFontOverlay, setShowRealFontOverlay,
   generatedLogo, setLogo,
-  bgRemovalMethod, resolution,
+  bgRemovalMethod, aspectRatio, resolution,
   seedLocked, seedValue, setSeedValue,
   setPrompt, setNegativePrompt,
   setSelectedConcept, setSelectedRenders,
@@ -80,6 +80,7 @@ export function LogoPanelModals({
         negativePrompt: generatedNegativePrompt || undefined,
         style: 'modern+3d-metallic' as any,
         bgRemovalMethod,
+        aspectRatio,
         resolution,
         seed: seedLocked ? seedValue : undefined
       })
@@ -106,6 +107,7 @@ export function LogoPanelModals({
         negativePrompt: generatedNegativePrompt || undefined,
         style: 'modern+3d-metallic' as any,
         bgRemovalMethod,
+        aspectRatio,
         resolution,
         seed: seedLocked ? seedValue : undefined
       })
@@ -139,6 +141,7 @@ export function LogoPanelModals({
         style: 'modern+3d-metallic' as any,
         bgRemovalMethod: shouldRemoveBg ? bgRemovalMethod : 'none',
         skipBgRemoval: !shouldRemoveBg,
+        aspectRatio,
         resolution: effectiveResolution,
         seed: seedLocked ? seedValue : undefined
       })
@@ -156,6 +159,7 @@ export function LogoPanelModals({
         config: {
           wasBackgroundRemoval: shouldRemoveBg,
           bgRemovalMethod: shouldRemoveBg ? bgRemovalMethod : undefined,
+          aspectRatio,
           resolution: effectiveResolution,
         }
       })
@@ -261,6 +265,7 @@ export function LogoPanelModals({
               style: logo.style || batchOptions?.style || '',
               config: {
                 wasBatchGeneration: true,
+                aspectRatio: batchOptions?.aspectRatio,
                 resolution: batchOptions?.resolution,
                 bgRemovalMethod: batchOptions?.bgRemovalMethod,
               }

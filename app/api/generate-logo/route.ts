@@ -13,11 +13,21 @@ import { buildFreeFormLogoPrompt, buildLogoPrompt } from "./logo-prompts"
 import sharp from 'sharp'
 
 type LogoGenerationModel = GenerationModel | 'gpt-image-2'
+type AllowedRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "5:4" | "4:5"
 type LogoGenerationResult = {
   success: boolean
   imageBase64?: string
   error?: string
   seed?: number
+}
+
+function normalizeAspectRatio(input: string): AllowedRatio {
+  const allowed = new Set<AllowedRatio>(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9", "5:4", "4:5"])
+  const trimmed = input.replace(/\s+/g, "") as AllowedRatio
+  if (!allowed.has(trimmed)) {
+    throw new Error(`Unsupported aspect ratio: ${input}`)
+  }
+  return trimmed
 }
 
 function normalizeModel(input: string | null): LogoGenerationModel {
@@ -55,6 +65,7 @@ export async function POST(request: NextRequest) {
     const referenceImageFile = formData.get('referenceImage') as File | null
     const bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'auto'
     const cloudApiKey = formData.get('cloudApiKey') as string | null
+    const rawAspectRatio = (formData.get('aspectRatio') as string) || "1:1"
     const resolutionParam = formData.get('resolution') as string | null
     const imageQuality = normalizeImageQuality(formData.get('imageQuality') as string | null)
     const seedParam = formData.get('seed') as string | null
@@ -68,6 +79,7 @@ export async function POST(request: NextRequest) {
     const resolution: ImageSize = validResolutions.includes(resolutionParam as ImageSize)
       ? (resolutionParam as ImageSize)
       : '1K'
+    const aspectRatio = normalizeAspectRatio(rawAspectRatio)
 
     // Convert reference image to base64 if present
     let referenceImage: string | undefined
@@ -83,6 +95,7 @@ export async function POST(request: NextRequest) {
       model: modelParam,
       bgRemovalMethod,
       skipBgRemoval,
+      aspectRatio,
       resolution,
       seed: seed !== undefined ? seed : 'random',
       hasReference: !!referenceImage,
@@ -116,7 +129,7 @@ export async function POST(request: NextRequest) {
     const result: LogoGenerationResult = isOpenAIImageModel(model)
       ? await generateOpenAIImage({
           prompt: enhancedPrompt,
-          aspectRatio: "1:1",
+          aspectRatio,
           imageSize: resolution,
           imageQuality,
           referenceImageFile,
@@ -131,7 +144,7 @@ export async function POST(request: NextRequest) {
           }))
       : await generateImageWithRetry({
           prompt: enhancedPrompt,
-          aspectRatio: "1:1", // Logos are typically square
+          aspectRatio,
           model,
           imageSize: resolution, // Gemini 3 Pro natively supports 1K, 2K, 4K
           referenceImage,
@@ -252,6 +265,7 @@ export async function POST(request: NextRequest) {
       image: dataUrl,
       style,
       bgRemovalMethod,
+      aspectRatio,
       resolution,
       seed: result.seed, // Return seed for reproducibility
     })

@@ -1,19 +1,22 @@
 "use client"
 
 import { Settings2, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
-import type { BgRemovalMethod, LogoGenerationModel } from '../../hooks/useLogoGeneration'
+import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel } from '../../hooks/useLogoGeneration'
 import {
   LogoResolution,
   RESOLUTION_OPTIONS,
   BG_REMOVAL_METHODS,
   LOGO_MODEL_OPTIONS
 } from '../../constants/logo-constants'
+import { ASPECT_RATIO_OPTIONS, getAspectRatioDimensions } from '../../constants/toolbar-options'
 
 interface LogoAdvancedSettingsProps {
   showAdvanced: boolean
   setShowAdvanced: (show: boolean) => void
   resolution: LogoResolution
   setResolution: (res: LogoResolution) => void
+  aspectRatio: LogoAspectRatio
+  setAspectRatio: (ratio: LogoAspectRatio) => void
   selectedModel: LogoGenerationModel
   setSelectedModel: (model: LogoGenerationModel) => void
   seedLocked: boolean
@@ -31,6 +34,8 @@ export function LogoAdvancedSettings({
   setShowAdvanced,
   resolution,
   setResolution,
+  aspectRatio,
+  setAspectRatio,
   selectedModel,
   setSelectedModel,
   seedLocked,
@@ -84,6 +89,44 @@ export function LogoAdvancedSettings({
                   </span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Aspect Ratio Setting */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-zinc-400">Aspect Ratio</label>
+            <div className="grid grid-cols-5 gap-1">
+              {ASPECT_RATIO_OPTIONS.map((option) => {
+                const dimensions = getAspectRatioDimensions(option.value)
+                const isSelected = aspectRatio === option.value
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setAspectRatio(option.value as LogoAspectRatio)}
+                    disabled={isDisabled}
+                    className={`
+                      flex min-h-[68px] flex-col items-center justify-center rounded-lg border px-1.5 py-2 transition-all
+                      ${isSelected
+                        ? 'border-[#c99850] bg-[#c99850]/10 text-[#dbb56e]'
+                        : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 text-white'
+                      }
+                      ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                    title={`${option.label} ${option.description}`}
+                  >
+                    <span
+                      className={`mb-1 rounded-sm border-2 ${isSelected ? 'border-[#c99850] bg-[#c99850]/15' : 'border-zinc-500 bg-zinc-900'}`}
+                      style={dimensions}
+                    />
+                    <span className="text-[10px] font-semibold leading-tight">{option.label}</span>
+                    <span className={`text-[8px] leading-tight ${isSelected ? 'text-[#dbb56e]/75' : 'text-zinc-500'}`}>
+                      {option.description}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 

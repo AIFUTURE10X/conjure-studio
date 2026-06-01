@@ -68,6 +68,7 @@ export function BatchGenerator({
       style: item.logo.style,
       params: {
         prompt: item.logo.prompt,
+        aspectRatio: item.logo.aspectRatio,
         seed: item.logo.seed,
       },
     })

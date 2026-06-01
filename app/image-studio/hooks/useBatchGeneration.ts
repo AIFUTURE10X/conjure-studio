@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { LogoGenerationOptions, GeneratedLogo, LogoStyle, BgRemovalMethod } from './useLogoGeneration'
+import { GeneratedLogo, LogoAspectRatio, LogoStyle, BgRemovalMethod } from './useLogoGeneration'
 
 export interface BatchItem {
   id: string
@@ -20,6 +20,7 @@ export interface BatchGenerationOptions {
   negativePrompt?: string
   style: LogoStyle
   bgRemovalMethod?: BgRemovalMethod
+  aspectRatio?: LogoAspectRatio
   resolution?: '1K' | '2K' | '4K'
   baseSeed?: number // Optional base seed for variation
 }
@@ -55,6 +56,7 @@ export function useBatchGeneration() {
     formData.append('prompt', options.prompt)
     formData.append('style', options.style)
     formData.append('bgRemovalMethod', options.bgRemovalMethod || 'replicate')
+    formData.append('aspectRatio', options.aspectRatio || '1:1')
     formData.append('resolution', options.resolution || '1K')
     formData.append('seed', seed.toString())
     formData.append('skipBgRemoval', 'true')
@@ -87,6 +89,7 @@ export function useBatchGeneration() {
       url: data.image,
       prompt: options.prompt,
       style: options.style,
+      aspectRatio: data.aspectRatio || options.aspectRatio || '1:1',
       bgRemovalMethod: options.bgRemovalMethod || 'replicate',
       timestamp: Date.now(),
       seed: data.seed || seed,

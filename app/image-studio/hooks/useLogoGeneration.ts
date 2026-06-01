@@ -12,6 +12,9 @@ export type BgRemovalMethod = 'none' | 'auto' | 'ai-local' | 'simple' | 'cloud' 
 // Resolution options
 export type LogoResolution = '1K' | '2K' | '4K'
 
+// Aspect ratio options mirror the main image generator
+export type LogoAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | '21:9' | '5:4' | '4:5'
+
 // AI generation models
 export type LogoGenerationModel = 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
 
@@ -22,6 +25,7 @@ export interface LogoGenerationOptions {
   referenceImage?: File
   bgRemovalMethod?: BgRemovalMethod
   cloudApiKey?: string
+  aspectRatio?: LogoAspectRatio
   resolution?: LogoResolution
   model?: LogoGenerationModel
   seed?: number // Optional seed for reproducible generation
@@ -32,7 +36,8 @@ export interface GeneratedLogo {
   url: string
   originalUrl?: string // Stores the original image before background removal
   prompt: string
-  style: LogoStyle
+  style: LogoStyle | string
+  aspectRatio: LogoAspectRatio
   bgRemovalMethod: BgRemovalMethod
   timestamp: number
   seed?: number // The seed used for generation (if available)
@@ -52,6 +57,7 @@ export function useLogoGeneration() {
       formData.append('prompt', options.prompt)
       formData.append('style', options.style)
       formData.append('bgRemovalMethod', options.bgRemovalMethod || 'replicate')
+      formData.append('aspectRatio', options.aspectRatio || '1:1')
       formData.append('resolution', options.resolution || '1K')
       formData.append('model', options.model || 'gemini-3.1-flash-image-preview')
 
@@ -98,6 +104,7 @@ export function useLogoGeneration() {
         url: data.image,
         prompt: options.prompt,
         style: options.style,
+        aspectRatio: data.aspectRatio || options.aspectRatio || '1:1',
         bgRemovalMethod: options.bgRemovalMethod || 'auto',
         timestamp: Date.now(),
         seed: data.seed // Include seed from API response

@@ -10,7 +10,7 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { isTextOnlyLogo, buildTextOnlyNegativePrompt, REPLICATION_PROMPT, INSPIRE_PROMPT } from '../../utils/logo-prompt-helpers'
-import type { LogoGenerationModel } from '../../hooks/useLogoGeneration'
+import type { LogoAspectRatio, LogoGenerationModel } from '../../hooks/useLogoGeneration'
 
 interface UseLogoPanelGenerateConfig {
   state: {
@@ -19,6 +19,7 @@ interface UseLogoPanelGenerateConfig {
     referenceImage: { file: File; preview?: string } | null
     referenceMode: string
     bgRemovalMethod: string
+    aspectRatio: LogoAspectRatio
     resolution: string
     selectedModel: LogoGenerationModel
     seedLocked: boolean
@@ -62,6 +63,7 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
         style: combinedStyle,
         referenceImage: state.referenceImage?.file,
         bgRemovalMethod: state.bgRemovalMethod,
+        aspectRatio: state.aspectRatio,
         resolution: state.resolution,
         model: state.selectedModel,
         seed: state.seedLocked ? state.seedValue : undefined
@@ -79,9 +81,14 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
         config: state.referenceImage ? {
           referenceMode: state.referenceMode,
           wasReplication: isReplicate,
+          aspectRatio: state.aspectRatio,
           resolution: state.resolution,
           bgRemovalMethod: state.bgRemovalMethod
-        } : undefined
+        } : {
+          aspectRatio: state.aspectRatio,
+          resolution: state.resolution,
+          bgRemovalMethod: state.bgRemovalMethod
+        }
       })
 
       onLogoGenerated?.(logo.url)
@@ -95,7 +102,7 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
 }
 
 interface UseLogoFavoriteConfig {
-  generatedLogo: { url: string; style?: string; prompt?: string; bgRemovalMethod?: string; seed?: number } | null
+  generatedLogo: { url: string; style?: string; prompt?: string; aspectRatio?: string; bgRemovalMethod?: string; seed?: number } | null
   toggleFavorite: (url: string, meta: any) => void
 }
 
@@ -108,6 +115,7 @@ export function useLogoFavorite(config: UseLogoFavoriteConfig) {
       style: generatedLogo.style,
       params: {
         prompt: generatedLogo.prompt,
+        aspectRatio: generatedLogo.aspectRatio,
         bgRemovalMethod: generatedLogo.bgRemovalMethod,
         seed: generatedLogo.seed
       }

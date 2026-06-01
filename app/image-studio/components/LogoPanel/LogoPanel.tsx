@@ -68,6 +68,7 @@ export function LogoPanel({
       referenceImage: state.referenceImage,
       referenceMode: state.referenceMode,
       bgRemovalMethod: state.bgRemovalMethod,
+      aspectRatio: state.aspectRatio,
       resolution: state.resolution,
       selectedModel: state.selectedModel,
       seedLocked: state.seedLocked,
@@ -155,6 +156,8 @@ export function LogoPanel({
             setShowAdvanced={state.setShowAdvanced}
             resolution={state.resolution}
             setResolution={state.setResolution}
+            aspectRatio={state.aspectRatio}
+            setAspectRatio={state.setAspectRatio}
             selectedModel={state.selectedModel}
             setSelectedModel={state.setSelectedModel}
             seedLocked={state.seedLocked}
@@ -181,6 +184,7 @@ export function LogoPanel({
                 negativePrompt: state.negativePrompt.trim() || undefined,
                 style: combinedStyle,
                 bgRemovalMethod: state.bgRemovalMethod,
+                aspectRatio: state.aspectRatio,
                 resolution: state.resolution,
                 baseSeed: state.seedLocked ? state.seedValue : undefined,
               })
@@ -222,6 +226,7 @@ export function LogoPanel({
                 state.setSeedValue(item.seed)
                 state.setSeedLocked(true)
               }
+              if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
               if (item.presetId) state.setSelectedPresetId(item.presetId)
             }}
             onLoadImage={(item) => {
@@ -230,6 +235,7 @@ export function LogoPanel({
                 url: item.imageUrl,
                 prompt: item.prompt,
                 style: item.style || '',
+                aspectRatio: item.config?.aspectRatio || '1:1',
                 bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
                 timestamp: item.timestamp,
                 seed: item.seed
@@ -241,6 +247,7 @@ export function LogoPanel({
                 state.setSeedValue(item.seed)
                 state.setSeedLocked(true)
               }
+              if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
               if (item.presetId) state.setSelectedPresetId(item.presetId)
               toast.success('Image loaded! You can now preview on mockups.', { duration: 3000 })
             }}
@@ -250,10 +257,12 @@ export function LogoPanel({
                 url: item.imageUrl,
                 prompt: item.prompt,
                 style: item.style || '',
+                aspectRatio: item.config?.aspectRatio || '1:1',
                 bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
                 timestamp: item.timestamp,
                 seed: item.seed
               })
+              if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
               state.setShowMockupPreview(true)
               toast.success('Logo sent to mockups!')
             }}
@@ -305,6 +314,7 @@ export function LogoPanel({
         showRealFontOverlay={state.showRealFontOverlay} setShowRealFontOverlay={state.setShowRealFontOverlay}
         generatedLogo={generatedLogo} setLogo={setLogo}
         bgRemovalMethod={state.bgRemovalMethod} resolution={state.resolution}
+        aspectRatio={state.aspectRatio}
         seedLocked={state.seedLocked} seedValue={state.seedValue} setSeedValue={state.setSeedValue}
         setPrompt={state.setPrompt} setNegativePrompt={state.setNegativePrompt}
         setSelectedConcept={state.setSelectedConcept} setSelectedRenders={state.setSelectedRenders}
