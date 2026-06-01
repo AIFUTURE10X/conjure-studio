@@ -153,6 +153,11 @@ const checks = [
       /bgRemovalMethod:\s*data\.bgRemovalMethod \|\| options\.bgRemovalMethod/.test(read('app/image-studio/hooks/useLogoGeneration.ts')),
   },
   {
+    name: 'logo history stores the actual background removal method used',
+    pass: () => /bgRemovalMethod\?:\s*BgRemovalMethod/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')) &&
+      /bgRemovalMethod:\s*logo\.bgRemovalMethod \|\| state\.bgRemovalMethod/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')),
+  },
+  {
     name: 'upscale defaults avoid Replicate',
     pass: () => /const method = \(formData\.get\('method'\) as UpscaleMethod\) \|\| 'fast'/.test(read('app/api/upscale-logo/route.ts')) &&
       /formData\.append\('method', 'fast'\)/.test(read('app/image-studio/hooks/useImageGeneration.ts')) &&

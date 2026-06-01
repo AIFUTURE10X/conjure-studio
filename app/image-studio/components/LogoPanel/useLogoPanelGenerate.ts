@@ -31,7 +31,7 @@ interface UseLogoPanelGenerateConfig {
     getCombinedStyle: () => string
     setSeedValue: (seed: number) => void
   }
-  generateLogo: (options: LogoGenerationOptions) => Promise<{ url: string; seed?: number }>
+  generateLogo: (options: LogoGenerationOptions) => Promise<{ url: string; seed?: number; bgRemovalMethod?: BgRemovalMethod }>
   handleRemoveRefBackground: (ref: { file: File; preview: string }) => Promise<void>
   addToHistory: (item: Omit<LogoHistoryItem, 'id' | 'timestamp' | 'isFavorited'>) => void
   onLogoGenerated?: (url: string) => void
@@ -86,12 +86,12 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
           aspectRatio: state.aspectRatio,
           resolution: state.resolution,
           textMode: state.textMode,
-          bgRemovalMethod: state.bgRemovalMethod
+          bgRemovalMethod: logo.bgRemovalMethod || state.bgRemovalMethod
         } : {
           aspectRatio: state.aspectRatio,
           resolution: state.resolution,
           textMode: state.textMode,
-          bgRemovalMethod: state.bgRemovalMethod
+          bgRemovalMethod: logo.bgRemovalMethod || state.bgRemovalMethod
         }
       })
 
