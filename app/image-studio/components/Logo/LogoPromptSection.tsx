@@ -61,6 +61,9 @@ export function LogoPromptSection({
       if (data.enhancedPrompt) {
         setPrompt(data.enhancedPrompt)
       }
+      if (data.negativePrompt) {
+        setNegativePrompt(data.negativePrompt)
+      }
     } catch (error) {
       console.error('Failed to enhance prompt:', error)
     } finally {

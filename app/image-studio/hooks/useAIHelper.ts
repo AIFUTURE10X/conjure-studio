@@ -184,7 +184,7 @@ export function useAIHelper() {
 
       if (response.ok) {
         const data = await response.json()
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', logoConfig: data.logoConfig }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', logoConfig: data.logoConfig, suggestions: data.suggestions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: 'logo' }])

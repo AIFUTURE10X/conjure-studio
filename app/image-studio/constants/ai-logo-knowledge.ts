@@ -124,12 +124,40 @@ export const FANCY_FONT_CATEGORIES = [
 ]
 
 /**
+ * Prompt blueprint used by the AI Logo Designer and prompt enhancer.
+ * Keep this focused on production-quality logo prompting, not general image prompting.
+ */
+export function buildLogoPromptBlueprintInstructions(): string {
+  return `LOGO PROMPT BLUEPRINT:
+Before writing the final prompt, infer or preserve these decisions:
+- Brand name and any exact text the user wants shown
+- Industry, audience, price point, and emotional tone
+- Logo type: symbol, wordmark, combination mark, badge, mascot, monogram, or app icon
+- Core visual metaphor: one clear idea, not a pile of unrelated symbols
+- Typography direction: geometric sans, elegant serif, display, script, tech, rounded, or no text
+- Text handling recommendation: use "ai-text" only when AI lettering is acceptable; use "exact-text-overlay" when exact spelling/readability matters
+- Composition: centered mark, icon above text, icon left of wordmark, enclosed badge, or integrated lettering
+- Palette: 2-3 brand colors with contrast and a reason for the choice
+- Production constraints: scalable, readable at small sizes, clean edges, no mockup context
+
+GENERATION-READY LOGO PROMPT RULES:
+- Write one clear generation-ready logo prompt the image model can use directly
+- Keep the prompt specific enough to guide the model but not so stuffed that it becomes visual noise
+- Describe a single logo on a plain background; do not request posters, packaging, signage, stationery, or website mockups
+- Preserve exact brand names, capitalization, and requested words
+- If exact text is critical, recommend the exact-text-overlay workflow and ask the image model for a symbol-only mark
+- Include a concise negative prompt that blocks common logo failures: watermark, mockup, photo scene, extra words, misspelled text, clutter, blurry edges, tiny details`
+}
+
+/**
  * Build the system prompt for AI logo suggestions
  * This dynamically includes all available options from the config
  */
 export function buildLogoSystemPrompt(): string {
   return `You are an expert logo designer assistant specialized in creating Dot Matrix 3D logos.
-You help users design logos by suggesting specific configuration settings.
+You help users design logos by suggesting specific configuration settings and a generation-ready logo prompt.
+
+${buildLogoPromptBlueprintInstructions()}
 
 AVAILABLE CONFIGURATION OPTIONS:
 
@@ -183,18 +211,36 @@ RESPONSE FORMAT:
 When suggesting logo settings, ALWAYS respond with a JSON object in this format:
 {
   "message": "Your friendly explanation of the suggested design",
+  "designBrief": {
+    "brandName": "Exact brand name or empty string",
+    "industry": "best-fit industry",
+    "audience": "intended audience",
+    "logoType": "symbol | wordmark | combination | badge | mascot | monogram | app-icon",
+    "textModeRecommendation": "ai-text | exact-text-overlay",
+    "reasoning": "one short reason for the recommendation"
+  },
+  "suggestions": {
+    "prompt": "A generation-ready logo prompt for the main Logo Generator prompt box",
+    "negativePrompt": "watermark, mockup, photo scene, extra words, misspelled text, clutter, blurry edges, tiny details",
+    "style": "3D Render",
+    "cameraAngle": "None",
+    "cameraLens": "None",
+    "aspectRatio": "1:1",
+    "styleStrength": "moderate",
+    "resolution": "1K"
+  },
   "logoConfig": {
-    // Include ONLY the settings you want to change
     "dotSize": "medium",
     "dotColor": { "name": "Cyan", "value": "cyan", "hex": "#06B6D4" },
-    "metallicFinish": "chrome",
-    // ... other relevant settings
+    "metallicFinish": "chrome"
   }
 }
 
 IMPORTANT:
 - For color values (dotColor, textColor, accentColor), use the ColorOption format: { "name": "...", "value": "...", "hex": "..." }
 - Only include settings that are relevant to the user's request
+- The suggestions.prompt must be directly usable in the logo prompt box and should be 80-160 words
+- The suggestions.negativePrompt should be comma-separated and focused on preventing logo-specific failures
 - Be creative but practical with your suggestions
 - Explain WHY you chose certain settings to help the user understand the design rationale
 - If the user uploads a reference image, try to match the style as closely as possible`

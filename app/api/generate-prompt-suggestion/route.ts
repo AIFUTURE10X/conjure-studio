@@ -251,6 +251,45 @@ Available style strengths: subtle, moderate, strong`
   }
 }
 
+interface LogoPromptSuggestions {
+  prompt: string
+  negativePrompt?: string
+  style: string
+  cameraAngle: string
+  cameraLens: string
+  aspectRatio: string
+  styleStrength: 'subtle' | 'moderate' | 'strong'
+  resolution: string
+}
+
+function stringFromUnknown(value: unknown, fallback = ''): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSuggestions | undefined {
+  if (!rawSuggestions || typeof rawSuggestions !== 'object') return undefined
+
+  const suggestions = rawSuggestions as Record<string, unknown>
+  const prompt = stringFromUnknown(suggestions.prompt)
+  if (!prompt) return undefined
+
+  const styleStrength = stringFromUnknown(suggestions.styleStrength, 'moderate').toLowerCase()
+  const normalizedStyleStrength: LogoPromptSuggestions['styleStrength'] =
+    styleStrength === 'subtle' || styleStrength === 'strong' ? styleStrength : 'moderate'
+  const negativePrompt = stringFromUnknown(suggestions.negativePrompt)
+
+  return {
+    prompt,
+    ...(negativePrompt ? { negativePrompt } : {}),
+    style: stringFromUnknown(suggestions.style, '3D Render'),
+    cameraAngle: stringFromUnknown(suggestions.cameraAngle, 'None'),
+    cameraLens: stringFromUnknown(suggestions.cameraLens, 'None'),
+    aspectRatio: stringFromUnknown(suggestions.aspectRatio, '1:1'),
+    styleStrength: normalizedStyleStrength,
+    resolution: stringFromUnknown(suggestions.resolution, '1K'),
+  }
+}
+
 /**
  * Handle logo mode requests - suggests DotMatrixConfig settings
  */
@@ -289,14 +328,21 @@ async function handleLogoMode(
             context += `\n  [Generated Config: ${keySettings.join(', ')}]`
           }
         }
+        if (msg.role === "assistant" && msg.suggestions?.prompt) {
+          context += `\n  [Generated Logo Prompt: "${msg.suggestions.prompt}"]`
+          if (msg.suggestions.negativePrompt) {
+            context += `\n  [Generated Negative Prompt: "${msg.suggestions.negativePrompt}"]`
+          }
+        }
         return context
       })
       .join("\n\n")
 
     // Extract the LAST generated logoConfig for explicit reference
     const lastAssistantMsg = conversationHistory
-      ?.slice().reverse().find((m: any) => m.role === "assistant" && m.logoConfig)
+      ?.slice().reverse().find((m: any) => m.role === "assistant" && (m.logoConfig || m.suggestions?.prompt))
     const lastLogoConfig = lastAssistantMsg?.logoConfig || null
+    const lastLogoPrompt = lastAssistantMsg?.suggestions?.prompt || null
 
     // Get the dynamic system prompt from ai-logo-knowledge.ts
     const logoSystemPrompt = buildLogoSystemPrompt()
@@ -324,10 +370,17 @@ ${JSON.stringify(lastLogoConfig, null, 2)}
 IMPORTANT: If the user wants to ADD or MODIFY settings (e.g., "add more glow", "make it gold", "change the color to blue", "now add sparkles"), START with the previous config and incorporate their changes. Don't create from scratch unless they explicitly ask for something completely different. Preserve the settings that worked and add/modify only what they request.
 ` : ''}
 
+${lastLogoPrompt ? `
+PREVIOUS GENERATED LOGO PROMPT (reference for "make it more premium", "add an icon", "remove text", etc.):
+"${lastLogoPrompt}"
+
+IMPORTANT: If the user asks for an iteration, build on the previous generation-ready logo prompt while making the requested changes.
+` : ''}
+
 User Request: ${message}
 
-Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig ? ' (building upon the previous config if applicable)' : ''}, suggest appropriate Dot Matrix 3D logo settings.
-Remember to respond with a JSON object containing "message" and "logoConfig" as specified above.`
+Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate Dot Matrix 3D logo settings and a generation-ready logo prompt.
+Remember to respond with a JSON object containing "message", "designBrief", "suggestions", and "logoConfig" as specified above.`
 
     console.log("[v0 API] Logo mode - calling Gemini with dynamic system prompt")
 
@@ -341,10 +394,13 @@ Remember to respond with a JSON object containing "message" and "logoConfig" as 
     if (jsonMatch) {
       try {
         const jsonResponse = JSON.parse(jsonMatch[0])
+        const logoSuggestions = normalizeLogoPromptSuggestions(jsonResponse.suggestions)
         console.log("[v0 API] Logo mode - Successfully parsed JSON response with config keys:",
           jsonResponse.logoConfig ? Object.keys(jsonResponse.logoConfig) : 'none')
         return NextResponse.json({
           message: jsonResponse.message || "Here are my logo design suggestions.",
+          designBrief: jsonResponse.designBrief || null,
+          suggestions: logoSuggestions,
           logoConfig: jsonResponse.logoConfig || {},
           mode: 'logo'
         })

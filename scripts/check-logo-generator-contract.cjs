@@ -31,6 +31,24 @@ const checks = [
     name: 'advanced settings exposes text handling',
     pass: () => /Text Handling/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
   },
+  {
+    name: 'logo AI knowledge exposes prompt blueprint instructions',
+    pass: () => /buildLogoPromptBlueprintInstructions/.test(read('app/image-studio/constants/ai-logo-knowledge.ts')),
+  },
+  {
+    name: 'logo AI mode asks for reusable prompt suggestions',
+    pass: () => /suggestions/.test(read('app/api/generate-prompt-suggestion/route.ts')) &&
+      /generation-ready logo prompt/.test(read('app/api/generate-prompt-suggestion/route.ts')),
+  },
+  {
+    name: 'logo AI messages preserve prompt suggestions',
+    pass: () => /mode:\s*'logo'[\s\S]*suggestions:\s*data\.suggestions/.test(read('app/image-studio/hooks/useAIHelper.ts')),
+  },
+  {
+    name: 'logo prompt enhancer can return a negative prompt',
+    pass: () => /negativePrompt/.test(read('app/api/enhance-logo-prompt/route.ts')) &&
+      /setNegativePrompt\(data\.negativePrompt\)/.test(read('app/image-studio/components/Logo/LogoPromptSection.tsx')),
+  },
 ]
 
 const failures = checks.filter((check) => {

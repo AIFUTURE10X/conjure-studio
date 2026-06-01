@@ -1,29 +1,55 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { NextResponse } from "next/server"
+import { buildLogoPromptBlueprintInstructions } from "@/app/image-studio/constants/ai-logo-knowledge"
 import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
 
-const ENHANCE_SYSTEM_PROMPT = `You are a logo design expert. Take the user's basic description and expand it into a detailed, professional prompt for AI logo generation.
+interface EnhancedLogoPromptResponse {
+  enhancedPrompt?: unknown
+  negativePrompt?: unknown
+  designBrief?: unknown
+}
 
-Include in your enhanced prompt:
-- Visual style (geometric, organic, minimalist, realistic, etc.)
-- Composition and positioning (facing direction, angle, placement)
-- Key design elements (shapes, lines, features)
-- Style appropriate for logo use (clean, scalable, professional)
-- Color hints if relevant (or mention "suitable for any color scheme")
+const ENHANCE_SYSTEM_PROMPT = `You are a senior brand identity designer and AI logo prompt specialist.
+Transform a rough logo idea into a polished prompt for AI logo generation.
+
+${buildLogoPromptBlueprintInstructions()}
+
+Return JSON only in this exact shape:
+{
+  "enhancedPrompt": "80-160 word generation-ready logo prompt",
+  "negativePrompt": "comma-separated logo failures to avoid",
+  "designBrief": {
+    "brandName": "exact brand name or empty string",
+    "logoType": "symbol | wordmark | combination | badge | mascot | monogram | app-icon",
+    "textModeRecommendation": "ai-text | exact-text-overlay",
+    "rationale": "one short sentence"
+  }
+}
 
 Rules:
-- Keep response under 100 words
-- Only return the enhanced prompt text, no explanations or prefixes
-- Make it specific and descriptive but still flexible for logo generation
-- Focus on visual elements that work well as logos
-- IMPORTANT: If the user mentions a brand name, company name, or specific text (like "Prompts Genie"), PRESERVE IT in the enhanced prompt - the logo should feature that text/name
-- Describe how the brand name should be styled (typography, integration with imagery)
+- Preserve exact brand names, capitalization, slogans, acronyms, and requested words.
+- If the user requests exact readable text, recommend exact-text-overlay and make the prompt emphasize a symbol-only mark with space for typography.
+- Use one clear visual metaphor and one composition. Avoid stuffing the prompt with unrelated symbols.
+- Keep the logo clean, scalable, professional, and usable on a transparent background.
+- Do not include markdown, commentary, prefixes, or code fences.`
 
-Example input: "a lion logo for TechCorp"
-Example output: "A majestic lion head in profile view facing right with 'TechCorp' in bold geometric sans-serif typography below, angular style with clean lines forming the mane, minimalist silhouette, professional branding suitable for any color scheme"
+function extractEnhancedLogoPromptResponse(responseText: string): EnhancedLogoPromptResponse | null {
+  const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) return null
 
-Example input: "a genie for Prompts Genie"
-Example output: "Elegant genie lamp with magical swirling smoke forming into creative sparks, 'Prompts Genie' text integrated in flowing script typography, whimsical yet professional style, clean scalable design with sense of magic and creativity"`
+  try {
+    return JSON.parse(jsonMatch[0]) as EnhancedLogoPromptResponse
+  } catch {
+    return null
+  }
+}
+
+function cleanPlainTextPrompt(responseText: string): string {
+  return responseText
+    .replace(/^["']|["']$/g, '')
+    .replace(/^Enhanced prompt:\s*/i, '')
+    .trim()
+}
 
 export async function POST(request: Request) {
   try {
@@ -53,21 +79,25 @@ export async function POST(request: Request) {
 
 User's basic description: "${prompt}"
 
-Enhanced prompt:`
+Enhanced prompt JSON:`
 
     const result = await model.generateContent(fullPrompt)
     const responseText = result.response.text().trim()
 
-    // Clean up the response - remove any quotes or prefixes
-    let enhancedPrompt = responseText
-      .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-      .replace(/^Enhanced prompt:\s*/i, '') // Remove "Enhanced prompt:" prefix
-      .trim()
+    const parsedResponse = extractEnhancedLogoPromptResponse(responseText)
+    const enhancedPrompt = typeof parsedResponse?.enhancedPrompt === 'string'
+      ? parsedResponse.enhancedPrompt.trim()
+      : cleanPlainTextPrompt(responseText)
+    const negativePrompt = typeof parsedResponse?.negativePrompt === 'string'
+      ? parsedResponse.negativePrompt.trim()
+      : ''
 
     console.log("[Enhance Logo Prompt] Output length:", enhancedPrompt.length)
 
     return NextResponse.json({
       enhancedPrompt,
+      negativePrompt,
+      designBrief: parsedResponse?.designBrief,
       originalPrompt: prompt,
     })
   } catch (error) {
