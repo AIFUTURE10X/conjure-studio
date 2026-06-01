@@ -5,7 +5,7 @@
  * Extracted from route.ts to keep files under 300 lines.
  */
 
-import type { LogoTextMode } from '@/lib/logo-generation-contract'
+import type { LogoReferenceMode, LogoTextMode } from '@/lib/logo-generation-contract'
 
 // Logo concept styles - the "what" of the logo (design philosophy)
 export type LogoConcept = 'minimalist' | 'modern' | 'vintage' | 'playful' | 'elegant' | 'bold'
@@ -187,6 +187,89 @@ TEXT HANDLING:
 - Avoid tiny taglines, extra words, fake watermarks, and illegible decorative lettering`
 }
 
+function getUserPromptPriorityRequirements(): string {
+  return `
+USER PROMPT HAS PRIORITY:
+- Treat the typed prompt as the source of truth for requested text, font style, colors, layout, and background
+- If the user asks for a white background, use PURE SOLID WHITE (#FFFFFF), not blue, navy, gray, gradients, vignettes, or a presentation scene
+- If default style guidance conflicts with the typed prompt, follow the typed prompt`
+}
+
+function getReferenceTextHandlingRequirements(textMode: LogoTextMode): string {
+  if (textMode === 'exact-text-overlay') {
+    return `
+TEXT HANDLING WITH REFERENCE:
+- Do not draw final editable brand names, slogans, letters, numbers, or placeholder words in the AI image
+- Use the reference typography as layout guidance for the Real Font Overlay step: baseline, spacing, alignment, scale, and script/block contrast
+- Preserve clean space where the exact editable text should be placed later
+- Avoid fake lettering, misspelled words, and text-like marks`
+  }
+
+  return `
+TEXT HANDLING WITH REFERENCE:
+- Render only the requested brand text
+- Match the reference font style as closely as the image model allows: letterforms, stroke contrast, terminals, ligatures, kerning, tracking, case, baseline, and spacing
+- Do not swap the reference typography for a generic modern sans, dot matrix, metallic, neon, or default app style unless the typed prompt explicitly asks for that change
+- Avoid extra words, fake taglines, watermarks, and illegible decorative lettering`
+}
+
+function getReferenceBackgroundRequirements(backgroundMode: LogoBackgroundMode): string {
+  if (backgroundMode === 'native-transparent') {
+    return `
+BACKGROUND HANDLING:
+- Create a native transparent PNG with alpha transparency
+- Do not paint, fill, or render any visible background behind the logo
+- USER PROMPT HAS PRIORITY for any requested transparent/standalone/logo-only output`
+  }
+
+  if (backgroundMode === 'presentation') {
+    return `
+BACKGROUND HANDLING:
+- USER PROMPT HAS PRIORITY: if a background color is requested, use that exact color
+- If the user asks for a white background, use PURE SOLID WHITE (#FFFFFF), not blue, navy, gray, gradient, texture, or a dark presentation backdrop
+- If no background is requested, use a clean, simple background that supports the reference style without overpowering the logo`
+  }
+
+  return `
+BACKGROUND HANDLING:
+- USER PROMPT HAS PRIORITY: if a background color is requested, use that exact color
+- If the user asks for a white background, use PURE SOLID WHITE (#FFFFFF), not blue, navy, gray, gradient, texture, or a dark presentation backdrop
+- If no background is requested, use PURE SOLID WHITE (#FFFFFF) for clean background removal
+- Keep logo edges crisp and avoid background shadows, glows, halos, or textures that can be mistaken for part of the logo`
+}
+
+export function buildReferenceLogoPrompt(
+  userPrompt: string,
+  referenceMode: LogoReferenceMode = 'inspire',
+  textMode: LogoTextMode = 'ai-text',
+  backgroundMode: LogoBackgroundMode = 'removable'
+): string {
+  const modeGuidance = referenceMode === 'replicate'
+    ? `- Replicate the attached reference as closely as possible
+- Copy the reference font/typeface, letter shapes, spacing, proportions, colors, layout, and effects unless the typed prompt requests a specific change`
+    : `- Use the attached reference as the primary style guide
+- Preserve the reference typography direction, letterform character, stroke weight, spacing, alignment, palette, and composition while applying the typed changes`
+
+  return `Create a professional logo using the attached reference image.
+
+REFERENCE TYPOGRAPHY PRIORITY:
+${modeGuidance}
+- The reference image is the authority for typography and layout
+- Do not replace the reference font style with the app's default logo style
+- Do not add generic 3D metallic, dot matrix, neon, blue background, or dark presentation styling unless explicitly requested
+
+USER REQUEST:
+${userPrompt}
+
+${getUserPromptPriorityRequirements()}
+
+${getReferenceTextHandlingRequirements(textMode)}
+
+${getReferenceBackgroundRequirements(backgroundMode)}
+
+Generate one clean logo result only. Keep the requested text, reference typography direction, and requested background intact.`
+}
+
 // Parse combined style format: "concept+render" (e.g., "modern+3d-metallic")
 export function parseStyle(style: string): { concept: LogoConcept; render: RenderStyle } {
   if (style.includes('+')) {
@@ -222,14 +305,17 @@ export function buildFreeFormLogoPrompt(
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
   const textRequirements = getTextHandlingRequirements(textMode)
+  const userPromptPriority = getUserPromptPriorityRequirements()
   const isNativeTransparent = backgroundMode === 'native-transparent'
 
   // Determine best background for the style
   const bgInstruction = isNativeTransparent
     ? 'Use the native transparent PNG background. Do not draw any visible background or scene.'
     : render === 'neon'
-      ? 'Place on a dark charcoal or black background to make the glow pop'
-      : 'Place on a subtle dark gradient background (dark blue-gray to black) for premium presentation'
+      ? 'If no user background is requested, place on a dark charcoal or black background to make the glow pop'
+      : backgroundMode === 'removable'
+        ? 'If no user background is requested, place on a pure solid white (#FFFFFF) background for clean background removal'
+        : 'If no user background is requested, place on a simple neutral presentation background'
 
   const depthInstruction = isNativeTransparent
     ? 'Use internal highlights, bevels, and material texture only inside the logo shapes; no cast shadows, floor shadows, halos, or background lighting.'
@@ -247,6 +333,8 @@ export function buildFreeFormLogoPrompt(
   return `Create a polished professional logo concept suitable for a real brand identity system:
 
 BRAND/CONCEPT: ${userPrompt}
+
+${userPromptPriority}
 
 DESIGN PHILOSOPHY:
 ${conceptDescription}
@@ -285,6 +373,7 @@ export function buildLogoPrompt(
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
   const backgroundReqs = getBackgroundRequirements(render, backgroundMode)
   const textRequirements = getTextHandlingRequirements(textMode)
+  const userPromptPriority = getUserPromptPriorityRequirements()
 
   // Detect if user is asking for specific logo types
   const lowerPrompt = userPrompt.toLowerCase()
@@ -323,6 +412,8 @@ ICON/SYMBOL LOGO GUIDANCE:
   return `Create a polished professional logo concept suitable for a real brand identity system:
 
 BRAND/CONCEPT: ${userPrompt}
+
+${userPromptPriority}
 
 DESIGN PHILOSOPHY:
 ${conceptDescription}

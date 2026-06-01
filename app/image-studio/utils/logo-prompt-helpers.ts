@@ -36,4 +36,4 @@ export const REPLICATION_PROMPT = 'Create an EXACT pixel-perfect replica of this
 /**
  * Default inspire prompt for reference-based logos
  */
-export const INSPIRE_PROMPT = 'Recreate this logo with the same style and design elements'
+export const INSPIRE_PROMPT = 'Use the reference logo as the main style guide. Preserve its typography style, letterforms, stroke weight, spacing, alignment, palette, and overall layout while applying only the requested changes.'

@@ -8,6 +8,7 @@ import {
   type BgRemovalMethod,
   type LogoAspectRatio,
   type LogoGenerationModel,
+  type LogoReferenceMode,
   type LogoResolution,
   type LogoTextMode,
 } from '@/lib/logo-generation-contract'
@@ -20,6 +21,7 @@ export interface ParsedLogoGenerationRequest {
   model: LogoGenerationModel
   referenceImageFile: File | null
   referenceImage?: string
+  referenceMode: LogoReferenceMode
   bgRemovalMethod: BgRemovalMethod
   cloudApiKey: string | null
   aspectRatio: LogoAspectRatio
@@ -32,6 +34,10 @@ export interface ParsedLogoGenerationRequest {
 
 function normalizeImageQuality(input: string | null): OpenAIImageQuality {
   return input === 'low' ? 'low' : 'auto'
+}
+
+function normalizeReferenceMode(input: string | null): LogoReferenceMode {
+  return input === 'replicate' ? 'replicate' : 'inspire'
 }
 
 async function fileToBase64(file: File | null): Promise<string | undefined> {
@@ -50,6 +56,7 @@ export async function parseLogoGenerationRequest(formData: FormData): Promise<Pa
     model: normalizeLogoModel(formData.get('model') as string | null),
     referenceImageFile,
     referenceImage: await fileToBase64(referenceImageFile),
+    referenceMode: normalizeReferenceMode(formData.get('referenceMode') as string | null),
     bgRemovalMethod: normalizeBgRemovalMethod(formData.get('bgRemovalMethod') as string | null),
     cloudApiKey: formData.get('cloudApiKey') as string | null,
     aspectRatio: normalizeLogoAspectRatio(formData.get('aspectRatio') as string | null),

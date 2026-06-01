@@ -186,6 +186,15 @@ const checks = [
       /bgRemovalMethod:\s*data\.bgRemovalMethod \|\| options\.bgRemovalMethod/.test(read('app/image-studio/hooks/useLogoGeneration.ts')),
   },
   {
+    name: 'reference logo generation prioritizes user prompt typography and background',
+    pass: () => /buildReferenceLogoPrompt/.test(read('app/api/generate-logo/logo-prompts.ts')) &&
+      /REFERENCE TYPOGRAPHY PRIORITY/.test(read('app/api/generate-logo/logo-prompts.ts')) &&
+      /USER PROMPT HAS PRIORITY/.test(read('app/api/generate-logo/logo-prompts.ts')) &&
+      /referenceMode/.test(read('app/api/generate-logo/logo-request.ts')) &&
+      /formData\.append\('referenceMode', options\.referenceMode\)/.test(read('app/image-studio/hooks/useLogoGeneration.ts')) &&
+      /referenceMode:\s*state\.referenceMode === 'replicate' \? 'replicate' : 'inspire'/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')),
+  },
+  {
     name: 'logo history stores the actual background removal method used',
     pass: () => /bgRemovalMethod\?:\s*BgRemovalMethod/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')) &&
       /bgRemovalMethod:\s*logo\.bgRemovalMethod \|\| state\.bgRemovalMethod/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')),

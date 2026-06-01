@@ -21,6 +21,8 @@ export const LOGO_GENERATION_MODELS = [
 
 export const LOGO_TEXT_MODES = ['ai-text', 'exact-text-overlay'] as const
 
+export const LOGO_REFERENCE_MODES = ['inspire', 'replicate'] as const
+
 export const LOGO_BACKGROUND_REMOVAL_METHODS = [
   'native-transparent',
   'none',
@@ -40,6 +42,7 @@ export type LogoAspectRatio = typeof LOGO_ASPECT_RATIOS[number]
 export type LogoResolution = typeof LOGO_RESOLUTIONS[number]
 export type LogoGenerationModel = typeof LOGO_GENERATION_MODELS[number]
 export type LogoTextMode = typeof LOGO_TEXT_MODES[number]
+export type LogoReferenceMode = typeof LOGO_REFERENCE_MODES[number]
 export type BgRemovalMethod = typeof LOGO_BACKGROUND_REMOVAL_METHODS[number]
 
 export type LogoStyle =
@@ -59,6 +62,7 @@ export interface LogoGenerationOptions {
   negativePrompt?: string
   style: LogoStyle
   referenceImage?: File
+  referenceMode?: LogoReferenceMode
   bgRemovalMethod?: BgRemovalMethod
   cloudApiKey?: string
   aspectRatio?: LogoAspectRatio

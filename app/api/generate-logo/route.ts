@@ -7,7 +7,7 @@ import {
   toPngDataUrl,
   upscaleLogoIfNeeded,
 } from "./logo-image-pipeline"
-import { buildFreeFormLogoPrompt, buildLogoPrompt } from "./logo-prompts"
+import { buildFreeFormLogoPrompt, buildLogoPrompt, buildReferenceLogoPrompt, type LogoBackgroundMode } from "./logo-prompts"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
       textMode: logoRequest.textMode,
       seed: logoRequest.seed !== undefined ? logoRequest.seed : 'random',
       hasReference: !!logoRequest.referenceImage,
+      referenceMode: logoRequest.referenceMode,
     })
 
     if (!logoRequest.prompt) {
@@ -43,10 +44,16 @@ export async function POST(request: NextRequest) {
     }
 
     const useFreeFormPrompt = shouldUseFreeFormPrompt(logoRequest)
-    const backgroundMode = logoRequest.bgRemovalMethod === 'native-transparent' ? 'native-transparent' : undefined
-    let enhancedPrompt = useFreeFormPrompt
-      ? buildFreeFormLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
-      : buildLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
+    const backgroundMode: LogoBackgroundMode = logoRequest.bgRemovalMethod === 'native-transparent'
+      ? 'native-transparent'
+      : logoRequest.bgRemovalMethod === 'none' || logoRequest.skipBgRemoval
+        ? 'presentation'
+        : 'removable'
+    let enhancedPrompt = logoRequest.referenceImage
+      ? buildReferenceLogoPrompt(logoRequest.prompt, logoRequest.referenceMode, logoRequest.textMode, backgroundMode)
+      : useFreeFormPrompt
+        ? buildFreeFormLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
+        : buildLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
 
     // Append negative prompt if provided
     if (logoRequest.negativePrompt?.trim()) {

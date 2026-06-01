@@ -63,6 +63,7 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
         negativePrompt: finalNegativePrompt || undefined,
         style: combinedStyle,
         referenceImage: state.referenceImage?.file,
+        referenceMode: state.referenceMode === 'replicate' ? 'replicate' : 'inspire',
         bgRemovalMethod: state.bgRemovalMethod,
         aspectRatio: state.aspectRatio,
         resolution: state.resolution,

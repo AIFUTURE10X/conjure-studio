@@ -7,6 +7,7 @@ import type {
   LogoAspectRatio,
   LogoGenerationModel,
   LogoGenerationOptions,
+  LogoReferenceMode,
   LogoResolution,
   LogoStyle,
   LogoTextMode,
@@ -18,6 +19,7 @@ export type {
   LogoAspectRatio,
   LogoGenerationModel,
   LogoGenerationOptions,
+  LogoReferenceMode,
   LogoResolution,
   LogoStyle,
   LogoTextMode,
@@ -48,6 +50,10 @@ export function useLogoGeneration() {
 
       if (options.referenceImage) {
         formData.append('referenceImage', options.referenceImage)
+      }
+
+      if (options.referenceMode) {
+        formData.append('referenceMode', options.referenceMode)
       }
 
       if (options.cloudApiKey) {
