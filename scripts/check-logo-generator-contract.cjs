@@ -41,6 +41,14 @@ const checks = [
       /generation-ready logo prompt/.test(read('app/api/generate-prompt-suggestion/route.ts')),
   },
   {
+    name: 'logo AI helper does not force Dot Matrix 3D styling',
+    pass: () => /general-purpose brand identity and logo design assistant/.test(read('app/image-studio/constants/ai-logo-knowledge.ts')) &&
+      /Return an empty logoConfig unless/.test(read('app/image-studio/constants/ai-logo-knowledge.ts')) &&
+      /suggest appropriate general logo settings and a generation-ready logo prompt/.test(read('app/api/generate-prompt-suggestion/route.ts')) &&
+      !/specialized in creating Dot Matrix 3D logos/.test(read('app/image-studio/constants/ai-logo-knowledge.ts')) &&
+      !/suggest appropriate Dot Matrix 3D logo settings/.test(read('app/api/generate-prompt-suggestion/route.ts')),
+  },
+  {
     name: 'logo AI messages preserve prompt suggestions',
     pass: () => /mode:\s*'logo'[\s\S]*suggestions:\s*data\.suggestions/.test(read('app/image-studio/hooks/useAIHelper.ts')),
   },

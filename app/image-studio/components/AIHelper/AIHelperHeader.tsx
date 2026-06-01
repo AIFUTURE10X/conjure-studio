@@ -93,11 +93,11 @@ export function EmptyState({ mode }: EmptyStateProps) {
         <>
           <p className="mb-2">Hi! I'm your AI logo design assistant.</p>
           <p className="mb-4">
-            Describe your logo idea and I'll suggest the perfect settings for the Dot Matrix 3D Configurator.
+            Describe your logo idea and I'll suggest a generation-ready logo prompt and matching settings.
           </p>
           <p className="text-xs text-zinc-600">
-            Examples: "tech startup with cyan dots and chrome text", "luxury gold logo with deep 3D effect",
-            "creative agency with pink halftone pattern"
+            Examples: "luxury residence wordmark in teal and champagne", "tech startup monogram with clean geometry",
+            "creative agency badge with a warm vintage palette"
           </p>
         </>
       ) : (

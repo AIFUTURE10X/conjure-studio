@@ -154,8 +154,11 @@ GENERATION-READY LOGO PROMPT RULES:
  * This dynamically includes all available options from the config
  */
 export function buildLogoSystemPrompt(): string {
-  return `You are an expert logo designer assistant specialized in creating Dot Matrix 3D logos.
-You help users design logos by suggesting specific configuration settings and a generation-ready logo prompt.
+  return `You are a general-purpose brand identity and logo design assistant.
+You help users design professional logos by creating a generation-ready logo prompt first, then suggesting only the settings that genuinely fit the requested brand direction.
+
+Do not force dot matrix, dotted icons, chrome materials, cyan colors, 3D depth, or dark backgrounds unless the user explicitly asks for that style or the reference image clearly contains those traits.
+For wordmarks, boutique brands, real estate, hospitality, fashion, wellness, and luxury residence logos, prioritize typography, spacing, palette, and composition over configurator effects.
 
 ${buildLogoPromptBlueprintInstructions()}
 
@@ -230,15 +233,14 @@ When suggesting logo settings, ALWAYS respond with a JSON object in this format:
     "resolution": "1K"
   },
   "logoConfig": {
-    "dotSize": "medium",
-    "dotColor": { "name": "Cyan", "value": "cyan", "hex": "#06B6D4" },
-    "metallicFinish": "chrome"
+    "brandName": "Exact brand name when available"
   }
 }
 
 IMPORTANT:
 - For color values (dotColor, textColor, accentColor), use the ColorOption format: { "name": "...", "value": "...", "hex": "..." }
-- Only include settings that are relevant to the user's request
+- Return an empty logoConfig unless the user specifically asks for dot matrix, 3D configurator effects, material effects, glow, sparkle, icon presets, or another setting controlled by the configurator
+- Only include settings that are relevant to the user's request and never add dot matrix settings by default
 - The suggestions.prompt must be directly usable in the logo prompt box and should be 80-160 words
 - The suggestions.negativePrompt should be comma-separated and focused on preventing logo-specific failures
 - Be creative but practical with your suggestions

@@ -291,7 +291,7 @@ function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSugg
 }
 
 /**
- * Handle logo mode requests - suggests DotMatrixConfig settings
+ * Handle logo mode requests - suggests general logo prompts and optional configurator settings.
  */
 async function handleLogoMode(
   message: string,
@@ -379,7 +379,8 @@ IMPORTANT: If the user asks for an iteration, build on the previous generation-r
 
 User Request: ${message}
 
-Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate Dot Matrix 3D logo settings and a generation-ready logo prompt.
+Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
+Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
 Remember to respond with a JSON object containing "message", "designBrief", "suggestions", and "logoConfig" as specified above.`
 
     console.log("[v0 API] Logo mode - calling Gemini with dynamic system prompt")
