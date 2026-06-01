@@ -52,21 +52,22 @@ export const BG_REMOVAL_METHODS: Array<{
     requiresModel: 'gpt-image-2',
   },
   {
-    value: 'replicate',
-    label: 'BRIA AI',
-    description: 'Best for logos - 256 levels of transparency for clean text edges',
+    value: 'smart',
+    label: 'Smart (Local)',
+    description: 'Free local cleanup - detects the background color and keeps logo content',
     badge: 'Recommended'
+  },
+  {
+    value: 'replicate',
+    label: 'BRIA AI (Replicate)',
+    description: 'Optional Replicate cleanup for difficult backgrounds',
+    badge: 'Replicate'
   },
   {
     value: '851-labs',
     label: '851-labs',
     description: 'Very cheap (~$0.0005/run), good for general use',
     badge: 'Budget'
-  },
-  {
-    value: 'smart',
-    label: 'Smart (Local)',
-    description: 'Free, detects background color, keeps ALL logo content',
   },
 ]
 

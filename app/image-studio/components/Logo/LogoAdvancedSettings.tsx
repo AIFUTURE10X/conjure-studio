@@ -58,7 +58,7 @@ export function LogoAdvancedSettings({
 
   useEffect(() => {
     if (bgRemovalMethod === 'native-transparent' && selectedModel !== 'gpt-image-2') {
-      setBgRemovalMethod('replicate')
+      setBgRemovalMethod('smart')
     }
   }, [bgRemovalMethod, selectedModel, setBgRemovalMethod])
 

@@ -27,7 +27,7 @@ export function useLogoPanelState({
   const [selectedRenders, setSelectedRenders] = useState<RenderStyle[]>([])
 
   // Settings state
-  const [bgRemovalMethod, setBgRemovalMethod] = useState<BgRemovalMethod>('replicate')
+  const [bgRemovalMethod, setBgRemovalMethod] = useState<BgRemovalMethod>('smart')
   const [aspectRatio, setAspectRatio] = useState<LogoAspectRatio>('1:1')
   const [resolution, setResolution] = useState<LogoResolution>('1K')
   const [selectedModel, setSelectedModel] = useState<LogoGenerationModel>('gemini-3.1-flash-image-preview')
@@ -85,7 +85,7 @@ export function useLogoPanelState({
     setNegativePrompt('')
     setSelectedConcept(null)
     setSelectedRenders([])
-    setBgRemovalMethod('replicate')
+    setBgRemovalMethod('smart')
     setAspectRatio('1:1')
     setResolution('1K')
     setSelectedModel('gemini-3.1-flash-image-preview')

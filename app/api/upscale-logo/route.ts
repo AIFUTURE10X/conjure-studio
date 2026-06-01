@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import sharp from 'sharp'
 import { upscaleWithRealESRGAN, isReplicateAvailable } from "@/lib/replicate-upscaler"
+import { upscaleBase64WithSharp } from "@/lib/sharp-upscaler"
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const imageBase64 = formData.get('imageBase64') as string | null
     const targetResolution = (formData.get('targetResolution') as TargetResolution) || '2K'
-    const method = (formData.get('method') as UpscaleMethod) || 'ai'
+    const method = (formData.get('method') as UpscaleMethod) || 'fast'
 
     const useAI = method === 'ai' && isReplicateAvailable()
 
@@ -82,13 +83,13 @@ export async function POST(request: NextRequest) {
       } catch (aiError) {
         console.error("[Upscale API] AI upscale failed, falling back to Sharp:", aiError)
         // Fallback to Sharp
-        upscaledBase64 = await upscaleWithSharp(imageBuffer, targetSize, originalWidth, originalHeight)
+        upscaledBase64 = await upscaleBase64WithSharp(base64Data, targetSize)
         actualMethod = 'fallback'
       }
     } else {
       // Use Sharp directly
       console.log("[Upscale API] Using Sharp (fast mode)...")
-      upscaledBase64 = await upscaleWithSharp(imageBuffer, targetSize, originalWidth, originalHeight)
+      upscaledBase64 = await upscaleBase64WithSharp(base64Data, targetSize)
       actualMethod = 'fast'
     }
 
@@ -115,31 +116,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-/**
- * Upscale using Sharp with lanczos3 interpolation (basic, fast)
- */
-async function upscaleWithSharp(
-  imageBuffer: Buffer,
-  targetSize: number,
-  originalWidth: number,
-  originalHeight: number
-): Promise<string> {
-  const maxOriginalDim = Math.max(originalWidth, originalHeight)
-  const scale = targetSize / maxOriginalDim
-  const newWidth = Math.round(originalWidth * scale)
-  const newHeight = Math.round(originalHeight * scale)
-
-  console.log("[Upscale API] Sharp upscaling to:", { newWidth, newHeight, scale: scale.toFixed(2) })
-
-  const upscaledBuffer = await sharp(imageBuffer)
-    .resize(newWidth, newHeight, {
-      kernel: 'lanczos3',
-      fit: 'fill',
-    })
-    .png({ quality: 100 })
-    .toBuffer()
-
-  return upscaledBuffer.toString('base64')
 }

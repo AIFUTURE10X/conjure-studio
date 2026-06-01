@@ -175,7 +175,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
         const file = new File([blob], 'image.png', { type: 'image/png' })
         const formData = new FormData()
         formData.append('image', file)
-        formData.append('bgRemovalMethod', 'replicate')
+        formData.append('bgRemovalMethod', 'smart')
         const result = await fetch('/api/remove-background', { method: 'POST', body: formData })
         const data = await result.json()
         if (!data.success || !data.image) throw new Error(data.error || 'Failed to remove background')

@@ -42,10 +42,10 @@ export function useBackgroundRemoval({
       const blob = await response.blob()
       const file = new File([blob], 'image.png', { type: 'image/png' })
 
-      // Call the API with Replicate method
+      // Call the API with local smart removal by default
       const formData = new FormData()
       formData.append('image', file)
-      formData.append('bgRemovalMethod', 'replicate')
+      formData.append('bgRemovalMethod', 'smart')
       formData.append('isLogoContext', 'true') // Enable text-preserving params for logos with taglines
 
       const result = await fetch('/api/remove-background', {

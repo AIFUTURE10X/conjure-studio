@@ -5,7 +5,7 @@
  */
 
 import { removeBackground as localRemoveBackground } from './background-removal'
-import { removeBackgroundWithReplicate } from './replicate-bg-removal'
+import { removeBackgroundSmart } from './smart-bg-removal'
 
 export interface CloudRemovalOptions {
   apiKey?: string
@@ -156,8 +156,7 @@ export async function removeBackgroundPixian(
   } catch (error) {
     console.error('[Pixian BG Removal] API Error:', error)
 
-    // Fall back to Replicate AI method on any error (works on any background color)
-    console.log('[Pixian BG Removal] Falling back to Replicate AI method...')
-    return removeBackgroundWithReplicate(imageBase64)
+    console.log('[Pixian BG Removal] Falling back to local smart method...')
+    return removeBackgroundSmart(imageBase64)
   }
 }

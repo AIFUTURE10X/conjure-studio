@@ -1,13 +1,40 @@
 /**
  * API Route: Recolor Logo
  *
- * Uses FLUX Kontext to intelligently recolor a logo with up to 4 colors.
+ * Uses the app's OpenAI image editing path to recolor a logo with up to 4 colors.
  * The AI understands the logo structure and applies colors appropriately.
  */
 
 import { type NextRequest, NextResponse } from "next/server"
 import { put } from "@vercel/blob"
-import Replicate from "replicate"
+import sharp from "sharp"
+import { generateOpenAIImage } from "@/lib/openai-image-client"
+
+type RecolorAspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "5:4" | "4:5"
+
+const ASPECT_RATIOS: Array<{ value: RecolorAspectRatio; ratio: number }> = [
+  { value: "1:1", ratio: 1 },
+  { value: "16:9", ratio: 16 / 9 },
+  { value: "9:16", ratio: 9 / 16 },
+  { value: "4:3", ratio: 4 / 3 },
+  { value: "3:4", ratio: 3 / 4 },
+  { value: "3:2", ratio: 3 / 2 },
+  { value: "2:3", ratio: 2 / 3 },
+  { value: "21:9", ratio: 21 / 9 },
+  { value: "5:4", ratio: 5 / 4 },
+  { value: "4:5", ratio: 4 / 5 },
+]
+
+function getClosestAspectRatio(width?: number, height?: number): RecolorAspectRatio {
+  if (!width || !height) return "1:1"
+
+  const inputRatio = width / height
+  return ASPECT_RATIOS.reduce((best, option) => {
+    const bestDistance = Math.abs(Math.log(inputRatio / best.ratio))
+    const optionDistance = Math.abs(Math.log(inputRatio / option.ratio))
+    return optionDistance < bestDistance ? option : best
+  }).value
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,11 +47,6 @@ export async function POST(request: NextRequest) {
 
     if (!colors || !Array.isArray(colors) || colors.length === 0) {
       return NextResponse.json({ error: "At least one color is required" }, { status: 400 })
-    }
-
-    const apiToken = process.env.REPLICATE_API_TOKEN
-    if (!apiToken) {
-      return NextResponse.json({ error: "Replicate API token not configured" }, { status: 500 })
     }
 
     console.log("[Recolor API] Starting recolor with colors:", colors)
@@ -41,57 +63,33 @@ export async function POST(request: NextRequest) {
 
     console.log("[Recolor API] Instruction:", instruction)
 
-    const replicate = new Replicate({ auth: apiToken })
+    const response = await fetch(imageUrl)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch source logo: ${response.status}`)
+    }
 
-    // Use FLUX Kontext for instruction-based image editing
-    const output = await replicate.run(
-      "black-forest-labs/flux-kontext-dev:85723d503c17da3f9fd9cecfb9987a8bf60ef747fd8f68a25d7636f88260eb59",
-      {
-        input: {
-          prompt: instruction,
-          input_image: imageUrl,
-          guidance: 3.5,
-          num_inference_steps: 28,
-          aspect_ratio: "match_input_image",
-          output_format: "png",
-          output_quality: 95,
-        }
-      }
+    const sourceBuffer = Buffer.from(await response.arrayBuffer())
+    const metadata = await sharp(sourceBuffer).metadata()
+    const referenceFile = new File(
+      [new Uint8Array(sourceBuffer)],
+      'logo.png',
+      { type: response.headers.get('content-type') || 'image/png' }
     )
 
-    console.log("[Recolor API] Model completed, output:", typeof output)
+    const result = await generateOpenAIImage({
+      prompt: instruction,
+      aspectRatio: getClosestAspectRatio(metadata.width, metadata.height),
+      imageSize: '1K',
+      imageQuality: 'auto',
+      referenceImageFile: referenceFile,
+    })
 
-    // Extract URL from output
-    let outputUrl: string
-    if (typeof output === 'string') {
-      outputUrl = output
-    } else if (Array.isArray(output) && output.length > 0) {
-      outputUrl = typeof output[0] === 'string' ? output[0] : output[0].toString()
-    } else if (output && typeof output === 'object') {
-      const outputObj = output as Record<string, unknown>
-      if ('url' in outputObj && typeof outputObj.url === 'function') {
-        outputUrl = (outputObj as { url: () => string }).url()
-      } else if (outputObj.toString && outputObj.toString() !== '[object Object]') {
-        outputUrl = outputObj.toString()
-      } else {
-        throw new Error("Could not extract URL from output")
-      }
-    } else {
-      throw new Error("No output from model")
-    }
+    console.log("[Recolor API] OpenAI image edit completed")
 
-    console.log("[Recolor API] Output URL:", outputUrl)
-
-    // Fetch and upload to Vercel Blob for persistence
-    const response = await fetch(outputUrl)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch result: ${response.status}`)
-    }
-
-    const buffer = await response.arrayBuffer()
+    const buffer = Buffer.from(result.imageBase64, 'base64')
     const filename = `logos/recolor-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
 
-    const blobResult = await put(filename, Buffer.from(buffer), {
+    const blobResult = await put(filename, buffer, {
       access: 'public',
       contentType: 'image/png'
     })

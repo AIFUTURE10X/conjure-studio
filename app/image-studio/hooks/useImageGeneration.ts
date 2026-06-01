@@ -42,7 +42,7 @@ export function useImageGeneration(
       const formData = new FormData()
       formData.append('imageBase64', imageUrl)
       formData.append('targetResolution', target)
-      formData.append('method', 'ai')
+      formData.append('method', 'fast')
       const response = await fetch('/api/upscale-logo', { method: 'POST', body: formData })
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))

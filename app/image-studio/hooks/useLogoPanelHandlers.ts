@@ -83,7 +83,7 @@ export function useLogoPanelHandlers({ generatedLogo, setLogo, bgRemovalMethod, 
     }
   }, [generatedLogo, bgRemovalMethod, setLogo, onLogoGenerated])
 
-  const handleUpscale = useCallback(async (targetResolution: '2K' | '4K', method: 'ai' | 'fast' = 'ai') => {
+  const handleUpscale = useCallback(async (targetResolution: '2K' | '4K', method: 'ai' | 'fast' = 'fast') => {
     if (!generatedLogo) return
     setIsUpscaling(true)
     try {

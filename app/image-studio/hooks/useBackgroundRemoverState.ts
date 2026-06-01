@@ -4,7 +4,7 @@
  * Background Remover State Management
  *
  * Manages queue of images for background removal with batch processing support.
- * Uses Replicate's Bria RMBG 2.0 as default method.
+ * Uses local smart background removal as the default method.
  */
 
 import { useState, useCallback } from 'react'
@@ -59,7 +59,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function useBackgroundRemoverState(): BackgroundRemoverState {
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [selectedMethod, setSelectedMethod] = useState<BgRemovalMethod>('replicate')
+  const [selectedMethod, setSelectedMethod] = useState<BgRemovalMethod>('smart')
   const [isProcessingAll, setIsProcessingAll] = useState(false)
 
   // Add files to queue

@@ -86,7 +86,7 @@ export const DEFAULT_LOGO_GENERATION_SETTINGS = {
   resolution: '1K',
   model: 'gemini-3.1-flash-image-preview',
   textMode: 'ai-text',
-  bgRemovalMethod: 'replicate',
+  bgRemovalMethod: 'smart',
 } satisfies {
   aspectRatio: LogoAspectRatio
   resolution: LogoResolution

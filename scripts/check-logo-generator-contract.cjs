@@ -122,9 +122,19 @@ const checks = [
       /method: 'ai' \| 'fast' = 'fast'/.test(read('app/image-studio/hooks/useLogoPanelHandlers.ts')),
   },
   {
+    name: 'image overload fallback upscales without Replicate',
+    pass: () => /upscaleBase64WithSharp/.test(read('app/api/generate-image/route.ts')) &&
+      !/replicate-upscaler/.test(read('app/api/generate-image/route.ts')),
+  },
+  {
     name: 'mockup photo generator removes backgrounds without Replicate',
     pass: () => /removeBackgroundSmart/.test(read('app/api/generate-mockup-photos/route.ts')) &&
       !/removeBackgroundWithReplicate/.test(read('app/api/generate-mockup-photos/route.ts')),
+  },
+  {
+    name: 'recolor logo uses OpenAI image editing without Replicate',
+    pass: () => /generateOpenAIImage/.test(read('app/api/recolor-logo/route.ts')) &&
+      !/from "replicate"|replicate\.run|REPLICATE_API_TOKEN/.test(read('app/api/recolor-logo/route.ts')),
   },
 ]
 

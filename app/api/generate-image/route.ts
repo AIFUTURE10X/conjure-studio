@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateImageWithRetry, type ImageSize, type GenerationModel } from "@/lib/gemini-client"
 import { generateOpenAIImage, type OpenAIImageQuality } from "@/lib/openai-image-client"
-import { upscaleWithRealESRGAN, isReplicateAvailable } from "@/lib/replicate-upscaler"
+import { upscaleBase64WithSharp } from "@/lib/sharp-upscaler"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     const images = settled.flatMap((r) => (r.ok ? [r.dataUrl] : []))
 
     // Auto-fallback: Gemini 3 Pro at 4K is often overloaded. When every attempt
-    // failed due to overload, recover transparently via Flash 2K + Real-ESRGAN 2× upscale.
+    // failed due to overload, recover transparently via Flash 2K + local Sharp upscale.
     let fallback: { used: true; reason: string } | undefined
     const allFailedWithOverload =
       settled.length > 0 &&
@@ -147,10 +147,9 @@ export async function POST(request: NextRequest) {
       images.length === 0 &&
       allFailedWithOverload &&
       model === "gemini-3-pro-image-preview" &&
-      imageSize === "4K" &&
-      isReplicateAvailable()
+      imageSize === "4K"
     ) {
-      console.log("[v0 SERVER] Pro 4K overloaded — falling back to Flash 2K + AI upscale")
+      console.log("[v0 SERVER] Pro 4K overloaded - falling back to Flash 2K + Sharp upscale")
       try {
         const flash = await generateImageWithRetry({
           prompt,
@@ -163,11 +162,11 @@ export async function POST(request: NextRequest) {
           disableSearch: true,
         })
         if (flash.success && flash.imageBase64) {
-          const upscaled = await upscaleWithRealESRGAN(flash.imageBase64, 2)
+          const upscaled = await upscaleBase64WithSharp(flash.imageBase64, 4096, { sharpen: true })
           images.push(`data:image/png;base64,${upscaled}`)
           fallback = {
             used: true,
-            reason: "Gemini 3 Pro was overloaded — used Flash 2K + AI upscale to deliver 4K.",
+            reason: "Gemini 3 Pro was overloaded - used Flash 2K + local upscale to deliver 4K.",
           }
           console.log("[v0 SERVER] Fallback succeeded")
         }

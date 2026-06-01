@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateImageWithRetry } from "@/lib/gemini-client"
-import { removeBackgroundWithReplicate } from "@/lib/replicate-bg-removal"
+import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { writeFile, mkdir, access } from 'fs/promises'
 import path from 'path'
 
@@ -537,8 +537,8 @@ export async function POST(request: NextRequest) {
     // Auto-remove background for transparent PNG using AI
     let finalBase64 = result.imageBase64
     try {
-      console.log(`[Mockup Photo] Removing background with AI (Replicate)...`)
-      finalBase64 = await removeBackgroundWithReplicate(result.imageBase64)
+      console.log(`[Mockup Photo] Removing background with local smart removal...`)
+      finalBase64 = await removeBackgroundSmart(result.imageBase64)
       console.log(`[Mockup Photo] Background removed successfully`)
     } catch (bgError) {
       console.error('[Mockup Photo] BG removal failed, using original:', bgError)

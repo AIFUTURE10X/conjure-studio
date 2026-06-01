@@ -4,7 +4,8 @@ import { generateImageWithRetry } from '@/lib/gemini-client'
 import { generateOpenAIImage } from '@/lib/openai-image-client'
 import { removeBackgroundWithPixelcut } from '@/lib/pixelcut-bg-removal'
 import { removeBackgroundWithReplicate } from '@/lib/replicate-bg-removal'
-import { isReplicateAvailable, upscaleWithRealESRGAN } from '@/lib/replicate-upscaler'
+import { removeBackgroundSmart } from '@/lib/smart-bg-removal'
+import { upscaleBase64WithSharp } from '@/lib/sharp-upscaler'
 import sharp from 'sharp'
 import type { ParsedLogoGenerationRequest } from './logo-request'
 
@@ -100,6 +101,13 @@ export async function removeLogoBackgroundIfNeeded(
     return removeBackgroundWithReplicate(imageBase64, '851-labs')
   }
 
+  if (request.bgRemovalMethod === 'smart') {
+    return removeBackgroundSmart(imageBase64, {
+      tolerance: 25,
+      edgeSmoothing: false,
+    })
+  }
+
   if (request.bgRemovalMethod === 'pixian' && request.cloudApiKey) {
     return removeBackgroundPixian(imageBase64, request.cloudApiKey)
   }
@@ -137,30 +145,11 @@ export async function upscaleLogoIfNeeded(
   try {
     const aiScale = request.resolution === '4K' ? 4 : 2
 
-    if (isReplicateAvailable()) {
-      console.log(`[Logo API] Using AI upscaling (Real-ESRGAN ${aiScale}x)...`)
-      return upscaleWithRealESRGAN(imageBase64, aiScale)
-    }
-
-    console.log('[Logo API] Using Sharp upscaling (Replicate not available)...')
-    const originalWidth = checkMetadata.width || 1024
-    const originalHeight = checkMetadata.height || 1024
-    const maxOriginalDim = Math.max(originalWidth, originalHeight)
-    const scale = targetSize / maxOriginalDim
-    const newWidth = Math.round(originalWidth * scale)
-    const newHeight = Math.round(originalHeight * scale)
-
-    const upscaledBuffer = await sharp(checkBuffer)
-      .resize(newWidth, newHeight, {
-        kernel: 'lanczos3',
-        fit: 'fill',
-      })
-      .sharpen({ sigma: 1.0 })
-      .png({ quality: 100 })
-      .toBuffer()
-
-    console.log(`[Logo API] Sharp upscale complete: ${newWidth}x${newHeight}`)
-    return upscaledBuffer.toString('base64')
+    console.log(`[Logo API] Using Sharp upscaling (${aiScale}x target, Replicate bypassed)...`)
+    const upscaledBase64 = await upscaleBase64WithSharp(imageBase64, targetSize, { sharpen: true })
+    const upscaledMetadata = await sharp(Buffer.from(upscaledBase64, 'base64')).metadata()
+    console.log(`[Logo API] Sharp upscale complete: ${upscaledMetadata.width}x${upscaledMetadata.height}`)
+    return upscaledBase64
   } catch (upscaleError) {
     console.error('[Logo API] Upscale failed, using original:', upscaleError)
     return imageBase64

@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback } from 'react'
+import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
 import { GeneratedLogo, LogoAspectRatio, LogoStyle, BgRemovalMethod, LogoTextMode } from './useLogoGeneration'
 
 export interface BatchItem {
@@ -53,10 +54,11 @@ export function useBatchGeneration() {
     options: BatchGenerationOptions,
     seed: number
   ): Promise<GeneratedLogo> => {
+    const bgRemovalMethod = options.bgRemovalMethod || DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod
     const formData = new FormData()
     formData.append('prompt', options.prompt)
     formData.append('style', options.style)
-    formData.append('bgRemovalMethod', options.bgRemovalMethod || 'replicate')
+    formData.append('bgRemovalMethod', bgRemovalMethod)
     formData.append('aspectRatio', options.aspectRatio || '1:1')
     formData.append('textMode', options.textMode || 'ai-text')
     formData.append('resolution', options.resolution || '1K')
@@ -93,7 +95,7 @@ export function useBatchGeneration() {
       style: options.style,
       aspectRatio: data.aspectRatio || options.aspectRatio || '1:1',
       textMode: data.textMode || options.textMode || 'ai-text',
-      bgRemovalMethod: options.bgRemovalMethod || 'replicate',
+      bgRemovalMethod,
       timestamp: Date.now(),
       seed: data.seed || seed,
     }
