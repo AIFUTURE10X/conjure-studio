@@ -229,7 +229,7 @@ export function useLogoPanelHandlers({ generatedLogo, setLogo, bgRemovalMethod, 
       if (data.error) throw new Error(data.error)
       if (!data.image) throw new Error('No image returned')
 
-      const newLogo = { url: data.image, prompt: 'Background removed', style: 'flat' as LogoStyle, aspectRatio: '1:1' as const, bgRemovalMethod, timestamp: Date.now() }
+      const newLogo = { url: data.image, prompt: 'Background removed', style: 'flat' as LogoStyle, aspectRatio: '1:1' as const, textMode: 'ai-text' as const, bgRemovalMethod, timestamp: Date.now() }
       setLogo(newLogo)
       onLogoGenerated?.(data.image)
 

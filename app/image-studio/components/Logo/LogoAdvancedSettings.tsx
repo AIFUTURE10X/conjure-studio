@@ -1,12 +1,13 @@
 "use client"
 
 import { Settings2, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
-import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel } from '../../hooks/useLogoGeneration'
+import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from '../../hooks/useLogoGeneration'
 import {
   LogoResolution,
   RESOLUTION_OPTIONS,
   BG_REMOVAL_METHODS,
-  LOGO_MODEL_OPTIONS
+  LOGO_MODEL_OPTIONS,
+  LOGO_TEXT_MODE_OPTIONS
 } from '../../constants/logo-constants'
 import { ASPECT_RATIO_OPTIONS, getAspectRatioDimensions } from '../../constants/toolbar-options'
 
@@ -19,6 +20,8 @@ interface LogoAdvancedSettingsProps {
   setAspectRatio: (ratio: LogoAspectRatio) => void
   selectedModel: LogoGenerationModel
   setSelectedModel: (model: LogoGenerationModel) => void
+  textMode: LogoTextMode
+  setTextMode: (mode: LogoTextMode) => void
   seedLocked: boolean
   setSeedLocked: (locked: boolean) => void
   seedValue: number | undefined
@@ -38,6 +41,8 @@ export function LogoAdvancedSettings({
   setAspectRatio,
   selectedModel,
   setSelectedModel,
+  textMode,
+  setTextMode,
   seedLocked,
   setSeedLocked,
   seedValue,
@@ -90,6 +95,37 @@ export function LogoAdvancedSettings({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Text Handling Setting */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-zinc-400">Text Handling</label>
+            <div className="grid grid-cols-2 gap-1">
+              {LOGO_TEXT_MODE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTextMode(option.value)}
+                  disabled={isDisabled}
+                  className={`
+                    flex min-h-[54px] flex-col items-center justify-center rounded-lg border px-2 py-2 transition-all
+                    ${textMode === option.value
+                      ? 'border-[#c99850] bg-[#c99850]/10 text-[#dbb56e]'
+                      : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 text-white'
+                    }
+                    ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  <span className="text-[11px] font-semibold leading-tight text-center">{option.label}</span>
+                  <span className={`text-[9px] leading-tight text-center ${textMode === option.value ? 'text-[#dbb56e]/75' : 'text-zinc-500'}`}>
+                    {option.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] text-zinc-500">
+              Exact Text creates a clean symbol first, then uses the Real Font Overlay for readable brand lettering
+            </p>
           </div>
 
           {/* Aspect Ratio Setting */}

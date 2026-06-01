@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import type { BgRemovalMethod, GeneratedLogo, LogoAspectRatio, LogoGenerationModel } from './useLogoGeneration'
+import type { BgRemovalMethod, GeneratedLogo, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from './useLogoGeneration'
 import { LogoConcept, RenderStyle, LogoResolution } from '../constants/logo-constants'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import { BatchGenerationOptions } from './useBatchGeneration'
@@ -31,6 +31,7 @@ export function useLogoPanelState({
   const [aspectRatio, setAspectRatio] = useState<LogoAspectRatio>('1:1')
   const [resolution, setResolution] = useState<LogoResolution>('1K')
   const [selectedModel, setSelectedModel] = useState<LogoGenerationModel>('gemini-3.1-flash-image-preview')
+  const [textMode, setTextMode] = useState<LogoTextMode>('ai-text')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [referenceImage, setReferenceImage] = useState<{ file: File; preview: string } | null>(null)
   const [referenceMode, setReferenceMode] = useState<'replicate' | 'inspire'>('replicate')
@@ -88,6 +89,7 @@ export function useLogoPanelState({
     setAspectRatio('1:1')
     setResolution('1K')
     setSelectedModel('gemini-3.1-flash-image-preview')
+    setTextMode('ai-text')
     setShowAdvanced(false)
     setReferenceImage(null)
     setReferenceMode('replicate')
@@ -118,6 +120,7 @@ export function useLogoPanelState({
     aspectRatio, setAspectRatio,
     resolution, setResolution,
     selectedModel, setSelectedModel,
+    textMode, setTextMode,
     showAdvanced, setShowAdvanced,
     referenceImage, setReferenceImage,
     referenceMode, setReferenceMode,

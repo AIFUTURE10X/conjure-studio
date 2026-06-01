@@ -10,18 +10,20 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { isTextOnlyLogo, buildTextOnlyNegativePrompt, REPLICATION_PROMPT, INSPIRE_PROMPT } from '../../utils/logo-prompt-helpers'
-import type { LogoAspectRatio, LogoGenerationModel } from '../../hooks/useLogoGeneration'
+import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel, LogoGenerationOptions, LogoResolution, LogoTextMode } from '../../hooks/useLogoGeneration'
+import type { LogoHistoryItem } from '../Logo/LogoHistory'
 
 interface UseLogoPanelGenerateConfig {
   state: {
     prompt: string
     negativePrompt: string
-    referenceImage: { file: File; preview?: string } | null
+    referenceImage: { file: File; preview: string } | null
     referenceMode: string
-    bgRemovalMethod: string
+    bgRemovalMethod: BgRemovalMethod
     aspectRatio: LogoAspectRatio
-    resolution: string
+    resolution: LogoResolution
     selectedModel: LogoGenerationModel
+    textMode: LogoTextMode
     seedLocked: boolean
     seedValue: number | undefined
     removeBackgroundOnly: boolean
@@ -29,10 +31,9 @@ interface UseLogoPanelGenerateConfig {
     getCombinedStyle: () => string
     setSeedValue: (seed: number) => void
   }
-  generateLogo: (options: any) => Promise<{ url: string; seed?: number }>
-  // Use any to match the original inline function signature
-  handleRemoveRefBackground: (ref: any) => Promise<void>
-  addToHistory: (item: any) => void
+  generateLogo: (options: LogoGenerationOptions) => Promise<{ url: string; seed?: number }>
+  handleRemoveRefBackground: (ref: { file: File; preview: string }) => Promise<void>
+  addToHistory: (item: Omit<LogoHistoryItem, 'id' | 'timestamp' | 'isFavorited'>) => void
   onLogoGenerated?: (url: string) => void
 }
 
@@ -66,6 +67,7 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
         aspectRatio: state.aspectRatio,
         resolution: state.resolution,
         model: state.selectedModel,
+        textMode: state.textMode,
         seed: state.seedLocked ? state.seedValue : undefined
       })
 
@@ -83,10 +85,12 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
           wasReplication: isReplicate,
           aspectRatio: state.aspectRatio,
           resolution: state.resolution,
+          textMode: state.textMode,
           bgRemovalMethod: state.bgRemovalMethod
         } : {
           aspectRatio: state.aspectRatio,
           resolution: state.resolution,
+          textMode: state.textMode,
           bgRemovalMethod: state.bgRemovalMethod
         }
       })
@@ -102,7 +106,7 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
 }
 
 interface UseLogoFavoriteConfig {
-  generatedLogo: { url: string; style?: string; prompt?: string; aspectRatio?: string; bgRemovalMethod?: string; seed?: number } | null
+  generatedLogo: { url: string; style?: string; prompt?: string; aspectRatio?: string; textMode?: string; bgRemovalMethod?: string; seed?: number } | null
   toggleFavorite: (url: string, meta: any) => void
 }
 
@@ -116,6 +120,7 @@ export function useLogoFavorite(config: UseLogoFavoriteConfig) {
       params: {
         prompt: generatedLogo.prompt,
         aspectRatio: generatedLogo.aspectRatio,
+        textMode: generatedLogo.textMode,
         bgRemovalMethod: generatedLogo.bgRemovalMethod,
         seed: generatedLogo.seed
       }

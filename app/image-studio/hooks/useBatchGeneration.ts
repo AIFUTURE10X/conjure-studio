@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { GeneratedLogo, LogoAspectRatio, LogoStyle, BgRemovalMethod } from './useLogoGeneration'
+import { GeneratedLogo, LogoAspectRatio, LogoStyle, BgRemovalMethod, LogoTextMode } from './useLogoGeneration'
 
 export interface BatchItem {
   id: string
@@ -21,6 +21,7 @@ export interface BatchGenerationOptions {
   style: LogoStyle
   bgRemovalMethod?: BgRemovalMethod
   aspectRatio?: LogoAspectRatio
+  textMode?: LogoTextMode
   resolution?: '1K' | '2K' | '4K'
   baseSeed?: number // Optional base seed for variation
 }
@@ -57,6 +58,7 @@ export function useBatchGeneration() {
     formData.append('style', options.style)
     formData.append('bgRemovalMethod', options.bgRemovalMethod || 'replicate')
     formData.append('aspectRatio', options.aspectRatio || '1:1')
+    formData.append('textMode', options.textMode || 'ai-text')
     formData.append('resolution', options.resolution || '1K')
     formData.append('seed', seed.toString())
     formData.append('skipBgRemoval', 'true')
@@ -90,6 +92,7 @@ export function useBatchGeneration() {
       prompt: options.prompt,
       style: options.style,
       aspectRatio: data.aspectRatio || options.aspectRatio || '1:1',
+      textMode: data.textMode || options.textMode || 'ai-text',
       bgRemovalMethod: options.bgRemovalMethod || 'replicate',
       timestamp: Date.now(),
       seed: data.seed || seed,

@@ -15,7 +15,7 @@ interface LogoModeSectionProps {
   onOpenWizard: () => void
 
   // Preset handlers
-  onApplyPreset: (prompt: string, negative: string | null, concept: LogoConcept, renders: RenderStyle[]) => void
+  onApplyPreset: (prompt: string, negative: string | undefined, concept: LogoConcept, renders: RenderStyle[]) => void
   onOpenDotMatrixConfigurator: () => void
   onOpenUnifiedConfigurator: (presetId: string) => void
   onOpenUnifiedConfiguratorWithConfig: (presetId: string, config: Record<string, any>) => void

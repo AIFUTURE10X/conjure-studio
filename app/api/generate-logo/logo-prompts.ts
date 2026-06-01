@@ -5,6 +5,8 @@
  * Extracted from route.ts to keep files under 300 lines.
  */
 
+import type { LogoTextMode } from '@/lib/logo-generation-contract'
+
 // Logo concept styles - the "what" of the logo (design philosophy)
 export type LogoConcept = 'minimalist' | 'modern' | 'vintage' | 'playful' | 'elegant' | 'bold'
 
@@ -158,6 +160,23 @@ CRITICAL - BACKGROUND FOR TRANSPARENT PNG EXPORT:
 - The logo must have clean, well-defined edges for extraction`
 }
 
+export function getTextHandlingRequirements(textMode: LogoTextMode): string {
+  if (textMode === 'exact-text-overlay') {
+    return `
+TEXT HANDLING - EXACT TYPOGRAPHY WORKFLOW:
+- Do not draw brand names, slogans, letters, numbers, or placeholder words in the AI image
+- Create a standalone symbol, icon, monogram-free mark, or emblem shape only
+- Keep the composition balanced so exact editable typography can be added afterward with the Real Font Overlay tool
+- Avoid tiny text-like marks, fake lettering, watermarks, and signature scribbles`
+  }
+
+  return `
+TEXT HANDLING:
+- If the prompt includes a brand name, include clean, simple, readable lettering
+- Keep the icon strong enough to work without the text
+- Avoid tiny taglines, extra words, fake watermarks, and illegible decorative lettering`
+}
+
 // Parse combined style format: "concept+render" (e.g., "modern+3d-metallic")
 export function parseStyle(style: string): { concept: LogoConcept; render: RenderStyle } {
   if (style.includes('+')) {
@@ -183,17 +202,18 @@ export function parseStyle(style: string): { concept: LogoConcept; render: Rende
 }
 
 // Simplified prompt for free-form generation (no background constraints)
-export function buildFreeFormLogoPrompt(userPrompt: string, style: string): string {
+export function buildFreeFormLogoPrompt(userPrompt: string, style: string, textMode: LogoTextMode = 'ai-text'): string {
   const { concept, render } = parseStyle(style)
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
+  const textRequirements = getTextHandlingRequirements(textMode)
 
   // Determine best background for the style
   const bgInstruction = render === 'neon'
     ? 'Place on a dark charcoal or black background to make the glow pop'
     : 'Place on a subtle dark gradient background (dark blue-gray to black) for premium presentation'
 
-  return `Create a STUNNING, world-class professional logo design that looks like it was made by a top design agency:
+  return `Create a polished professional logo concept suitable for a real brand identity system:
 
 BRAND/CONCEPT: ${userPrompt}
 
@@ -204,31 +224,34 @@ RENDERING STYLE:
 ${renderDescription}
 
 PROFESSIONAL LOGO REQUIREMENTS:
-1. ICONIC SYMBOL + TEXT: Create a distinctive icon/symbol AND include the brand name in stylish typography
+1. DISTINCTIVE MARK: Create a memorable symbol, icon, badge, or mark that can stand alone
 2. PERFECT COMPOSITION: Icon and text should be balanced and work together harmoniously
 3. COLOR HARMONY: Use 2-3 complementary colors that create visual impact (gradients are encouraged for 3D styles)
-4. DEPTH & DIMENSION: Add realistic shadows, highlights, and depth that make the logo pop
-5. TYPOGRAPHY: Use modern, professional font styling that matches the brand personality
-6. PREMIUM QUALITY: This should look like a $10,000 professional logo design
+4. DEPTH & DIMENSION: Add realistic shadows, highlights, and depth only when the selected style calls for it
+5. SCALABILITY: Keep the main shape readable from app-icon size to large signage
+6. PRODUCTION CLEANLINESS: No extra badges, fake UI, watermarks, signatures, or mockup context
+
+${textRequirements}
 
 VISUAL STYLE INSPIRATION:
 - Like logos you'd see for successful tech startups, real estate companies, or premium brands
 - Rich 3D effects with realistic lighting and shadows
 - Clean, memorable iconography that tells a story
-- Professional typography integrated with the icon
+- Professional composition with enough breathing room around the mark
 
 BACKGROUND:
 ${bgInstruction}
 
-Generate a single, breathtaking, production-ready logo that would win design awards. The logo should be BEAUTIFUL, PROFESSIONAL, and MEMORABLE.`
+Generate one clean logo concept only. Keep it centered, intentional, and ready for transparent-background cleanup or exact typography overlay.`
 }
 
 // Original prompt with background constraints (fallback for local BG removal)
-export function buildLogoPrompt(userPrompt: string, style: string): string {
+export function buildLogoPrompt(userPrompt: string, style: string, textMode: LogoTextMode = 'ai-text'): string {
   const { concept, render } = parseStyle(style)
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
   const backgroundReqs = getBackgroundRequirements(render)
+  const textRequirements = getTextHandlingRequirements(textMode)
 
   // Detect if user is asking for specific logo types
   const lowerPrompt = userPrompt.toLowerCase()
@@ -264,7 +287,7 @@ ICON/SYMBOL LOGO GUIDANCE:
 - Design an iconic shape that becomes synonymous with the brand`
   }
 
-  return `Create a STUNNING, world-class professional logo design that looks like it was made by a top design agency:
+  return `Create a polished professional logo concept suitable for a real brand identity system:
 
 BRAND/CONCEPT: ${userPrompt}
 
@@ -280,13 +303,15 @@ PROFESSIONAL LOGO REQUIREMENTS:
 1. ICONIC DESIGN: Create a distinctive, memorable visual that tells the brand story
 2. PERFECT COMPOSITION: Balanced proportions using golden ratio principles
 3. COLOR HARMONY: Use 2-3 complementary colors that create visual impact
-4. DEPTH & DIMENSION: Add realistic shadows, highlights, and depth
-5. TYPOGRAPHY: Include stylish, professional text if brand name is provided
-6. PREMIUM QUALITY: This should look like a $10,000 professional logo
+4. DEPTH & DIMENSION: Add realistic shadows, highlights, and depth only when the selected style calls for it
+5. SCALABILITY: Keep the main shape readable at small sizes
+6. PRODUCTION CLEANLINESS: No extra badges, fake UI, watermarks, signatures, or mockup context
+
+${textRequirements}
 
 ${UNIVERSAL_LOGO_PRINCIPLES}
 
 ${backgroundReqs}
 
-Generate a single, breathtaking, production-ready logo that would win design awards. Make it BEAUTIFUL, PROFESSIONAL, and MEMORABLE.`
+Generate one clean logo concept only. Keep it centered, well-spaced, and easy to process into a transparent PNG.`
 }

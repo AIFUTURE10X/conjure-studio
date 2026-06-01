@@ -1,47 +1,27 @@
 import { useState } from 'react'
 import { downloadLogo as downloadLogoUtil } from '../utils/export-utils'
+import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
+import type {
+  BgRemovalMethod,
+  GeneratedLogo,
+  LogoAspectRatio,
+  LogoGenerationModel,
+  LogoGenerationOptions,
+  LogoResolution,
+  LogoStyle,
+  LogoTextMode,
+} from '@/lib/logo-generation-contract'
 
-// Extended logo styles including new 3D options
-export type LogoStyle =
-  | 'minimalist' | 'flat' | '3d' | 'vintage' | 'modern'
-  | '3d-metallic' | '3d-crystal' | '3d-gradient' | 'neon'
-
-// Background removal methods ('none' = skip removal)
-export type BgRemovalMethod = 'none' | 'auto' | 'ai-local' | 'simple' | 'cloud' | 'pixian' | 'replicate' | 'smart' | 'photoroom' | '851-labs'
-
-// Resolution options
-export type LogoResolution = '1K' | '2K' | '4K'
-
-// Aspect ratio options mirror the main image generator
-export type LogoAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | '21:9' | '5:4' | '4:5'
-
-// AI generation models
-export type LogoGenerationModel = 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
-
-export interface LogoGenerationOptions {
-  prompt: string
-  negativePrompt?: string
-  style: LogoStyle
-  referenceImage?: File
-  bgRemovalMethod?: BgRemovalMethod
-  cloudApiKey?: string
-  aspectRatio?: LogoAspectRatio
-  resolution?: LogoResolution
-  model?: LogoGenerationModel
-  seed?: number // Optional seed for reproducible generation
-  skipBgRemoval?: boolean // Skip background removal (default: true)
-}
-
-export interface GeneratedLogo {
-  url: string
-  originalUrl?: string // Stores the original image before background removal
-  prompt: string
-  style: LogoStyle | string
-  aspectRatio: LogoAspectRatio
-  bgRemovalMethod: BgRemovalMethod
-  timestamp: number
-  seed?: number // The seed used for generation (if available)
-}
+export type {
+  BgRemovalMethod,
+  GeneratedLogo,
+  LogoAspectRatio,
+  LogoGenerationModel,
+  LogoGenerationOptions,
+  LogoResolution,
+  LogoStyle,
+  LogoTextMode,
+} from '@/lib/logo-generation-contract'
 
 export function useLogoGeneration() {
   const [isGenerating, setIsGenerating] = useState(false)
@@ -56,10 +36,11 @@ export function useLogoGeneration() {
       const formData = new FormData()
       formData.append('prompt', options.prompt)
       formData.append('style', options.style)
-      formData.append('bgRemovalMethod', options.bgRemovalMethod || 'replicate')
-      formData.append('aspectRatio', options.aspectRatio || '1:1')
-      formData.append('resolution', options.resolution || '1K')
-      formData.append('model', options.model || 'gemini-3.1-flash-image-preview')
+      formData.append('bgRemovalMethod', options.bgRemovalMethod || DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
+      formData.append('aspectRatio', options.aspectRatio || DEFAULT_LOGO_GENERATION_SETTINGS.aspectRatio)
+      formData.append('resolution', options.resolution || DEFAULT_LOGO_GENERATION_SETTINGS.resolution)
+      formData.append('model', options.model || DEFAULT_LOGO_GENERATION_SETTINGS.model)
+      formData.append('textMode', options.textMode || DEFAULT_LOGO_GENERATION_SETTINGS.textMode)
 
       if (options.negativePrompt) {
         formData.append('negativePrompt', options.negativePrompt)
@@ -104,7 +85,8 @@ export function useLogoGeneration() {
         url: data.image,
         prompt: options.prompt,
         style: options.style,
-        aspectRatio: data.aspectRatio || options.aspectRatio || '1:1',
+        aspectRatio: data.aspectRatio || options.aspectRatio || DEFAULT_LOGO_GENERATION_SETTINGS.aspectRatio,
+        textMode: data.textMode || options.textMode || DEFAULT_LOGO_GENERATION_SETTINGS.textMode,
         bgRemovalMethod: options.bgRemovalMethod || 'auto',
         timestamp: Date.now(),
         seed: data.seed // Include seed from API response

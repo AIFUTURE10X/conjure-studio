@@ -70,6 +70,7 @@ export function LogoActionButtons({
   const [showUpscaleMenu, setShowUpscaleMenu] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const isExporting = isExportingSvg || isExportingPdf
+  const needsExactText = generatedLogo.textMode === 'exact-text-overlay'
 
   const handleUpscale = (resolution: '2K' | '4K', method: 'ai' | 'fast') => {
     setShowUpscaleMenu(false)
@@ -238,10 +239,14 @@ export function LogoActionButtons({
             <Button
               onClick={onShowRealFontOverlay}
               size="sm"
-              className="h-8 flex-1 bg-linear-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 text-purple-400 border border-purple-500/30 text-xs"
+              className={`h-8 flex-1 border text-xs ${
+                needsExactText
+                  ? 'bg-[#c99850]/20 hover:bg-[#c99850]/30 text-[#dbb56e] border-[#c99850]/40'
+                  : 'bg-linear-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 text-purple-400 border-purple-500/30'
+              }`}
             >
               <ALargeSmall className="w-3 h-3 mr-1.5" />
-              Real Font Overlay
+              {needsExactText ? 'Add Exact Text' : 'Real Font Overlay'}
             </Button>
           )}
           {onShowMockup && (

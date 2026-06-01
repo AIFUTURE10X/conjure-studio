@@ -71,6 +71,7 @@ export function LogoPanel({
       aspectRatio: state.aspectRatio,
       resolution: state.resolution,
       selectedModel: state.selectedModel,
+      textMode: state.textMode,
       seedLocked: state.seedLocked,
       seedValue: state.seedValue,
       removeBackgroundOnly: state.removeBackgroundOnly,
@@ -160,6 +161,8 @@ export function LogoPanel({
             setAspectRatio={state.setAspectRatio}
             selectedModel={state.selectedModel}
             setSelectedModel={state.setSelectedModel}
+            textMode={state.textMode}
+            setTextMode={state.setTextMode}
             seedLocked={state.seedLocked}
             setSeedLocked={state.setSeedLocked}
             seedValue={state.seedValue}
@@ -186,6 +189,7 @@ export function LogoPanel({
                 bgRemovalMethod: state.bgRemovalMethod,
                 aspectRatio: state.aspectRatio,
                 resolution: state.resolution,
+                textMode: state.textMode,
                 baseSeed: state.seedLocked ? state.seedValue : undefined,
               })
               state.setShowBatchGenerator(true)
@@ -227,6 +231,7 @@ export function LogoPanel({
                 state.setSeedLocked(true)
               }
               if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
+              if (item.config?.textMode) state.setTextMode(item.config.textMode)
               if (item.presetId) state.setSelectedPresetId(item.presetId)
             }}
             onLoadImage={(item) => {
@@ -236,6 +241,7 @@ export function LogoPanel({
                 prompt: item.prompt,
                 style: item.style || '',
                 aspectRatio: item.config?.aspectRatio || '1:1',
+                textMode: item.config?.textMode || 'ai-text',
                 bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
                 timestamp: item.timestamp,
                 seed: item.seed
@@ -248,6 +254,7 @@ export function LogoPanel({
                 state.setSeedLocked(true)
               }
               if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
+              if (item.config?.textMode) state.setTextMode(item.config.textMode)
               if (item.presetId) state.setSelectedPresetId(item.presetId)
               toast.success('Image loaded! You can now preview on mockups.', { duration: 3000 })
             }}
@@ -258,11 +265,13 @@ export function LogoPanel({
                 prompt: item.prompt,
                 style: item.style || '',
                 aspectRatio: item.config?.aspectRatio || '1:1',
+                textMode: item.config?.textMode || 'ai-text',
                 bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
                 timestamp: item.timestamp,
                 seed: item.seed
               })
               if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
+              if (item.config?.textMode) state.setTextMode(item.config.textMode)
               state.setShowMockupPreview(true)
               toast.success('Logo sent to mockups!')
             }}
@@ -315,6 +324,7 @@ export function LogoPanel({
         generatedLogo={generatedLogo} setLogo={setLogo}
         bgRemovalMethod={state.bgRemovalMethod} resolution={state.resolution}
         aspectRatio={state.aspectRatio}
+        textMode={state.textMode}
         seedLocked={state.seedLocked} seedValue={state.seedValue} setSeedValue={state.setSeedValue}
         setPrompt={state.setPrompt} setNegativePrompt={state.setNegativePrompt}
         setSelectedConcept={state.setSelectedConcept} setSelectedRenders={state.setSelectedRenders}

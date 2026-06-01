@@ -35,7 +35,7 @@ export const RENDER_STYLES: Array<{
 ]
 
 // Background removal methods
-import type { BgRemovalMethod, LogoGenerationModel } from '../hooks/useLogoGeneration'
+import type { BgRemovalMethod, LogoGenerationModel, LogoTextMode } from '../hooks/useLogoGeneration'
 
 export const BG_REMOVAL_METHODS: Array<{
   value: BgRemovalMethod
@@ -90,6 +90,23 @@ export const LOGO_MODEL_OPTIONS: Array<{
     value: 'gemini-3-pro-image-preview',
     label: 'Gemini 3 Pro',
     description: 'Best Gemini quality',
+  },
+]
+
+export const LOGO_TEXT_MODE_OPTIONS: Array<{
+  value: LogoTextMode
+  label: string
+  description: string
+}> = [
+  {
+    value: 'ai-text',
+    label: 'AI Text',
+    description: 'Let the image model draw lettering',
+  },
+  {
+    value: 'exact-text-overlay',
+    label: 'Exact Text',
+    description: 'Generate mark only, add real fonts after',
   },
 ]
 
