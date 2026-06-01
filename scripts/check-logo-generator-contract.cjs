@@ -107,6 +107,12 @@ const checks = [
       !/bgRemovalMethod:\s*'replicate'/.test(read('lib/logo-generation-contract.ts')),
   },
   {
+    name: 'logo generation applies selected background removal by default',
+    pass: () => /options\.skipBgRemoval === true \? 'true' : 'false'/.test(read('app/image-studio/hooks/useLogoGeneration.ts')) &&
+      /DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod/.test(read('app/image-studio/hooks/useLogoGeneration.ts')) &&
+      !/Skip background removal by default/.test(read('app/image-studio/hooks/useLogoGeneration.ts')),
+  },
+  {
     name: 'logo panel defaults and reset use smart background removal',
     pass: () => /useState<BgRemovalMethod>\('smart'\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
       /setBgRemovalMethod\('smart'\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')),

@@ -58,8 +58,7 @@ export function useLogoGeneration() {
         formData.append('seed', options.seed.toString())
       }
 
-      // Skip background removal by default (true), unless explicitly set to false
-      formData.append('skipBgRemoval', options.skipBgRemoval === false ? 'false' : 'true')
+      formData.append('skipBgRemoval', options.skipBgRemoval === true ? 'true' : 'false')
 
       const response = await fetch('/api/generate-logo', {
         method: 'POST',
@@ -87,7 +86,7 @@ export function useLogoGeneration() {
         style: options.style,
         aspectRatio: data.aspectRatio || options.aspectRatio || DEFAULT_LOGO_GENERATION_SETTINGS.aspectRatio,
         textMode: data.textMode || options.textMode || DEFAULT_LOGO_GENERATION_SETTINGS.textMode,
-        bgRemovalMethod: options.bgRemovalMethod || 'auto',
+        bgRemovalMethod: options.bgRemovalMethod || DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod,
         timestamp: Date.now(),
         seed: data.seed // Include seed from API response
       }
