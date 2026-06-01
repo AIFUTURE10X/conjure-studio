@@ -23,22 +23,22 @@ export function SubjectImageGrid({
 }: SubjectImageGridProps) {
   if (subjectImages.length === 0) {
     return (
-      <div>
-        <div className="w-16 h-16 rounded-full bg-linear-to-br from-[#c99850] to-[#dbb56e] border-2 border-[#f4d698] flex items-center justify-center mx-auto mb-4">
-          <Upload className="w-8 h-8 text-black" />
+      <div className="min-h-[150px] flex flex-col items-center justify-center text-center">
+        <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#c99850] to-[#dbb56e] border border-[#f4d698]/80 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-[#c99850]/10">
+          <Upload className="w-6 h-6 text-black" />
         </div>
-        <p className="text-zinc-300 mb-2">Drag & drop subject images here</p>
-        <p className="text-xs text-zinc-500">or click the "Add Subjects" button above</p>
+        <p className="text-sm font-medium text-zinc-200">Drop subjects here</p>
+        <p className="text-xs text-zinc-500 mt-1">or browse from your device</p>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {subjectImages.map((img) => (
         <div
           key={img.id}
-          className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
+          className={`relative group rounded-lg overflow-hidden border transition-all bg-zinc-950 ${
             img.selected
               ? 'border-[#c99850] shadow-lg shadow-[#c99850]/20'
               : 'border-zinc-700'
@@ -47,7 +47,7 @@ export function SubjectImageGrid({
           <img
             src={img.preview || "/placeholder.svg"}
             alt="Subject"
-            className="w-full h-32 object-cover"
+            className="w-full h-28 object-cover"
           />
 
           {/* Overlay Controls */}

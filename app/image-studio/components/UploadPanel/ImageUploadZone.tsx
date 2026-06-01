@@ -7,7 +7,6 @@
  */
 
 import { useRef } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, X } from 'lucide-react'
 import type { UploadedImage } from '../../types'
@@ -46,23 +45,23 @@ export function ImageUploadZone({
   }
 
   return (
-    <Card className="bg-zinc-800 border-zinc-700 p-6">
-      <div className="flex items-center justify-between mb-4">
+    <section className="rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          <p className="text-sm text-zinc-400">{subtitle}</p>
+          <h3 className="text-base font-semibold text-white">{title}</h3>
+          <p className="text-sm text-zinc-500">{subtitle}</p>
         </div>
         {!image && (
           <Button
             size="sm"
             onClick={() => inputRef.current?.click()}
-            className="font-semibold text-black"
+            className="shrink-0 font-semibold text-black"
             style={{
               background: "linear-gradient(135deg, #c99850 0%, #dbb56e 25%, #f4d698 50%, #dbb56e 75%, #c99850 100%)",
             }}
           >
             <Upload className="w-3 h-3 mr-1" />
-            Add
+            Browse
           </Button>
         )}
         <input
@@ -79,18 +78,18 @@ export function ImageUploadZone({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={() => !image && inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        className={`min-h-[120px] border border-dashed rounded-lg p-3 text-center transition-colors flex items-center justify-center ${
           isDragging
             ? 'border-[#c99850] bg-[#c99850]/10'
-            : 'border-[#c99850]/50 hover:border-[#c99850]'
+            : 'border-[#c99850]/40 bg-zinc-950/20 hover:border-[#c99850]/80 hover:bg-zinc-950/40'
         } ${!image ? 'cursor-pointer' : ''}`}
       >
         {image ? (
-          <div className="relative group">
+          <div className="relative group w-full">
             <img
               src={image.preview || "/placeholder.svg"}
               alt={title}
-              className="w-full h-40 object-cover rounded-lg"
+              className="w-full h-32 object-cover rounded-lg"
             />
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
               <Button
@@ -108,13 +107,13 @@ export function ImageUploadZone({
           </div>
         ) : (
           <div>
-            <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#c99850] to-[#dbb56e] border-2 border-[#f4d698] flex items-center justify-center mx-auto mb-2">
-              <Upload className="w-6 h-6 text-black" />
+            <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#c99850] to-[#dbb56e] border border-[#f4d698]/80 flex items-center justify-center mx-auto mb-2 shadow-lg shadow-[#c99850]/10">
+              <Upload className="w-5 h-5 text-black" />
             </div>
-            <p className="text-xs text-zinc-400">Drop {title.toLowerCase()} here</p>
+            <p className="text-xs font-medium text-zinc-300">Drop image here</p>
           </div>
         )}
       </div>
-    </Card>
+    </section>
   )
 }

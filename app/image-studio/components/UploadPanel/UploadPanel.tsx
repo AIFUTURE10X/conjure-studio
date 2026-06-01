@@ -10,7 +10,7 @@ import { useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Upload, X, ChevronDown, Info } from 'lucide-react'
+import { Upload, X, ChevronDown, Info, Images } from 'lucide-react'
 import type { UploadedImage } from '../../types'
 import { SubjectImageGrid } from './SubjectImageGrid'
 import { ImageUploadZone } from './ImageUploadZone'
@@ -50,6 +50,8 @@ export function UploadPanel({
 }: UploadPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const subjectInputRef = useRef<HTMLInputElement>(null)
+  const selectedSubjectCount = subjectImages.filter((image) => image.selected).length
+  const hasAnyReference = subjectImages.length > 0 || sceneImage || styleImage
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -91,65 +93,82 @@ export function UploadPanel({
 
   return (
     <div className="space-y-6">
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="overflow-hidden bg-zinc-950/60 border-zinc-800">
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="w-full flex items-center justify-between p-4 text-left hover:bg-zinc-800/50 transition-colors"
+          className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-zinc-900/80 transition-colors"
         >
           <div>
-            <h2 className="text-xl font-semibold text-white">Image References</h2>
-            <p className="text-sm text-zinc-400">Upload subjects, scenes, and style references</p>
+            <h2 className="text-lg font-semibold text-white">Image References</h2>
+            <p className="text-sm text-zinc-400">Subjects, background, and style cues</p>
           </div>
           <ChevronDown
-            className={`w-5 h-5 text-zinc-400 transition-transform ${
+            className={`w-5 h-5 shrink-0 text-zinc-400 transition-transform ${
               isCollapsed ? '-rotate-90' : ''
             }`}
           />
         </button>
 
         {!isCollapsed && (
-          <div className="p-6 pt-0 space-y-6">
+          <div className="px-5 pb-5 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <ReferenceStatus
+                label="Subjects"
+                value={subjectImages.length > 0 ? `${selectedSubjectCount}/${subjectImages.length} selected` : 'None'}
+                active={subjectImages.length > 0}
+              />
+              <ReferenceStatus label="Scene" value={sceneImage ? 'Added' : 'Optional'} active={!!sceneImage} />
+              <ReferenceStatus label="Style" value={styleImage ? 'Added' : 'Optional'} active={!!styleImage} />
+            </div>
+
             {/* Subject Images Section */}
-            <Card className="bg-zinc-800 border-zinc-700 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">Subject Images</h3>
-                    <p className="text-sm text-zinc-400">Upload one or more subjects to include in your generation</p>
+            <section className="rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#c99850]/25 bg-[#c99850]/10">
+                    <Images className="h-4 w-4 text-[#dbb56e]" />
                   </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="text-zinc-400 hover:text-[#c99850] transition-colors">
-                        <Info className="w-4 h-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs bg-black border-[#c99850] text-[#c99850]">
-                      <p className="text-sm">
-                        Upload multiple subjects to combine them in your generation.
-                        Select which subjects to include by clicking on them.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-white">Subject Images</h3>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button className="text-zinc-500 hover:text-[#c99850] transition-colors">
+                            <Info className="w-4 h-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs bg-black border-[#c99850] text-[#c99850]">
+                          <p className="text-sm">
+                            Upload multiple subjects to combine them in your generation.
+                            Select which subjects to include by clicking on them.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <p className="text-sm text-zinc-500">People, products, or objects to include</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {(subjectImages.length > 0 || sceneImage || styleImage) && clearAllImages && (
+                <div className="flex shrink-0 items-center gap-2">
+                  {hasAnyReference && clearAllImages && (
                     <Button
                       onClick={handleClearAll}
                       variant="outline"
+                      size="sm"
                       className="font-semibold text-zinc-400 border-zinc-700 hover:text-white hover:border-zinc-600"
                     >
-                      <X className="w-4 h-4 mr-2" />
+                      <X className="w-3.5 h-3.5 mr-1.5" />
                       Clear All
                     </Button>
                   )}
                   <Button
                     onClick={() => subjectInputRef.current?.click()}
+                    size="sm"
                     className="font-semibold text-black"
                     style={{
                       background: "linear-gradient(135deg, #c99850 0%, #dbb56e 25%, #f4d698 50%, #dbb56e 75%, #c99850 100%)",
                     }}
                   >
-                    <Upload className="w-4 h-4 mr-2" />
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
                     Add Subjects
                   </Button>
                 </div>
@@ -169,10 +188,10 @@ export function UploadPanel({
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'subject')}
                 onClick={() => subjectImages.length === 0 && subjectInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                className={`border border-dashed rounded-lg p-3 text-center transition-colors ${
                   isDragging
                     ? 'border-[#c99850] bg-[#c99850]/10'
-                    : 'border-[#c99850]/50 hover:border-[#c99850]'
+                    : 'border-[#c99850]/40 bg-zinc-950/20 hover:border-[#c99850]/80 hover:bg-zinc-950/40'
                 } ${subjectImages.length === 0 ? 'cursor-pointer' : ''}`}
               >
                 <SubjectImageGrid
@@ -181,13 +200,13 @@ export function UploadPanel({
                   onRemove={removeSubjectImage}
                 />
               </div>
-            </Card>
+            </section>
 
             {/* Scene & Style Images */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-4">
               <ImageUploadZone
                 title="Scene/Background"
-                subtitle="Optional scene reference"
+                subtitle="Where the image should feel set"
                 image={sceneImage}
                 isDragging={isDragging}
                 onDragOver={handleDragOver}
@@ -199,7 +218,7 @@ export function UploadPanel({
 
               <ImageUploadZone
                 title="Style Reference"
-                subtitle="Optional artistic style"
+                subtitle="Look, finish, palette, or mood"
                 image={styleImage}
                 isDragging={isDragging}
                 onDragOver={handleDragOver}
@@ -212,6 +231,20 @@ export function UploadPanel({
           </div>
         )}
       </Card>
+    </div>
+  )
+}
+
+function ReferenceStatus({ label, value, active }: { label: string; value: string; active: boolean }) {
+  return (
+    <div className={`rounded-full border px-3 py-1 text-xs ${
+      active
+        ? 'border-[#c99850]/40 bg-[#c99850]/10 text-[#f4d698]'
+        : 'border-zinc-800 bg-zinc-900/60 text-zinc-500'
+    }`}>
+      <span className="font-medium text-zinc-300">{label}</span>
+      <span className="mx-1.5 text-zinc-600">/</span>
+      <span>{value}</span>
     </div>
   )
 }
