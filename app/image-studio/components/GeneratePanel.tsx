@@ -12,7 +12,6 @@ import { useImageGeneration } from '../hooks/useImageGeneration'
 import { GeneratedImageCard } from './GeneratedImageCard'
 import { useGenerationHistory } from '../hooks/useGenerationHistory'
 import { SeedControlDropdown } from './SeedControlDropdown'
-import { RemoveBgButton } from './RemoveBgButton'
 import { AnalysisCard } from './GeneratePanel/AnalysisCard'
 import { CombinedPromptCard } from './GeneratePanel/CombinedPromptCard'
 import { ModelSelector, type GenerationModel, type ImageSize } from './GeneratePanel/ModelSelector'
@@ -96,7 +95,6 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     const { saveToHistory } = useGenerationHistory()
 
     const [showAdvanced, setShowAdvanced] = useState(showAdvancedOptions)
-    const [isRemovingBg, setIsRemovingBg] = useState(false)
     const [usePhotoRoomBgRemoval, setUsePhotoRoomBgRemoval] = useState(true)
     const [seed, setSeedInternal] = useState<number | null>(controlledSeed ?? null)
     const [editedSubject, setEditedSubject] = useState('')
@@ -186,12 +184,6 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       } catch (error) { console.error('[v0] Background removal error:', error) }
     }
 
-    const handleBulkRemoveBackground = async () => {
-      if (generatedImages.length === 0) return
-      setIsRemovingBg(true)
-      try { await handleRemoveBackground(0) } finally { setIsRemovingBg(false) }
-    }
-
     const handleUpscale = async (i: number) => {
       const original = generatedImages[i]
       if (!original) return
@@ -253,13 +245,11 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
                     type="checkbox"
                     checked={usePhotoRoomBgRemoval}
                     onChange={(e) => setUsePhotoRoomBgRemoval(e.target.checked)}
-                    disabled={isRemovingBg}
                     aria-label="Use PhotoRoom for background removal"
                     className="h-3.5 w-3.5 accent-[#c99850]"
                   />
                   PhotoRoom BG
                 </label>
-                <RemoveBgButton onRemoveBackground={handleBulkRemoveBackground} isRemovingBg={isRemovingBg} disabled={generatedImages.length === 0} />
                 <PresetControls
                   mainPrompt={mainPrompt}
                   negativePrompt={negativePrompt}

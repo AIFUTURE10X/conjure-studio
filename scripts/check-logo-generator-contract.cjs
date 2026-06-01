@@ -125,6 +125,11 @@ const checks = [
       /PhotoRoom BG/.test(read('app/image-studio/components/GeneratePanel.tsx')),
   },
   {
+    name: 'image generator omits redundant toolbar background removal button',
+    pass: () => !/RemoveBgButton/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      !/handleBulkRemoveBackground/.test(read('app/image-studio/components/GeneratePanel.tsx')),
+  },
+  {
     name: 'manual background removal avoids Replicate',
     pass: () => /formData\.append\('bgRemovalMethod', usePhotoRoomBgRemoval \? 'photoroom' : 'smart'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       !/formData\.append\('bgRemovalMethod', 'replicate'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
