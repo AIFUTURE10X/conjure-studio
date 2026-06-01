@@ -43,7 +43,7 @@ export function ModelSelector({
                 : 'bg-zinc-900 text-white/70 hover:bg-zinc-700 border border-[#c99850]/30'
             }`}
           >
-            <div className="font-bold">ChatGPT Image 2</div>
+            <div className="font-bold">ChatGPT Images 2.0</div>
             <div className="text-[10px] opacity-70">OpenAI</div>
           </button>
           <button

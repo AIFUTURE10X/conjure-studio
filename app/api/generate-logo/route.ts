@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateImageWithRetry, type GenerationModel } from "@/lib/gemini-client"
+import { generateOpenAIImage, type OpenAIImageQuality } from "@/lib/openai-image-client"
 import { removeBackground, type BackgroundRemovalMethod } from "@/lib/background-removal"
 
 export const runtime = "nodejs"
@@ -10,6 +11,39 @@ import { removeBackgroundWithPixelcut } from "@/lib/pixelcut-bg-removal"
 import { upscaleWithRealESRGAN, isReplicateAvailable } from "@/lib/replicate-upscaler"
 import { buildFreeFormLogoPrompt, buildLogoPrompt } from "./logo-prompts"
 import sharp from 'sharp'
+
+type LogoGenerationModel = GenerationModel | 'gpt-image-2'
+type LogoGenerationResult = {
+  success: boolean
+  imageBase64?: string
+  error?: string
+  seed?: number
+}
+
+function normalizeModel(input: string | null): LogoGenerationModel {
+  const migrations: Record<string, LogoGenerationModel> = {
+    'gemini-2.5-flash-preview-image': 'gemini-3.1-flash-image-preview',
+    'gemini-2.5-flash-image': 'gemini-3.1-flash-image-preview',
+    'gemini-2.0-flash-exp': 'gemini-3.1-flash-image-preview',
+    'gemini-3-pro-image': 'gemini-3-pro-image-preview',
+    'chatgpt-image-generator-2': 'gpt-image-2',
+    'chatgpt-image-latest': 'gpt-image-2',
+  }
+  const migrated = input ? (migrations[input] || input) : null
+  const allowed: LogoGenerationModel[] = ['gemini-3.1-flash-image-preview', 'gemini-3-pro-image-preview', 'gpt-image-2']
+  if (migrated && allowed.includes(migrated as LogoGenerationModel)) {
+    return migrated as LogoGenerationModel
+  }
+  return 'gemini-3.1-flash-image-preview'
+}
+
+function isOpenAIImageModel(model: LogoGenerationModel): model is 'gpt-image-2' {
+  return model === 'gpt-image-2'
+}
+
+function normalizeImageQuality(input: string | null): OpenAIImageQuality {
+  return input === 'low' ? 'low' : 'auto'
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +56,7 @@ export async function POST(request: NextRequest) {
     const bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'auto'
     const cloudApiKey = formData.get('cloudApiKey') as string | null
     const resolutionParam = formData.get('resolution') as string | null
+    const imageQuality = normalizeImageQuality(formData.get('imageQuality') as string | null)
     const seedParam = formData.get('seed') as string | null
     const seed = seedParam ? parseInt(seedParam, 10) : undefined
     // Skip background removal by default - user can remove it afterward
@@ -45,6 +80,7 @@ export async function POST(request: NextRequest) {
       prompt: prompt?.substring(0, 100),
       negativePrompt: negativePrompt?.substring(0, 50),
       style,
+      model: modelParam,
       bgRemovalMethod,
       skipBgRemoval,
       resolution,
@@ -74,25 +110,34 @@ export async function POST(request: NextRequest) {
     console.log("[Logo API] Has negative prompt:", !!negativePrompt?.trim())
     console.log("[Logo API] Enhanced prompt:", enhancedPrompt.substring(0, 200) + "...")
 
-    // Determine model - default to pro for quality, but allow override to flash for speed
-    // Support old model names for backwards compatibility
-    const model: GenerationModel = (modelParam === 'gemini-3-pro-image-preview')
-      ? 'gemini-3-pro-image-preview'
-      : 'gemini-3.1-flash-image-preview'
+    const model = normalizeModel(modelParam)
 
-    // Generate the logo image with Gemini
-    // Gemini 3 Pro Image natively supports 1K, 2K, and 4K resolutions via image_size config
-    // disableSearch: true prevents Google Search from injecting existing brand references
-    // This ensures original, creative logo designs without web influence
-    const result = await generateImageWithRetry({
-      prompt: enhancedPrompt,
-      aspectRatio: "1:1", // Logos are typically square
-      model,
-      imageSize: resolution, // Gemini 3 Pro natively supports 1K, 2K, 4K
-      referenceImage,
-      seed, // Pass seed for reproducible generation
-      disableSearch: true, // Critical for original creative logo generation
-    })
+    // Generate the logo image. Gemini keeps seed support; OpenAI uses GPT Image 2.
+    const result: LogoGenerationResult = isOpenAIImageModel(model)
+      ? await generateOpenAIImage({
+          prompt: enhancedPrompt,
+          aspectRatio: "1:1",
+          imageSize: resolution,
+          imageQuality,
+          referenceImageFile,
+        })
+          .then((openAIResult) => ({
+            success: true,
+            imageBase64: openAIResult.imageBase64,
+          }))
+          .catch((error) => ({
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to generate logo with ChatGPT Images 2.0",
+          }))
+      : await generateImageWithRetry({
+          prompt: enhancedPrompt,
+          aspectRatio: "1:1", // Logos are typically square
+          model,
+          imageSize: resolution, // Gemini 3 Pro natively supports 1K, 2K, 4K
+          referenceImage,
+          seed, // Pass seed for reproducible generation
+          disableSearch: true, // Critical for original creative logo generation
+        })
 
     if (!result.success || !result.imageBase64) {
       console.error("[Logo API] Generation failed:", result.error)

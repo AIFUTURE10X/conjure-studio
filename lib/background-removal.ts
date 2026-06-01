@@ -34,6 +34,7 @@ export type BackgroundRemovalMethod =
   | 'cloud'
   | 'pixian'
   | 'replicate'
+  | '851-labs'
   | 'smart'
   | 'pixelcut'
   | 'photoroom'

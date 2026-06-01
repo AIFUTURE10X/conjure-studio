@@ -12,6 +12,9 @@ export type BgRemovalMethod = 'none' | 'auto' | 'ai-local' | 'simple' | 'cloud' 
 // Resolution options
 export type LogoResolution = '1K' | '2K' | '4K'
 
+// AI generation models
+export type LogoGenerationModel = 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
+
 export interface LogoGenerationOptions {
   prompt: string
   negativePrompt?: string
@@ -20,6 +23,7 @@ export interface LogoGenerationOptions {
   bgRemovalMethod?: BgRemovalMethod
   cloudApiKey?: string
   resolution?: LogoResolution
+  model?: LogoGenerationModel
   seed?: number // Optional seed for reproducible generation
   skipBgRemoval?: boolean // Skip background removal (default: true)
 }
@@ -49,6 +53,7 @@ export function useLogoGeneration() {
       formData.append('style', options.style)
       formData.append('bgRemovalMethod', options.bgRemovalMethod || 'replicate')
       formData.append('resolution', options.resolution || '1K')
+      formData.append('model', options.model || 'gemini-3.1-flash-image-preview')
 
       if (options.negativePrompt) {
         formData.append('negativePrompt', options.negativePrompt)

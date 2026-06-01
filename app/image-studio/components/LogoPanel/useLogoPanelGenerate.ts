@@ -10,6 +10,7 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { isTextOnlyLogo, buildTextOnlyNegativePrompt, REPLICATION_PROMPT, INSPIRE_PROMPT } from '../../utils/logo-prompt-helpers'
+import type { LogoGenerationModel } from '../../hooks/useLogoGeneration'
 
 interface UseLogoPanelGenerateConfig {
   state: {
@@ -19,6 +20,7 @@ interface UseLogoPanelGenerateConfig {
     referenceMode: string
     bgRemovalMethod: string
     resolution: string
+    selectedModel: LogoGenerationModel
     seedLocked: boolean
     seedValue: number | undefined
     removeBackgroundOnly: boolean
@@ -61,6 +63,7 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
         referenceImage: state.referenceImage?.file,
         bgRemovalMethod: state.bgRemovalMethod,
         resolution: state.resolution,
+        model: state.selectedModel,
         seed: state.seedLocked ? state.seedValue : undefined
       })
 

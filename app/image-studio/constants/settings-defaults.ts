@@ -77,7 +77,7 @@ export const SETTING_DEFINITIONS = {
         type: 'select' as const,
         options: [
           { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash (Fast)' },
-          { value: 'gpt-image-2', label: 'ChatGPT Image Generator 2' },
+          { value: 'gpt-image-2', label: 'ChatGPT Images 2.0' },
           { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro (Best Quality)' },
         ],
       },

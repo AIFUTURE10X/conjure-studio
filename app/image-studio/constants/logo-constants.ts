@@ -35,7 +35,7 @@ export const RENDER_STYLES: Array<{
 ]
 
 // Background removal methods
-import { BgRemovalMethod } from '../hooks/useLogoGeneration'
+import type { BgRemovalMethod, LogoGenerationModel } from '../hooks/useLogoGeneration'
 
 export const BG_REMOVAL_METHODS: Array<{
   value: BgRemovalMethod
@@ -69,6 +69,28 @@ export const RESOLUTION_OPTIONS: Array<{ value: LogoResolution; label: string }>
   { value: '1K', label: '1K (1024px)' },
   { value: '2K', label: '2K (2048px)' },
   { value: '4K', label: '4K (4096px)' },
+]
+
+export const LOGO_MODEL_OPTIONS: Array<{
+  value: LogoGenerationModel
+  label: string
+  description: string
+}> = [
+  {
+    value: 'gemini-3.1-flash-image-preview',
+    label: 'Gemini 3.1 Flash',
+    description: 'Fast',
+  },
+  {
+    value: 'gpt-image-2',
+    label: 'ChatGPT Images 2.0',
+    description: 'OpenAI latest',
+  },
+  {
+    value: 'gemini-3-pro-image-preview',
+    label: 'Gemini 3 Pro',
+    description: 'Best Gemini quality',
+  },
 ]
 
 export const GOLD_GRADIENT = "linear-gradient(135deg, #c99850 0%, #dbb56e 25%, #f4d698 50%, #dbb56e 75%, #c99850 100%)"

@@ -1,11 +1,12 @@
 "use client"
 
 import { Settings2, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
-import { BgRemovalMethod } from '../../hooks/useLogoGeneration'
+import type { BgRemovalMethod, LogoGenerationModel } from '../../hooks/useLogoGeneration'
 import {
   LogoResolution,
   RESOLUTION_OPTIONS,
-  BG_REMOVAL_METHODS
+  BG_REMOVAL_METHODS,
+  LOGO_MODEL_OPTIONS
 } from '../../constants/logo-constants'
 
 interface LogoAdvancedSettingsProps {
@@ -13,6 +14,8 @@ interface LogoAdvancedSettingsProps {
   setShowAdvanced: (show: boolean) => void
   resolution: LogoResolution
   setResolution: (res: LogoResolution) => void
+  selectedModel: LogoGenerationModel
+  setSelectedModel: (model: LogoGenerationModel) => void
   seedLocked: boolean
   setSeedLocked: (locked: boolean) => void
   seedValue: number | undefined
@@ -28,6 +31,8 @@ export function LogoAdvancedSettings({
   setShowAdvanced,
   resolution,
   setResolution,
+  selectedModel,
+  setSelectedModel,
   seedLocked,
   setSeedLocked,
   seedValue,
@@ -37,6 +42,9 @@ export function LogoAdvancedSettings({
   isGenerating,
   isRemovingBackground,
 }: LogoAdvancedSettingsProps) {
+  const isDisabled = isGenerating || isRemovingBackground
+  const seedDisabled = isDisabled || selectedModel === 'gpt-image-2'
+
   return (
     <>
       {/* Advanced Settings Toggle */}
@@ -52,6 +60,33 @@ export function LogoAdvancedSettings({
       {/* Advanced Settings Panel */}
       {showAdvanced && (
         <div className="p-2 bg-zinc-800/50 rounded-lg border border-zinc-700 space-y-2">
+          {/* Model Setting */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-zinc-400">AI Model</label>
+            <div className="grid grid-cols-3 gap-1">
+              {LOGO_MODEL_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setSelectedModel(option.value)}
+                  disabled={isDisabled}
+                  className={`
+                    flex min-h-[54px] flex-col items-center justify-center py-2 px-2 rounded-lg border transition-all
+                    ${selectedModel === option.value
+                      ? 'border-[#c99850] bg-linear-to-b from-[#c99850] to-[#a67c3d] text-black'
+                      : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 text-white'
+                    }
+                    ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  <span className="text-[11px] font-semibold leading-tight text-center">{option.label}</span>
+                  <span className={`text-[9px] leading-tight text-center ${selectedModel === option.value ? 'text-black/70' : 'text-zinc-500'}`}>
+                    {option.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Resolution Setting */}
           <div className="space-y-1.5">
             <label className="text-[10px] text-zinc-400">Resolution</label>
@@ -60,14 +95,14 @@ export function LogoAdvancedSettings({
                 <button
                   key={option.value}
                   onClick={() => setResolution(option.value)}
-                  disabled={isGenerating || isRemovingBackground}
+                  disabled={isDisabled}
                   className={`
                     flex flex-col items-center py-2 px-3 rounded-lg border transition-all
                     ${resolution === option.value
                       ? 'border-[#c99850] bg-linear-to-b from-[#c99850] to-[#a67c3d] text-black'
                       : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 text-white'
                     }
-                    ${(isGenerating || isRemovingBackground) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                   `}
                 >
                   <span className="text-sm font-semibold">{option.value}</span>
@@ -78,7 +113,7 @@ export function LogoAdvancedSettings({
               ))}
             </div>
             <p className="text-[9px] text-zinc-500">
-              Switch to Gemini 3 Pro for 2K/4K resolution
+              Higher resolutions may upscale after generation when the model returns a smaller native image
             </p>
           </div>
 
@@ -88,14 +123,14 @@ export function LogoAdvancedSettings({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSeedLocked(!seedLocked)}
-                disabled={isGenerating || isRemovingBackground}
+                disabled={seedDisabled}
                 className={`
                   flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs
                   ${seedLocked
                     ? 'border-[#c99850] bg-[#c99850]/10 text-[#dbb56e]'
                     : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 text-zinc-400'
                   }
-                  ${(isGenerating || isRemovingBackground) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  ${seedDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                 `}
               >
                 {seedLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
@@ -106,16 +141,18 @@ export function LogoAdvancedSettings({
                 value={seedValue ?? ''}
                 onChange={(e) => setSeedValue(e.target.value ? parseInt(e.target.value, 10) : undefined)}
                 placeholder="Auto"
-                disabled={isGenerating || isRemovingBackground}
+                disabled={seedDisabled}
                 className="flex-1 px-2 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-white focus:outline-none focus:border-[#c99850] placeholder:text-zinc-600"
               />
             </div>
             <p className="text-[9px] text-zinc-500">
-              {seedLocked
-                ? 'Generation will use the seed above for reproducible results'
-                : seedValue
-                  ? `Last seed: ${seedValue} (click Lock to reuse)`
-                  : 'Lock seed to reproduce similar logos at different resolutions'}
+              {selectedModel === 'gpt-image-2'
+                ? 'Seed lock is unavailable for ChatGPT Images 2.0'
+                : seedLocked
+                  ? 'Generation will use the seed above for reproducible Gemini results'
+                  : seedValue
+                    ? `Last seed: ${seedValue} (click Lock to reuse)`
+                    : 'Lock seed to reproduce similar logos at different resolutions'}
             </p>
           </div>
 

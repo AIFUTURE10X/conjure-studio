@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { BgRemovalMethod, GeneratedLogo } from './useLogoGeneration'
+import type { BgRemovalMethod, GeneratedLogo, LogoGenerationModel } from './useLogoGeneration'
 import { LogoConcept, RenderStyle, LogoResolution } from '../constants/logo-constants'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import { BatchGenerationOptions } from './useBatchGeneration'
@@ -29,6 +29,7 @@ export function useLogoPanelState({
   // Settings state
   const [bgRemovalMethod, setBgRemovalMethod] = useState<BgRemovalMethod>('replicate')
   const [resolution, setResolution] = useState<LogoResolution>('1K')
+  const [selectedModel, setSelectedModel] = useState<LogoGenerationModel>('gemini-3.1-flash-image-preview')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [referenceImage, setReferenceImage] = useState<{ file: File; preview: string } | null>(null)
   const [referenceMode, setReferenceMode] = useState<'replicate' | 'inspire'>('replicate')
@@ -84,6 +85,7 @@ export function useLogoPanelState({
     setSelectedRenders([])
     setBgRemovalMethod('replicate')
     setResolution('1K')
+    setSelectedModel('gemini-3.1-flash-image-preview')
     setShowAdvanced(false)
     setReferenceImage(null)
     setReferenceMode('replicate')
@@ -112,6 +114,7 @@ export function useLogoPanelState({
     // Settings state
     bgRemovalMethod, setBgRemovalMethod,
     resolution, setResolution,
+    selectedModel, setSelectedModel,
     showAdvanced, setShowAdvanced,
     referenceImage, setReferenceImage,
     referenceMode, setReferenceMode,

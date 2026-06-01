@@ -69,6 +69,7 @@ export function LogoPanel({
       referenceMode: state.referenceMode,
       bgRemovalMethod: state.bgRemovalMethod,
       resolution: state.resolution,
+      selectedModel: state.selectedModel,
       seedLocked: state.seedLocked,
       seedValue: state.seedValue,
       removeBackgroundOnly: state.removeBackgroundOnly,
@@ -154,6 +155,8 @@ export function LogoPanel({
             setShowAdvanced={state.setShowAdvanced}
             resolution={state.resolution}
             setResolution={state.setResolution}
+            selectedModel={state.selectedModel}
+            setSelectedModel={state.setSelectedModel}
             seedLocked={state.seedLocked}
             setSeedLocked={state.setSeedLocked}
             seedValue={state.seedValue}
