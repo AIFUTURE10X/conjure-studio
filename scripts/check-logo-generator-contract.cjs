@@ -118,8 +118,16 @@ const checks = [
       /setBgRemovalMethod\(DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')),
   },
   {
-    name: 'manual background removal defaults avoid Replicate',
-    pass: () => /formData\.append\('bgRemovalMethod', 'smart'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+    name: 'image generator exposes PhotoRoom background removal toggle',
+    pass: () => /usePhotoRoomBgRemoval/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /checked=\{usePhotoRoomBgRemoval\}/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /setUsePhotoRoomBgRemoval\(e\.target\.checked\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /PhotoRoom BG/.test(read('app/image-studio/components/GeneratePanel.tsx')),
+  },
+  {
+    name: 'manual background removal avoids Replicate',
+    pass: () => /formData\.append\('bgRemovalMethod', usePhotoRoomBgRemoval \? 'photoroom' : 'smart'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      !/formData\.append\('bgRemovalMethod', 'replicate'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       /formData\.append\('bgRemovalMethod', 'smart'\)/.test(read('app/image-studio/components/Logo/MockupPreview/generic/useBackgroundRemoval.ts')) &&
       /useState<BgRemovalMethod>\('smart'\)/.test(read('app/image-studio/hooks/useBackgroundRemoverState.ts')),
   },

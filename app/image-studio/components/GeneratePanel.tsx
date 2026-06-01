@@ -97,6 +97,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
 
     const [showAdvanced, setShowAdvanced] = useState(showAdvancedOptions)
     const [isRemovingBg, setIsRemovingBg] = useState(false)
+    const [usePhotoRoomBgRemoval, setUsePhotoRoomBgRemoval] = useState(true)
     const [seed, setSeedInternal] = useState<number | null>(controlledSeed ?? null)
     const [editedSubject, setEditedSubject] = useState('')
     const [editedScene, setEditedScene] = useState('')
@@ -175,7 +176,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
         const file = new File([blob], 'image.png', { type: 'image/png' })
         const formData = new FormData()
         formData.append('image', file)
-        formData.append('bgRemovalMethod', 'smart')
+        formData.append('bgRemovalMethod', usePhotoRoomBgRemoval ? 'photoroom' : 'smart')
         const result = await fetch('/api/remove-background', { method: 'POST', body: formData })
         const data = await result.json()
         if (!data.success || !data.image) throw new Error(data.error || 'Failed to remove background')
@@ -247,6 +248,17 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
               <ModelSelector selectedModel={selectedModel} onModelChange={m => setSelectedModel?.(m)} imageSize={imageSize} onImageSizeChange={s => setImageSize?.(s)} />
               <div className="flex items-center gap-2 flex-wrap">
                 <SeedControlDropdown seed={activeSeed} onSeedChange={setSeed} />
+                <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${usePhotoRoomBgRemoval ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}>
+                  <input
+                    type="checkbox"
+                    checked={usePhotoRoomBgRemoval}
+                    onChange={(e) => setUsePhotoRoomBgRemoval(e.target.checked)}
+                    disabled={isRemovingBg}
+                    aria-label="Use PhotoRoom for background removal"
+                    className="h-3.5 w-3.5 accent-[#c99850]"
+                  />
+                  PhotoRoom BG
+                </label>
                 <RemoveBgButton onRemoveBackground={handleBulkRemoveBackground} isRemovingBg={isRemovingBg} disabled={generatedImages.length === 0} />
                 <PresetControls
                   mainPrompt={mainPrompt}
