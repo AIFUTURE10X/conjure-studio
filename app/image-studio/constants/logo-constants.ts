@@ -42,7 +42,15 @@ export const BG_REMOVAL_METHODS: Array<{
   label: string
   description: string
   badge?: string
+  requiresModel?: LogoGenerationModel
 }> = [
+  {
+    value: 'native-transparent',
+    label: 'Native transparent PNG',
+    description: 'OpenAI only - asks the model for real alpha transparency',
+    badge: 'OpenAI',
+    requiresModel: 'gpt-image-2',
+  },
   {
     value: 'replicate',
     label: 'BRIA AI',

@@ -35,10 +35,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
     }
 
+    if (logoRequest.bgRemovalMethod === 'native-transparent' && logoRequest.model !== 'gpt-image-2') {
+      return NextResponse.json(
+        { error: "Native transparent PNG requires ChatGPT Images 2.0" },
+        { status: 400 }
+      )
+    }
+
     const useFreeFormPrompt = shouldUseFreeFormPrompt(logoRequest)
+    const backgroundMode = logoRequest.bgRemovalMethod === 'native-transparent' ? 'native-transparent' : undefined
     let enhancedPrompt = useFreeFormPrompt
-      ? buildFreeFormLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode)
-      : buildLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode)
+      ? buildFreeFormLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
+      : buildLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
 
     // Append negative prompt if provided
     if (logoRequest.negativePrompt?.trim()) {

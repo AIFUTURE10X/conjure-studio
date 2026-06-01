@@ -40,6 +40,7 @@ export async function generateLogoBaseImage(
         aspectRatio: request.aspectRatio,
         imageSize: request.resolution,
         imageQuality: request.imageQuality,
+        outputBackground: request.bgRemovalMethod === 'native-transparent' ? 'transparent' : 'auto',
         referenceImageFile: request.referenceImageFile,
       })
 
@@ -70,6 +71,11 @@ export async function removeLogoBackgroundIfNeeded(
   request: ParsedLogoGenerationRequest,
   imageBase64: string
 ): Promise<string> {
+  if (request.bgRemovalMethod === 'native-transparent') {
+    console.log('[Logo API] Using OpenAI native transparent PNG output; skipping background removal')
+    return imageBase64
+  }
+
   if (request.skipBgRemoval) {
     console.log('[Logo API] Skipping background removal (will be done later if needed)')
     return imageBase64

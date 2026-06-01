@@ -12,6 +12,7 @@ export type LogoConcept = 'minimalist' | 'modern' | 'vintage' | 'playful' | 'ele
 
 // Rendering styles - the "how" of the logo (material/effect)
 export type RenderStyle = 'flat' | '3d' | '3d-metallic' | '3d-crystal' | '3d-gradient' | 'neon'
+export type LogoBackgroundMode = 'presentation' | 'removable' | 'native-transparent'
 
 // Concept prompts - define the design philosophy
 export const CONCEPT_PROMPTS: Record<LogoConcept, string> = {
@@ -136,7 +137,16 @@ LOGO DESIGN ESSENTIALS:
 5. LIMIT COLORS: Maximum 2-3 colors for elegance and versatility`
 
 // Background requirements - adapts based on render style
-export function getBackgroundRequirements(renderStyle: RenderStyle): string {
+export function getBackgroundRequirements(renderStyle: RenderStyle, backgroundMode: LogoBackgroundMode = 'removable'): string {
+  if (backgroundMode === 'native-transparent') {
+    return `
+CRITICAL - NATIVE TRANSPARENT PNG OUTPUT:
+- Do not paint, fill, or render any background behind the logo
+- Keep the logo centered with clean empty space around it
+- No paper, wall, canvas, gradient, shadow field, scene, mockup, or environment
+- The output should be a standalone logo mark with alpha transparency`
+  }
+
   // For neon style, use dark background
   if (renderStyle === 'neon') {
     return `
@@ -202,16 +212,23 @@ export function parseStyle(style: string): { concept: LogoConcept; render: Rende
 }
 
 // Simplified prompt for free-form generation (no background constraints)
-export function buildFreeFormLogoPrompt(userPrompt: string, style: string, textMode: LogoTextMode = 'ai-text'): string {
+export function buildFreeFormLogoPrompt(
+  userPrompt: string,
+  style: string,
+  textMode: LogoTextMode = 'ai-text',
+  backgroundMode: LogoBackgroundMode = 'presentation'
+): string {
   const { concept, render } = parseStyle(style)
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
   const textRequirements = getTextHandlingRequirements(textMode)
 
   // Determine best background for the style
-  const bgInstruction = render === 'neon'
-    ? 'Place on a dark charcoal or black background to make the glow pop'
-    : 'Place on a subtle dark gradient background (dark blue-gray to black) for premium presentation'
+  const bgInstruction = backgroundMode === 'native-transparent'
+    ? 'Use the native transparent PNG background. Do not draw any visible background or scene.'
+    : render === 'neon'
+      ? 'Place on a dark charcoal or black background to make the glow pop'
+      : 'Place on a subtle dark gradient background (dark blue-gray to black) for premium presentation'
 
   return `Create a polished professional logo concept suitable for a real brand identity system:
 
@@ -246,11 +263,16 @@ Generate one clean logo concept only. Keep it centered, intentional, and ready f
 }
 
 // Original prompt with background constraints (fallback for local BG removal)
-export function buildLogoPrompt(userPrompt: string, style: string, textMode: LogoTextMode = 'ai-text'): string {
+export function buildLogoPrompt(
+  userPrompt: string,
+  style: string,
+  textMode: LogoTextMode = 'ai-text',
+  backgroundMode: LogoBackgroundMode = 'removable'
+): string {
   const { concept, render } = parseStyle(style)
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
-  const backgroundReqs = getBackgroundRequirements(render)
+  const backgroundReqs = getBackgroundRequirements(render, backgroundMode)
   const textRequirements = getTextHandlingRequirements(textMode)
 
   // Detect if user is asking for specific logo types

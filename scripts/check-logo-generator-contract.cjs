@@ -63,6 +63,69 @@ const checks = [
     pass: () => /Apply to Logo Generator/.test(read('app/image-studio/components/AIHelper/SuggestionCard.tsx')) &&
       /Apply to Image Generator/.test(read('app/image-studio/components/AIHelper/SuggestionCard.tsx')),
   },
+  {
+    name: 'contract defines native transparent background method',
+    pass: () => /native-transparent/.test(read('lib/logo-generation-contract.ts')),
+  },
+  {
+    name: 'advanced settings exposes native transparent PNG option for OpenAI',
+    pass: () => /Native transparent PNG/.test(read('app/image-studio/constants/logo-constants.ts')) &&
+      /requiresModel:\s*'gpt-image-2'/.test(read('app/image-studio/constants/logo-constants.ts')) &&
+      /method\.requiresModel/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
+  },
+  {
+    name: 'OpenAI image client can request transparent PNG output',
+    pass: () => /outputBackground\?:\s*OpenAIImageBackground/.test(read('lib/openai-image-client.ts')) &&
+      /formData\.append\(\"background\",/.test(read('lib/openai-image-client.ts')) &&
+      /\.\.\.\(background \? \{ background \} : \{\}\)/.test(read('lib/openai-image-client.ts')) &&
+      /output_format:\s*\"png\"/.test(read('lib/openai-image-client.ts')),
+  },
+  {
+    name: 'logo pipeline maps native transparency to OpenAI background parameter',
+    pass: () => /bgRemovalMethod === 'native-transparent'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      /outputBackground:\s*request\.bgRemovalMethod === 'native-transparent' \? 'transparent' : 'auto'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
+  },
+  {
+    name: 'logo API rejects native transparency for non-OpenAI models',
+    pass: () => /Native transparent PNG requires ChatGPT Images 2\.0/.test(read('app/api/generate-logo/route.ts')),
+  },
+  {
+    name: 'default logo background removal bypasses Replicate',
+    pass: () => /bgRemovalMethod:\s*'smart'/.test(read('lib/logo-generation-contract.ts')) &&
+      !/bgRemovalMethod:\s*'replicate'/.test(read('lib/logo-generation-contract.ts')),
+  },
+  {
+    name: 'logo panel defaults and reset use smart background removal',
+    pass: () => /useState<BgRemovalMethod>\('smart'\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
+      /setBgRemovalMethod\('smart'\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')),
+  },
+  {
+    name: 'manual background removal defaults avoid Replicate',
+    pass: () => /formData\.append\('bgRemovalMethod', 'smart'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /formData\.append\('bgRemovalMethod', 'smart'\)/.test(read('app/image-studio/components/Logo/MockupPreview/generic/useBackgroundRemoval.ts')) &&
+      /useState<BgRemovalMethod>\('smart'\)/.test(read('app/image-studio/hooks/useBackgroundRemoverState.ts')),
+  },
+  {
+    name: 'batch generation fallback metadata uses smart background removal',
+    pass: () => /DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod/.test(read('app/image-studio/hooks/useBatchGeneration.ts')) &&
+      !/options\.bgRemovalMethod \|\| 'replicate'/.test(read('app/image-studio/hooks/useBatchGeneration.ts')),
+  },
+  {
+    name: 'logo pipeline handles smart removal without Replicate',
+    pass: () => /removeBackgroundSmart/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      /request\.bgRemovalMethod === 'smart'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
+  },
+  {
+    name: 'upscale defaults avoid Replicate',
+    pass: () => /const method = \(formData\.get\('method'\) as UpscaleMethod\) \|\| 'fast'/.test(read('app/api/upscale-logo/route.ts')) &&
+      /formData\.append\('method', 'fast'\)/.test(read('app/image-studio/hooks/useImageGeneration.ts')) &&
+      /method: 'ai' \| 'fast' = 'fast'/.test(read('app/image-studio/hooks/useLogoPanelHandlers.ts')),
+  },
+  {
+    name: 'mockup photo generator removes backgrounds without Replicate',
+    pass: () => /removeBackgroundSmart/.test(read('app/api/generate-mockup-photos/route.ts')) &&
+      !/removeBackgroundWithReplicate/.test(read('app/api/generate-mockup-photos/route.ts')),
+  },
 ]
 
 const failures = checks.filter((check) => {

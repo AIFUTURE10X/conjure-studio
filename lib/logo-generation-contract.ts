@@ -22,6 +22,7 @@ export const LOGO_GENERATION_MODELS = [
 export const LOGO_TEXT_MODES = ['ai-text', 'exact-text-overlay'] as const
 
 export const LOGO_BACKGROUND_REMOVAL_METHODS = [
+  'native-transparent',
   'none',
   'auto',
   'ai-local',

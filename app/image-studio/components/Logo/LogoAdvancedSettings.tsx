@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from 'react'
 import { Settings2, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
 import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from '../../hooks/useLogoGeneration'
 import {
@@ -54,6 +55,12 @@ export function LogoAdvancedSettings({
 }: LogoAdvancedSettingsProps) {
   const isDisabled = isGenerating || isRemovingBackground
   const seedDisabled = isDisabled || selectedModel === 'gpt-image-2'
+
+  useEffect(() => {
+    if (bgRemovalMethod === 'native-transparent' && selectedModel !== 'gpt-image-2') {
+      setBgRemovalMethod('replicate')
+    }
+  }, [bgRemovalMethod, selectedModel, setBgRemovalMethod])
 
   return (
     <>
@@ -245,11 +252,20 @@ export function LogoAdvancedSettings({
               className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-white focus:outline-none focus:border-[#c99850]"
             >
               {BG_REMOVAL_METHODS.map((method) => (
-                <option key={method.value} value={method.value}>
+                <option
+                  key={method.value}
+                  value={method.value}
+                  disabled={!!method.requiresModel && method.requiresModel !== selectedModel}
+                >
                   {method.label} - {method.description}
                 </option>
               ))}
             </select>
+            {bgRemovalMethod === 'native-transparent' && (
+              <p className="text-[9px] text-zinc-500">
+                Uses ChatGPT Images 2.0 native transparency and skips post-generation background removal.
+              </p>
+            )}
           </div>
         </div>
       )}
