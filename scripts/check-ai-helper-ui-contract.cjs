@@ -269,6 +269,25 @@ const checks = [
         /Run now/.test(preflight)
     },
   },
+  {
+    name: 'AI helper requests can be stopped while loading',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const input = read('app/image-studio/components/AIHelper/ChatInput.tsx')
+      return /AbortController/.test(hook) &&
+        /abortControllerRef/.test(hook) &&
+        /cancelRequest/.test(hook) &&
+        /const requestController = new AbortController\(\)/.test(hook) &&
+        /signal: requestController\.signal/.test(hook) &&
+        /requestController\.signal\.aborted/.test(hook) &&
+        /abortControllerRef\.current === requestController/.test(hook) &&
+        /error instanceof DOMException && error\.name === 'AbortError'/.test(hook) &&
+        /onCancelRequest=\{cancelRequest\}/.test(sidebar) &&
+        /onCancelRequest: \(\) => void/.test(input) &&
+        /Stop/.test(input)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

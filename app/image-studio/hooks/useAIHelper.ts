@@ -11,7 +11,7 @@
  * - updateMessageSuggestions - persists edits to messages
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import {
   clearStoredAgentMemory,
@@ -168,6 +168,7 @@ export function useAIHelper() {
   const [generationMemory, setGenerationMemory] = useState<AIHelperMemorySnapshot[]>([])
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
   const [mode, setMode] = useState<AIHelperMode>('image')
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Load chat history on mount
   useEffect(() => {
@@ -206,6 +207,11 @@ export function useAIHelper() {
     setGenerationMemory([])
     clearStoredMessages()
     clearStoredAgentMemory()
+  }, [])
+
+  const cancelRequest = useCallback(() => {
+    abortControllerRef.current?.abort()
+    setIsLoading(false)
   }, [])
 
   const rememberMemorySnapshot = useCallback((snapshot: AIHelperMemorySnapshot) => {
@@ -274,6 +280,8 @@ export function useAIHelper() {
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now() }
     setMessages(prev => [...prev, userMessage])
     rememberUserPreference(userInput, 'image')
+    const requestController = new AbortController()
+    abortControllerRef.current = requestController
     setIsLoading(true)
 
     const currentImages = [...uploadedImages]
@@ -307,11 +315,19 @@ export function useAIHelper() {
       }
       setUploadedImages([])
     }
+    if (requestController.signal.aborted) {
+      if (abortControllerRef.current === requestController) {
+        abortControllerRef.current = null
+        setIsLoading(false)
+      }
+      return
+    }
 
     try {
       const response = await fetch('/api/generate-prompt-suggestion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: requestController.signal,
         body: JSON.stringify({
           message: userInput + imageAnalysisContext,
           ...currentPromptSettings,
@@ -330,10 +346,14 @@ export function useAIHelper() {
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now() }])
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('[v0] AI Helper error:', error)
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.', timestamp: Date.now() }])
     } finally {
-      setIsLoading(false)
+      if (abortControllerRef.current === requestController) {
+        abortControllerRef.current = null
+        setIsLoading(false)
+      }
     }
   }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot, rememberUserPreference])
 
@@ -342,6 +362,8 @@ export function useAIHelper() {
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now(), mode: 'logo' }
     setMessages(prev => [...prev, userMessage])
     rememberUserPreference(userInput, 'logo')
+    const requestController = new AbortController()
+    abortControllerRef.current = requestController
     setIsLoading(true)
 
     const currentImages = [...uploadedImages]
@@ -362,11 +384,19 @@ export function useAIHelper() {
       }
       setUploadedImages([])
     }
+    if (requestController.signal.aborted) {
+      if (abortControllerRef.current === requestController) {
+        abortControllerRef.current = null
+        setIsLoading(false)
+      }
+      return
+    }
 
     try {
       const response = await fetch('/api/generate-prompt-suggestion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: requestController.signal,
         body: JSON.stringify({
           message: userInput,
           mode: 'logo',
@@ -386,10 +416,14 @@ export function useAIHelper() {
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: 'logo' }])
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('[v0] AI Helper logo mode error:', error)
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.', timestamp: Date.now(), mode: 'logo' }])
     } finally {
-      setIsLoading(false)
+      if (abortControllerRef.current === requestController) {
+        abortControllerRef.current = null
+        setIsLoading(false)
+      }
     }
   }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot, rememberUserPreference])
 
@@ -412,6 +446,8 @@ export function useAIHelper() {
         : `Make a new variation from the latest generated ${isLogo ? 'logo' : 'image'}. Keep what works, fix weak parts, and give me the next prompt and settings.`
 
     setMessages(prev => [...prev, { role: 'user', content: actionLabel, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
+    const requestController = new AbortController()
+    abortControllerRef.current = requestController
     setIsLoading(true)
 
     let latestOutputAnalysis = ''
@@ -421,11 +457,19 @@ export function useAIHelper() {
         latestOutputAnalysis = `\n[Latest Generated ${isLogo ? 'Logo' : 'Image'}]\n${analysis.analysis}`
       }
     }
+    if (requestController.signal.aborted) {
+      if (abortControllerRef.current === requestController) {
+        abortControllerRef.current = null
+        setIsLoading(false)
+      }
+      return
+    }
 
     try {
       const response = await fetch('/api/generate-prompt-suggestion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: requestController.signal,
         body: JSON.stringify({
           message: userInput,
           ...(isLogo ? { mode: 'logo' } : currentPromptSettings),
@@ -460,10 +504,14 @@ export function useAIHelper() {
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('[v0] AI Helper action error:', error)
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I could not inspect the latest output. Please try again.', timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
     } finally {
-      setIsLoading(false)
+      if (abortControllerRef.current === requestController) {
+        abortControllerRef.current = null
+        setIsLoading(false)
+      }
     }
   }, [messages, mode, generationMemory, rememberAssistantSuggestion])
 
@@ -477,6 +525,7 @@ export function useAIHelper() {
     preferenceCount: preferenceMemory.length,
     preferenceMemory,
     forgetPreference,
+    cancelRequest,
     clearHistory, updateMessageSuggestions, updateMessageLogoConfig
   }
 }

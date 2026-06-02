@@ -1,6 +1,6 @@
 'use client'
 
-import { Send, ImageIcon } from 'lucide-react'
+import { ImageIcon, Send, Square } from 'lucide-react'
 import { useRef } from 'react'
 import type { AIHelperMode } from '../../hooks/useAIHelper'
 
@@ -11,10 +11,11 @@ interface ChatInputProps {
   isLoading: boolean
   hasImages: boolean
   onSend: () => void
+  onCancelRequest: () => void
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
-export function ChatInput({ input, setInput, mode, isLoading, hasImages, onSend, onImageUpload }: ChatInputProps) {
+export function ChatInput({ input, setInput, mode, isLoading, hasImages, onSend, onCancelRequest, onImageUpload }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
@@ -53,11 +54,17 @@ export function ChatInput({ input, setInput, mode, isLoading, hasImages, onSend,
           rows={3}
         />
         <button
-          onClick={onSend}
-          disabled={isLoading || (!input.trim() && !hasImages)}
-          className="flex h-12 w-12 shrink-0 items-center justify-center bg-linear-to-r from-[#c99850] to-[#dbb56e] hover:from-[#dbb56e] hover:to-[#f4d698] rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={isLoading ? onCancelRequest : onSend}
+          disabled={!isLoading && (!input.trim() && !hasImages)}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+            isLoading
+              ? 'border border-red-500/40 bg-red-500/10 hover:bg-red-500/20'
+              : 'bg-linear-to-r from-[#c99850] to-[#dbb56e] hover:from-[#dbb56e] hover:to-[#f4d698]'
+          }`}
+          title={isLoading ? 'Stop' : 'Send'}
+          aria-label={isLoading ? 'Stop' : 'Send'}
         >
-          <Send className="w-4 h-4 text-black" />
+          {isLoading ? <Square className="w-4 h-4 text-red-200" /> : <Send className="w-4 h-4 text-black" />}
         </button>
       </div>
     </div>
