@@ -186,6 +186,22 @@ const checks = [
         /Mode/.test(snapshot)
     },
   },
+  {
+    name: 'AI helper offers context-aware suggested next prompts',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const chips = read('app/image-studio/components/AIHelper/PromptSuggestionChips.tsx')
+      return /PromptSuggestionChips/.test(sidebar) &&
+        /onSelectPrompt=\{setInput\}/.test(sidebar) &&
+        /getPromptSuggestionChips/.test(chips) &&
+        /Improve this prompt/.test(chips) &&
+        /Match the reference/.test(chips) &&
+        /Critique latest output/.test(chips) &&
+        /Make exact text logo/.test(chips) &&
+        /uploadedImages\.length > 0/.test(chips) &&
+        /latestOutput\?\.url/.test(chips)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

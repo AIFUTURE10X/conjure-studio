@@ -22,6 +22,7 @@ import { ImageUploadPreview } from './AIHelper/ImageUploadPreview'
 import { ChatInput } from './AIHelper/ChatInput'
 import { SmartActionBar } from './AIHelper/SmartActionBar'
 import { ContextSnapshot } from './AIHelper/ContextSnapshot'
+import { PromptSuggestionChips } from './AIHelper/PromptSuggestionChips'
 
 const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
 const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
@@ -236,6 +237,14 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         currentPromptSettings={currentPromptSettings}
         uploadedImages={uploadedImages}
         latestOutputs={latestOutputs}
+      />
+
+      <PromptSuggestionChips
+        mode={mode}
+        currentPromptSettings={currentPromptSettings}
+        uploadedImages={uploadedImages}
+        latestOutputs={latestOutputs}
+        onSelectPrompt={setInput}
       />
 
       {/* Messages */}
