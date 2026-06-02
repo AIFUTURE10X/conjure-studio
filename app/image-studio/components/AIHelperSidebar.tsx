@@ -340,12 +340,32 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return `${baseNegative}, ${directive}`
   }
 
+  const extractRequestedBrandText = (userInput: string) => {
+    const trimmedInput = userInput.trim().replace(/[.!?]+$/g, '')
+    const brandTextPatterns = [
+      /(?:make|change|set|update)\s+(?:the\s+)?(?:logo\s+|brand\s+)?(?:text|wording)\s+(?:to|say)\s+["']?(.+?)["']?$/i,
+      /(?:make|change|set|update)\s+(?:the\s+)?logo\s+say\s+["']?(.+?)["']?$/i,
+      /(?:brand\s+name|logo\s+name|exact\s+text)\s+(?:is|should\s+be|to)\s+["']?(.+?)["']?$/i,
+      /(?:use|set)\s+["'](.+?)["']\s+as\s+(?:the\s+)?(?:brand\s+text|logo\s+text|exact\s+text)$/i,
+    ]
+    const match = brandTextPatterns
+      .map((pattern) => trimmedInput.match(pattern)?.[1]?.trim())
+      .find(Boolean)
+
+    if (!match) return null
+    return match
+      .replace(/\s+(?:and\s+)?(?:generate|run it|try it|apply it)$/i, '')
+      .replace(/^["']|["']$/g, '')
+      .trim()
+  }
+
   const buildSuggestionPatchFromFollowUp = (
     userInput: string,
     suggestions: AIMessage['suggestions'],
     targetMode: AIHelperMode
   ): Partial<NonNullable<AIMessage['suggestions']>> | null => {
     const normalized = normalizeDirectCommand(userInput)
+    const requestedBrandText = extractRequestedBrandText(userInput)
     const wantsWhiteBackground = [
       'make the background white',
       'white background',
@@ -381,7 +401,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'same words',
     ].some((term) => normalized.includes(term))
 
-    if (!suggestions || (!wantsWhiteBackground && !wantsTransparentBackground && !wantsReferenceTypography && !wantsFontOnlyChange && !wantsExactText)) {
+    if (!suggestions || (!requestedBrandText && !wantsWhiteBackground && !wantsTransparentBackground && !wantsReferenceTypography && !wantsFontOnlyChange && !wantsExactText)) {
       return null
     }
 
@@ -415,6 +435,12 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     if (wantsExactText) {
       prompt = appendPromptDirective(prompt, 'Single-change refinement: preserve exact text, spelling, capitalization, spacing, and line breaks; preserve every other approved element.')
       negativePrompt = appendNegativeDirective(negativePrompt, 'misspelled text, extra words, missing words, incorrect capitalization, altered wording')
+      if (targetMode === 'logo') patch.textMode = 'exact-text-overlay'
+    }
+
+    if (requestedBrandText) {
+      prompt = appendPromptDirective(prompt, `Single-change refinement: set exact visible brand text to "${requestedBrandText}" as the exact brand text; preserve every other approved element.`)
+      negativePrompt = appendNegativeDirective(negativePrompt, 'misspelled brand text, wrong brand name, extra words, missing words, incorrect capitalization, altered wording')
       if (targetMode === 'logo') patch.textMode = 'exact-text-overlay'
     }
 
@@ -547,10 +573,23 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'match reference font and generate',
       'change only the font and generate',
       'preserve exact text and generate',
+      'make the logo say A86 Residence and generate',
+      'change the logo text to A86 Residence and generate',
       'then generate',
       'and generate',
       'generate it',
       'run it',
+    ]
+    const brandTextPatchTerms = [
+      'make the logo say A86 Residence',
+      'change the logo text to A86 Residence',
+      'brand name is A86 Residence',
+      'make the logo say',
+      'change the logo text to',
+      'set logo text to',
+      'update logo text to',
+      'brand name is',
+      'exact text is',
     ]
     const singleChangePatchTerms = [
       'make the logo background white',
@@ -575,7 +614,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'keep exact text',
     ]
 
-    if (!matchesNaturalDirectCommand(userInput, singleChangePatchTerms)) return false
+    if (!matchesNaturalDirectCommand(userInput, singleChangePatchTerms) && !matchesNaturalDirectCommand(userInput, brandTextPatchTerms)) return false
 
     const shouldGenerateAfterPatch = matchesNaturalDirectCommand(userInput, patchGenerateCommandTerms)
     const requestedPatchMode = detectRequestedHelperMode(userInput)

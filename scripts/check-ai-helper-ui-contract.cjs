@@ -551,6 +551,23 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can patch exact brand text from natural chat commands',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /extractRequestedBrandText/.test(sidebar) &&
+        /brandTextPatchTerms/.test(sidebar) &&
+        /make the logo say A86 Residence/.test(sidebar) &&
+        /change the logo text to A86 Residence/.test(sidebar) &&
+        /brand name is A86 Residence/.test(sidebar) &&
+        /set exact visible brand text to/.test(sidebar) &&
+        /exact brand text/.test(sidebar) &&
+        /textMode = 'exact-text-overlay'/.test(sidebar) &&
+        /misspelled brand text/.test(sidebar) &&
+        /wrong brand name/.test(sidebar) &&
+        /requestedBrandText/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
