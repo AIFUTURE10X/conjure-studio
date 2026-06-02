@@ -254,6 +254,24 @@ const checks = [
     },
   },
   {
+    name: 'AI helper preflight detects current setting conflicts before generation',
+    pass: () => {
+      const preflight = read('app/image-studio/components/AIHelper/PromptPreflightPanel.tsx')
+      return /logoTextMode\?: string/.test(preflight) &&
+        /logoBgRemovalMethod\?: string/.test(preflight) &&
+        /logoSelectedModel\?: string/.test(preflight) &&
+        /imageBgRemovalMethod\?: string/.test(preflight) &&
+        /Exact text mode mismatch/.test(preflight) &&
+        /Visible background conflict/.test(preflight) &&
+        /Native PNG model mismatch/.test(preflight) &&
+        /PNG cleanup off/.test(preflight) &&
+        /logoTextMode !== 'exact-text-overlay'/.test(preflight) &&
+        /logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2'/.test(preflight) &&
+        /Use exact text overlay/.test(preflight) &&
+        /turn off transparent PNG/.test(preflight)
+    },
+  },
+  {
     name: 'AI helper suggested prompts and preflight fixes can run immediately',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

@@ -11,6 +11,10 @@ interface PromptPreflightPanelProps {
     currentNegativePrompt?: string
     currentStyle?: string
     currentAspectRatio?: string
+    imageBgRemovalMethod?: string
+    logoBgRemovalMethod?: string
+    logoSelectedModel?: string
+    logoTextMode?: string
     creativeDirection?: CreativeDirectionState
   }
   uploadedImages: string[]
@@ -33,6 +37,13 @@ function includesAny(text: string, terms: string[]): boolean {
 export function getPromptPreflightIssues({ mode, currentPromptSettings = {}, uploadedImages }: Omit<PromptPreflightPanelProps, 'onAskHelper'>): PromptPreflightIssue[] {
   const prompt = currentPromptSettings.currentPrompt?.toLowerCase() || ''
   const negativePrompt = currentPromptSettings.currentNegativePrompt?.toLowerCase() || ''
+  const imageBgRemovalMethod = currentPromptSettings.imageBgRemovalMethod || 'smart'
+  const logoBgRemovalMethod = currentPromptSettings.logoBgRemovalMethod || 'none'
+  const logoSelectedModel = currentPromptSettings.logoSelectedModel || ''
+  const logoTextMode = currentPromptSettings.logoTextMode || 'ai-text'
+  const wantsTransparentPng = includesAny(prompt, ['transparent background', 'true png', 'png transparency', 'no background', 'remove background', 'without background'])
+  const wantsVisibleBackground = !wantsTransparentPng && includesAny(prompt, ['white background', 'plain white', 'pure white', '#ffffff', 'black background', 'visible background', 'scene background', 'colored background', 'backdrop'])
+  const wantsExactText = includesAny(prompt, ['exact text', 'exact wording', 'exact words', 'exact spelling', 'same text', 'brand name', 'wordmark'])
   const issues: PromptPreflightIssue[] = []
 
   if (hasText(currentPromptSettings.currentPrompt) && !includesAny(prompt, ['background', 'transparent', 'white', 'black', 'plain', 'scene', 'backdrop'])) {
@@ -48,6 +59,38 @@ export function getPromptPreflightIssues({ mode, currentPromptSettings = {}, upl
       label: 'Exact text risk',
       detail: 'Logo text may drift unless exact-text handling is spelled out.',
       fixPrompt: 'Revise this logo prompt for exact text handling, preserving spelling and recommending symbol-only plus text overlay when needed.',
+    })
+  }
+
+  if (mode === 'logo' && wantsExactText && logoTextMode !== 'exact-text-overlay') {
+    issues.push({
+      label: 'Exact text mode mismatch',
+      detail: 'Prompt asks for reliable wording, but the logo generator is still set to AI-drawn text.',
+      fixPrompt: 'Use exact text overlay for this logo. Rewrite the prompt as symbol-only artwork ready for exact text overlay, preserve exact spelling, and block extra words or random letters.',
+    })
+  }
+
+  if (mode === 'logo' && wantsVisibleBackground && logoBgRemovalMethod !== 'none') {
+    issues.push({
+      label: 'Visible background conflict',
+      detail: 'Prompt asks for a visible background while logo transparent PNG/background removal is enabled.',
+      fixPrompt: 'I asked for a visible background, but transparent PNG/background removal is enabled. Rewrite the prompt and tell me whether to turn off transparent PNG/background removal or switch the request to true PNG.',
+    })
+  }
+
+  if (mode === 'logo' && logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2') {
+    issues.push({
+      label: 'Native PNG model mismatch',
+      detail: 'Native transparent PNG only works with ChatGPT Images 2.0.',
+      fixPrompt: 'Check this logo setup for native transparent PNG. If I need true model-side transparency, tell me to use ChatGPT Images 2.0; otherwise rewrite the prompt for PhotoRoom or smart cleanup after generation.',
+    })
+  }
+
+  if (wantsTransparentPng && (mode === 'logo' ? logoBgRemovalMethod === 'none' : imageBgRemovalMethod === 'none')) {
+    issues.push({
+      label: 'PNG cleanup off',
+      detail: 'Prompt asks for transparent PNG/no background, but the active generator context has background removal turned off.',
+      fixPrompt: 'Fix this transparent PNG request. Keep the subject/logo isolated, turn on the right background removal method, and add a negative prompt blocking solid or colored backdrops.',
     })
   }
 
