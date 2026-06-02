@@ -7,7 +7,7 @@ import { MockupPhotoGenerator } from './components/Logo/MockupPreview/MockupPhot
 import { ProductMockupsPanel } from './components/Logo/MockupPreview/ProductMockupsPanel'
 import { ImageStudioHeader } from './components/ImageStudioHeader'
 import { ImageLightbox } from './components/ImageLightbox'
-import { LogoPanel, type LogoGeneratorContext, type LogoGeneratorSettingsPatch, type LogoPanelRef } from './components/LogoPanel'
+import { LogoPanel, type LogoGeneratorContext, type LogoGeneratorSettingsPatch, type LogoOutputContext, type LogoPanelRef } from './components/LogoPanel'
 import { BackgroundRemoverPanel } from './components/BackgroundRemover'
 import { AIHelperSidebar } from './components/AIHelperSidebar'
 import { FavoritesModal } from './components/SimpleFavorites'
@@ -55,7 +55,7 @@ function extractLogoSettingsPatch(suggestions: Record<string, unknown> | null | 
 export default function ImageStudioPage() {
   const generatePanelRef = useRef<{ triggerGenerate: () => void; isGenerating: boolean }>(null)
   const logoPanelRef = useRef<LogoPanelRef>(null)
-  const [latestLogoOutput, setLatestLogoOutput] = useState<{ url: string; prompt?: string; timestamp: number } | null>(null)
+  const [latestLogoOutput, setLatestLogoOutput] = useState<LogoOutputContext | null>(null)
   const [logoGeneratorContext, setLogoGeneratorContext] = useState<LogoGeneratorContext>(DEFAULT_LOGO_GENERATOR_CONTEXT)
   const [pendingLogoSettings, setPendingLogoSettings] = useState<LogoGeneratorSettingsPatch | null>(null)
 
@@ -187,7 +187,7 @@ export default function ImageStudioPage() {
             onClearPendingConfig={() => state.setPendingLogoConfig(null)}
             pendingLogoSettings={pendingLogoSettings}
             onClearPendingSettings={() => setPendingLogoSettings(null)}
-            onLogoGenerated={(url) => setLatestLogoOutput({ url, prompt: state.mainPrompt, timestamp: Date.now() })}
+            onLogoGenerated={setLatestLogoOutput}
             onLogoContextChange={setLogoGeneratorContext}
           />
         )}
@@ -280,7 +280,14 @@ export default function ImageStudioPage() {
           latestLogoOutput: latestLogoOutput ? {
             hasOutput: true,
             prompt: latestLogoOutput.prompt || state.mainPrompt,
+            negativePrompt: latestLogoOutput.negativePrompt,
             timestamp: latestLogoOutput.timestamp,
+            source: latestLogoOutput.source,
+            aspectRatio: latestLogoOutput.aspectRatio,
+            textMode: latestLogoOutput.textMode,
+            bgRemovalMethod: latestLogoOutput.bgRemovalMethod,
+            seed: latestLogoOutput.seed,
+            style: latestLogoOutput.style,
           } : { hasOutput: false },
         }}
         latestOutputs={{

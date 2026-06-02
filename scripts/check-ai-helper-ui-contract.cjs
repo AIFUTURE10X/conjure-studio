@@ -230,6 +230,29 @@ const checks = [
     },
   },
   {
+    name: 'AI helper receives restored logo history context for iteration',
+    pass: () => {
+      const page = read('app/image-studio/page.tsx')
+      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
+      const logoPanelIndex = read('app/image-studio/components/LogoPanel/index.ts')
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /export interface LogoOutputContext/.test(logoPanel) &&
+        /onLogoGenerated\?: \(output: LogoOutputContext\) => void/.test(logoPanel) &&
+        /buildHistoryLogoOutputContext/.test(logoPanel) &&
+        /onLogoGenerated\?\.\(buildHistoryLogoOutputContext\(item, 'history'\)\)/.test(logoPanel) &&
+        /onLogoGenerated\?\.\(buildHistoryLogoOutputContext\(item, 'mockup'\)\)/.test(logoPanel) &&
+        /onLogoGenerated=\{setLatestLogoOutput\}/.test(page) &&
+        /useState<LogoOutputContext \| null>/.test(page) &&
+        /source: latestLogoOutput\.source/.test(page) &&
+        /bgRemovalMethod: latestLogoOutput\.bgRemovalMethod/.test(page) &&
+        /export type \{ LogoGeneratorContext, LogoGeneratorSettingsPatch, LogoOutputContext, LogoPanelRef \}/.test(logoPanelIndex) &&
+        /source\?: string/.test(hook) &&
+        /\.\.\.latestOutput/.test(hook) &&
+        /latestLogoOutput\?: \{[\s\S]*source\?: string[\s\S]*bgRemovalMethod\?: string/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper persists generation memory for cross-session iteration',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')

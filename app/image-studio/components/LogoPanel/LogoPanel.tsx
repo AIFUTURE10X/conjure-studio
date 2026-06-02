@@ -20,7 +20,7 @@ import { LogoStyleSelector } from '../Logo/LogoStyleSelector'
 import { LogoAdvancedSettings } from '../Logo/LogoAdvancedSettings'
 import { LogoPreviewPanel, type LogoFilterStyle } from '../Logo/LogoPreviewPanel'
 import { LogoActionButtons } from '../Logo/LogoActionButtons'
-import { LogoHistoryPanel, useLogoHistory } from '../Logo/LogoHistory'
+import { LogoHistoryPanel, useLogoHistory, type LogoHistoryItem } from '../Logo/LogoHistory'
 
 import { LogoPanelHeader } from './LogoPanelHeader'
 import { LogoPanelModals } from './LogoPanelModals'
@@ -30,7 +30,7 @@ import { useLogoPanelGenerate, useLogoFavorite } from './useLogoPanelGenerate'
 import type { DotMatrixConfig } from '../../constants/dot-matrix-config'
 
 interface LogoPanelProps {
-  onLogoGenerated?: (url: string) => void
+  onLogoGenerated?: (output: LogoOutputContext) => void
   externalPrompt?: string
   externalNegativePrompt?: string
   pendingLogoConfig?: Partial<DotMatrixConfig> | null
@@ -43,6 +43,19 @@ interface LogoPanelProps {
 export interface LogoPanelRef {
   triggerGenerate: () => void
   isGenerating: boolean
+}
+
+export interface LogoOutputContext {
+  url: string
+  prompt?: string
+  negativePrompt?: string
+  timestamp: number
+  aspectRatio?: string
+  textMode?: string
+  bgRemovalMethod?: string
+  seed?: number
+  style?: string
+  source?: 'generated' | 'history' | 'mockup' | 'recolored'
 }
 
 export interface LogoGeneratorContext {
@@ -94,10 +107,49 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
 
   const { toggleFavorite, isFavorite, isToggling: isFavoriteToggling } = useFavorites()
 
+  const buildLogoOutputContext = useCallback((url: string, overrides: Partial<LogoOutputContext> = {}): LogoOutputContext => ({
+    url,
+    prompt: state.prompt.trim() || undefined,
+    negativePrompt: state.negativePrompt.trim() || undefined,
+    timestamp: Date.now(),
+    aspectRatio: state.aspectRatio,
+    textMode: state.textMode,
+    bgRemovalMethod: state.bgRemovalMethod,
+    seed: state.seedValue,
+    style: state.getCombinedStyle(),
+    source: 'generated',
+    ...overrides,
+  }), [
+    state.prompt,
+    state.negativePrompt,
+    state.aspectRatio,
+    state.textMode,
+    state.bgRemovalMethod,
+    state.seedValue,
+    state.getCombinedStyle,
+  ])
+
+  const handleLogoGenerated = useCallback((url: string) => {
+    onLogoGenerated?.(buildLogoOutputContext(url))
+  }, [buildLogoOutputContext, onLogoGenerated])
+
+  const buildHistoryLogoOutputContext = useCallback((item: LogoHistoryItem, source: 'history' | 'mockup'): LogoOutputContext => ({
+    url: item.imageUrl,
+    prompt: item.prompt,
+    negativePrompt: item.negativePrompt,
+    timestamp: item.timestamp || Date.now(),
+    aspectRatio: typeof item.config?.aspectRatio === 'string' ? item.config.aspectRatio : '1:1',
+    textMode: typeof item.config?.textMode === 'string' ? item.config.textMode : 'ai-text',
+    bgRemovalMethod: typeof item.config?.bgRemovalMethod === 'string' ? item.config.bgRemovalMethod : 'none',
+    seed: item.seed,
+    style: item.style,
+    source,
+  }), [])
+
   const {
     isRemovingLogoBg, isUpscaling, isExportingSvg, isExportingPdf, copied: handlerCopied, isRemovingRefBg,
     handleRemoveLogoBackground, handleUpscale, handleCopyToClipboard, handleExportSvg, handleExportPdf, handleRemoveRefBackground
-  } = useLogoPanelHandlers({ generatedLogo, setLogo, bgRemovalMethod: state.bgRemovalMethod, onLogoGenerated, addToHistory })
+  } = useLogoPanelHandlers({ generatedLogo, setLogo, bgRemovalMethod: state.bgRemovalMethod, onLogoGenerated: handleLogoGenerated, addToHistory })
 
   // Track color filter from LogoPreviewPanel for mockups
   const [logoFilter, setLogoFilter] = useState<LogoFilterStyle>({})
@@ -181,7 +233,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
     generateLogo,
     handleRemoveRefBackground,
     addToHistory,
-    onLogoGenerated,
+    onLogoGenerated: handleLogoGenerated,
   })
 
   const { handleToggleFavorite } = useLogoFavorite({
@@ -357,6 +409,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
               if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
               if (item.config?.textMode) state.setTextMode(item.config.textMode)
               if (item.presetId) state.setSelectedPresetId(item.presetId)
+              onLogoGenerated?.(buildHistoryLogoOutputContext(item, 'history'))
               toast.success('Image loaded! You can now preview on mockups.', { duration: 3000 })
             }}
             onSendToMockups={(item) => {
@@ -373,6 +426,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
               })
               if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
               if (item.config?.textMode) state.setTextMode(item.config.textMode)
+              onLogoGenerated?.(buildHistoryLogoOutputContext(item, 'mockup'))
               state.setShowMockupPreview(true)
               toast.success('Logo sent to mockups!')
             }}
@@ -401,7 +455,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
                 ...generatedLogo,
                 url: newUrl,
               })
-              onLogoGenerated?.(newUrl)
+              onLogoGenerated?.(buildLogoOutputContext(newUrl, { source: 'recolored' }))
             }
           }}
         />
@@ -430,7 +484,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
         setPrompt={state.setPrompt} setNegativePrompt={state.setNegativePrompt}
         setSelectedConcept={state.setSelectedConcept} setSelectedRenders={state.setSelectedRenders}
         generateLogo={generateLogo} addToHistory={addToHistory}
-        onLogoGenerated={onLogoGenerated} prompt={state.prompt}
+        onLogoGenerated={handleLogoGenerated} prompt={state.prompt}
         logoFilter={logoFilter}
       />
     </Card>

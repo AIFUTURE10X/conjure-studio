@@ -69,7 +69,18 @@ interface AIHelperSidebarProps {
     promptMode?: string
     creativeDirection?: CreativeDirectionState
     latestImageOutput?: { hasOutput: boolean; prompt?: string; timestamp?: number }
-    latestLogoOutput?: { hasOutput: boolean; prompt?: string; timestamp?: number }
+    latestLogoOutput?: {
+      hasOutput: boolean
+      prompt?: string
+      negativePrompt?: string
+      timestamp?: number
+      source?: string
+      aspectRatio?: string
+      textMode?: string
+      bgRemovalMethod?: string
+      seed?: number
+      style?: string
+    }
   }
   latestOutputs?: {
     image?: AIHelperLatestOutput | null

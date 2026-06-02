@@ -139,7 +139,14 @@ export interface AIHelperMemorySnapshot {
 export interface AIHelperLatestOutput {
   url?: string
   prompt?: string
+  negativePrompt?: string
   timestamp?: number
+  source?: string
+  aspectRatio?: string
+  textMode?: string
+  bgRemovalMethod?: string
+  seed?: number
+  style?: string
 }
 
 export function buildAgentMemory(
@@ -630,8 +637,8 @@ export function useAIHelper() {
             ...currentPromptSettings,
             latestOutput: latestOutput ? {
               hasOutput: Boolean(latestOutput.url),
+              ...latestOutput,
               prompt: latestOutput.prompt || '',
-              timestamp: latestOutput.timestamp,
             } : { hasOutput: false },
           },
           latestOutputAnalysis: latestOutputAnalysis || undefined,
