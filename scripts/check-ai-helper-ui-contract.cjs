@@ -450,6 +450,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const input = read('app/image-studio/components/AIHelper/ChatInput.tsx')
       return /displayMessage\?: string/.test(hook) &&
         /setPendingFollowUp/.test(sidebar) &&
         /pendingFollowUp/.test(sidebar) &&
@@ -460,7 +461,14 @@ const checks = [
         /User answer:/.test(sidebar) &&
         /Active design brief:/.test(sidebar) &&
         /Current generator prompt:/.test(sidebar) &&
-        /displayMessage: userInput/.test(sidebar)
+        /displayMessage: userInput/.test(sidebar) &&
+        /pendingQuestion=\{pendingFollowUp\?\.prompt\}/.test(sidebar) &&
+        /pendingQuestion\?: string/.test(input) &&
+        /textareaRef/.test(input) &&
+        /useEffect/.test(input) &&
+        /Answer the follow-up/.test(input) &&
+        /placeholder=\{pendingQuestion/.test(input) &&
+        /aria-label=\{pendingQuestion \? 'Answer follow-up question'/.test(input)
     },
   },
   {

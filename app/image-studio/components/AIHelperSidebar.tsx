@@ -597,7 +597,17 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
           </div>
         </div>
       )}
-      <ChatInput input={input} setInput={setInput} mode={mode} isLoading={isLoading} hasImages={uploadedImages.length > 0} onSend={handleSend} onCancelRequest={cancelRequest} onImageUpload={handleImageUpload} />
+      <ChatInput
+        input={input}
+        setInput={setInput}
+        mode={mode}
+        isLoading={isLoading}
+        hasImages={uploadedImages.length > 0}
+        pendingQuestion={pendingFollowUp?.prompt}
+        onSend={handleSend}
+        onCancelRequest={cancelRequest}
+        onImageUpload={handleImageUpload}
+      />
     </div>
   )
 }

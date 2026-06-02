@@ -1,7 +1,7 @@
 'use client'
 
 import { ImageIcon, Send, Square } from 'lucide-react'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import type { AIHelperMode } from '../../hooks/useAIHelper'
 
 interface ChatInputProps {
@@ -10,13 +10,25 @@ interface ChatInputProps {
   mode: AIHelperMode
   isLoading: boolean
   hasImages: boolean
+  pendingQuestion?: string
   onSend: () => void
   onCancelRequest: () => void
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
-export function ChatInput({ input, setInput, mode, isLoading, hasImages, onSend, onCancelRequest, onImageUpload }: ChatInputProps) {
+export function ChatInput({ input, setInput, mode, isLoading, hasImages, pendingQuestion, onSend, onCancelRequest, onImageUpload }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (pendingQuestion && !isLoading) {
+      textareaRef.current?.focus()
+    }
+  }, [pendingQuestion, isLoading])
+
+  const defaultPlaceholder = mode === 'logo'
+    ? "Describe your logo idea... (e.g., 'tech startup with cyan dots')"
+    : 'Describe your image idea... (Shift+Enter for new line)'
 
   return (
     <div className="p-4 sm:p-5 border-t border-[#c99850]/30">
@@ -37,6 +49,7 @@ export function ChatInput({ input, setInput, mode, isLoading, hasImages, onSend,
           <ImageIcon className="w-4 h-4 text-[#c99850]" />
         </button>
         <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={(e) => {
@@ -45,10 +58,8 @@ export function ChatInput({ input, setInput, mode, isLoading, hasImages, onSend,
               onSend()
             }
           }}
-          placeholder={mode === 'logo'
-            ? "Describe your logo idea... (e.g., 'tech startup with cyan dots')"
-            : "Describe your image idea... (Shift+Enter for new line)"
-          }
+          placeholder={pendingQuestion ? 'Answer the follow-up question...' : defaultPlaceholder}
+          aria-label={pendingQuestion ? 'Answer follow-up question' : 'Describe prompt idea'}
           className="min-h-[96px] flex-1 px-4 py-3 bg-zinc-800 border border-[#c99850]/30 rounded text-sm leading-6 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#c99850]/50 resize-none"
           disabled={isLoading}
           rows={3}
@@ -61,8 +72,8 @@ export function ChatInput({ input, setInput, mode, isLoading, hasImages, onSend,
               ? 'border border-red-500/40 bg-red-500/10 hover:bg-red-500/20'
               : 'bg-linear-to-r from-[#c99850] to-[#dbb56e] hover:from-[#dbb56e] hover:to-[#f4d698]'
           }`}
-          title={isLoading ? 'Stop' : 'Send'}
-          aria-label={isLoading ? 'Stop' : 'Send'}
+          title={isLoading ? 'Stop' : pendingQuestion ? 'Answer the follow-up' : 'Send'}
+          aria-label={isLoading ? 'Stop' : pendingQuestion ? 'Answer the follow-up' : 'Send'}
         >
           {isLoading ? <Square className="w-4 h-4 text-red-200" /> : <Send className="w-4 h-4 text-black" />}
         </button>
