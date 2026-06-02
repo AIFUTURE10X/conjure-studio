@@ -146,6 +146,8 @@ GENERATION-READY LOGO PROMPT RULES:
 - Describe a single logo on a plain background; do not request posters, packaging, signage, stationery, or website mockups
 - Preserve exact brand names, capitalization, and requested words
 - If exact text is critical, recommend the exact-text-overlay workflow and ask the image model for a symbol-only mark
+- Treat explicit background, typography, color, and reference-match requests as hard constraints, not optional style ideas
+- When matching a reference font, describe the visible font traits precisely instead of inventing a different font category
 - Include a concise negative prompt that blocks common logo failures: watermark, mockup, photo scene, extra words, misspelled text, clutter, blurry edges, tiny details`
 }
 

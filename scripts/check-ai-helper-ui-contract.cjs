@@ -155,6 +155,21 @@ const checks = [
         /options\?\.imageCount/.test(page)
     },
   },
+  {
+    name: 'AI helper preserves explicit user constraints for background typography and exact text',
+    pass: () => {
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /extractPromptConstraints/.test(route) &&
+        /EXPLICIT USER CONSTRAINTS \(hard requirements\)/.test(route) &&
+        /applyPromptConstraintGuardrails/.test(route) &&
+        /applyLogoConfigConstraintGuardrails/.test(route) &&
+        /Hard background constraint/.test(route) &&
+        /Hard typography constraint/.test(route) &&
+        /Hard text constraint/.test(route) &&
+        /wrong font/.test(route) &&
+        /blue background/.test(route)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

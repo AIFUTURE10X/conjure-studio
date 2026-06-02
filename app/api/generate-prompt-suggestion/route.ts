@@ -49,6 +49,13 @@ interface HelperAction {
   target?: 'image' | 'logo'
 }
 
+interface PromptConstraint {
+  key: string
+  label: string
+  promptPhrase: string
+  negativePhrase?: string
+}
+
 const HELPER_ACTION_TYPES = new Set<HelperActionType>([
   'apply_suggestions',
   'apply_and_generate',
@@ -222,6 +229,158 @@ function defaultHelperActions(
   return actions
 }
 
+function includesAny(text: string, terms: string[]): boolean {
+  return terms.some((term) => text.includes(term))
+}
+
+function addPromptConstraint(constraints: PromptConstraint[], constraint: PromptConstraint): void {
+  if (constraints.some((item) => item.key === constraint.key)) return
+  constraints.push(constraint)
+}
+
+function collectPromptConstraintsFromText(rawText: unknown, source: 'latest' | 'current', hasReference = false): PromptConstraint[] {
+  if (typeof rawText !== 'string' || !rawText.trim()) return []
+  const text = rawText.toLowerCase()
+  const constraints: PromptConstraint[] = []
+
+  if (includesAny(text, ['white background', 'background white', 'plain white', 'pure white', '#ffffff', 'white backdrop'])) {
+    addPromptConstraint(constraints, {
+      key: 'background:white',
+      label: source === 'latest' ? 'Latest request requires a white background' : 'Current prompt uses a white background',
+      promptPhrase: 'Hard background constraint: use a flat pure white #FFFFFF background only.',
+      negativePhrase: 'blue background, dark background, gradient background, textured background, colored backdrop',
+    })
+  }
+
+  if (includesAny(text, ['transparent background', 'true png', 'png transparency', 'no background', 'remove background', 'without background'])) {
+    addPromptConstraint(constraints, {
+      key: 'background:transparent',
+      label: source === 'latest' ? 'Latest request requires transparent/no background' : 'Current prompt requires transparent/no background',
+      promptPhrase: 'Hard background constraint: transparent PNG/no background; isolate only the subject or logo.',
+      negativePhrase: 'solid background, colored background, scene background, shadowed backdrop, rectangle backdrop',
+    })
+  }
+
+  if (includesAny(text, ['no blue background', 'not a blue background', 'without blue background'])) {
+    addPromptConstraint(constraints, {
+      key: 'background:no-blue',
+      label: 'Blue background is explicitly rejected',
+      promptPhrase: 'Hard color constraint: do not use a blue background.',
+      negativePhrase: 'blue background, navy background, cyan background',
+    })
+  }
+
+  if (includesAny(text, ['font', 'typeface', 'typography', 'lettering', 'script', 'cursive', 'serif', 'sans serif', 'wordmark', 'handwritten'])) {
+    addPromptConstraint(constraints, {
+      key: 'typography',
+      label: source === 'latest' ? 'Latest request includes typography direction' : 'Current prompt includes typography direction',
+      promptPhrase: 'Hard typography constraint: match the requested/reference font style and lettering proportions.',
+      negativePhrase: 'wrong font, generic font, dot matrix lettering, distorted typography, illegible text',
+    })
+  }
+
+  if (includesAny(text, ['exact text', 'exact wording', 'exact words', 'exact spelling', 'spelling', 'same text', 'brand name', 'capitalization'])) {
+    addPromptConstraint(constraints, {
+      key: 'exact-text',
+      label: 'Exact text and spelling are important',
+      promptPhrase: 'Hard text constraint: preserve exact wording, spelling, capitalization, and spacing; do not add extra words.',
+      negativePhrase: 'misspelled text, extra words, random letters, altered brand name, incorrect capitalization',
+    })
+  }
+
+  if (hasReference && includesAny(text, ['reference', 'same as', 'match this', 'like this', 'closer to', 'follow that', 'use this image'])) {
+    addPromptConstraint(constraints, {
+      key: 'reference-match',
+      label: 'Reference image matching is required',
+      promptPhrase: 'Hard reference constraint: use the uploaded or remembered reference as the visual target; match composition, typography, spacing, palette, and background unless the user changes them.',
+      negativePhrase: 'style drift, wrong composition, wrong palette, wrong background, mismatched typography',
+    })
+  }
+
+  return constraints
+}
+
+function extractPromptConstraints(
+  message: unknown,
+  currentPrompt: unknown,
+  currentNegativePrompt: unknown,
+  hasReference = false
+): PromptConstraint[] {
+  const latestConstraints = collectPromptConstraintsFromText(message, 'latest', hasReference)
+  const currentConstraints = [
+    ...collectPromptConstraintsFromText(currentPrompt, 'current', hasReference),
+    ...collectPromptConstraintsFromText(currentNegativePrompt, 'current', hasReference),
+  ]
+  const constraints: PromptConstraint[] = []
+
+  for (const constraint of [...latestConstraints, ...currentConstraints]) {
+    addPromptConstraint(constraints, constraint)
+  }
+
+  return constraints
+}
+
+function formatPromptConstraints(constraints: PromptConstraint[]): string {
+  if (constraints.length === 0) return 'None detected'
+  return constraints
+    .map((constraint) => `- ${constraint.label}: ${constraint.promptPhrase}${constraint.negativePhrase ? ` Negative prompt must block: ${constraint.negativePhrase}.` : ''}`)
+    .join('\n')
+}
+
+function appendUniqueCommaList(baseValue: unknown, addition: string): string {
+  const base = typeof baseValue === 'string' ? baseValue.trim() : ''
+  const additions = addition
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  const existing = new Set(base.toLowerCase().split(',').map((item) => item.trim()).filter(Boolean))
+  const missing = additions.filter((item) => !existing.has(item.toLowerCase()))
+  return [base, ...missing].filter(Boolean).join(', ')
+}
+
+function applyPromptConstraintGuardrails<T extends { prompt?: string; negativePrompt?: string }>(
+  rawSuggestions: T | undefined,
+  constraints: PromptConstraint[]
+): T | undefined {
+  if (!rawSuggestions || constraints.length === 0) return rawSuggestions
+  const promptPrefix = constraints.map((constraint) => constraint.promptPhrase).join(' ')
+  const currentPrompt = typeof rawSuggestions.prompt === 'string' ? rawSuggestions.prompt.trim() : ''
+  const guardedPrompt = currentPrompt.toLowerCase().includes(promptPrefix.slice(0, 40).toLowerCase())
+    ? currentPrompt
+    : `${promptPrefix} ${currentPrompt}`.trim()
+  const negativePhrase = constraints
+    .map((constraint) => constraint.negativePhrase)
+    .filter((phrase): phrase is string => Boolean(phrase))
+    .join(', ')
+
+  return {
+    ...rawSuggestions,
+    prompt: guardedPrompt,
+    negativePrompt: negativePhrase ? appendUniqueCommaList(rawSuggestions.negativePrompt, negativePhrase) : rawSuggestions.negativePrompt,
+  }
+}
+
+function applyLogoConfigConstraintGuardrails(rawLogoConfig: unknown, constraints: PromptConstraint[]): Record<string, unknown> {
+  const logoConfig = rawLogoConfig && typeof rawLogoConfig === 'object'
+    ? { ...(rawLogoConfig as Record<string, unknown>) }
+    : {}
+  if (constraints.length === 0) return logoConfig
+
+  const needsTransparentBackground = constraints.some((constraint) => constraint.key === 'background:transparent')
+  const needsWhiteOrNoBlueBackground = constraints.some((constraint) => constraint.key === 'background:white' || constraint.key === 'background:no-blue')
+
+  if (needsTransparentBackground) {
+    logoConfig.backgroundColor = 'transparent'
+    return logoConfig
+  }
+
+  if (needsWhiteOrNoBlueBackground && typeof logoConfig.backgroundColor === 'string') {
+    delete logoConfig.backgroundColor
+  }
+
+  return logoConfig
+}
+
 function formatAgentMemory(agentMemory: unknown): string {
   if (!agentMemory || typeof agentMemory !== 'object') return 'None yet'
   const memory = agentMemory as Record<string, unknown>
@@ -334,6 +493,8 @@ export async function POST(request: Request) {
     const hasOutput = hasLatestOutput(currentPromptSettings)
     const hasReference = hasReferenceMemory(agentMemory)
     const lastPersistentGeneration = getLastPersistentGeneration(agentMemory)
+    const promptConstraints = extractPromptConstraints(message, currentPrompt, currentNegativePrompt, hasReference || hasImageAnalysis)
+    const promptConstraintContext = formatPromptConstraints(promptConstraints)
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -358,6 +519,15 @@ ${CREATIVE_DIRECTION_OPTION_CONTEXT}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+EXPLICIT USER CONSTRAINTS (hard requirements):
+${promptConstraintContext}
+
+Constraint discipline:
+- Treat these constraints as non-negotiable and preserve them across iterations.
+- Put hard background, typography, text, and reference constraints near the start of suggestions.prompt.
+- Put contradictions in suggestions.negativePrompt, especially wrong background colors, wrong font, misspellings, and extra words.
+- Before returning JSON, self-check that suggestions.prompt does not contradict these constraints.
 
 ${latestOutputAnalysis ? `
 === LATEST GENERATED OUTPUT ANALYSIS ===
@@ -456,9 +626,11 @@ Available style strengths: subtle, moderate, strong`
     if (jsonMatch) {
       const jsonResponse = JSON.parse(jsonMatch[0])
       console.log("[v0 API] Successfully parsed JSON response")
-      const hasSuggestions = Boolean(jsonResponse.suggestions?.prompt)
+      const guardedSuggestions = applyPromptConstraintGuardrails(jsonResponse.suggestions, promptConstraints)
+      const hasSuggestions = Boolean(guardedSuggestions?.prompt)
       return NextResponse.json({
         ...jsonResponse,
+        suggestions: guardedSuggestions,
         actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration)),
       })
     }
@@ -466,7 +638,7 @@ Available style strengths: subtle, moderate, strong`
     console.warn("[v0 API] Failed to parse JSON, using fallback response")
     return NextResponse.json({
       message: responseText,
-      suggestions: {
+      suggestions: applyPromptConstraintGuardrails({
         prompt: currentPrompt || "",
         negativePrompt: currentNegativePrompt || "",
         style: currentStyle || "Realistic",
@@ -474,7 +646,7 @@ Available style strengths: subtle, moderate, strong`
         cameraLens: currentCameraLens || "None",
         aspectRatio: currentAspectRatio || "1:1",
         styleStrength: styleStrength || "moderate",
-      },
+      }, promptConstraints),
       actions: defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference, lastPersistentGeneration),
     })
   } catch (error: any) {
@@ -608,6 +780,16 @@ async function handleLogoMode(
     const hasOutput = hasLatestOutput(currentPromptSettings)
     const hasReference = hasReferenceMemory(agentMemory)
     const lastPersistentGeneration = getLastPersistentGeneration(agentMemory)
+    const logoSettings = currentPromptSettings && typeof currentPromptSettings === 'object'
+      ? currentPromptSettings as Record<string, unknown>
+      : {}
+    const promptConstraints = extractPromptConstraints(
+      message,
+      logoSettings.currentPrompt,
+      logoSettings.currentNegativePrompt,
+      hasReference || Boolean(logoAnalysis)
+    )
+    const promptConstraintContext = formatPromptConstraints(promptConstraints)
 
     const fullPrompt = `${logoSystemPrompt}
 
@@ -618,6 +800,15 @@ ${JSON.stringify(currentPromptSettings || {}, null, 2)}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+EXPLICIT USER CONSTRAINTS (hard requirements):
+${promptConstraintContext}
+
+Constraint discipline:
+- Treat these constraints as non-negotiable and preserve them across logo iterations.
+- Put hard background, typography, exact text, and reference constraints near the start of suggestions.prompt.
+- Put contradictions in suggestions.negativePrompt, especially wrong background colors, wrong font, misspellings, extra words, mockups, and scenes.
+- Before returning JSON, self-check that suggestions.prompt and logoConfig do not contradict these constraints.
 
 ${latestOutputAnalysis ? `
 === LATEST GENERATED OUTPUT ANALYSIS ===
@@ -689,8 +880,8 @@ Action schema:
     if (jsonMatch) {
       try {
         const jsonResponse = JSON.parse(jsonMatch[0])
-        const logoSuggestions = normalizeLogoPromptSuggestions(jsonResponse.suggestions)
-        const logoConfig = jsonResponse.logoConfig || {}
+        const logoSuggestions = applyPromptConstraintGuardrails(normalizeLogoPromptSuggestions(jsonResponse.suggestions), promptConstraints)
+        const logoConfig = applyLogoConfigConstraintGuardrails(jsonResponse.logoConfig, promptConstraints)
         const hasLogoConfig = Boolean(logoConfig && Object.keys(logoConfig).length > 0)
         console.log("[v0 API] Logo mode - Successfully parsed JSON response with config keys:",
           hasLogoConfig ? Object.keys(logoConfig) : 'none')
