@@ -446,6 +446,20 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can clear chat and memory from a direct local command',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /runDirectClearMemoryCommand/.test(sidebar) &&
+        /clearMemoryCommandTerms/.test(sidebar) &&
+        /clear helper memory/.test(sidebar) &&
+        /forget everything/.test(sidebar) &&
+        /await clearHistory\(\)/.test(sidebar) &&
+        /Helper memory cleared/.test(sidebar) &&
+        /No generator settings were changed/.test(sidebar) &&
+        /runDirectClearMemoryCommand\(userInput\)/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

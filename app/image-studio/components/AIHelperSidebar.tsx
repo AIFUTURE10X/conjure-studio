@@ -326,6 +326,33 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return terms.some((term) => normalized === term || normalized.includes(term))
   }
 
+  const runDirectClearMemoryCommand = async (userInput: string) => {
+    const clearMemoryCommandTerms = [
+      'clear helper memory',
+      'clear ai helper memory',
+      'clear prompt helper memory',
+      'clear this chat',
+      'clear chat history',
+      'forget everything',
+      'forget this chat',
+      'reset ai helper',
+      'reset prompt helper',
+      'wipe helper memory',
+    ]
+
+    if (!matchesNaturalDirectCommand(userInput, clearMemoryCommandTerms)) return false
+
+    const activeMode = mode
+    setPendingFollowUp(null)
+    await clearHistory()
+    appendLocalMessage({
+      role: 'assistant',
+      content: 'Helper memory cleared. No generator settings were changed.',
+      mode: activeMode,
+    })
+    return true
+  }
+
   const runDirectSuggestionCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
 
@@ -442,6 +469,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     if (isLoading) return
     const userInput = prompt?.trim() || input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
     if (!userInput.trim() && uploadedImages.length === 0) return
+    if (!prompt) {
+      const didClearMemory = await runDirectClearMemoryCommand(userInput)
+      if (didClearMemory) {
+        setInput('')
+        return
+      }
+    }
     if (!prompt && pendingFollowUp && userInput.trim()) {
       const followUpRequest = buildClarificationContinuationRequest(pendingFollowUp.prompt, userInput)
       const followUpMode = pendingFollowUp.mode
