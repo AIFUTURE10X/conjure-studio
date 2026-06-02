@@ -545,6 +545,120 @@ function buildClarificationResponse(mode: 'image' | 'logo', gate: ClarificationG
   })
 }
 
+function isOperationalDiagnosticRequest(message: unknown): boolean {
+  if (typeof message !== 'string') return false
+  const text = message.toLowerCase()
+  const operationalTerms = [
+    'what background remover',
+    'which background remover',
+    'background remover',
+    'background removal api',
+    'background removal service',
+    'what api',
+    'which api',
+    'what model',
+    'which model',
+    'current model',
+    'selected model',
+    'current settings',
+    'what settings',
+    'photoroom',
+    'native png',
+    'true png',
+    'transparent png',
+    'remove bg',
+    'remove background',
+    'is this using',
+    'does this use',
+  ]
+  const generationTerms = [
+    'create',
+    'generate',
+    'make me',
+    'write a prompt',
+    'rewrite',
+    'fix it',
+    'apply',
+    'run it',
+    'try it',
+  ]
+
+  return (isDiagnosticOnlyRequest(message) || includesAny(text, operationalTerms)) && !includesAny(text, generationTerms)
+}
+
+function formatGenerationModelLabel(model: string): string {
+  if (!model) return 'unknown'
+  if (model === 'gpt-image-2') return 'ChatGPT Images 2.0 (gpt-image-2)'
+  if (model === 'gemini-3.1-flash-image-preview') return 'Gemini 3.1 Flash Image Preview'
+  if (model === 'gemini-3-pro-image-preview') return 'Gemini 3 Pro Image Preview'
+  return model
+}
+
+function getActiveGeneratorModel(settings: Record<string, unknown>, mode: 'image' | 'logo'): string {
+  const preferredKey = mode === 'logo' ? 'logoSelectedModel' : 'selectedModel'
+  const fallbackKey = mode === 'logo' ? 'selectedModel' : 'logoSelectedModel'
+  return getStringSetting(settings, preferredKey) || getStringSetting(settings, fallbackKey)
+}
+
+function getActiveBackgroundRemovalSummary(settings: Record<string, unknown>, mode: 'image' | 'logo'): string {
+  if (mode === 'logo') {
+    const method = getStringSetting(settings, 'logoBgRemovalMethod')
+    const provider = getStringSetting(settings, 'logoBgRemovalProvider')
+    const enabled = settings.logoBgRemovalEnabled !== false && Boolean(method) && method !== 'none'
+    return formatBackgroundRemovalMethod(method, provider, enabled)
+  }
+
+  const method = getStringSetting(settings, 'imageBgRemovalMethod') || (settings.imagePhotoRoomBgRemovalEnabled ? 'photoroom' : 'smart')
+  const provider = getStringSetting(settings, 'imageBgRemovalProvider') || (method === 'photoroom' ? 'PhotoRoom' : 'Smart local cleanup')
+  const enabled = settings.imageBgRemovalEnabled !== false && Boolean(method)
+  return formatBackgroundRemovalMethod(method, provider, enabled)
+}
+
+function buildOperationalDiagnosticFindings(mode: 'image' | 'logo', currentPromptSettings: unknown): string[] {
+  const settings = currentPromptSettings && typeof currentPromptSettings === 'object'
+    ? currentPromptSettings as Record<string, unknown>
+    : {}
+  const currentModel = getActiveGeneratorModel(settings, mode)
+  const backgroundRemoval = getActiveBackgroundRemovalSummary(settings, mode)
+  const operationalContext = formatOperationalGeneratorContext(settings)
+  const backgroundRemovalContext = formatBackgroundRemovalContext(settings)
+
+  return [
+    `Current model: ${formatGenerationModelLabel(currentModel)}`,
+    `Background removal: ${backgroundRemoval}`,
+    'PhotoRoom: API post-generation cleanup; the image model creates the artwork first, then PhotoRoom removes the background if selected.',
+    'Native PNG: model-side transparent output only when using ChatGPT Images 2.0 (gpt-image-2) with native-transparent selected.',
+    `Current settings snapshot:\n${operationalContext}\n${backgroundRemovalContext ? `\n${backgroundRemovalContext}` : ''}`,
+  ]
+}
+
+function buildLocalDiagnosticResponse(mode: 'image' | 'logo', message: unknown, currentPromptSettings: unknown) {
+  if (!isOperationalDiagnosticRequest(message)) return null
+
+  const diagnosticFindings = buildOperationalDiagnosticFindings(mode, currentPromptSettings)
+  return NextResponse.json({
+    message: [
+      `I checked the current ${mode} generator settings before Gemini is required.`,
+      diagnosticFindings.slice(0, 4).join('\n'),
+      'So: PhotoRoom is background removal after generation. Native PNG is only model-side transparency with ChatGPT Images 2.0 when native-transparent is selected.',
+    ].join('\n\n'),
+    responseMode: 'diagnostic',
+    plannerDecision: 'diagnose',
+    designBrief: '',
+    executionPlan: ['Read current generator settings', 'Identify the active model and background-removal path', 'Explain the PNG/background behavior without changing generator settings'],
+    diagnosticFindings,
+    promptQualityChecklist: [
+      'Planner: answered from current local generator settings before Gemini is required.',
+      'Current model and background removal settings were reported without creating a new prompt.',
+      'Diagnostic answer returned no apply or generate actions.',
+    ],
+    suggestions: undefined,
+    logoConfig: mode === 'logo' ? {} : undefined,
+    actions: [],
+    ...(mode === 'logo' ? { mode: 'logo' } : {}),
+  })
+}
+
 function addPromptConstraint(constraints: PromptConstraint[], constraint: PromptConstraint): void {
   if (constraints.some((item) => item.key === constraint.key)) return
   constraints.push(constraint)
@@ -1125,6 +1239,11 @@ export async function POST(request: Request) {
       return buildClarificationResponse('image', earlyClarificationGate)
     }
 
+    const earlyDiagnosticResponse = buildLocalDiagnosticResponse('image', message, currentPromptSettings)
+    if (earlyDiagnosticResponse) {
+      return earlyDiagnosticResponse
+    }
+
     // Check if Gemini is available
     if (!genAI) {
       console.error(`[v0 API] Gemini API not initialized - missing ${getGeminiApiKeyNames()}`)
@@ -1568,6 +1687,11 @@ async function handleLogoMode(
     })
     if (earlyClarificationGate.shouldAsk) {
       return buildClarificationResponse('logo', earlyClarificationGate)
+    }
+
+    const earlyDiagnosticResponse = buildLocalDiagnosticResponse('logo', message, currentPromptSettings)
+    if (earlyDiagnosticResponse) {
+      return earlyDiagnosticResponse
     }
 
     // Check if Gemini is available
