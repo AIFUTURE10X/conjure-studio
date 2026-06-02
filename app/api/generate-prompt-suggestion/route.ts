@@ -338,6 +338,41 @@ function hasReferenceMemory(agentMemory: unknown): boolean {
   )
 }
 
+function hasCurrentSettingsReference(mode: 'image' | 'logo', currentPromptSettings: unknown): boolean {
+  if (!currentPromptSettings || typeof currentPromptSettings !== 'object') return false
+  const settings = currentPromptSettings as Record<string, unknown>
+  if (mode === 'logo') {
+    return Boolean(settings.logoHasReferenceImage || (settings.logoReferenceMode && settings.logoReferenceMode !== 'none'))
+  }
+  return Boolean(settings.hasReferenceImage || (settings.referenceImageMode && settings.referenceImageMode !== 'none'))
+}
+
+function formatCurrentGeneratorReferenceContext(mode: 'image' | 'logo', currentPromptSettings: unknown): string {
+  if (!currentPromptSettings || typeof currentPromptSettings !== 'object') {
+    return 'No generator reference image is loaded.'
+  }
+
+  const settings = currentPromptSettings as Record<string, unknown>
+  const hasSettingsReference = hasCurrentSettingsReference(mode, settings)
+  if (!hasSettingsReference) {
+    return 'No generator reference image is loaded.'
+  }
+
+  const referenceMode = mode === 'logo'
+    ? getStringSetting(settings, 'logoReferenceMode') || 'loaded'
+    : getStringSetting(settings, 'referenceImageMode') || 'loaded'
+  const generatorLabel = mode === 'logo' ? 'Logo generator' : 'Image generator'
+  const matchingTargets = mode === 'logo'
+    ? 'typography, letterforms, wordmark spacing, icon geometry, palette, background, and overall layout'
+    : 'subject, composition, pose, palette, lighting, background, and overall style'
+
+  return [
+    `- ${generatorLabel} reference image: loaded (${referenceMode}). Treat this as active reference context even if no separate AI-helper image analysis is available.`,
+    `- Reference-following rule: write prompts that explicitly preserve and match the loaded reference ${matchingTargets} unless the user asks to change one of those elements.`,
+    '- If the prompt is applied and generated, assume the generator can use its loaded reference image for image-to-image guidance; do not behave as though no reference exists.',
+  ].join('\n')
+}
+
 function getLastPersistentGeneration(agentMemory: unknown): { prompt: string; negativePrompt?: string } | null {
   if (!agentMemory || typeof agentMemory !== 'object') return null
   const persistentGenerations = (agentMemory as Record<string, unknown>).persistentGenerations
@@ -1306,12 +1341,13 @@ export async function POST(request: Request) {
     }
 
     const hasImageAnalysisForEarlyGate = typeof message === 'string' && message.includes("REFERENCE IMAGES ANALYSIS")
+    const hasSettingsReferenceForEarlyGate = hasCurrentSettingsReference('image', currentPromptSettings)
     const earlyClarificationGate = buildClarificationGate({
       mode: 'image',
       message,
       currentPrompt,
       agentMemory,
-      hasReference: hasReferenceMemory(agentMemory) || hasImageAnalysisForEarlyGate,
+      hasReference: hasReferenceMemory(agentMemory) || hasImageAnalysisForEarlyGate || hasSettingsReferenceForEarlyGate,
       hasOutput: hasLatestOutput(currentPromptSettings),
     })
     if (earlyClarificationGate.shouldAsk) {
@@ -1368,13 +1404,16 @@ export async function POST(request: Request) {
     const creativeDirectionContext = formatCreativeDirectionContext(creativeDirection)
     const agentMemoryContext = formatAgentMemory(agentMemory)
     const hasOutput = hasLatestOutput(currentPromptSettings)
-    const hasReference = hasReferenceMemory(agentMemory)
+    const hasSettingsReference = hasCurrentSettingsReference('image', currentPromptSettings)
+    const hasReference = hasReferenceMemory(agentMemory) || hasSettingsReference
+    const hasActiveReferenceContext = hasReference || hasImageAnalysis
     const lastPersistentGeneration = getLastPersistentGeneration(agentMemory)
-    const promptConstraints = extractPromptConstraints(message, currentPrompt, currentNegativePrompt, hasReference || hasImageAnalysis)
+    const promptConstraints = extractPromptConstraints(message, currentPrompt, currentNegativePrompt, hasActiveReferenceContext)
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
+    const currentGeneratorReferenceContext = formatCurrentGeneratorReferenceContext('image', currentPromptSettings)
     const sharedProjectBriefContext = formatSharedProjectBrief(agentMemory)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
@@ -1383,14 +1422,14 @@ export async function POST(request: Request) {
       message,
       currentPrompt,
       agentMemory,
-      hasReference: hasReference || hasImageAnalysis,
+      hasReference: hasActiveReferenceContext,
       hasOutput,
     })
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'image',
       message,
       currentPrompt,
-      hasReference: hasReference || hasImageAnalysis,
+      hasReference: hasActiveReferenceContext,
       hasOutput,
       hasPreviousPrompt: Boolean(lastGeneratedPrompt || lastPersistentGeneration?.prompt),
     })
@@ -1399,7 +1438,7 @@ export async function POST(request: Request) {
       message,
       currentPrompt,
       agentMemory,
-      hasReference: hasReference || hasImageAnalysis,
+      hasReference: hasActiveReferenceContext,
       hasOutput,
     })
     const hasStrictChangeRequest = changeControlContext.includes('Change budget: single requested edit')
@@ -1429,6 +1468,9 @@ ${operationalGeneratorContext}
 
 BACKGROUND REMOVAL CONTEXT:
 ${backgroundRemovalContext}
+
+CURRENT GENERATOR REFERENCE CONTEXT:
+${currentGeneratorReferenceContext}
 
 - Raw currentPromptSettings snapshot:
 ${JSON.stringify(currentPromptSettings || {}, null, 2)}
@@ -1478,7 +1520,7 @@ ${latestOutputAnalysis}
 If the user asks for critique, diagnose mismatches between this output, the current prompt, and prior requests. If the user asks for a variation, preserve the strongest parts and change only the requested/weak parts.
 ` : ''}
 
-${latestOutputAnalysis && hasReference ? `
+${latestOutputAnalysis && hasActiveReferenceContext ? `
 === REFERENCE MATCH COMPARISON ===
 The AGENT MEMORY includes the most recent reference analysis. Compare the latest output against that reference when the user asks to compare, match, fix drift, or get closer to the reference.
 ` : ''}
@@ -1594,13 +1636,13 @@ Available style strengths: subtle, moderate, strong`
       const hasSuggestions = Boolean(guardedSuggestions?.prompt)
       const plannerDecision = shouldAskFollowUp
         ? 'ask_follow_up'
-        : normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, hasSuggestions, hasOutput, hasReference || hasImageAnalysis)
+        : normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, hasSuggestions, hasOutput, hasActiveReferenceContext)
       const promptQualityChecklist = normalizePromptQualityChecklist(
         jsonResponse.promptQualityChecklist,
         buildPromptQualityFallback({
           mode: 'image',
           responseMode,
-          hasReference: hasReference || hasImageAnalysis,
+          hasReference: hasActiveReferenceContext,
           hasOutput,
           hasSuggestions,
           constraints: promptConstraints,
@@ -1618,7 +1660,7 @@ Available style strengths: subtle, moderate, strong`
         suggestions: shouldAskFollowUp ? undefined : guardedSuggestions,
         actions: normalizePlannerActions(
           jsonResponse.actions,
-          responseMode === 'diagnostic' ? [] : defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration),
+          responseMode === 'diagnostic' ? [] : defaultHelperActions('image', hasSuggestions, false, hasOutput, hasActiveReferenceContext, lastPersistentGeneration),
           plannerDecision,
           'image',
           clarificationGate.shouldAsk ? clarificationGate.question : stringFromUnknown(jsonResponse.message, 'What detail should I use before I make the prompt?'),
@@ -1640,7 +1682,7 @@ Available style strengths: subtle, moderate, strong`
       promptQualityChecklist: buildPromptQualityFallback({
         mode: 'image',
         responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
-        hasReference: hasReference || hasImageAnalysis,
+        hasReference: hasActiveReferenceContext,
         hasOutput,
         hasSuggestions: Boolean(currentPrompt),
         constraints: promptConstraints,
@@ -1659,7 +1701,7 @@ Available style strengths: subtle, moderate, strong`
         ? []
         : clarificationGate.shouldAsk
           ? [buildClarificationAction('image', clarificationGate.question)]
-          : defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference, lastPersistentGeneration),
+          : defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasActiveReferenceContext, lastPersistentGeneration),
     })
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
@@ -1761,12 +1803,13 @@ async function handleLogoMode(
     const logoSettingsForGate = currentPromptSettings && typeof currentPromptSettings === 'object'
       ? currentPromptSettings as Record<string, unknown>
       : {}
+    const hasSettingsReferenceForEarlyGate = hasCurrentSettingsReference('logo', currentPromptSettings)
     const earlyClarificationGate = buildClarificationGate({
       mode: 'logo',
       message,
       currentPrompt: logoSettingsForGate.currentPrompt,
       agentMemory,
-      hasReference: hasReferenceMemory(agentMemory) || Boolean(logoAnalysis),
+      hasReference: hasReferenceMemory(agentMemory) || Boolean(logoAnalysis) || hasSettingsReferenceForEarlyGate,
       hasOutput: hasLatestOutput(currentPromptSettings),
     })
     if (earlyClarificationGate.shouldAsk) {
@@ -1839,7 +1882,9 @@ async function handleLogoMode(
     const logoSystemPrompt = buildLogoSystemPrompt()
     const agentMemoryContext = formatAgentMemory(agentMemory)
     const hasOutput = hasLatestOutput(currentPromptSettings)
-    const hasReference = hasReferenceMemory(agentMemory)
+    const hasSettingsReference = hasCurrentSettingsReference('logo', currentPromptSettings)
+    const hasReference = hasReferenceMemory(agentMemory) || hasSettingsReference
+    const hasActiveReferenceContext = hasReference || Boolean(logoAnalysis)
     const lastPersistentGeneration = getLastPersistentGeneration(agentMemory)
     const logoSettings = currentPromptSettings && typeof currentPromptSettings === 'object'
       ? currentPromptSettings as Record<string, unknown>
@@ -1848,12 +1893,13 @@ async function handleLogoMode(
       message,
       logoSettings.currentPrompt,
       logoSettings.currentNegativePrompt,
-      hasReference || Boolean(logoAnalysis)
+      hasActiveReferenceContext
     )
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
+    const currentGeneratorReferenceContext = formatCurrentGeneratorReferenceContext('logo', currentPromptSettings)
     const sharedProjectBriefContext = formatSharedProjectBrief(agentMemory)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
@@ -1862,14 +1908,14 @@ async function handleLogoMode(
       message,
       currentPrompt: logoSettings.currentPrompt,
       agentMemory,
-      hasReference: hasReference || Boolean(logoAnalysis),
+      hasReference: hasActiveReferenceContext,
       hasOutput,
     })
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'logo',
       message,
       currentPrompt: logoSettings.currentPrompt,
-      hasReference: hasReference || Boolean(logoAnalysis),
+      hasReference: hasActiveReferenceContext,
       hasOutput,
       hasPreviousPrompt: Boolean(lastLogoPrompt || lastPersistentGeneration?.prompt),
     })
@@ -1878,7 +1924,7 @@ async function handleLogoMode(
       message,
       currentPrompt: logoSettings.currentPrompt,
       agentMemory,
-      hasReference: hasReference || Boolean(logoAnalysis),
+      hasReference: hasActiveReferenceContext,
       hasOutput,
     })
     const hasStrictChangeRequest = changeControlContext.includes('Change budget: single requested edit')
@@ -1899,6 +1945,9 @@ ${operationalGeneratorContext}
 
 BACKGROUND REMOVAL CONTEXT:
 ${backgroundRemovalContext}
+
+CURRENT GENERATOR REFERENCE CONTEXT:
+${currentGeneratorReferenceContext}
 
 AGENT MEMORY:
 ${agentMemoryContext}
@@ -1942,7 +1991,7 @@ ${latestOutputAnalysis}
 If the user asks for critique, diagnose typography, layout, background, color, readability, and reference-match misses. If the user asks for a variation, keep the strongest brand direction and correct the weak parts.
 ` : ''}
 
-${latestOutputAnalysis && hasReference ? `
+${latestOutputAnalysis && hasActiveReferenceContext ? `
 === REFERENCE MATCH COMPARISON ===
 The AGENT MEMORY includes the most recent logo reference analysis. Compare the latest generated logo against that reference for typography, spacing, palette, background, composition, and text accuracy.
 ` : ''}
@@ -2026,13 +2075,13 @@ Action schema:
         const hasLogoConfig = Boolean(logoConfig && Object.keys(logoConfig).length > 0)
         const plannerDecision = shouldAskFollowUp
           ? 'ask_follow_up'
-          : normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, Boolean(logoSuggestions?.prompt), hasOutput, hasReference || Boolean(logoAnalysis))
+          : normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, Boolean(logoSuggestions?.prompt), hasOutput, hasActiveReferenceContext)
         const promptQualityChecklist = normalizePromptQualityChecklist(
           jsonResponse.promptQualityChecklist,
           buildPromptQualityFallback({
             mode: 'logo',
             responseMode,
-            hasReference: hasReference || Boolean(logoAnalysis),
+            hasReference: hasActiveReferenceContext,
             hasOutput,
             hasSuggestions: Boolean(logoSuggestions?.prompt),
             constraints: promptConstraints,
@@ -2053,7 +2102,7 @@ Action schema:
           logoConfig,
           actions: normalizePlannerActions(
             jsonResponse.actions,
-            responseMode === 'diagnostic' ? [] : defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration),
+            responseMode === 'diagnostic' ? [] : defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasActiveReferenceContext, lastPersistentGeneration),
             plannerDecision,
             'logo',
             clarificationGate.shouldAsk ? clarificationGate.question : stringFromUnknown(jsonResponse.message, 'What detail should I use before I make the logo prompt?'),
@@ -2076,7 +2125,7 @@ Action schema:
       promptQualityChecklist: buildPromptQualityFallback({
         mode: 'logo',
         responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
-        hasReference: hasReference || Boolean(logoAnalysis),
+        hasReference: hasActiveReferenceContext,
         hasOutput,
         hasSuggestions: false,
         constraints: promptConstraints,
@@ -2087,7 +2136,7 @@ Action schema:
         ? []
         : clarificationGate.shouldAsk
           ? [buildClarificationAction('logo', clarificationGate.question)]
-          : defaultHelperActions('logo', false, false, hasOutput, hasReference, lastPersistentGeneration),
+          : defaultHelperActions('logo', false, false, hasOutput, hasActiveReferenceContext, lastPersistentGeneration),
       mode: 'logo'
     })
   } catch (error: any) {

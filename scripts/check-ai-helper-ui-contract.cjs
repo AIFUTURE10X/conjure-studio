@@ -507,6 +507,18 @@ const checks = [
     },
   },
   {
+    name: 'AI helper context snapshot shows logo generator reference images',
+    pass: () => {
+      const page = read('app/image-studio/page.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      return /logoHasReferenceImage: logoGeneratorContext\.hasReferenceImage/.test(page) &&
+        /logoReferenceMode: logoGeneratorContext\.referenceMode/.test(page) &&
+        /mode === 'logo' \? Boolean\(currentPromptSettings\.logoHasReferenceImage\)/.test(snapshot) &&
+        /mode === 'logo' \? currentPromptSettings\.logoReferenceMode/.test(snapshot) &&
+        /Generator ref:/.test(snapshot)
+    },
+  },
+  {
     name: 'AI helper receives and explains background removal and true PNG context',
     pass: () => {
       const state = read('app/image-studio/hooks/useImageStudioState.ts')

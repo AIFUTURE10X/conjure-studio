@@ -99,6 +99,21 @@ const scenarios = [
     ],
   },
   {
+    name: 'generator-loaded reference images are active prompt context',
+    expected: [
+      /hasCurrentSettingsReference/,
+      /formatCurrentGeneratorReferenceContext/,
+      /CURRENT GENERATOR REFERENCE CONTEXT/,
+      /Treat this as active reference context even if no separate AI-helper image analysis is available/,
+      /logoHasReferenceImage/,
+      /logoReferenceMode/,
+      /referenceImageMode/,
+      /hasSettingsReference/,
+      /hasActiveReferenceContext/,
+      /Reference-following rule/,
+    ],
+  },
+  {
     name: 'server recognizes structured clarification continuation answers',
     expected: [
       /hasStructuredClarificationContinuation/,

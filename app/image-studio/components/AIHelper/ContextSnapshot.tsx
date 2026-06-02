@@ -104,7 +104,8 @@ export function ContextSnapshot({
   const hasNegativePrompt = hasPromptText(currentPromptSettings.currentNegativePrompt)
   const hasStyle = hasPromptText(currentPromptSettings.currentStyle)
   const hasReferenceImage = uploadedImages.length > 0
-  const hasGeneratorReferenceImage = Boolean(currentPromptSettings.hasReferenceImage)
+  const hasGeneratorReferenceImage = mode === 'logo' ? Boolean(currentPromptSettings.logoHasReferenceImage) : Boolean(currentPromptSettings.hasReferenceImage)
+  const generatorReferenceMode = mode === 'logo' ? currentPromptSettings.logoReferenceMode : currentPromptSettings.referenceImageMode
   const hasLatestOutput = Boolean(latestOutput?.url)
   const hasActiveDesignBrief = hasPromptText(activeDesignBrief)
   const hasSharedProjectBrief = hasPromptText(sharedProjectBrief)
@@ -142,7 +143,7 @@ export function ContextSnapshot({
           />
         )}
         <ContextChip icon={ImageIcon} label={hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image'} active={hasReferenceImage} />
-        <ContextChip icon={ImageIcon} label={hasGeneratorReferenceImage ? `Generator ref: ${currentPromptSettings.referenceImageMode || 'loaded'}` : 'No generator ref'} active={hasGeneratorReferenceImage} />
+        <ContextChip icon={ImageIcon} label={hasGeneratorReferenceImage ? `Generator ref: ${generatorReferenceMode || 'loaded'}` : 'No generator ref'} active={hasGeneratorReferenceImage} />
         <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />
         <ContextChip icon={Brain} label={hasActiveDesignBrief ? 'Active brief' : 'No active brief'} active={hasActiveDesignBrief} />
         <ContextChip icon={Brain} label={hasSharedProjectBrief ? 'Shared project' : 'No shared project'} active={hasSharedProjectBrief} />
