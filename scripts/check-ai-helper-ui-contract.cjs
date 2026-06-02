@@ -170,6 +170,22 @@ const checks = [
         /blue background/.test(route)
     },
   },
+  {
+    name: 'AI helper shows a visible context snapshot for current prompt references and latest outputs',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      return /ContextSnapshot/.test(sidebar) &&
+        /currentPromptSettings=/.test(sidebar) &&
+        /uploadedImages=/.test(sidebar) &&
+        /latestOutputs=/.test(sidebar) &&
+        /Current Context/.test(snapshot) &&
+        /Prompt loaded/.test(snapshot) &&
+        /Reference image/.test(snapshot) &&
+        /Latest output/.test(snapshot) &&
+        /Mode/.test(snapshot)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

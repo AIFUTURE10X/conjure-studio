@@ -21,6 +21,7 @@ import { SuggestionCard, SUGGESTION_APPLY_LABELS } from './AIHelper/SuggestionCa
 import { ImageUploadPreview } from './AIHelper/ImageUploadPreview'
 import { ChatInput } from './AIHelper/ChatInput'
 import { SmartActionBar } from './AIHelper/SmartActionBar'
+import { ContextSnapshot } from './AIHelper/ContextSnapshot'
 
 const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
 const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
@@ -228,6 +229,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         onToggleExpanded={() => setIsExpanded((value) => !value)}
         onClearHistory={clearHistory}
         onClose={onClose}
+      />
+
+      <ContextSnapshot
+        mode={mode}
+        currentPromptSettings={currentPromptSettings}
+        uploadedImages={uploadedImages}
+        latestOutputs={latestOutputs}
       />
 
       {/* Messages */}
