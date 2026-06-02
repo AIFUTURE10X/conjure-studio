@@ -90,7 +90,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const [pendingFollowUp, setPendingFollowUp] = useState<{ prompt: string; mode: AIHelperMode } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, activeTaskContext, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
+  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, sharedProjectBrief, activeTaskContext, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -312,6 +312,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       `Original question: ${question}`,
       `User answer: ${answer}`,
       `Active design brief: ${activeDesignBrief || 'None yet'}`,
+      `Shared project brief: ${sharedProjectBrief || 'None yet'}`,
       `Active task: ${activeTaskSummary}`,
       `Current generator prompt: ${currentPrompt}`,
       'Continue from the pending clarification. Use the user answer as the missing essential detail, preserve any active brief/task context, and now produce the generation-ready prompt or settings without asking the same question again.',
@@ -494,6 +495,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         preferenceCount={preferenceCount}
         preferenceMemory={preferenceMemory}
         activeDesignBrief={activeDesignBrief}
+        sharedProjectBrief={sharedProjectBrief}
         activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
         onForgetPreference={forgetPreference}
         latestOutputs={latestOutputs}

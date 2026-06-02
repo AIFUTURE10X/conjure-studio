@@ -84,6 +84,7 @@ export interface AIHelperAgentMemory {
   lastNegativePrompt?: string
   lastAssistantSummary?: string
   activeDesignBrief?: string
+  sharedProjectBrief?: string
   activeTaskContext?: AIHelperActiveTask
   lastReferenceAnalysis?: string
   persistentGenerations: AIHelperMemorySnapshot[]
@@ -139,6 +140,7 @@ export function buildAgentMemory(
     .reverse()
     .find((message) => message.role === 'assistant' && (!message.mode || message.mode === mode))
   const activeDesignBrief = getActiveDesignBrief(messages, mode)
+  const sharedProjectBrief = getSharedProjectBrief(messages)
   const activeTaskContext = buildActiveTaskContext(messages, mode)
   const persistentGenerations = generationMemory
     .filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'suggestion')
@@ -157,6 +159,7 @@ export function buildAgentMemory(
     lastNegativePrompt: lastLogoSuggestion?.suggestions?.negativePrompt || lastImageSuggestion?.suggestions?.negativePrompt,
     lastAssistantSummary: lastAssistant?.content,
     activeDesignBrief,
+    sharedProjectBrief,
     activeTaskContext,
     lastReferenceAnalysis,
     persistentGenerations,
@@ -176,6 +179,12 @@ export function getActiveDesignBrief(messages: AIMessage[], mode: AIHelperMode):
       const messageMode = getMessageMode(message)
       return message.role === 'assistant' && messageMode === mode && Boolean(message.designBrief?.trim())
     })?.designBrief
+}
+
+export function getSharedProjectBrief(messages: AIMessage[]): string | undefined {
+  return [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && Boolean(message.designBrief?.trim()))?.designBrief
 }
 
 export function parseDesignBriefLine(designBrief: string | undefined, label: string): string {
@@ -643,6 +652,7 @@ export function useAIHelper() {
     preferenceCount: preferenceMemory.length,
     preferenceMemory,
     activeDesignBrief: getActiveDesignBrief(messages, mode),
+    sharedProjectBrief: getSharedProjectBrief(messages),
     activeTaskContext: buildActiveTaskContext(messages, mode),
     forgetPreference,
     cancelRequest,

@@ -562,6 +562,25 @@ const checks = [
     },
   },
   {
+    name: 'AI helper carries a shared project brief across image and logo modes',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /sharedProjectBrief\?: string/.test(hook) &&
+        /getSharedProjectBrief/.test(hook) &&
+        /sharedProjectBrief: getSharedProjectBrief\(messages\)/.test(hook) &&
+        /sharedProjectBrief=/.test(sidebar) &&
+        /Shared project brief:/.test(sidebar) &&
+        /sharedProjectBrief\?: string/.test(snapshot) &&
+        /Shared project/.test(snapshot) &&
+        /formatSharedProjectBrief/.test(route) &&
+        /SHARED PROJECT BRIEF/.test(route) &&
+        /sharedProjectBrief: memory\.sharedProjectBrief/.test(route)
+    },
+  },
+  {
     name: 'AI helper tracks a live active task snapshot for natural follow-up edits',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')

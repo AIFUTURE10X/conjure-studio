@@ -883,6 +883,7 @@ function formatAgentMemory(agentMemory: unknown): string {
     lastNegativePrompt: memory.lastNegativePrompt || '',
     lastAssistantSummary: memory.lastAssistantSummary || '',
     activeDesignBrief: memory.activeDesignBrief || '',
+    sharedProjectBrief: memory.sharedProjectBrief || '',
     activeTaskContext: memory.activeTaskContext || null,
     lastReferenceAnalysis: memory.lastReferenceAnalysis || '',
     persistentGenerations: Array.isArray(memory.persistentGenerations)
@@ -893,6 +894,15 @@ function formatAgentMemory(agentMemory: unknown): string {
       : [],
     recentUserRequests: Array.isArray(memory.recentUserRequests) ? memory.recentUserRequests.slice(-4) : [],
   }, null, 2)
+}
+
+function formatSharedProjectBrief(agentMemory: unknown): string {
+  if (!agentMemory || typeof agentMemory !== 'object') return 'None yet'
+  const memory = agentMemory as Record<string, unknown>
+  const sharedProjectBrief = memory.sharedProjectBrief
+  return typeof sharedProjectBrief === 'string' && sharedProjectBrief.trim()
+    ? sharedProjectBrief.trim()
+    : 'None yet'
 }
 
 function formatActiveTaskSnapshot(agentMemory: unknown): string {
@@ -1162,6 +1172,7 @@ export async function POST(request: Request) {
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
+    const sharedProjectBriefContext = formatSharedProjectBrief(agentMemory)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
     const clarificationGate = buildClarificationGate({
@@ -1224,6 +1235,9 @@ ${CREATIVE_DIRECTION_OPTION_CONTEXT}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+SHARED PROJECT BRIEF:
+${sharedProjectBriefContext}
 
 ACTIVE TASK BRIEF:
 ${activeTaskBrief}
@@ -1627,6 +1641,7 @@ async function handleLogoMode(
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
+    const sharedProjectBriefContext = formatSharedProjectBrief(agentMemory)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
     const clarificationGate = buildClarificationGate({
@@ -1674,6 +1689,9 @@ ${backgroundRemovalContext}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+SHARED PROJECT BRIEF:
+${sharedProjectBriefContext}
 
 ACTIVE TASK BRIEF:
 ${activeTaskBrief}

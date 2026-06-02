@@ -43,6 +43,7 @@ interface ContextSnapshotProps {
   preferenceCount?: number
   preferenceMemory?: AIHelperMemorySnapshot[]
   activeDesignBrief?: string
+  sharedProjectBrief?: string
   activeTaskContext?: AIHelperActiveTask
   onForgetPreference?: (timestamp: number) => void
   latestOutputs?: {
@@ -93,6 +94,7 @@ export function ContextSnapshot({
   preferenceCount = 0,
   preferenceMemory = [],
   activeDesignBrief,
+  sharedProjectBrief,
   activeTaskContext,
   onForgetPreference,
   latestOutputs = {},
@@ -105,6 +107,7 @@ export function ContextSnapshot({
   const hasGeneratorReferenceImage = Boolean(currentPromptSettings.hasReferenceImage)
   const hasLatestOutput = Boolean(latestOutput?.url)
   const hasActiveDesignBrief = hasPromptText(activeDesignBrief)
+  const hasSharedProjectBrief = hasPromptText(sharedProjectBrief)
   const imageBgRemovalEnabled = currentPromptSettings.imageBgRemovalEnabled !== false && Boolean(currentPromptSettings.imageBgRemovalMethod)
   const logoBgRemovalEnabled = currentPromptSettings.logoBgRemovalEnabled !== false && Boolean(currentPromptSettings.logoBgRemovalMethod)
 
@@ -142,8 +145,18 @@ export function ContextSnapshot({
         <ContextChip icon={ImageIcon} label={hasGeneratorReferenceImage ? `Generator ref: ${currentPromptSettings.referenceImageMode || 'loaded'}` : 'No generator ref'} active={hasGeneratorReferenceImage} />
         <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />
         <ContextChip icon={Brain} label={hasActiveDesignBrief ? 'Active brief' : 'No active brief'} active={hasActiveDesignBrief} />
+        <ContextChip icon={Brain} label={hasSharedProjectBrief ? 'Shared project' : 'No shared project'} active={hasSharedProjectBrief} />
         <ContextChip icon={Brain} label={preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory'} active={preferenceCount > 0} />
       </div>
+      {hasSharedProjectBrief && (
+        <div className="mt-3 rounded-md border border-zinc-700/70 bg-zinc-900/70 p-3">
+          <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+            <Brain className="h-3.5 w-3.5" />
+            Shared project brief
+          </div>
+          <div className="line-clamp-3 text-xs leading-5 text-zinc-300">{sharedProjectBrief}</div>
+        </div>
+      )}
       {activeTaskContext && (
         <div className="mt-3 rounded-md border border-[#c99850]/25 bg-[#c99850]/10 p-3">
           <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#f0d49b]">
