@@ -1,7 +1,7 @@
 'use client'
 
 import { Brain, FileText, ImageIcon, Layers, MonitorCheck, Sparkles, X } from 'lucide-react'
-import type { AIHelperLatestOutput, AIHelperMemorySnapshot, AIHelperMode } from '../../hooks/useAIHelper'
+import type { AIHelperActiveTask, AIHelperLatestOutput, AIHelperMemorySnapshot, AIHelperMode } from '../../hooks/useAIHelper'
 import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 
 interface ContextSnapshotProps {
@@ -43,6 +43,7 @@ interface ContextSnapshotProps {
   preferenceCount?: number
   preferenceMemory?: AIHelperMemorySnapshot[]
   activeDesignBrief?: string
+  activeTaskContext?: AIHelperActiveTask
   onForgetPreference?: (timestamp: number) => void
   latestOutputs?: {
     image?: AIHelperLatestOutput | null
@@ -92,6 +93,7 @@ export function ContextSnapshot({
   preferenceCount = 0,
   preferenceMemory = [],
   activeDesignBrief,
+  activeTaskContext,
   onForgetPreference,
   latestOutputs = {},
 }: ContextSnapshotProps) {
@@ -142,6 +144,28 @@ export function ContextSnapshot({
         <ContextChip icon={Brain} label={hasActiveDesignBrief ? 'Active brief' : 'No active brief'} active={hasActiveDesignBrief} />
         <ContextChip icon={Brain} label={preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory'} active={preferenceCount > 0} />
       </div>
+      {activeTaskContext && (
+        <div className="mt-3 rounded-md border border-[#c99850]/25 bg-[#c99850]/10 p-3">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#f0d49b]">
+            <Brain className="h-3.5 w-3.5" />
+            Active Task
+          </div>
+          <div className="grid gap-2 text-xs leading-5 text-zinc-200 sm:grid-cols-3">
+            <div>
+              <span className="font-semibold text-[#f0d49b]">Goal:</span>{' '}
+              <span className="text-zinc-300">{activeTaskContext.goal}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-[#f0d49b]">Preserve:</span>{' '}
+              <span className="text-zinc-300">{activeTaskContext.preserve}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-[#f0d49b]">Next:</span>{' '}
+              <span className="text-zinc-300">{activeTaskContext.next}</span>
+            </div>
+          </div>
+        </div>
+      )}
       {preferenceMemory.length > 0 && (
         <div className="mt-3 border-t border-zinc-800 pt-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Saved Preferences</div>

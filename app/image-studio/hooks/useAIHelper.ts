@@ -82,10 +82,20 @@ export interface AIHelperAgentMemory {
   lastNegativePrompt?: string
   lastAssistantSummary?: string
   activeDesignBrief?: string
+  activeTaskContext?: AIHelperActiveTask
   lastReferenceAnalysis?: string
   persistentGenerations: AIHelperMemorySnapshot[]
   persistentPreferences: AIHelperMemorySnapshot[]
   recentUserRequests: string[]
+}
+
+export interface AIHelperActiveTask {
+  mode: AIHelperMode
+  goal: string
+  preserve: string
+  next: string
+  latestUserRequest: string
+  source: 'design-brief' | 'recent-request'
 }
 
 export interface AIHelperMemorySnapshot {
@@ -127,6 +137,7 @@ export function buildAgentMemory(
     .reverse()
     .find((message) => message.role === 'assistant' && (!message.mode || message.mode === mode))
   const activeDesignBrief = getActiveDesignBrief(messages, mode)
+  const activeTaskContext = buildActiveTaskContext(messages, mode)
   const persistentGenerations = generationMemory
     .filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'suggestion')
     .slice(-5)
@@ -144,6 +155,7 @@ export function buildAgentMemory(
     lastNegativePrompt: lastLogoSuggestion?.suggestions?.negativePrompt || lastImageSuggestion?.suggestions?.negativePrompt,
     lastAssistantSummary: lastAssistant?.content,
     activeDesignBrief,
+    activeTaskContext,
     lastReferenceAnalysis,
     persistentGenerations,
     persistentPreferences,
@@ -151,13 +163,58 @@ export function buildAgentMemory(
   }
 }
 
+function getMessageMode(message: AIMessage): AIHelperMode {
+  return message.mode === 'logo' ? 'logo' : 'image'
+}
+
 export function getActiveDesignBrief(messages: AIMessage[], mode: AIHelperMode): string | undefined {
   return [...messages]
     .reverse()
     .find((message) => {
-      const messageMode: AIHelperMode = message.mode === 'logo' ? 'logo' : 'image'
+      const messageMode = getMessageMode(message)
       return message.role === 'assistant' && messageMode === mode && Boolean(message.designBrief?.trim())
     })?.designBrief
+}
+
+export function parseDesignBriefLine(designBrief: string | undefined, label: string): string {
+  if (!designBrief?.trim()) return ''
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(`${escapedLabel}:\\s*([^\\n]+)`, 'i')
+  return designBrief.match(pattern)?.[1]?.trim() || ''
+}
+
+export function buildActiveTaskContext(messages: AIMessage[], mode: AIHelperMode): AIHelperActiveTask | undefined {
+  const modeMessages = messages.filter((message) => getMessageMode(message) === mode)
+  const latestUserRequest = [...modeMessages]
+    .reverse()
+    .find((message) => message.role === 'user')?.content?.trim() || ''
+  const latestAssistantWithBrief = [...modeMessages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && Boolean(message.designBrief?.trim()))
+
+  if (latestAssistantWithBrief?.designBrief) {
+    const goal = parseDesignBriefLine(latestAssistantWithBrief.designBrief, 'What I understood')
+    const preserve = parseDesignBriefLine(latestAssistantWithBrief.designBrief, 'What to preserve')
+    const next = parseDesignBriefLine(latestAssistantWithBrief.designBrief, 'What changes next')
+    return {
+      mode,
+      goal: goal || latestAssistantWithBrief.designBrief.split('\n')[0]?.trim() || 'Continue the current creative task',
+      preserve: preserve || 'Preserve stable elements from the current brief unless the user changes them',
+      next: next || 'Apply the latest requested refinement',
+      latestUserRequest,
+      source: 'design-brief',
+    }
+  }
+
+  if (!latestUserRequest) return undefined
+  return {
+    mode,
+    goal: latestUserRequest,
+    preserve: 'No stable elements locked yet',
+    next: 'Turn the latest request into a usable generation prompt',
+    latestUserRequest,
+    source: 'recent-request',
+  }
 }
 
 export function extractPreferenceMemory(userInput: string): string | null {
@@ -556,6 +613,7 @@ export function useAIHelper() {
     preferenceCount: preferenceMemory.length,
     preferenceMemory,
     activeDesignBrief: getActiveDesignBrief(messages, mode),
+    activeTaskContext: buildActiveTaskContext(messages, mode),
     forgetPreference,
     cancelRequest,
     appendLocalMessage,

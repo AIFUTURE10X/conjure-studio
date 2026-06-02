@@ -530,6 +530,7 @@ function formatAgentMemory(agentMemory: unknown): string {
     lastNegativePrompt: memory.lastNegativePrompt || '',
     lastAssistantSummary: memory.lastAssistantSummary || '',
     activeDesignBrief: memory.activeDesignBrief || '',
+    activeTaskContext: memory.activeTaskContext || null,
     lastReferenceAnalysis: memory.lastReferenceAnalysis || '',
     persistentGenerations: Array.isArray(memory.persistentGenerations)
       ? memory.persistentGenerations.slice(-5)
@@ -541,10 +542,33 @@ function formatAgentMemory(agentMemory: unknown): string {
   }, null, 2)
 }
 
+function formatActiveTaskSnapshot(agentMemory: unknown): string {
+  if (!agentMemory || typeof agentMemory !== 'object') return 'None yet'
+  const memory = agentMemory as Record<string, unknown>
+  const activeTaskContext = memory.activeTaskContext
+  if (!activeTaskContext || typeof activeTaskContext !== 'object') return 'None yet'
+  const task = activeTaskContext as Record<string, unknown>
+  const goal = typeof task.goal === 'string' && task.goal.trim() ? task.goal.trim() : 'Unclear'
+  const preserve = typeof task.preserve === 'string' && task.preserve.trim() ? task.preserve.trim() : 'No preserve list yet'
+  const next = typeof task.next === 'string' && task.next.trim() ? task.next.trim() : 'Respond to the latest request'
+  const latestUserRequest = typeof task.latestUserRequest === 'string' && task.latestUserRequest.trim() ? task.latestUserRequest.trim() : 'None'
+
+  return [
+    `- Current goal: ${goal}`,
+    `- Preserve: ${preserve}`,
+    `- Next change: ${next}`,
+    `- latest user request: ${latestUserRequest}`,
+    '- Treat this as the live task state for natural follow-up edits. Preserve stable elements unless the user explicitly changes them.',
+  ].join('\n')
+}
+
 function formatActiveTaskBrief(agentMemory: unknown): string {
   if (!agentMemory || typeof agentMemory !== 'object') return 'None yet'
-  const activeDesignBrief = (agentMemory as Record<string, unknown>).activeDesignBrief
-  if (typeof activeDesignBrief !== 'string' || !activeDesignBrief.trim()) return 'None yet'
+  const memory = agentMemory as Record<string, unknown>
+  const activeDesignBrief = memory.activeDesignBrief
+  if (typeof activeDesignBrief !== 'string' || !activeDesignBrief.trim()) {
+    return formatActiveTaskSnapshot(agentMemory)
+  }
 
   return `${activeDesignBrief.trim()}
 
@@ -737,6 +761,7 @@ export async function POST(request: Request) {
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
+    const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'image',
       message,
@@ -779,6 +804,9 @@ ${agentMemoryContext}
 
 ACTIVE TASK BRIEF:
 ${activeTaskBrief}
+
+ACTIVE TASK SNAPSHOT:
+${activeTaskSnapshot}
 
 PERSISTENT USER PREFERENCES:
 ${persistentPreferenceContext}
@@ -1111,6 +1139,7 @@ async function handleLogoMode(
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
+    const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'logo',
       message,
@@ -1138,6 +1167,9 @@ ${agentMemoryContext}
 
 ACTIVE TASK BRIEF:
 ${activeTaskBrief}
+
+ACTIVE TASK SNAPSHOT:
+${activeTaskSnapshot}
 
 PERSISTENT USER PREFERENCES:
 ${persistentPreferenceContext}

@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useAIHelper, type AIHelperAction, type AIHelperLatestOutput, type AIHelperMode, type AIMessage } from '../hooks/useAIHelper'
+import { useAIHelper, type AIHelperAction, type AIHelperActiveTask, type AIHelperLatestOutput, type AIHelperMode, type AIMessage } from '../hooks/useAIHelper'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import type { CreativeDirectionState } from '../constants/creative-direction-options'
 
@@ -89,7 +89,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const [pendingFollowUp, setPendingFollowUp] = useState<{ prompt: string; mode: AIHelperMode } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
+  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, activeTaskContext, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -474,6 +474,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         preferenceCount={preferenceCount}
         preferenceMemory={preferenceMemory}
         activeDesignBrief={activeDesignBrief}
+        activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
         onForgetPreference={forgetPreference}
         latestOutputs={latestOutputs}
       />

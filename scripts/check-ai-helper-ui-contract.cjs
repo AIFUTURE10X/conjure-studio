@@ -507,6 +507,29 @@ const checks = [
     },
   },
   {
+    name: 'AI helper tracks a live active task snapshot for natural follow-up edits',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /export interface AIHelperActiveTask/.test(hook) &&
+        /buildActiveTaskContext/.test(hook) &&
+        /parseDesignBriefLine/.test(hook) &&
+        /activeTaskContext: buildActiveTaskContext\(messages, mode\)/.test(hook) &&
+        /activeTaskContext=/.test(sidebar) &&
+        /activeTaskContext\?: AIHelperActiveTask/.test(snapshot) &&
+        /Active Task/.test(snapshot) &&
+        /Goal:/.test(snapshot) &&
+        /Preserve:/.test(snapshot) &&
+        /Next:/.test(snapshot) &&
+        /formatActiveTaskSnapshot/.test(route) &&
+        /ACTIVE TASK SNAPSHOT/.test(route) &&
+        /latest user request/.test(route) &&
+        /activeTaskContext: memory\.activeTaskContext/.test(route)
+    },
+  },
+  {
     name: 'AI helper supports a plan then execute flow with revise plan action',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
