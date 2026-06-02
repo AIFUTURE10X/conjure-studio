@@ -523,6 +523,26 @@ function formatClarificationGate(gate: ClarificationGate): string {
   ].join('\n')
 }
 
+function buildClarificationResponse(mode: 'image' | 'logo', gate: ClarificationGate) {
+  return NextResponse.json({
+    message: gate.question,
+    responseMode: 'suggestion',
+    plannerDecision: 'ask_follow_up',
+    designBrief: `What I understood: More detail is needed before making a reliable ${mode} prompt.\nWhat to preserve: No generator changes yet.\nWhat changes next: Answer the clarification question so I can produce the prompt.`,
+    executionPlan: ['Ask one missing-essential question', 'Use the answer with the current context', 'Return a generation-ready prompt after the answer'],
+    diagnosticFindings: [],
+    promptQualityChecklist: [
+      'Planner: missing essential information was detected before calling the AI model.',
+      `Clarification: ${gate.reason}`,
+      'Locked elements: no generator settings or prompt changes were applied yet.',
+    ],
+    suggestions: undefined,
+    logoConfig: mode === 'logo' ? {} : undefined,
+    actions: [buildClarificationAction(mode, gate.question)],
+    ...(mode === 'logo' ? { mode: 'logo' } : {}),
+  })
+}
+
 function addPromptConstraint(constraints: PromptConstraint[], constraint: PromptConstraint): void {
   if (constraints.some((item) => item.key === constraint.key)) return
   constraints.push(constraint)
@@ -1075,6 +1095,24 @@ export async function POST(request: Request) {
       mode: mode || 'image',
     })
 
+    // Handle logo mode separately; it can answer missing-essential clarifications before Gemini is required.
+    if (mode === 'logo') {
+      return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory, latestOutputAnalysis)
+    }
+
+    const hasImageAnalysisForEarlyGate = typeof message === 'string' && message.includes("REFERENCE IMAGES ANALYSIS")
+    const earlyClarificationGate = buildClarificationGate({
+      mode: 'image',
+      message,
+      currentPrompt,
+      agentMemory,
+      hasReference: hasReferenceMemory(agentMemory) || hasImageAnalysisForEarlyGate,
+      hasOutput: hasLatestOutput(currentPromptSettings),
+    })
+    if (earlyClarificationGate.shouldAsk) {
+      return buildClarificationResponse('image', earlyClarificationGate)
+    }
+
     // Check if Gemini is available
     if (!genAI) {
       console.error(`[v0 API] Gemini API not initialized - missing ${getGeminiApiKeyNames()}`)
@@ -1082,11 +1120,6 @@ export async function POST(request: Request) {
         { error: "AI service not configured", details: `${getGeminiApiKeyNames()} environment variable is not set` },
         { status: 500 }
       )
-    }
-
-    // Handle logo mode separately
-    if (mode === 'logo') {
-      return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory, latestOutputAnalysis)
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
@@ -1506,6 +1539,21 @@ async function handleLogoMode(
   latestOutputAnalysis?: string
 ) {
   try {
+    const logoSettingsForGate = currentPromptSettings && typeof currentPromptSettings === 'object'
+      ? currentPromptSettings as Record<string, unknown>
+      : {}
+    const earlyClarificationGate = buildClarificationGate({
+      mode: 'logo',
+      message,
+      currentPrompt: logoSettingsForGate.currentPrompt,
+      agentMemory,
+      hasReference: hasReferenceMemory(agentMemory) || Boolean(logoAnalysis),
+      hasOutput: hasLatestOutput(currentPromptSettings),
+    })
+    if (earlyClarificationGate.shouldAsk) {
+      return buildClarificationResponse('logo', earlyClarificationGate)
+    }
+
     // Check if Gemini is available
     if (!genAI) {
       console.error(`[v0 API] Logo mode - Gemini API not initialized - missing ${getGeminiApiKeyNames()}`)

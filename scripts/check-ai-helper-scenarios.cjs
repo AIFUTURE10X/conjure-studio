@@ -56,6 +56,17 @@ const scenarios = [
     ],
     source: packageJson,
   },
+  {
+    name: 'vague requests can ask clarification before Gemini is required',
+    expected: [
+      /buildClarificationResponse/,
+      /const earlyClarificationGate = buildClarificationGate/,
+      /return buildClarificationResponse\('image', earlyClarificationGate\)/,
+      /return buildClarificationResponse\('logo', earlyClarificationGate\)/,
+      /plannerDecision: 'ask_follow_up'/,
+      /suggestions: undefined/,
+    ],
+  },
 ]
 
 const failures = []
@@ -66,6 +77,25 @@ for (const scenario of scenarios) {
   if (missing.length > 0) {
     failures.push({ name: scenario.name, missing })
   }
+}
+
+const postImageClarificationIndex = route.indexOf("return buildClarificationResponse('image', earlyClarificationGate)")
+const postGeminiCheckIndex = route.indexOf('// Check if Gemini is available')
+if (postImageClarificationIndex === -1 || postGeminiCheckIndex === -1 || postImageClarificationIndex > postGeminiCheckIndex) {
+  failures.push({
+    name: 'image clarification happens before Gemini availability check',
+    missing: [/return buildClarificationResponse\('image', earlyClarificationGate\) before \/\/ Check if Gemini is available/],
+  })
+}
+
+const logoHandlerIndex = route.indexOf('async function handleLogoMode')
+const logoClarificationIndex = route.indexOf("return buildClarificationResponse('logo', earlyClarificationGate)", logoHandlerIndex)
+const logoGeminiCheckIndex = route.indexOf('// Check if Gemini is available', logoHandlerIndex)
+if (logoClarificationIndex === -1 || logoGeminiCheckIndex === -1 || logoClarificationIndex > logoGeminiCheckIndex) {
+  failures.push({
+    name: 'logo clarification happens before Gemini availability check',
+    missing: [/return buildClarificationResponse\('logo', earlyClarificationGate\) before \/\/ Check if Gemini is available/],
+  })
 }
 
 if (failures.length > 0) {
