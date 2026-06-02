@@ -73,6 +73,12 @@ interface PromptConstraint {
   negativePhrase?: string
 }
 
+interface ClarificationGate {
+  shouldAsk: boolean
+  question: string
+  reason: string
+}
+
 interface ImagePromptSuggestions {
   prompt: string
   negativePrompt?: string
@@ -131,6 +137,7 @@ const PROMPT_PLANNER_POLICY = `PROMPT PLANNER POLICY:
 - For follow-up edits, prefer "iterate_from_current" and preserve locked elements from CHANGE CONTROL CONTEXT.
 - For diagnostic-only questions, use "diagnose" and do not include apply/generate actions.
 - For latest-output plus reference comparison, use "compare_to_reference".
+- When CLARIFICATION GATE says ask, ask a single follow-up question, return "plannerDecision": "ask_follow_up", set suggestions to null, and include one "ask_follow_up" action with the same question in action.prompt.
 
 PROMPT SELF-CHECK:
 - Return "promptQualityChecklist" as 3-5 short audit lines.
@@ -165,6 +172,36 @@ function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperActi
     .filter((action): action is HelperAction => Boolean(action))
 
   return actions.length > 0 ? actions.slice(0, 7) : fallbackActions
+}
+
+function buildClarificationAction(mode: 'image' | 'logo', question: string): HelperAction {
+  return {
+    type: 'ask_follow_up',
+    label: 'Answer question',
+    description: 'Reply with this missing detail so the helper can make the prompt',
+    prompt: question,
+    target: mode,
+  }
+}
+
+function normalizePlannerActions(
+  rawActions: unknown,
+  fallbackActions: HelperAction[],
+  plannerDecision: HelperPlannerDecision,
+  mode: 'image' | 'logo',
+  clarificationQuestion: string,
+  responseMode: HelperResponseMode
+): HelperAction[] {
+  const applyActionTypes: HelperActionType[] = ['apply_suggestions', 'apply_and_generate', 'apply_logo_config']
+
+  if (plannerDecision === 'ask_follow_up') {
+    const normalizedActions = normalizeHelperActions(rawActions, [])
+    const askAction = normalizedActions.find((action) => action.type === 'ask_follow_up' && action.prompt)
+    return [askAction || buildClarificationAction(mode, clarificationQuestion)]
+  }
+
+  return normalizeHelperActions(rawActions, fallbackActions)
+    .filter((action) => responseMode !== 'diagnostic' || !applyActionTypes.includes(action.type))
 }
 
 function normalizeExecutionPlan(rawPlan: unknown): string[] {
@@ -397,6 +434,86 @@ function defaultHelperActions(
 
 function includesAny(text: string, terms: string[]): boolean {
   return terms.some((term) => text.includes(term))
+}
+
+function buildClarificationGate({
+  mode,
+  message,
+  currentPrompt,
+  agentMemory,
+  hasReference,
+  hasOutput,
+}: {
+  mode: 'image' | 'logo'
+  message: unknown
+  currentPrompt?: unknown
+  agentMemory?: unknown
+  hasReference: boolean
+  hasOutput: boolean
+}): ClarificationGate {
+  const requestText = typeof message === 'string' ? message.trim() : ''
+  const request = requestText.toLowerCase()
+  const hasCurrentPrompt = typeof currentPrompt === 'string' && currentPrompt.trim().length > 0
+  const memory = agentMemory && typeof agentMemory === 'object'
+    ? agentMemory as Record<string, unknown>
+    : {}
+  const activeTaskContext = memory.activeTaskContext && typeof memory.activeTaskContext === 'object'
+    ? memory.activeTaskContext as Record<string, unknown>
+    : {}
+  const hasActiveTask = Object.keys(activeTaskContext).length > 0 || (typeof memory.activeDesignBrief === 'string' && memory.activeDesignBrief.trim().length > 0)
+  const hasClarificationAnswer = request.includes('clarifying question:') && request.includes('user answer:')
+  const hasUsefulContext = hasCurrentPrompt || hasReference || hasOutput || hasActiveTask || hasClarificationAnswer
+  const asksForCreativeOutput = includesAny(request, ['create', 'generate', 'make', 'design', 'write', 'prompt', 'build'])
+  const asksForLogo = mode === 'logo' || includesAny(request, ['logo', 'wordmark', 'brand mark', 'brandmark', 'icon'])
+  const asksForImage = mode === 'image' && includesAny(request, ['image', 'picture', 'photo', 'scene', 'illustration', 'art', 'graphic'])
+  const hasQuotedText = /["'“”‘’][^"'“”‘’]{2,}["'“”‘’]/.test(requestText)
+  const hasLikelyBrandText = hasQuotedText || /\b[A-Z0-9][A-Za-z0-9&.-]*(?:\s+[A-Z0-9][A-Za-z0-9&.-]*){0,4}\b/.test(requestText.replace(/\b(Create|Generate|Make|Design|Write|Prompt|Logo|Image|Brand|For|A|An|The)\b/g, ''))
+  const hasSpecificSubject = request
+    .replace(/\b(create|generate|make|design|write|a|an|the|image|picture|photo|scene|illustration|art|graphic|prompt|for|me|please)\b/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length >= 2
+
+  if (!hasUsefulContext && asksForCreativeOutput && asksForLogo && !hasLikelyBrandText) {
+    return {
+      shouldAsk: true,
+      question: 'What exact brand text should appear in the logo?',
+      reason: 'missing essential information: brand text for a logo or wordmark request; ask a single follow-up question.',
+    }
+  }
+
+  if (!hasUsefulContext && asksForCreativeOutput && asksForImage && !hasSpecificSubject) {
+    return {
+      shouldAsk: true,
+      question: 'What is the main subject of the image?',
+      reason: 'missing essential information: main subject for an image request; ask a single follow-up question.',
+    }
+  }
+
+  if (includesAny(request, ['transparent', 'true png', 'no background', 'remove background']) && includesAny(request, ['white background', 'blue background', 'dark background', 'visible background'])) {
+    return {
+      shouldAsk: true,
+      question: 'Should the final output be a transparent PNG or use a visible background?',
+      reason: 'missing essential information: background instructions conflict; ask a single follow-up question.',
+    }
+  }
+
+  return {
+    shouldAsk: false,
+    question: 'No clarification needed.',
+    reason: hasUsefulContext
+      ? 'Enough current context exists to proceed with assumptions.'
+      : 'No missing essential information detected.',
+  }
+}
+
+function formatClarificationGate(gate: ClarificationGate): string {
+  return [
+    `- Decision: ${gate.shouldAsk ? 'ask a single follow-up question' : 'proceed with assumptions'}`,
+    `- Question: ${gate.question}`,
+    `- Reason: ${gate.reason}`,
+    '- If asking, do not produce generator settings or apply/generate actions yet.',
+  ].join('\n')
 }
 
 function addPromptConstraint(constraints: PromptConstraint[], constraint: PromptConstraint): void {
@@ -1005,6 +1122,14 @@ export async function POST(request: Request) {
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
+    const clarificationGate = buildClarificationGate({
+      mode: 'image',
+      message,
+      currentPrompt,
+      agentMemory,
+      hasReference: hasReference || hasImageAnalysis,
+      hasOutput,
+    })
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'image',
       message,
@@ -1061,6 +1186,9 @@ ${activeTaskBrief}
 
 ACTIVE TASK SNAPSHOT:
 ${activeTaskSnapshot}
+
+CLARIFICATION GATE:
+${formatClarificationGate(clarificationGate)}
 
 PERSISTENT USER PREFERENCES:
 ${persistentPreferenceContext}
@@ -1166,6 +1294,7 @@ Format your response as JSON:
     "bgRemovalMethod": "optional photoroom or smart"
   },
   "actions": [
+    { "type": "ask_follow_up", "label": "Answer question", "description": "Reply with the missing detail before making a prompt" },
     { "type": "apply_suggestions", "label": "Apply to Image Generator", "description": "Use this prompt and settings" },
     { "type": "apply_and_generate", "label": "Apply and Generate Image", "description": "Use this prompt and start generation" },
     { "type": "revise_plan", "label": "Revise Plan", "description": "Adjust the plan before applying" },
@@ -1197,11 +1326,14 @@ Available style strengths: subtle, moderate, strong`
       const jsonResponse = JSON.parse(jsonMatch[0])
       console.log("[v0 API] Successfully parsed JSON response")
       const responseMode = normalizeResponseMode(jsonResponse.responseMode, diagnosticOnly)
-      const guardedSuggestions = responseMode === 'diagnostic'
+      const shouldAskFollowUp = clarificationGate.shouldAsk || jsonResponse.plannerDecision === 'ask_follow_up'
+      const guardedSuggestions = responseMode === 'diagnostic' || shouldAskFollowUp
         ? undefined
         : applyPromptConstraintGuardrails(normalizeImagePromptSuggestions(jsonResponse.suggestions), promptConstraints)
       const hasSuggestions = Boolean(guardedSuggestions?.prompt)
-      const plannerDecision = normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, hasSuggestions, hasOutput, hasReference || hasImageAnalysis)
+      const plannerDecision = shouldAskFollowUp
+        ? 'ask_follow_up'
+        : normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, hasSuggestions, hasOutput, hasReference || hasImageAnalysis)
       const promptQualityChecklist = normalizePromptQualityChecklist(
         jsonResponse.promptQualityChecklist,
         buildPromptQualityFallback({
@@ -1222,11 +1354,15 @@ Available style strengths: subtle, moderate, strong`
         executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
         diagnosticFindings: normalizeDiagnosticFindings(jsonResponse.diagnosticFindings, responseMode === 'diagnostic' ? jsonResponse.message : ''),
         promptQualityChecklist,
-        suggestions: guardedSuggestions,
-        actions: normalizeHelperActions(
+        suggestions: shouldAskFollowUp ? undefined : guardedSuggestions,
+        actions: normalizePlannerActions(
           jsonResponse.actions,
-          responseMode === 'diagnostic' ? [] : defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration)
-        ).filter((action) => responseMode !== 'diagnostic' || !['apply_suggestions', 'apply_and_generate', 'apply_logo_config'].includes(action.type)),
+          responseMode === 'diagnostic' ? [] : defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration),
+          plannerDecision,
+          'image',
+          clarificationGate.shouldAsk ? clarificationGate.question : stringFromUnknown(jsonResponse.message, 'What detail should I use before I make the prompt?'),
+          responseMode
+        ),
       })
     }
 
@@ -1234,7 +1370,7 @@ Available style strengths: subtle, moderate, strong`
     return NextResponse.json({
       message: responseText,
       responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
-      plannerDecision: diagnosticOnly ? 'diagnose' : 'iterate_from_current',
+      plannerDecision: diagnosticOnly ? 'diagnose' : clarificationGate.shouldAsk ? 'ask_follow_up' : 'iterate_from_current',
       designBrief: currentPrompt
         ? `What I understood: Improve the current prompt from the active generator context.\nWhat to preserve: Keep the current subject, style, and explicit constraints.\nWhat changes next: Reuse the current prompt until the helper can parse a stronger structured response.`
         : null,
@@ -1249,7 +1385,7 @@ Available style strengths: subtle, moderate, strong`
         constraints: promptConstraints,
         hasStrictChangeRequest,
       }),
-      suggestions: diagnosticOnly ? undefined : applyPromptConstraintGuardrails({
+      suggestions: clarificationGate.shouldAsk || diagnosticOnly ? undefined : applyPromptConstraintGuardrails({
         prompt: currentPrompt || "",
         negativePrompt: currentNegativePrompt || "",
         style: currentStyle || "Realistic",
@@ -1258,7 +1394,11 @@ Available style strengths: subtle, moderate, strong`
         aspectRatio: currentAspectRatio || "1:1",
         styleStrength: styleStrength || "moderate",
       }, promptConstraints),
-      actions: diagnosticOnly ? [] : defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference, lastPersistentGeneration),
+      actions: diagnosticOnly
+        ? []
+        : clarificationGate.shouldAsk
+          ? [buildClarificationAction('image', clarificationGate.question)]
+          : defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference, lastPersistentGeneration),
     })
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
@@ -1430,6 +1570,14 @@ async function handleLogoMode(
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const activeTaskSnapshot = formatActiveTaskSnapshot(agentMemory)
+    const clarificationGate = buildClarificationGate({
+      mode: 'logo',
+      message,
+      currentPrompt: logoSettings.currentPrompt,
+      agentMemory,
+      hasReference: hasReference || Boolean(logoAnalysis),
+      hasOutput,
+    })
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'logo',
       message,
@@ -1471,6 +1619,9 @@ ${activeTaskBrief}
 
 ACTIVE TASK SNAPSHOT:
 ${activeTaskSnapshot}
+
+CLARIFICATION GATE:
+${formatClarificationGate(clarificationGate)}
 
 PERSISTENT USER PREFERENCES:
 ${persistentPreferenceContext}
@@ -1549,6 +1700,7 @@ JSON fields:
 
 Action schema:
 "actions": [
+  { "type": "ask_follow_up", "label": "Answer question", "description": "Reply with the missing detail before making a logo prompt" },
   { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
   { "type": "apply_and_generate", "label": "Apply and Generate Logo", "description": "Use this prompt and start generation" },
   { "type": "revise_plan", "label": "Revise Plan", "description": "Adjust the plan before applying" },
@@ -1572,14 +1724,17 @@ Action schema:
       try {
         const jsonResponse = JSON.parse(jsonMatch[0])
         const responseMode = normalizeResponseMode(jsonResponse.responseMode, diagnosticOnly)
-        const logoSuggestions = responseMode === 'diagnostic'
+        const shouldAskFollowUp = clarificationGate.shouldAsk || jsonResponse.plannerDecision === 'ask_follow_up'
+        const logoSuggestions = responseMode === 'diagnostic' || shouldAskFollowUp
           ? undefined
           : applyPromptConstraintGuardrails(normalizeLogoPromptSuggestions(jsonResponse.suggestions), promptConstraints)
-        const logoConfig = responseMode === 'diagnostic'
+        const logoConfig = responseMode === 'diagnostic' || shouldAskFollowUp
           ? {}
           : applyLogoConfigConstraintGuardrails(jsonResponse.logoConfig, promptConstraints)
         const hasLogoConfig = Boolean(logoConfig && Object.keys(logoConfig).length > 0)
-        const plannerDecision = normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, Boolean(logoSuggestions?.prompt), hasOutput, hasReference || Boolean(logoAnalysis))
+        const plannerDecision = shouldAskFollowUp
+          ? 'ask_follow_up'
+          : normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, Boolean(logoSuggestions?.prompt), hasOutput, hasReference || Boolean(logoAnalysis))
         const promptQualityChecklist = normalizePromptQualityChecklist(
           jsonResponse.promptQualityChecklist,
           buildPromptQualityFallback({
@@ -1602,12 +1757,16 @@ Action schema:
           executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
           diagnosticFindings: normalizeDiagnosticFindings(jsonResponse.diagnosticFindings, responseMode === 'diagnostic' ? jsonResponse.message : ''),
           promptQualityChecklist,
-          suggestions: logoSuggestions,
+          suggestions: shouldAskFollowUp ? undefined : logoSuggestions,
           logoConfig,
-          actions: normalizeHelperActions(
+          actions: normalizePlannerActions(
             jsonResponse.actions,
-            responseMode === 'diagnostic' ? [] : defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration)
-          ).filter((action) => responseMode !== 'diagnostic' || !['apply_suggestions', 'apply_and_generate', 'apply_logo_config'].includes(action.type)),
+            responseMode === 'diagnostic' ? [] : defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration),
+            plannerDecision,
+            'logo',
+            clarificationGate.shouldAsk ? clarificationGate.question : stringFromUnknown(jsonResponse.message, 'What detail should I use before I make the logo prompt?'),
+            responseMode
+          ),
           mode: 'logo'
         })
       } catch (parseError) {
@@ -1620,7 +1779,7 @@ Action schema:
     return NextResponse.json({
       message: responseText,
       responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
-      plannerDecision: diagnosticOnly ? 'diagnose' : 'ask_follow_up',
+      plannerDecision: diagnosticOnly ? 'diagnose' : clarificationGate.shouldAsk ? 'ask_follow_up' : 'suggest_prompt',
       diagnosticFindings: diagnosticOnly ? normalizeDiagnosticFindings([], responseText) : [],
       promptQualityChecklist: buildPromptQualityFallback({
         mode: 'logo',
@@ -1632,7 +1791,11 @@ Action schema:
         hasStrictChangeRequest,
       }),
       logoConfig: {},
-      actions: diagnosticOnly ? [] : defaultHelperActions('logo', false, false, hasOutput, hasReference, lastPersistentGeneration),
+      actions: diagnosticOnly
+        ? []
+        : clarificationGate.shouldAsk
+          ? [buildClarificationAction('logo', clarificationGate.question)]
+          : defaultHelperActions('logo', false, false, hasOutput, hasReference, lastPersistentGeneration),
       mode: 'logo'
     })
   } catch (error: any) {

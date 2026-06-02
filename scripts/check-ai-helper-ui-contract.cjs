@@ -55,7 +55,7 @@ const checks = [
         /actions\?: AIHelperAction\[\]/.test(hook) &&
         /AGENTIC AI HELPER CONTRACT/.test(route) &&
         /normalizeHelperActions/.test(route) &&
-        /actions: normalizeHelperActions/.test(route) &&
+        /actions: normalizePlannerActions/.test(route) &&
         /SmartActionBar/.test(sidebar)
     },
   },
@@ -622,6 +622,27 @@ const checks = [
         /locked elements/.test(route) &&
         /background/.test(route) &&
         /exact text/.test(route)
+    },
+  },
+  {
+    name: 'AI helper asks one clarifying question when essential prompt details are missing',
+    pass: () => {
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /buildClarificationGate/.test(route) &&
+        /CLARIFICATION GATE/.test(route) &&
+        /missing essential information/.test(route) &&
+        /brand text/.test(route) &&
+        /main subject/.test(route) &&
+        /single follow-up question/.test(route) &&
+        /buildClarificationAction/.test(route) &&
+        /normalizePlannerActions/.test(route) &&
+        /plannerDecision === 'ask_follow_up'/.test(route) &&
+        /suggestions: shouldAskFollowUp \? undefined/.test(route) &&
+        /type: 'ask_follow_up'/.test(route) &&
+        /Answer question/.test(route) &&
+        /pendingFollowUp/.test(sidebar) &&
+        /Answering follow-up/.test(sidebar)
     },
   },
   {
