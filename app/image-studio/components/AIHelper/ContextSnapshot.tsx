@@ -139,6 +139,12 @@ export function ContextSnapshot({
   const hasSharedProjectBrief = hasPromptText(sharedProjectBrief)
   const imageBgRemovalEnabled = currentPromptSettings.imageBgRemovalEnabled !== false && Boolean(currentPromptSettings.imageBgRemovalMethod)
   const logoBgRemovalEnabled = currentPromptSettings.logoBgRemovalEnabled !== false && Boolean(currentPromptSettings.logoBgRemovalMethod)
+  const activeGeneratorModel = mode === 'logo'
+    ? currentPromptSettings.logoSelectedModel
+    : currentPromptSettings.selectedModel
+  const activeResolution = mode === 'logo'
+    ? currentPromptSettings.logoResolution
+    : currentPromptSettings.imageSize
   const contextGroups = [
     {
       label: 'Core Settings',
@@ -146,8 +152,8 @@ export function ContextSnapshot({
         { icon: FileText, label: 'Prompt', value: hasPrompt ? 'Prompt loaded' : 'No prompt', active: hasPrompt },
         { icon: Layers, label: 'Negative', value: hasNegativePrompt ? 'Loaded' : 'No negative prompt', active: hasNegativePrompt },
         { icon: MonitorCheck, label: 'Style', value: hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style', active: hasStyle },
-        { icon: MonitorCheck, label: 'Model:', value: formatModelLabel(currentPromptSettings.selectedModel).replace('Model: ', ''), active: Boolean(currentPromptSettings.selectedModel) },
-        { icon: MonitorCheck, label: 'Resolution:', value: currentPromptSettings.imageSize || 'No resolution', active: Boolean(currentPromptSettings.imageSize) },
+        { icon: MonitorCheck, label: 'Model:', value: formatModelLabel(activeGeneratorModel).replace('Model: ', ''), active: Boolean(activeGeneratorModel) },
+        { icon: MonitorCheck, label: 'Resolution:', value: activeResolution || 'No resolution', active: Boolean(activeResolution) },
         { icon: Layers, label: 'Count:', value: currentPromptSettings.imageCount ? `${currentPromptSettings.imageCount}` : 'No count', active: Boolean(currentPromptSettings.imageCount) },
         ...(mode === 'image'
           ? [{ icon: Layers, label: 'Background', value: formatBackgroundRemovalChip('image' as const, currentPromptSettings.imageBgRemovalMethod, imageBgRemovalEnabled), active: imageBgRemovalEnabled }]

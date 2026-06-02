@@ -60,7 +60,10 @@ const checks = [
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
       const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
       return /QuickSettingsPanel/.test(sidebar) &&
-        /onRunSetting=\{\(prompt\) => void runHelperPrompt\(prompt\)\}/.test(sidebar) &&
+        /handleQuickSettingClick/.test(sidebar) &&
+        /runDirectSettingsDecisionCommand\(prompt\)/.test(sidebar) &&
+        /onRunSetting=\{handleQuickSettingClick\}/.test(sidebar) &&
+        !/onRunSetting=\{\(prompt\) => void runHelperPrompt\(prompt\)\}/.test(sidebar) &&
         /Quick Settings/.test(quickSettings) &&
         /settingsGroups/.test(quickSettings) &&
         /Background \/ PNG/.test(quickSettings) &&
@@ -74,6 +77,18 @@ const checks = [
         /use chatgpt images 2.0/.test(quickSettings) &&
         /use gemini 3.1 flash/.test(quickSettings) &&
         /set 4k/.test(quickSettings)
+    },
+  },
+  {
+    name: 'AI helper settings overview reads the active mode settings',
+    pass: () => {
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      return /activeGeneratorModel/.test(snapshot) &&
+        /mode === 'logo'\s*\?\s*currentPromptSettings\.logoSelectedModel/.test(snapshot) &&
+        /activeResolution/.test(snapshot) &&
+        /mode === 'logo'\s*\?\s*currentPromptSettings\.logoResolution/.test(snapshot) &&
+        /formatModelLabel\(activeGeneratorModel\)/.test(snapshot) &&
+        /value: activeResolution \|\| 'No resolution'/.test(snapshot)
     },
   },
   {

@@ -765,6 +765,11 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return applyDirectSettingsPatch(userInput, settingsDecision)
   }
 
+  const handleQuickSettingClick = (prompt: string) => {
+    if (runDirectSettingsDecisionCommand(prompt)) return
+    void runHelperPrompt(prompt)
+  }
+
   const runDirectSuggestionPatchCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
 
@@ -1199,7 +1204,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
           <QuickSettingsPanel
             mode={mode}
             currentPromptSettings={currentPromptSettings}
-            onRunSetting={(prompt) => void runHelperPrompt(prompt)}
+            onRunSetting={handleQuickSettingClick}
           />
 
           <PromptSuggestionChips
