@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, ImageIcon, Layers, MonitorCheck, Sparkles } from 'lucide-react'
+import { Brain, FileText, ImageIcon, Layers, MonitorCheck, Sparkles } from 'lucide-react'
 import type { AIHelperLatestOutput, AIHelperMode } from '../../hooks/useAIHelper'
 import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 
@@ -18,6 +18,7 @@ interface ContextSnapshotProps {
     creativeDirection?: CreativeDirectionState
   }
   uploadedImages: string[]
+  preferenceCount?: number
   latestOutputs?: {
     image?: AIHelperLatestOutput | null
     logo?: AIHelperLatestOutput | null
@@ -41,7 +42,7 @@ function ContextChip({ icon: Icon, label, active }: { icon: typeof FileText; lab
   )
 }
 
-export function ContextSnapshot({ mode, currentPromptSettings = {}, uploadedImages, latestOutputs = {} }: ContextSnapshotProps) {
+export function ContextSnapshot({ mode, currentPromptSettings = {}, uploadedImages, preferenceCount = 0, latestOutputs = {} }: ContextSnapshotProps) {
   const latestOutput = mode === 'logo' ? latestOutputs.logo : latestOutputs.image
   const hasPrompt = hasPromptText(currentPromptSettings.currentPrompt)
   const hasNegativePrompt = hasPromptText(currentPromptSettings.currentNegativePrompt)
@@ -64,6 +65,7 @@ export function ContextSnapshot({ mode, currentPromptSettings = {}, uploadedImag
         <ContextChip icon={MonitorCheck} label={hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style'} active={hasStyle} />
         <ContextChip icon={ImageIcon} label={hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image'} active={hasReferenceImage} />
         <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />
+        <ContextChip icon={Brain} label={preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory'} active={preferenceCount > 0} />
       </div>
     </div>
   )

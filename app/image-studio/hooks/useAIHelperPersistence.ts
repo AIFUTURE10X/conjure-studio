@@ -5,7 +5,7 @@ import type { AIHelperMemorySnapshot, AIMessage } from './useAIHelper'
 const STORAGE_KEY = 'ai-helper-chat-history'
 const MEMORY_STORAGE_KEY = 'ai-helper-agent-memory'
 const MAX_STORED_MESSAGES = 100
-const MAX_STORED_MEMORY = 40
+const MAX_STORED_MEMORY = 60
 
 export function loadStoredMessages(): AIMessage[] {
   if (typeof window === 'undefined') return []

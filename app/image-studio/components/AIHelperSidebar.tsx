@@ -62,7 +62,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const [isExpanded, setIsExpanded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions } = useAIHelper()
+  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount } = useAIHelper()
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -236,6 +236,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         mode={mode}
         currentPromptSettings={currentPromptSettings}
         uploadedImages={uploadedImages}
+        preferenceCount={preferenceCount}
         latestOutputs={latestOutputs}
       />
 

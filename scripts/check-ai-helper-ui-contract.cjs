@@ -202,6 +202,25 @@ const checks = [
         /latestOutput\?\.url/.test(chips)
     },
   },
+  {
+    name: 'AI helper persists durable user preferences in agent memory',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const persistence = read('app/image-studio/hooks/useAIHelperPersistence.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /kind: 'suggestion' \| 'reference' \| 'preference'/.test(hook) &&
+        /persistentPreferences/.test(hook) &&
+        /rememberUserPreference/.test(hook) &&
+        /extractPreferenceMemory/.test(hook) &&
+        /MAX_STORED_MEMORY = 60/.test(persistence) &&
+        /persistentPreferences/.test(route) &&
+        /PERSISTENT USER PREFERENCES/.test(route) &&
+        /preferenceCount/.test(sidebar) &&
+        /Preference memory/.test(snapshot)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

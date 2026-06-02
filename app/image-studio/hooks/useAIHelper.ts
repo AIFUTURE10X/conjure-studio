@@ -75,17 +75,19 @@ export interface AIHelperAgentMemory {
   lastAssistantSummary?: string
   lastReferenceAnalysis?: string
   persistentGenerations: AIHelperMemorySnapshot[]
+  persistentPreferences: AIHelperMemorySnapshot[]
   recentUserRequests: string[]
 }
 
 export interface AIHelperMemorySnapshot {
   mode: AIHelperMode
-  kind: 'suggestion' | 'reference'
+  kind: 'suggestion' | 'reference' | 'preference'
   timestamp: number
   prompt?: string
   negativePrompt?: string
   summary?: string
   analysis?: string
+  preference?: string
 }
 
 export interface AIHelperLatestOutput {
@@ -121,6 +123,9 @@ export function buildAgentMemory(
   const lastReferenceAnalysis = [...generationMemory]
     .reverse()
     .find((snapshot) => snapshot.mode === mode && snapshot.kind === 'reference')?.analysis
+  const persistentPreferences = generationMemory
+    .filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'preference')
+    .slice(-8)
 
   return {
     mode,
@@ -130,8 +135,29 @@ export function buildAgentMemory(
     lastAssistantSummary: lastAssistant?.content,
     lastReferenceAnalysis,
     persistentGenerations,
+    persistentPreferences,
     recentUserRequests,
   }
+}
+
+export function extractPreferenceMemory(userInput: string): string | null {
+  const preference = userInput.trim().replace(/\s+/g, ' ')
+  if (!preference) return null
+  const lowerPreference = preference.toLowerCase()
+  const hasDurableLanguage = [
+    'remember ',
+    'always ',
+    'never ',
+    'prefer ',
+    'avoid ',
+    'do not ',
+    "don't ",
+    'must ',
+    'make sure ',
+  ].some((term) => lowerPreference.includes(term))
+
+  if (!hasDurableLanguage) return null
+  return preference.length > 260 ? `${preference.slice(0, 257)}...` : preference
 }
 
 export function useAIHelper() {
@@ -202,6 +228,17 @@ export function useAIHelper() {
     })
   }, [rememberMemorySnapshot])
 
+  const rememberUserPreference = useCallback((userInput: string, preferenceMode: AIHelperMode) => {
+    const preference = extractPreferenceMemory(userInput)
+    if (!preference) return
+    rememberMemorySnapshot({
+      mode: preferenceMode,
+      kind: 'preference',
+      timestamp: Date.now(),
+      preference,
+    })
+  }, [rememberMemorySnapshot])
+
   const updateMessageSuggestions = useCallback((index: number, newSuggestions: any) => {
     console.log('[v0] Updating message', index, 'with new suggestions:', newSuggestions)
     setMessages(prev => {
@@ -228,6 +265,7 @@ export function useAIHelper() {
     const displayMessage = userInput.trim() || '📷 [Image uploaded]'
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now() }
     setMessages(prev => [...prev, userMessage])
+    rememberUserPreference(userInput, 'image')
     setIsLoading(true)
 
     const currentImages = [...uploadedImages]
@@ -289,12 +327,13 @@ export function useAIHelper() {
     } finally {
       setIsLoading(false)
     }
-  }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot])
+  }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot, rememberUserPreference])
 
   const sendLogoMessage = useCallback(async (userInput: string, currentPromptSettings: any = {}) => {
     const displayMessage = userInput.trim() || '📷 [Logo reference uploaded]'
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now(), mode: 'logo' }
     setMessages(prev => [...prev, userMessage])
+    rememberUserPreference(userInput, 'logo')
     setIsLoading(true)
 
     const currentImages = [...uploadedImages]
@@ -344,7 +383,7 @@ export function useAIHelper() {
     } finally {
       setIsLoading(false)
     }
-  }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot])
+  }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot, rememberUserPreference])
 
   const sendActionMessage = useCallback(async (
     actionType: Extract<AIHelperActionType, 'critique_last_output' | 'make_variation' | 'compare_to_reference'>,
@@ -423,6 +462,7 @@ export function useAIHelper() {
   return {
     messages, uploadedImages, isLoading, mode, setMode,
     sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage,
+    preferenceCount: generationMemory.filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'preference').length,
     clearHistory, updateMessageSuggestions, updateMessageLogoConfig
   }
 }

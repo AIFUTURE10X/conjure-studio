@@ -394,8 +394,27 @@ function formatAgentMemory(agentMemory: unknown): string {
     persistentGenerations: Array.isArray(memory.persistentGenerations)
       ? memory.persistentGenerations.slice(-5)
       : [],
+    persistentPreferences: Array.isArray(memory.persistentPreferences)
+      ? memory.persistentPreferences.slice(-8)
+      : [],
     recentUserRequests: Array.isArray(memory.recentUserRequests) ? memory.recentUserRequests.slice(-4) : [],
   }, null, 2)
+}
+
+function formatPersistentPreferences(agentMemory: unknown): string {
+  if (!agentMemory || typeof agentMemory !== 'object') return 'None saved'
+  const persistentPreferences = (agentMemory as Record<string, unknown>).persistentPreferences
+  if (!Array.isArray(persistentPreferences) || persistentPreferences.length === 0) return 'None saved'
+
+  const preferenceLines = persistentPreferences
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const preference = (item as Record<string, unknown>).preference
+      return typeof preference === 'string' && preference.trim() ? `- ${preference.trim()}` : null
+    })
+    .filter((line): line is string => Boolean(line))
+
+  return preferenceLines.length > 0 ? preferenceLines.join('\n') : 'None saved'
 }
 
 function formatCreativeDirectionContext(input: Partial<CreativeDirectionState> | null | undefined): string {
@@ -495,6 +514,7 @@ export async function POST(request: Request) {
     const lastPersistentGeneration = getLastPersistentGeneration(agentMemory)
     const promptConstraints = extractPromptConstraints(message, currentPrompt, currentNegativePrompt, hasReference || hasImageAnalysis)
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
+    const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -519,6 +539,9 @@ ${CREATIVE_DIRECTION_OPTION_CONTEXT}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+PERSISTENT USER PREFERENCES:
+${persistentPreferenceContext}
 
 EXPLICIT USER CONSTRAINTS (hard requirements):
 ${promptConstraintContext}
@@ -790,6 +813,7 @@ async function handleLogoMode(
       hasReference || Boolean(logoAnalysis)
     )
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
+    const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
 
     const fullPrompt = `${logoSystemPrompt}
 
@@ -800,6 +824,9 @@ ${JSON.stringify(currentPromptSettings || {}, null, 2)}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+PERSISTENT USER PREFERENCES:
+${persistentPreferenceContext}
 
 EXPLICIT USER CONSTRAINTS (hard requirements):
 ${promptConstraintContext}
