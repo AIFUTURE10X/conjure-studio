@@ -387,6 +387,25 @@ const checks = [
     },
   },
   {
+    name: 'AI helper builds strict change-control context for single-change follow-ups',
+    pass: () => {
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /buildChangeControlContext/.test(route) &&
+        /CHANGE CONTROL CONTEXT/.test(route) &&
+        /Allowed change:/.test(route) &&
+        /Locked elements:/.test(route) &&
+        /Change budget: single requested edit/.test(route) &&
+        /Do not reinterpret the whole concept/.test(route) &&
+        /latest user request/.test(route) &&
+        /activeTaskContext/.test(route) &&
+        /single-change refinement/.test(route) &&
+        /background-only refinement/.test(route) &&
+        /typography-reference refinement/.test(route) &&
+        /exact-text refinement/.test(route) &&
+        /const changeControlContext = buildChangeControlContext/.test(route)
+    },
+  },
+  {
     name: 'AI helper can run direct apply and generate commands from chat',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')

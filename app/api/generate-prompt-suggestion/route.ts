@@ -487,6 +487,93 @@ function buildIterationIntentBrief({
   return lines.join('\n')
 }
 
+function buildChangeControlContext({
+  mode,
+  message,
+  currentPrompt,
+  agentMemory,
+  hasReference,
+  hasOutput,
+}: {
+  mode: 'image' | 'logo'
+  message: unknown
+  currentPrompt?: unknown
+  agentMemory?: unknown
+  hasReference: boolean
+  hasOutput: boolean
+}): string {
+  const requestText = typeof message === 'string' ? message.trim() : ''
+  const request = requestText.toLowerCase()
+  const hasCurrentPrompt = typeof currentPrompt === 'string' && currentPrompt.trim().length > 0
+  const memory = agentMemory && typeof agentMemory === 'object'
+    ? agentMemory as Record<string, unknown>
+    : {}
+  const activeTaskContext = memory.activeTaskContext && typeof memory.activeTaskContext === 'object'
+    ? memory.activeTaskContext as Record<string, unknown>
+    : {}
+  const latestUserRequest = typeof activeTaskContext.latestUserRequest === 'string' && activeTaskContext.latestUserRequest.trim()
+    ? activeTaskContext.latestUserRequest.trim()
+    : requestText || 'None'
+  const preserve = typeof activeTaskContext.preserve === 'string' && activeTaskContext.preserve.trim()
+    ? activeTaskContext.preserve.trim()
+    : ''
+  const next = typeof activeTaskContext.next === 'string' && activeTaskContext.next.trim()
+    ? activeTaskContext.next.trim()
+    : ''
+  const hasActiveTaskContext = Object.keys(activeTaskContext).length > 0
+  const hasIterationContext = hasCurrentPrompt || hasOutput || hasActiveTaskContext
+  const isSingleChangeRequest = includesAny(request, ['change only', 'only change', 'one thing', 'single change', 'just change', 'keep everything else', 'do not change', "don't change"])
+  const isBackgroundRequest = includesAny(request, ['background', 'backdrop', 'white background', 'transparent', 'true png', 'no background', 'remove background', 'blue background'])
+  const isTypographyRequest = includesAny(request, ['font', 'typeface', 'typography', 'lettering', 'script', 'cursive', 'serif', 'sans serif', 'wordmark', 'match reference font'])
+  const isExactTextRequest = includesAny(request, ['exact text', 'exact wording', 'exact words', 'exact spelling', 'spelling', 'same text', 'brand name', 'capitalization'])
+  const hasFollowUpLanguage = includesAny(request, ['same', 'keep', 'only', 'just', 'but', 'now', 'fix', 'change', 'make it', 'more ', 'less ', 'closer'])
+  const hasStrictChangeRequest = hasIterationContext && (
+    isSingleChangeRequest ||
+    ((isBackgroundRequest || isTypographyRequest || isExactTextRequest) && hasFollowUpLanguage)
+  )
+  const allowedChanges: string[] = []
+  const subjectLabel = mode === 'logo'
+    ? 'logo composition, exact text, typography style, icon shape, color palette, material, and background unless named as the allowed change'
+    : 'subject, composition, style, palette, lighting, camera, and background unless named as the allowed change'
+
+  if (isBackgroundRequest) {
+    allowedChanges.push('background, backdrop, transparency, or background-removal setting only')
+  }
+
+  if (isTypographyRequest) {
+    allowedChanges.push('font, typeface, lettering, spacing, and reference typography matching only')
+  }
+
+  if (isExactTextRequest) {
+    allowedChanges.push('exact wording, spelling, capitalization, spacing, and text mode only')
+  }
+
+  if (isSingleChangeRequest && allowedChanges.length === 0) {
+    allowedChanges.push(`the latest user request only: ${latestUserRequest}`)
+  }
+
+  const allowedChange = hasStrictChangeRequest
+    ? allowedChanges.length > 0 ? allowedChanges.join('; ') : `the latest user request only: ${latestUserRequest}`
+    : 'No strict single-change request detected'
+  const lockedElements = [preserve, subjectLabel]
+    .filter(Boolean)
+    .join(' | ')
+  const changeBudgetLine = hasStrictChangeRequest
+    ? '- Change budget: single requested edit'
+    : '- Change budget: normal prompt rewrite'
+
+  return [
+    changeBudgetLine,
+    `- Allowed change: ${allowedChange}`,
+    `- Locked elements: ${lockedElements}`,
+    `- latest user request: ${latestUserRequest}`,
+    `- Active task next change: ${next || 'Respond to the latest request'}`,
+    `- Reference context available: ${hasReference ? 'yes' : 'no'}`,
+    `- Latest output context available: ${hasOutput ? 'yes' : 'no'}`,
+    '- Do not reinterpret the whole concept; edit only the allowed change when change budget is single requested edit.',
+  ].join('\n')
+}
+
 function appendUniqueCommaList(baseValue: unknown, addition: string): string {
   const base = typeof baseValue === 'string' ? baseValue.trim() : ''
   const additions = addition
@@ -827,6 +914,14 @@ export async function POST(request: Request) {
       hasOutput,
       hasPreviousPrompt: Boolean(lastGeneratedPrompt || lastPersistentGeneration?.prompt),
     })
+    const changeControlContext = buildChangeControlContext({
+      mode: 'image',
+      message,
+      currentPrompt,
+      agentMemory,
+      hasReference: hasReference || hasImageAnalysis,
+      hasOutput,
+    })
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -874,8 +969,12 @@ ${promptConstraintContext}
 ITERATION INTENT BRIEF:
 ${iterationIntentBrief}
 
+CHANGE CONTROL CONTEXT:
+${changeControlContext}
+
 Constraint discipline:
 - Treat these constraints as non-negotiable and preserve them across iterations.
+- When CHANGE CONTROL CONTEXT says single requested edit, preserve locked elements and do not reinterpret the whole concept.
 - Put hard background, typography, text, and reference constraints near the start of suggestions.prompt.
 - Put contradictions in suggestions.negativePrompt, especially wrong background colors, wrong font, misspellings, and extra words.
 - Before returning JSON, self-check that suggestions.prompt does not contradict these constraints.
@@ -1209,6 +1308,14 @@ async function handleLogoMode(
       hasOutput,
       hasPreviousPrompt: Boolean(lastLogoPrompt || lastPersistentGeneration?.prompt),
     })
+    const changeControlContext = buildChangeControlContext({
+      mode: 'logo',
+      message,
+      currentPrompt: logoSettings.currentPrompt,
+      agentMemory,
+      hasReference: hasReference || Boolean(logoAnalysis),
+      hasOutput,
+    })
 
     const fullPrompt = `${logoSystemPrompt}
 
@@ -1241,8 +1348,12 @@ ${promptConstraintContext}
 ITERATION INTENT BRIEF:
 ${iterationIntentBrief}
 
+CHANGE CONTROL CONTEXT:
+${changeControlContext}
+
 Constraint discipline:
 - Treat these constraints as non-negotiable and preserve them across logo iterations.
+- When CHANGE CONTROL CONTEXT says single requested edit, preserve locked elements and do not reinterpret the whole concept.
 - Put hard background, typography, exact text, and reference constraints near the start of suggestions.prompt.
 - Put contradictions in suggestions.negativePrompt, especially wrong background colors, wrong font, misspellings, extra words, mockups, and scenes.
 - Before returning JSON, self-check that suggestions.prompt and logoConfig do not contradict these constraints.
