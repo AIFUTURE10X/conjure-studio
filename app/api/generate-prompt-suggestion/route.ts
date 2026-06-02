@@ -655,7 +655,7 @@ function buildOperationalDiagnosticFindings(mode: 'image' | 'logo', currentPromp
     : {}
   const currentModel = getActiveGeneratorModel(settings, mode)
   const backgroundRemoval = getActiveBackgroundRemovalSummary(settings, mode)
-  const operationalContext = formatOperationalGeneratorContext(settings)
+  const operationalContext = formatOperationalGeneratorContext(mode, settings)
   const backgroundRemovalContext = formatBackgroundRemovalContext(settings)
 
   return [
@@ -1311,17 +1311,30 @@ function formatPersistentPreferences(agentMemory: unknown): string {
   return preferenceLines.length > 0 ? preferenceLines.join('\n') : 'None saved'
 }
 
-function formatOperationalGeneratorContext(currentPromptSettings: unknown): string {
+function formatOperationalGeneratorContext(mode: 'image' | 'logo', currentPromptSettings: unknown): string {
   if (!currentPromptSettings || typeof currentPromptSettings !== 'object') return 'None available'
   const settings = currentPromptSettings as Record<string, unknown>
+  const isLogoMode = mode === 'logo'
   const lines = [
     `- Active tab: ${settings.activeTab || 'unknown'}`,
-    `- Selected image model: ${settings.selectedModel || 'unknown'}`,
-    `- Resolution: ${settings.imageSize || 'unknown'}`,
-    `- Image count: ${settings.imageCount || 'unknown'}`,
-    `- Seed: ${settings.seed ?? 'random'}`,
-    `- Analysis mode: ${settings.analysisMode || 'unknown'}`,
-    `- Generator reference image: ${settings.hasReferenceImage ? `loaded (${settings.referenceImageMode || 'mode unknown'})` : 'none'}`,
+    isLogoMode
+      ? `- Selected logo model: ${settings.logoSelectedModel || 'unknown'}`
+      : `- Selected image model: ${settings.selectedModel || 'unknown'}`,
+    isLogoMode
+      ? `- Logo resolution: ${settings.logoResolution || 'unknown'}`
+      : `- Resolution: ${settings.imageSize || 'unknown'}`,
+    isLogoMode
+      ? `- Logo aspect ratio: ${settings.logoAspectRatio || 'unknown'}`
+      : `- Image count: ${settings.imageCount || 'unknown'}`,
+    isLogoMode
+      ? `- Logo text mode: ${settings.logoTextMode || 'unknown'}`
+      : `- Seed: ${settings.seed ?? 'random'}`,
+    isLogoMode
+      ? `- Logo remove-background-only: ${settings.logoRemoveBackgroundOnly ? 'on' : 'off'}`
+      : `- Analysis mode: ${settings.analysisMode || 'unknown'}`,
+    isLogoMode
+      ? `- Generator reference image: ${settings.logoHasReferenceImage ? `loaded (${settings.logoReferenceMode || 'mode unknown'})` : 'none'}`
+      : `- Generator reference image: ${settings.hasReferenceImage ? `loaded (${settings.referenceImageMode || 'mode unknown'})` : 'none'}`,
   ]
 
   return lines.join('\n')
@@ -1545,7 +1558,7 @@ export async function POST(request: Request) {
     const promptConstraints = extractPromptConstraints(message, currentPrompt, currentNegativePrompt, hasActiveReferenceContext)
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
-    const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
+    const operationalGeneratorContext = formatOperationalGeneratorContext('image', currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const currentGeneratorReferenceContext = formatCurrentGeneratorReferenceContext('image', currentPromptSettings)
     const sharedProjectBriefContext = formatSharedProjectBrief(agentMemory)
@@ -2036,7 +2049,7 @@ async function handleLogoMode(
     )
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
-    const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
+    const operationalGeneratorContext = formatOperationalGeneratorContext('logo', currentPromptSettings)
     const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const currentGeneratorReferenceContext = formatCurrentGeneratorReferenceContext('logo', currentPromptSettings)
     const sharedProjectBriefContext = formatSharedProjectBrief(agentMemory)

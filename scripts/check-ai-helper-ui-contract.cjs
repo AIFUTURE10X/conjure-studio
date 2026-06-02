@@ -149,6 +149,21 @@ const checks = [
     },
   },
   {
+    name: 'AI helper operational context is mode-aware for image and logo settings',
+    pass: () => {
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /function formatOperationalGeneratorContext\(mode: 'image' \| 'logo', currentPromptSettings: unknown\)/.test(route) &&
+        /const isLogoMode = mode === 'logo'/.test(route) &&
+        /Selected logo model/.test(route) &&
+        /settings\.logoSelectedModel/.test(route) &&
+        /settings\.logoResolution/.test(route) &&
+        /Selected image model/.test(route) &&
+        /formatOperationalGeneratorContext\('image', currentPromptSettings\)/.test(route) &&
+        /formatOperationalGeneratorContext\('logo', currentPromptSettings\)/.test(route) &&
+        /formatOperationalGeneratorContext\(mode, settings\)/.test(route)
+    },
+  },
+  {
     name: 'AI helper can apply suggestions and trigger generation',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
