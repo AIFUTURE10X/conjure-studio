@@ -1,6 +1,6 @@
 'use client'
 
-import { Clipboard, CornerDownRight, GitCompare, History, ImageIcon, Images, RefreshCw, SearchCheck, Settings2, Sparkles } from 'lucide-react'
+import { Clipboard, CornerDownRight, GitCompare, History, ImageIcon, Images, PencilLine, RefreshCw, SearchCheck, Settings2, Sparkles } from 'lucide-react'
 import type { AIHelperAction } from '../../hooks/useAIHelper'
 
 interface SmartActionBarProps {
@@ -21,6 +21,7 @@ const ACTION_ICONS: Record<AIHelperAction['type'], typeof Settings2> = {
   switch_to_image: ImageIcon,
   switch_to_logo: Sparkles,
   ask_follow_up: CornerDownRight,
+  revise_plan: PencilLine,
 }
 
 export function SmartActionBar({ actions, onRunAction }: SmartActionBarProps) {

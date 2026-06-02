@@ -25,6 +25,7 @@ import { ContextSnapshot } from './AIHelper/ContextSnapshot'
 import { PromptSuggestionChips } from './AIHelper/PromptSuggestionChips'
 import { PromptPreflightPanel } from './AIHelper/PromptPreflightPanel'
 import { DesignBriefCard } from './AIHelper/DesignBriefCard'
+import { ExecutionPlanCard } from './AIHelper/ExecutionPlanCard'
 
 const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
 const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
@@ -154,6 +155,17 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     if (action.type === 'ask_follow_up' && action.prompt) {
       const followUpMode = action.target || (message.mode === 'logo' ? 'logo' : mode)
       setPendingFollowUp({ prompt: action.prompt, mode: followUpMode })
+      if (followUpMode !== mode) setMode(followUpMode)
+      setInput('')
+      return
+    }
+
+    if (action.type === 'revise_plan') {
+      const followUpMode = action.target || (message.mode === 'logo' ? 'logo' : mode)
+      setPendingFollowUp({
+        prompt: action.prompt || 'What would you like to change in this plan before I rewrite the prompt?',
+        mode: followUpMode,
+      })
       if (followUpMode !== mode) setMode(followUpMode)
       setInput('')
       return
@@ -476,6 +488,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
             {msg.designBrief && (
               <DesignBriefCard designBrief={msg.designBrief} />
+            )}
+
+            {msg.executionPlan && (
+              <ExecutionPlanCard executionPlan={msg.executionPlan} />
             )}
 
             {msg.actions && msg.actions.length > 0 && (

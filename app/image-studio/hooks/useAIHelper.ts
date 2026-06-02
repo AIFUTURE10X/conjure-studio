@@ -38,6 +38,7 @@ export type AIHelperActionType =
   | 'switch_to_image'
   | 'switch_to_logo'
   | 'ask_follow_up'
+  | 'revise_plan'
 
 export interface AIHelperAction {
   type: AIHelperActionType
@@ -54,6 +55,7 @@ export interface AIMessage {
   timestamp?: number
   mode?: AIHelperMode
   designBrief?: string
+  executionPlan?: string[]
   suggestions?: {
     prompt: string
     negativePrompt?: string
@@ -357,7 +359,7 @@ export function useAIHelper() {
       if (response.ok) {
         const data = await response.json()
         rememberAssistantSuggestion(data, 'image')
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), designBrief: data.designBrief, suggestions: data.suggestions, actions: data.actions }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), designBrief: data.designBrief, executionPlan: data.executionPlan, suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now() }])
@@ -427,7 +429,7 @@ export function useAIHelper() {
       if (response.ok) {
         const data = await response.json()
         rememberAssistantSuggestion(data, 'logo')
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', designBrief: data.designBrief, logoConfig: data.logoConfig, suggestions: data.suggestions, actions: data.actions }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', designBrief: data.designBrief, executionPlan: data.executionPlan, logoConfig: data.logoConfig, suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: 'logo' }])
@@ -516,6 +518,7 @@ export function useAIHelper() {
           timestamp: Date.now(),
           mode: isLogo ? 'logo' : 'image',
           designBrief: data.designBrief,
+          executionPlan: data.executionPlan,
           logoConfig: data.logoConfig,
           suggestions: data.suggestions,
           actions: data.actions,

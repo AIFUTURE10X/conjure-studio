@@ -39,6 +39,7 @@ type HelperActionType =
   | 'switch_to_image'
   | 'switch_to_logo'
   | 'ask_follow_up'
+  | 'revise_plan'
 
 interface HelperAction {
   type: HelperActionType
@@ -69,6 +70,7 @@ const HELPER_ACTION_TYPES = new Set<HelperActionType>([
   'switch_to_image',
   'switch_to_logo',
   'ask_follow_up',
+  'revise_plan',
 ])
 
 const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
@@ -87,7 +89,9 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - Use "copy_prompt" when the prompt is useful but should not immediately change settings
 - Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
 - Use "ask_follow_up" only when one short answer is required before making a good prompt
-- Return "designBrief" as a compact Working design brief with three lines: What I understood, What to preserve, and What changes next`
+- Use "revise_plan" when the user may want to adjust your plan before applying or generating
+- Return "designBrief" as a compact Working design brief with three lines: What I understood, What to preserve, and What changes next
+- Return "executionPlan" as a Creative execution plan with 2-4 short steps before the user applies or generates`
 
 function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperAction[] = []): HelperAction[] {
   if (!Array.isArray(rawActions)) return fallbackActions
@@ -114,6 +118,20 @@ function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperActi
     .filter((action): action is HelperAction => Boolean(action))
 
   return actions.length > 0 ? actions.slice(0, 7) : fallbackActions
+}
+
+function normalizeExecutionPlan(rawPlan: unknown): string[] {
+  const rawSteps = Array.isArray(rawPlan)
+    ? rawPlan
+    : typeof rawPlan === 'string'
+      ? rawPlan.split(/\n|;/)
+      : []
+
+  return rawSteps
+    .map((step) => typeof step === 'string' ? step.trim() : '')
+    .map((step) => step.replace(/^[-*\d.)\s]+/, '').trim())
+    .filter(Boolean)
+    .slice(0, 4)
 }
 
 function hasLatestOutput(currentPromptSettings: unknown): boolean {
@@ -170,6 +188,13 @@ function defaultHelperActions(
       type: 'apply_and_generate',
       label: mode === 'logo' ? 'Apply and Generate Logo' : 'Apply and Generate Image',
       description: 'Apply these settings and start generation',
+      target: mode,
+    })
+    actions.push({
+      type: 'revise_plan',
+      label: 'Revise Plan',
+      description: 'Tell the helper what to change before applying',
+      prompt: 'What would you like to change in this plan before I rewrite the prompt?',
       target: mode,
     })
     actions.push({
@@ -576,6 +601,9 @@ export async function POST(request: Request) {
         if (msg.role === "assistant" && typeof msg.designBrief === "string" && msg.designBrief.trim()) {
           context += `\n  [Working Design Brief: ${msg.designBrief.trim()}]`
         }
+        if (msg.role === "assistant" && Array.isArray(msg.executionPlan) && msg.executionPlan.length > 0) {
+          context += `\n  [Creative Execution Plan: ${msg.executionPlan.filter(Boolean).join(' | ')}]`
+        }
         // Include the actual generated prompt if present (critical for "add to previous" requests)
         if (msg.role === "assistant" && msg.suggestions?.prompt) {
           context += `\n  [Generated Prompt: "${msg.suggestions.prompt}"]`
@@ -705,6 +733,7 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 7. Recommended aspect ratio
 8. Style strength (subtle, moderate, or strong - how much to apply the style)
 9. A Working design brief that makes your assumptions visible before the user applies or generates
+10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
 
 Creative Direction guidance:
 - Treat the selected Creative Direction settings as active context. Do not contradict them unless the user asks to change direction.
@@ -715,6 +744,7 @@ Format your response as JSON:
 {
   "message": "Your conversational response here",
   "designBrief": "What I understood: concise design target.\\nWhat to preserve: stable elements from the prompt, reference, or latest output.\\nWhat changes next: the exact improvement this prompt makes.",
+  "executionPlan": ["Plan step 1", "Plan step 2", "Plan step 3"],
   "suggestions": {
     "prompt": "improved prompt",
     "negativePrompt": "improved negative prompt",
@@ -727,6 +757,7 @@ Format your response as JSON:
   "actions": [
     { "type": "apply_suggestions", "label": "Apply to Image Generator", "description": "Use this prompt and settings" },
     { "type": "apply_and_generate", "label": "Apply and Generate Image", "description": "Use this prompt and start generation" },
+    { "type": "revise_plan", "label": "Revise Plan", "description": "Adjust the plan before applying" },
     { "type": "generate_variation_set", "label": "Generate 3 Variations", "description": "Use this prompt to create three options" },
     { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest output and fix the prompt" },
     { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest output" },
@@ -759,6 +790,7 @@ Available style strengths: subtle, moderate, strong`
       return NextResponse.json({
         ...jsonResponse,
         designBrief: stringFromUnknown(jsonResponse.designBrief),
+        executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
         suggestions: guardedSuggestions,
         actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration)),
       })
@@ -770,6 +802,7 @@ Available style strengths: subtle, moderate, strong`
       designBrief: currentPrompt
         ? `What I understood: Improve the current prompt from the active generator context.\nWhat to preserve: Keep the current subject, style, and explicit constraints.\nWhat changes next: Reuse the current prompt until the helper can parse a stronger structured response.`
         : null,
+      executionPlan: currentPrompt ? ['Review the current prompt and constraints', 'Preserve stable visual elements', 'Apply the requested follow-up change'] : [],
       suggestions: applyPromptConstraintGuardrails({
         prompt: currentPrompt || "",
         negativePrompt: currentNegativePrompt || "",
@@ -879,6 +912,9 @@ async function handleLogoMode(
         let context = `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`
         if (msg.role === "assistant" && typeof msg.designBrief === "string" && msg.designBrief.trim()) {
           context += `\n  [Working Design Brief: ${msg.designBrief.trim()}]`
+        }
+        if (msg.role === "assistant" && Array.isArray(msg.executionPlan) && msg.executionPlan.length > 0) {
+          context += `\n  [Creative Execution Plan: ${msg.executionPlan.filter(Boolean).join(' | ')}]`
         }
         // Include key logo config settings if present (critical for "add to previous" requests)
         if (msg.role === "assistant" && msg.logoConfig) {
@@ -1013,13 +1049,15 @@ User Request: ${message}
 
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
-Remember to respond with a JSON object containing "message", "designBrief", "suggestions", "logoConfig", and "actions" as specified above.
+Remember to respond with a JSON object containing "message", "designBrief", "executionPlan", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
+Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.
 
 Action schema:
 "actions": [
   { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
   { "type": "apply_and_generate", "label": "Apply and Generate Logo", "description": "Use this prompt and start generation" },
+  { "type": "revise_plan", "label": "Revise Plan", "description": "Adjust the plan before applying" },
   { "type": "critique_last_output", "label": "Critique Latest", "description": "Analyze the latest logo and fix the prompt" },
   { "type": "make_variation", "label": "Make Variation", "description": "Create a new prompt from the latest logo" },
   { "type": "compare_to_reference", "label": "Compare Reference", "description": "Compare the latest logo to the remembered reference" },
@@ -1047,6 +1085,7 @@ Action schema:
         return NextResponse.json({
           message: jsonResponse.message || "Here are my logo design suggestions.",
           designBrief: stringFromUnknown(jsonResponse.designBrief),
+          executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
           suggestions: logoSuggestions,
           logoConfig,
           actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration)),

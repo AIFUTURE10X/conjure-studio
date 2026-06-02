@@ -428,6 +428,30 @@ const checks = [
         /\[Working Design Brief:/.test(route)
     },
   },
+  {
+    name: 'AI helper supports a plan then execute flow with revise plan action',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const planCard = read('app/image-studio/components/AIHelper/ExecutionPlanCard.tsx')
+      const actionBar = read('app/image-studio/components/AIHelper/SmartActionBar.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /executionPlan\?: string\[\]/.test(hook) &&
+        /executionPlan: data\.executionPlan/.test(hook) &&
+        /revise_plan/.test(hook) &&
+        /ExecutionPlanCard/.test(sidebar) &&
+        /msg\.executionPlan/.test(sidebar) &&
+        /action\.type === 'revise_plan'/.test(sidebar) &&
+        /What would you like to change in this plan/.test(sidebar) &&
+        /Creative plan/.test(planCard) &&
+        /Plan step/.test(planCard) &&
+        /PencilLine/.test(actionBar) &&
+        /normalizeExecutionPlan/.test(route) &&
+        /"executionPlan"/.test(route) &&
+        /Creative execution plan/.test(route) &&
+        /Revise Plan/.test(route)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
