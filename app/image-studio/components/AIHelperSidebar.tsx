@@ -112,6 +112,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const handleEditStart = (idx: number, suggestions: any) => {
     setEditingIndex(idx)
     setEditedSuggestions({
+      ...suggestions,
       prompt: suggestions.prompt || '', negativePrompt: suggestions.negativePrompt || '', style: suggestions.style || '',
       aspectRatio: suggestions.aspectRatio || '1:1', cameraAngle: suggestions.cameraAngle || 'None',
       cameraLens: suggestions.cameraLens || 'None', styleStrength: suggestions.styleStrength || 'moderate', resolution: suggestions.resolution || '1K'
@@ -148,6 +149,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
   const handleApplyClick = (suggestions: any, idx: number) => {
     const freshSuggestions = {
+      ...suggestions,
       prompt: suggestions.prompt || '', negativePrompt: suggestions.negativePrompt || '', style: suggestions.style || '',
       aspectRatio: suggestions.aspectRatio || '1:1', cameraAngle: suggestions.cameraAngle || 'None',
       cameraLens: suggestions.cameraLens || 'None', styleStrength: suggestions.styleStrength || 'moderate', resolution: suggestions.resolution || '1K', _appliedAt: Date.now()

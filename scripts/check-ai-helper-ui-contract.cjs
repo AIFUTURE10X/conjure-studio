@@ -272,6 +272,35 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can apply logo generator setting patches from chat suggestions',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const card = read('app/image-studio/components/AIHelper/SuggestionCard.tsx')
+      const page = read('app/image-studio/page.tsx')
+      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
+      return /textMode\?: string/.test(hook) &&
+        /bgRemovalMethod\?: string/.test(hook) &&
+        /selectedModel\?: string/.test(hook) &&
+        /normalizeLogoPromptSuggestions/.test(route) &&
+        /textMode: normalizeLogoSetting/.test(route) &&
+        /bgRemovalMethod: normalizeLogoSetting/.test(route) &&
+        /Logo settings patch/.test(route) &&
+        /\.\.\.suggestions/.test(sidebar) &&
+        /Text Mode:/.test(card) &&
+        /BG Method:/.test(card) &&
+        /extractLogoSettingsPatch/.test(page) &&
+        /pendingLogoSettings/.test(page) &&
+        /onClearPendingSettings/.test(page) &&
+        /LogoGeneratorSettingsPatch/.test(logoPanel) &&
+        /pendingLogoSettings/.test(logoPanel) &&
+        /applyPendingLogoSettings/.test(logoPanel) &&
+        /setTextMode/.test(logoPanel) &&
+        /setBgRemovalMethod/.test(logoPanel)
+    },
+  },
+  {
     name: 'AI helper suggested prompts and preflight fixes can run immediately',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

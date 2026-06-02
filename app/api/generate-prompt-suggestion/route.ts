@@ -11,6 +11,11 @@ import {
   type CreativeDirectionState,
 } from "@/app/image-studio/constants/creative-direction-options"
 import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
+import {
+  LOGO_BACKGROUND_REMOVAL_METHODS,
+  LOGO_GENERATION_MODELS,
+  LOGO_TEXT_MODES,
+} from "@/lib/logo-generation-contract"
 
 // Initialize Gemini with API key check
 const apiKey = getGeminiApiKey()
@@ -975,10 +980,19 @@ interface LogoPromptSuggestions {
   aspectRatio: string
   styleStrength: 'subtle' | 'moderate' | 'strong'
   resolution: string
+  textMode?: string
+  bgRemovalMethod?: string
+  selectedModel?: string
 }
 
 function stringFromUnknown(value: unknown, fallback = ''): string {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function normalizeLogoSetting<T extends readonly string[]>(rawValue: unknown, allowedValues: T): T[number] | undefined {
+  if (typeof rawValue !== 'string') return undefined
+  const value = rawValue.trim()
+  return allowedValues.includes(value) ? value as T[number] : undefined
 }
 
 function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSuggestions | undefined {
@@ -992,6 +1006,11 @@ function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSugg
   const normalizedStyleStrength: LogoPromptSuggestions['styleStrength'] =
     styleStrength === 'subtle' || styleStrength === 'strong' ? styleStrength : 'moderate'
   const negativePrompt = stringFromUnknown(suggestions.negativePrompt)
+  const normalizedLogoSettings = {
+    textMode: normalizeLogoSetting(suggestions.textMode, LOGO_TEXT_MODES),
+    bgRemovalMethod: normalizeLogoSetting(suggestions.bgRemovalMethod, LOGO_BACKGROUND_REMOVAL_METHODS),
+    selectedModel: normalizeLogoSetting(suggestions.selectedModel || suggestions.model, LOGO_GENERATION_MODELS),
+  }
 
   return {
     prompt,
@@ -1002,6 +1021,9 @@ function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSugg
     aspectRatio: stringFromUnknown(suggestions.aspectRatio, '1:1'),
     styleStrength: normalizedStyleStrength,
     resolution: stringFromUnknown(suggestions.resolution, '1K'),
+    ...(normalizedLogoSettings.textMode ? { textMode: normalizedLogoSettings.textMode } : {}),
+    ...(normalizedLogoSettings.bgRemovalMethod ? { bgRemovalMethod: normalizedLogoSettings.bgRemovalMethod } : {}),
+    ...(normalizedLogoSettings.selectedModel ? { selectedModel: normalizedLogoSettings.selectedModel } : {}),
   }
 }
 
@@ -1177,6 +1199,7 @@ User Request: ${message}
 
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
+Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", "smart", "native-transparent", etc.), and suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup; use native-transparent only with selectedModel gpt-image-2.
 Remember to respond with a JSON object containing "message", "designBrief", "executionPlan", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.

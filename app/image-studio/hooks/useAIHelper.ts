@@ -67,6 +67,9 @@ export interface AIMessage {
     styleStrength?: 'subtle' | 'moderate' | 'strong'
     aspectRatio?: string
     resolution?: string
+    textMode?: string
+    bgRemovalMethod?: string
+    selectedModel?: string
   }
   logoConfig?: Partial<DotMatrixConfig>
   actions?: AIHelperAction[]

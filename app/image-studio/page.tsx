@@ -7,7 +7,7 @@ import { MockupPhotoGenerator } from './components/Logo/MockupPreview/MockupPhot
 import { ProductMockupsPanel } from './components/Logo/MockupPreview/ProductMockupsPanel'
 import { ImageStudioHeader } from './components/ImageStudioHeader'
 import { ImageLightbox } from './components/ImageLightbox'
-import { LogoPanel, type LogoGeneratorContext, type LogoPanelRef } from './components/LogoPanel'
+import { LogoPanel, type LogoGeneratorContext, type LogoGeneratorSettingsPatch, type LogoPanelRef } from './components/LogoPanel'
 import { BackgroundRemoverPanel } from './components/BackgroundRemover'
 import { AIHelperSidebar } from './components/AIHelperSidebar'
 import { FavoritesModal } from './components/SimpleFavorites'
@@ -36,11 +36,29 @@ function formatBackgroundRemovalProvider(method: string) {
   return method
 }
 
+function extractLogoSettingsPatch(suggestions: Record<string, unknown> | null | undefined): LogoGeneratorSettingsPatch | null {
+  if (!suggestions) return null
+  const selectedModel = typeof suggestions.selectedModel === 'string'
+    ? suggestions.selectedModel
+    : typeof suggestions.model === 'string'
+      ? suggestions.model
+      : undefined
+  const patch: LogoGeneratorSettingsPatch = {
+    ...(typeof suggestions.textMode === 'string' ? { textMode: suggestions.textMode } : {}),
+    ...(typeof suggestions.bgRemovalMethod === 'string' ? { bgRemovalMethod: suggestions.bgRemovalMethod } : {}),
+    ...(selectedModel ? { selectedModel } : {}),
+    ...(typeof suggestions.resolution === 'string' ? { resolution: suggestions.resolution } : {}),
+    ...(typeof suggestions.aspectRatio === 'string' ? { aspectRatio: suggestions.aspectRatio } : {}),
+  }
+  return Object.keys(patch).length > 0 ? patch : null
+}
+
 export default function ImageStudioPage() {
   const generatePanelRef = useRef<{ triggerGenerate: () => void; isGenerating: boolean }>(null)
   const logoPanelRef = useRef<LogoPanelRef>(null)
   const [latestLogoOutput, setLatestLogoOutput] = useState<{ url: string; prompt?: string; timestamp: number } | null>(null)
   const [logoGeneratorContext, setLogoGeneratorContext] = useState<LogoGeneratorContext>(DEFAULT_LOGO_GENERATOR_CONTEXT)
+  const [pendingLogoSettings, setPendingLogoSettings] = useState<LogoGeneratorSettingsPatch | null>(null)
 
   const {
     uploadState, analyzing, favorites, toggleFavorite, isFavorite, clearAll, state, hasStoredParams,
@@ -60,7 +78,7 @@ export default function ImageStudioPage() {
   const handleAIGenerateRequest = (mode: 'image' | 'logo', options?: { imageCount?: number }) => {
     if (mode === 'logo') {
       state.setActiveTab('logo')
-      window.setTimeout(() => logoPanelRef.current?.triggerGenerate(), 150)
+      window.setTimeout(() => logoPanelRef.current?.triggerGenerate(), 250)
       return
     }
 
@@ -69,6 +87,12 @@ export default function ImageStudioPage() {
     }
     state.setActiveTab('generate')
     window.setTimeout(() => generatePanelRef.current?.triggerGenerate(), options?.imageCount ? 250 : 150)
+  }
+
+  const handleApplyLogoSuggestionsWithSettings = (suggestions: any) => {
+    handleApplyLogoSuggestions(suggestions)
+    const patch = extractLogoSettingsPatch(suggestions)
+    if (patch) setPendingLogoSettings(patch)
   }
 
   const latestImageOutput = state.generatedImages.length > 0
@@ -160,6 +184,8 @@ export default function ImageStudioPage() {
             externalNegativePrompt={state.negativePrompt}
             pendingLogoConfig={state.pendingLogoConfig}
             onClearPendingConfig={() => state.setPendingLogoConfig(null)}
+            pendingLogoSettings={pendingLogoSettings}
+            onClearPendingSettings={() => setPendingLogoSettings(null)}
             onLogoGenerated={(url) => setLatestLogoOutput({ url, prompt: state.mainPrompt, timestamp: Date.now() })}
             onLogoContextChange={setLogoGeneratorContext}
           />
@@ -261,7 +287,7 @@ export default function ImageStudioPage() {
           logo: latestLogoOutput,
         }}
         onApplySuggestions={handleApplyAISuggestions}
-        onApplyLogoSuggestions={handleApplyLogoSuggestions}
+        onApplyLogoSuggestions={handleApplyLogoSuggestionsWithSettings}
         onApplyLogoConfig={handleApplyLogoConfig}
         onGenerateFromAIHelper={handleAIGenerateRequest}
       />

@@ -1,8 +1,15 @@
 "use client"
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
+import {
+  LOGO_ASPECT_RATIOS,
+  LOGO_BACKGROUND_REMOVAL_METHODS,
+  LOGO_GENERATION_MODELS,
+  LOGO_RESOLUTIONS,
+  LOGO_TEXT_MODES,
+} from '@/lib/logo-generation-contract'
 import { useLogoGeneration } from '../../hooks/useLogoGeneration'
 import { useLogoPanelHandlers } from '../../hooks/useLogoPanelHandlers'
 import { useLogoPanelState } from '../../hooks/useLogoPanelState'
@@ -28,6 +35,8 @@ interface LogoPanelProps {
   externalNegativePrompt?: string
   pendingLogoConfig?: Partial<DotMatrixConfig> | null
   onClearPendingConfig?: () => void
+  pendingLogoSettings?: LogoGeneratorSettingsPatch | null
+  onClearPendingSettings?: () => void
   onLogoContextChange?: (context: LogoGeneratorContext) => void
 }
 
@@ -48,12 +57,26 @@ export interface LogoGeneratorContext {
   referenceMode: string
 }
 
+export interface LogoGeneratorSettingsPatch {
+  bgRemovalMethod?: string
+  textMode?: string
+  selectedModel?: string
+  resolution?: string
+  aspectRatio?: string
+}
+
+const isAllowedSetting = <T extends readonly string[]>(value: string | undefined, allowed: T): value is T[number] => {
+  return Boolean(value && allowed.includes(value))
+}
+
 export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoPanel({
   onLogoGenerated,
   externalPrompt,
   externalNegativePrompt,
   pendingLogoConfig,
   onClearPendingConfig,
+  pendingLogoSettings,
+  onClearPendingSettings,
   onLogoContextChange
 }, ref) {
   // Use extracted state hook
@@ -78,6 +101,39 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
 
   // Track color filter from LogoPreviewPanel for mockups
   const [logoFilter, setLogoFilter] = useState<LogoFilterStyle>({})
+
+  const applyPendingLogoSettings = useCallback((settings: LogoGeneratorSettingsPatch) => {
+    if (isAllowedSetting(settings.textMode, LOGO_TEXT_MODES)) {
+      state.setTextMode(settings.textMode)
+    }
+    if (isAllowedSetting(settings.selectedModel, LOGO_GENERATION_MODELS)) {
+      state.setSelectedModel(settings.selectedModel)
+    }
+    if (isAllowedSetting(settings.bgRemovalMethod, LOGO_BACKGROUND_REMOVAL_METHODS)) {
+      if (settings.bgRemovalMethod === 'native-transparent' && settings.selectedModel !== 'gpt-image-2') {
+        state.setSelectedModel('gpt-image-2')
+      }
+      state.setBgRemovalMethod(settings.bgRemovalMethod)
+    }
+    if (isAllowedSetting(settings.resolution, LOGO_RESOLUTIONS)) {
+      state.setResolution(settings.resolution)
+    }
+    if (isAllowedSetting(settings.aspectRatio, LOGO_ASPECT_RATIOS)) {
+      state.setAspectRatio(settings.aspectRatio)
+    }
+  }, [
+    state.setAspectRatio,
+    state.setBgRemovalMethod,
+    state.setResolution,
+    state.setSelectedModel,
+    state.setTextMode,
+  ])
+
+  useEffect(() => {
+    if (!pendingLogoSettings) return
+    applyPendingLogoSettings(pendingLogoSettings)
+    onClearPendingSettings?.()
+  }, [applyPendingLogoSettings, onClearPendingSettings, pendingLogoSettings])
 
   useEffect(() => {
     onLogoContextChange?.({

@@ -21,6 +21,9 @@ interface Suggestions {
   cameraLens?: string
   styleStrength?: string
   resolution?: string
+  textMode?: string
+  bgRemovalMethod?: string
+  selectedModel?: string
 }
 
 interface SuggestionCardProps {
@@ -163,6 +166,9 @@ function DisplayForm({ suggestions, idx, isApplied, applyLabel, onEditStart, onA
         <DisplayField label="Camera Angle:" value={suggestions.cameraAngle} />
         <DisplayField label="Camera Lens:" value={suggestions.cameraLens} />
         <DisplayField label="Resolution:" value={suggestions.resolution || '1K'} />
+        {suggestions.textMode && <DisplayField label="Text Mode:" value={suggestions.textMode} />}
+        {suggestions.bgRemovalMethod && <DisplayField label="BG Method:" value={suggestions.bgRemovalMethod} />}
+        {suggestions.selectedModel && <DisplayField label="Model:" value={suggestions.selectedModel} />}
       </div>
 
       <div className="flex gap-2 mt-2">
