@@ -34,6 +34,28 @@ const checks = [
     },
   },
   {
+    name: 'AI helper exposes grouped quick settings controls in the canvas rail',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
+      return /QuickSettingsPanel/.test(sidebar) &&
+        /onRunSetting=\{\(prompt\) => void runHelperPrompt\(prompt\)\}/.test(sidebar) &&
+        /Quick Settings/.test(quickSettings) &&
+        /settingsGroups/.test(quickSettings) &&
+        /Background \/ PNG/.test(quickSettings) &&
+        /Text Mode/.test(quickSettings) &&
+        /Model/.test(quickSettings) &&
+        /Resolution/.test(quickSettings) &&
+        /use photoroom/.test(quickSettings) &&
+        /native transparent png/.test(quickSettings) &&
+        /normal logo with background/.test(quickSettings) &&
+        /use exact text overlay/.test(quickSettings) &&
+        /use chatgpt images 2.0/.test(quickSettings) &&
+        /use gemini 3.1 flash/.test(quickSettings) &&
+        /set 4k/.test(quickSettings)
+    },
+  },
+  {
     name: 'AI helper header exposes an expand collapse control',
     pass: () => {
       const header = read('app/image-studio/components/AIHelper/AIHelperHeader.tsx')

@@ -24,6 +24,7 @@ import { SmartActionBar } from './AIHelper/SmartActionBar'
 import { ContextSnapshot } from './AIHelper/ContextSnapshot'
 import { PromptSuggestionChips } from './AIHelper/PromptSuggestionChips'
 import { PromptPreflightPanel } from './AIHelper/PromptPreflightPanel'
+import { QuickSettingsPanel } from './AIHelper/QuickSettingsPanel'
 import { DesignBriefCard } from './AIHelper/DesignBriefCard'
 import { ExecutionPlanCard } from './AIHelper/ExecutionPlanCard'
 import { DiagnosticCard } from './AIHelper/DiagnosticCard'
@@ -1189,6 +1190,12 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
             activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
             onForgetPreference={forgetPreference}
             latestOutputs={latestOutputs}
+          />
+
+          <QuickSettingsPanel
+            mode={mode}
+            currentPromptSettings={currentPromptSettings}
+            onRunSetting={(prompt) => void runHelperPrompt(prompt)}
           />
 
           <PromptSuggestionChips
