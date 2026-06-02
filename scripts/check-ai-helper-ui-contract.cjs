@@ -203,6 +203,19 @@ const checks = [
     },
   },
   {
+    name: 'AI helper has a local capability guide entry point',
+    pass: () => {
+      const chips = read('app/image-studio/components/AIHelper/PromptSuggestionChips.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /How can you help\?/.test(chips) &&
+        /What can you do as my AI/.test(chips) &&
+        /isCapabilityGuideRequest/.test(route) &&
+        /buildLocalCapabilityGuideResponse/.test(route) &&
+        /AI helper can help with:/.test(route) &&
+        /Try asking:/.test(route)
+    },
+  },
+  {
     name: 'AI helper persists durable user preferences in agent memory',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')

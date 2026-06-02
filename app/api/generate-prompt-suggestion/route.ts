@@ -659,6 +659,85 @@ function buildLocalDiagnosticResponse(mode: 'image' | 'logo', message: unknown, 
   })
 }
 
+function isCapabilityGuideRequest(message: unknown): boolean {
+  if (typeof message !== 'string') return false
+  const text = message.toLowerCase().trim()
+  const guideTerms = [
+    'what can you do',
+    'how can you help',
+    'how do i use you',
+    'how should i use you',
+    'what can this helper do',
+    'what can the helper do',
+    'what can my ai helper do',
+    'how do i use this helper',
+    'show me what you can do',
+    'explain what you can do',
+  ]
+  const creativeGenerationTerms = [
+    'create a',
+    'create an',
+    'generate a',
+    'generate an',
+    'make me',
+    'write a prompt for',
+    'design a',
+    'design an',
+  ]
+
+  return includesAny(text, guideTerms) && !includesAny(text, creativeGenerationTerms)
+}
+
+function buildLocalCapabilityGuideResponse(
+  mode: 'image' | 'logo',
+  message: unknown,
+  currentPromptSettings: unknown,
+  agentMemory?: unknown
+) {
+  if (!isCapabilityGuideRequest(message)) return null
+
+  const settings = currentPromptSettings && typeof currentPromptSettings === 'object'
+    ? currentPromptSettings as Record<string, unknown>
+    : {}
+  const currentModel = getActiveGeneratorModel(settings, mode)
+  const backgroundRemoval = getActiveBackgroundRemovalSummary(settings, mode)
+  const hasReference = hasReferenceMemory(agentMemory) || Boolean(
+    mode === 'logo'
+      ? settings.logoHasReferenceImage
+      : settings.hasReferenceImage
+  )
+  const hasOutput = hasLatestOutput(settings)
+  const findings = [
+    `AI helper can help with: prompt writing, reference matching, follow-up edits, latest-output critique, generator settings, and background/PNG diagnosis.`,
+    `Current context: ${mode === 'logo' ? 'Logo' : 'Image'} mode, ${formatGenerationModelLabel(currentModel)}, latest output ${hasOutput ? 'available' : 'not available yet'}.`,
+    `Reference matching: ${hasReference ? 'reference context is available, so I can preserve typography, layout, palette, background, and composition.' : 'upload a reference image or generate once, then I can compare and tighten the next prompt.'}`,
+    `Follow-up edits: ask for one natural change such as "keep everything else but make the background white" or "match the reference font more closely."`,
+    `PhotoRoom / Native PNG: ${backgroundRemoval} Try asking: "what background remover is this using?", "compare latest to reference", or "apply and generate it."`,
+  ]
+
+  return NextResponse.json({
+    message: [
+      `I checked the current ${mode} helper state before Gemini is required.`,
+      findings.join('\n'),
+      'Talk to it like a creative assistant: describe the goal, upload a reference when style matters, then ask for small follow-up changes after each result.',
+    ].join('\n\n'),
+    responseMode: 'diagnostic',
+    plannerDecision: 'diagnose',
+    designBrief: '',
+    executionPlan: ['Explain available helper workflows', 'Read current mode, model, reference, output, and PNG settings', 'Suggest natural next requests without changing generator settings'],
+    diagnosticFindings: findings,
+    promptQualityChecklist: [
+      'Planner: local capability guide selected, no generator changes should be applied.',
+      'Context: current model, reference status, latest output status, and background-removal path were checked.',
+      'Next move: user can ask for reference matching, follow-up edits, critique, or apply/generate commands.',
+    ],
+    suggestions: undefined,
+    logoConfig: mode === 'logo' ? {} : undefined,
+    actions: [],
+    ...(mode === 'logo' ? { mode: 'logo' } : {}),
+  })
+}
+
 function addPromptConstraint(constraints: PromptConstraint[], constraint: PromptConstraint): void {
   if (constraints.some((item) => item.key === constraint.key)) return
   constraints.push(constraint)
@@ -1244,6 +1323,11 @@ export async function POST(request: Request) {
       return earlyDiagnosticResponse
     }
 
+    const earlyCapabilityGuideResponse = buildLocalCapabilityGuideResponse('image', message, currentPromptSettings, agentMemory)
+    if (earlyCapabilityGuideResponse) {
+      return earlyCapabilityGuideResponse
+    }
+
     // Check if Gemini is available
     if (!genAI) {
       console.error(`[v0 API] Gemini API not initialized - missing ${getGeminiApiKeyNames()}`)
@@ -1692,6 +1776,11 @@ async function handleLogoMode(
     const earlyDiagnosticResponse = buildLocalDiagnosticResponse('logo', message, currentPromptSettings)
     if (earlyDiagnosticResponse) {
       return earlyDiagnosticResponse
+    }
+
+    const earlyCapabilityGuideResponse = buildLocalCapabilityGuideResponse('logo', message, currentPromptSettings, agentMemory)
+    if (earlyCapabilityGuideResponse) {
+      return earlyCapabilityGuideResponse
     }
 
     // Check if Gemini is available

@@ -84,6 +84,21 @@ const scenarios = [
     ],
   },
   {
+    name: 'capability questions can be answered locally before Gemini is required',
+    expected: [
+      /isCapabilityGuideRequest/,
+      /buildLocalCapabilityGuideResponse/,
+      /const earlyCapabilityGuideResponse = buildLocalCapabilityGuideResponse/,
+      /return earlyCapabilityGuideResponse/,
+      /AI helper can help with:/,
+      /Reference matching/,
+      /Follow-up edits/,
+      /PhotoRoom \/ Native PNG/,
+      /Try asking:/,
+      /before Gemini is required/,
+    ],
+  },
+  {
     name: 'server recognizes structured clarification continuation answers',
     expected: [
       /hasStructuredClarificationContinuation/,
@@ -138,6 +153,14 @@ if (postImageDiagnosticIndex === -1 || postGeminiCheckIndex === -1 || postImageD
   })
 }
 
+const postImageCapabilityIndex = route.indexOf('return earlyCapabilityGuideResponse')
+if (postImageCapabilityIndex === -1 || postGeminiCheckIndex === -1 || postImageCapabilityIndex > postGeminiCheckIndex) {
+  failures.push({
+    name: 'image capability guide happens before Gemini availability check',
+    missing: [/return earlyCapabilityGuideResponse before \/\/ Check if Gemini is available/],
+  })
+}
+
 const logoHandlerIndex = route.indexOf('async function handleLogoMode')
 const logoClarificationIndex = route.indexOf("return buildClarificationResponse('logo', earlyClarificationGate)", logoHandlerIndex)
 const logoGeminiCheckIndex = route.indexOf('// Check if Gemini is available', logoHandlerIndex)
@@ -153,6 +176,14 @@ if (logoDiagnosticIndex === -1 || logoGeminiCheckIndex === -1 || logoDiagnosticI
   failures.push({
     name: 'logo diagnostics happen before Gemini availability check',
     missing: [/return earlyDiagnosticResponse before logo \/\/ Check if Gemini is available/],
+  })
+}
+
+const logoCapabilityIndex = route.indexOf('return earlyCapabilityGuideResponse', logoHandlerIndex)
+if (logoCapabilityIndex === -1 || logoGeminiCheckIndex === -1 || logoCapabilityIndex > logoGeminiCheckIndex) {
+  failures.push({
+    name: 'logo capability guide happens before Gemini availability check',
+    missing: [/return earlyCapabilityGuideResponse before logo \/\/ Check if Gemini is available/],
   })
 }
 

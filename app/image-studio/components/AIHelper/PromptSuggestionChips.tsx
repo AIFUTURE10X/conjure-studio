@@ -42,6 +42,13 @@ export function getPromptSuggestionChips({
 
   const chips: PromptSuggestionChip[] = []
 
+  chips.push({
+    label: 'How can you help?',
+    prompt: mode === 'logo'
+      ? 'What can you do as my AI logo helper with my current prompt, reference image, latest output, settings, and background removal options?'
+      : 'What can you do as my AI image helper with my current prompt, reference image, latest output, settings, and background removal options?',
+  })
+
   if (hasPrompt) {
     chips.push({
       label: 'Improve this prompt',
