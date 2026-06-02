@@ -568,6 +568,25 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can patch complaint-style misses from the latest suggestion',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /complaintStylePatchTerms/.test(sidebar) &&
+        /it gave me a blue background/.test(sidebar) &&
+        /background is blue/.test(sidebar) &&
+        /still has a background/.test(sidebar) &&
+        /not a true png/.test(sidebar) &&
+        /font is wrong/.test(sidebar) &&
+        /ignored the reference/.test(sidebar) &&
+        /does not match the reference/.test(sidebar) &&
+        /failed background correction/.test(sidebar) &&
+        /failed transparent PNG correction/.test(sidebar) &&
+        /failed reference match correction/.test(sidebar) &&
+        /rejected blue background/.test(sidebar) &&
+        /reference drift/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

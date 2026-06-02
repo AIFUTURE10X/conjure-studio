@@ -400,8 +400,40 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'do not change the words',
       'same words',
     ].some((term) => normalized.includes(term))
+    const reportsRejectedBlueBackground = [
+      'it gave me a blue background',
+      'it is giving me a blue background',
+      'it gave a blue background',
+      'background is blue',
+      'blue background again',
+      'still blue background',
+    ].some((term) => normalized.includes(term))
+    const reportsVisibleBackgroundAfterTransparentRequest = [
+      'still has a background',
+      'still have some background',
+      'has a background not a true png',
+      'not a true png',
+      'not true png',
+      'background in the png',
+    ].some((term) => normalized.includes(term))
+    const reportsReferenceDrift = [
+      'ignored the reference',
+      'does not match the reference',
+      "doesn't match the reference",
+      'not following the reference',
+      'not following that reference',
+      'reference drift',
+    ].some((term) => normalized.includes(term))
+    const reportsWrongFont = [
+      'font is wrong',
+      'wrong font',
+      'typeface is wrong',
+      'lettering is wrong',
+      'not following the font',
+      'not following the reference font',
+    ].some((term) => normalized.includes(term))
 
-    if (!suggestions || (!requestedBrandText && !wantsWhiteBackground && !wantsTransparentBackground && !wantsReferenceTypography && !wantsFontOnlyChange && !wantsExactText)) {
+    if (!suggestions || (!requestedBrandText && !wantsWhiteBackground && !wantsTransparentBackground && !wantsReferenceTypography && !wantsFontOnlyChange && !wantsExactText && !reportsRejectedBlueBackground && !reportsVisibleBackgroundAfterTransparentRequest && !reportsReferenceDrift && !reportsWrongFont)) {
       return null
     }
 
@@ -415,15 +447,33 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       if (targetMode === 'logo') patch.bgRemovalMethod = 'none'
     }
 
+    if (reportsRejectedBlueBackground) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: failed background correction: use a visible flat pure white (#FFFFFF) background only; preserve every other approved element and treat any blue background as rejected blue background.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'rejected blue background, blue background, navy background, cyan background, dark background, gradient background')
+      if (targetMode === 'logo') patch.bgRemovalMethod = 'none'
+    }
+
     if (wantsTransparentBackground) {
       prompt = appendPromptDirective(prompt, 'Single-change refinement: create a transparent PNG with no visible background; preserve every other approved element.')
       negativePrompt = appendNegativeDirective(negativePrompt, 'visible background, white box, dark backdrop, colored backdrop, checkerboard pattern')
       patch.bgRemovalMethod = 'photoroom'
     }
 
+    if (reportsVisibleBackgroundAfterTransparentRequest) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: failed transparent PNG correction: create a true transparent PNG with no visible background, no leftover rectangle, and no background residue; preserve every other approved element.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'visible background, leftover background, rectangle backdrop, white box, dark backdrop, colored backdrop, checkerboard pattern')
+      patch.bgRemovalMethod = 'photoroom'
+    }
+
     if (wantsReferenceTypography) {
       prompt = appendPromptDirective(prompt, 'Single-change refinement: match the reference typography as closely as possible, including letter proportions, stroke contrast, spacing, capitalization, and visual rhythm; preserve every other approved element.')
       negativePrompt = appendNegativeDirective(negativePrompt, 'wrong font, generic font, dot matrix style, mismatched typography, altered wording')
+      if (targetMode === 'logo') patch.textMode = 'exact-text-overlay'
+    }
+
+    if (reportsReferenceDrift || reportsWrongFont) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: failed reference match correction: correct reference drift by matching the uploaded/reference typography, letter proportions, stroke contrast, spacing, capitalization, and visual rhythm; preserve every other approved element.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'reference drift, ignored reference, does not match the reference, wrong font, generic font, dot matrix style, mismatched typography, altered wording')
       if (targetMode === 'logo') patch.textMode = 'exact-text-overlay'
     }
 
@@ -591,6 +641,24 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'brand name is',
       'exact text is',
     ]
+    const complaintStylePatchTerms = [
+      'it gave me a blue background',
+      'background is blue',
+      'blue background again',
+      'still blue background',
+      'still has a background',
+      'still have some background',
+      'not a true png',
+      'background in the png',
+      'font is wrong',
+      'wrong font',
+      'ignored the reference',
+      'does not match the reference',
+      "doesn't match the reference",
+      'not following the reference',
+      'not following the reference font',
+      'reference drift',
+    ]
     const singleChangePatchTerms = [
       'make the logo background white',
       'make the image background white',
@@ -614,7 +682,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'keep exact text',
     ]
 
-    if (!matchesNaturalDirectCommand(userInput, singleChangePatchTerms) && !matchesNaturalDirectCommand(userInput, brandTextPatchTerms)) return false
+    if (!matchesNaturalDirectCommand(userInput, singleChangePatchTerms) && !matchesNaturalDirectCommand(userInput, brandTextPatchTerms) && !matchesNaturalDirectCommand(userInput, complaintStylePatchTerms)) return false
 
     const shouldGenerateAfterPatch = matchesNaturalDirectCommand(userInput, patchGenerateCommandTerms)
     const requestedPatchMode = detectRequestedHelperMode(userInput)
