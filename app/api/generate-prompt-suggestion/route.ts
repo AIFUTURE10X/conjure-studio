@@ -50,6 +50,8 @@ interface HelperAction {
   target?: 'image' | 'logo'
 }
 
+type HelperResponseMode = 'suggestion' | 'diagnostic'
+
 interface PromptConstraint {
   key: string
   label: string
@@ -90,6 +92,7 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
 - Use "ask_follow_up" only when one short answer is required before making a good prompt
 - Use "revise_plan" when the user may want to adjust your plan before applying or generating
+- Diagnostic-only questions should use "responseMode": "diagnostic", return diagnosticFindings, and avoid apply/generate actions
 - Return "designBrief" as a compact Working design brief with three lines: What I understood, What to preserve, and What changes next
 - Return "executionPlan" as a Creative execution plan with 2-4 short steps before the user applies or generates`
 
@@ -132,6 +135,59 @@ function normalizeExecutionPlan(rawPlan: unknown): string[] {
     .map((step) => step.replace(/^[-*\d.)\s]+/, '').trim())
     .filter(Boolean)
     .slice(0, 4)
+}
+
+function normalizeResponseMode(rawMode: unknown, diagnosticOnly = false): HelperResponseMode {
+  return rawMode === 'diagnostic' || diagnosticOnly ? 'diagnostic' : 'suggestion'
+}
+
+function normalizeDiagnosticFindings(rawFindings: unknown, fallbackMessage = ''): string[] {
+  const rawItems = Array.isArray(rawFindings)
+    ? rawFindings
+    : typeof rawFindings === 'string'
+      ? rawFindings.split(/\n|;/)
+      : []
+  const findings = rawItems
+    .map((finding) => typeof finding === 'string' ? finding.trim() : '')
+    .map((finding) => finding.replace(/^[-*\d.)\s]+/, '').trim())
+    .filter(Boolean)
+    .slice(0, 5)
+
+  if (findings.length > 0) return findings
+  return fallbackMessage.trim() ? [fallbackMessage.trim()] : []
+}
+
+function isDiagnosticOnlyRequest(message: unknown): boolean {
+  if (typeof message !== 'string') return false
+  const text = message.toLowerCase()
+  const diagnosticTerms = [
+    'why ',
+    'what went wrong',
+    'what is wrong',
+    "what's wrong",
+    'explain ',
+    'diagnose',
+    'is this using',
+    'does this use',
+    'how does',
+    'what should i change',
+    'what background',
+    'what api',
+    'what model',
+  ]
+  const generationTerms = [
+    'create',
+    'generate',
+    'make me',
+    'write a prompt',
+    'rewrite',
+    'fix it',
+    'apply',
+    'run it',
+    'try it',
+  ]
+
+  return diagnosticTerms.some((term) => text.includes(term)) && !generationTerms.some((term) => text.includes(term))
 }
 
 function hasLatestOutput(currentPromptSettings: unknown): boolean {
@@ -618,6 +674,7 @@ export async function POST(request: Request) {
     const lastGeneratedPrompt = lastAssistantMsg?.suggestions?.prompt || null
 
     const hasImageAnalysis = message?.includes("REFERENCE IMAGES ANALYSIS")
+    const diagnosticOnly = isDiagnosticOnlyRequest(message)
     const creativeDirectionContext = formatCreativeDirectionContext(creativeDirection)
     const agentMemoryContext = formatAgentMemory(agentMemory)
     const hasOutput = hasLatestOutput(currentPromptSettings)
@@ -735,6 +792,10 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 9. A Working design brief that makes your assumptions visible before the user applies or generates
 10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
 
+Diagnostic-only questions:
+- If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, set "responseMode": "diagnostic".
+- In diagnostic mode, answer directly, return "diagnosticFindings", set "suggestions" to null, and use actions such as "copy_prompt" only when useful. Do not include apply/generate actions.
+
 Creative Direction guidance:
 - Treat the selected Creative Direction settings as active context. Do not contradict them unless the user asks to change direction.
 - If the user asks what style to use, or uploads an ad/design to iterate on, name the closest Creative Direction controls to use in the conversational "message".
@@ -742,9 +803,11 @@ Creative Direction guidance:
 
 Format your response as JSON:
 {
+  "responseMode": "suggestion",
   "message": "Your conversational response here",
   "designBrief": "What I understood: concise design target.\\nWhat to preserve: stable elements from the prompt, reference, or latest output.\\nWhat changes next: the exact improvement this prompt makes.",
   "executionPlan": ["Plan step 1", "Plan step 2", "Plan step 3"],
+  "diagnosticFindings": ["Only include this for diagnostic responses"],
   "suggestions": {
     "prompt": "improved prompt",
     "negativePrompt": "improved negative prompt",
@@ -785,25 +848,35 @@ Available style strengths: subtle, moderate, strong`
     if (jsonMatch) {
       const jsonResponse = JSON.parse(jsonMatch[0])
       console.log("[v0 API] Successfully parsed JSON response")
-      const guardedSuggestions = applyPromptConstraintGuardrails(jsonResponse.suggestions, promptConstraints)
+      const responseMode = normalizeResponseMode(jsonResponse.responseMode, diagnosticOnly)
+      const guardedSuggestions = responseMode === 'diagnostic'
+        ? undefined
+        : applyPromptConstraintGuardrails(jsonResponse.suggestions, promptConstraints)
       const hasSuggestions = Boolean(guardedSuggestions?.prompt)
       return NextResponse.json({
         ...jsonResponse,
+        responseMode,
         designBrief: stringFromUnknown(jsonResponse.designBrief),
         executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
+        diagnosticFindings: normalizeDiagnosticFindings(jsonResponse.diagnosticFindings, responseMode === 'diagnostic' ? jsonResponse.message : ''),
         suggestions: guardedSuggestions,
-        actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration)),
+        actions: normalizeHelperActions(
+          jsonResponse.actions,
+          responseMode === 'diagnostic' ? [] : defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration)
+        ).filter((action) => responseMode !== 'diagnostic' || !['apply_suggestions', 'apply_and_generate', 'apply_logo_config'].includes(action.type)),
       })
     }
 
     console.warn("[v0 API] Failed to parse JSON, using fallback response")
     return NextResponse.json({
       message: responseText,
+      responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
       designBrief: currentPrompt
         ? `What I understood: Improve the current prompt from the active generator context.\nWhat to preserve: Keep the current subject, style, and explicit constraints.\nWhat changes next: Reuse the current prompt until the helper can parse a stronger structured response.`
         : null,
       executionPlan: currentPrompt ? ['Review the current prompt and constraints', 'Preserve stable visual elements', 'Apply the requested follow-up change'] : [],
-      suggestions: applyPromptConstraintGuardrails({
+      diagnosticFindings: diagnosticOnly ? normalizeDiagnosticFindings([], responseText) : [],
+      suggestions: diagnosticOnly ? undefined : applyPromptConstraintGuardrails({
         prompt: currentPrompt || "",
         negativePrompt: currentNegativePrompt || "",
         style: currentStyle || "Realistic",
@@ -812,7 +885,7 @@ Available style strengths: subtle, moderate, strong`
         aspectRatio: currentAspectRatio || "1:1",
         styleStrength: styleStrength || "moderate",
       }, promptConstraints),
-      actions: defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference, lastPersistentGeneration),
+      actions: diagnosticOnly ? [] : defaultHelperActions('image', Boolean(currentPrompt), false, hasOutput, hasReference, lastPersistentGeneration),
     })
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
@@ -904,6 +977,7 @@ async function handleLogoMode(
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    const diagnosticOnly = isDiagnosticOnlyRequest(message)
 
     // Build conversation context WITH logo configs (so AI can reference previous suggestions)
     const contextMessages = conversationHistory
@@ -1052,6 +1126,7 @@ Only include logoConfig keys when the user explicitly wants configurator-control
 Remember to respond with a JSON object containing "message", "designBrief", "executionPlan", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.
+Diagnostic-only questions: If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, return "responseMode": "diagnostic", include diagnosticFindings, set suggestions to null, keep logoConfig empty, and do not include apply/generate actions.
 
 Action schema:
 "actions": [
@@ -1077,18 +1152,28 @@ Action schema:
     if (jsonMatch) {
       try {
         const jsonResponse = JSON.parse(jsonMatch[0])
-        const logoSuggestions = applyPromptConstraintGuardrails(normalizeLogoPromptSuggestions(jsonResponse.suggestions), promptConstraints)
-        const logoConfig = applyLogoConfigConstraintGuardrails(jsonResponse.logoConfig, promptConstraints)
+        const responseMode = normalizeResponseMode(jsonResponse.responseMode, diagnosticOnly)
+        const logoSuggestions = responseMode === 'diagnostic'
+          ? undefined
+          : applyPromptConstraintGuardrails(normalizeLogoPromptSuggestions(jsonResponse.suggestions), promptConstraints)
+        const logoConfig = responseMode === 'diagnostic'
+          ? {}
+          : applyLogoConfigConstraintGuardrails(jsonResponse.logoConfig, promptConstraints)
         const hasLogoConfig = Boolean(logoConfig && Object.keys(logoConfig).length > 0)
         console.log("[v0 API] Logo mode - Successfully parsed JSON response with config keys:",
           hasLogoConfig ? Object.keys(logoConfig) : 'none')
         return NextResponse.json({
           message: jsonResponse.message || "Here are my logo design suggestions.",
+          responseMode,
           designBrief: stringFromUnknown(jsonResponse.designBrief),
           executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
+          diagnosticFindings: normalizeDiagnosticFindings(jsonResponse.diagnosticFindings, responseMode === 'diagnostic' ? jsonResponse.message : ''),
           suggestions: logoSuggestions,
           logoConfig,
-          actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration)),
+          actions: normalizeHelperActions(
+            jsonResponse.actions,
+            responseMode === 'diagnostic' ? [] : defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration)
+          ).filter((action) => responseMode !== 'diagnostic' || !['apply_suggestions', 'apply_and_generate', 'apply_logo_config'].includes(action.type)),
           mode: 'logo'
         })
       } catch (parseError) {
@@ -1100,8 +1185,10 @@ Action schema:
     console.warn("[v0 API] Logo mode - Failed to parse JSON, using fallback")
     return NextResponse.json({
       message: responseText,
+      responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
+      diagnosticFindings: diagnosticOnly ? normalizeDiagnosticFindings([], responseText) : [],
       logoConfig: {},
-      actions: defaultHelperActions('logo', false, false, hasOutput, hasReference, lastPersistentGeneration),
+      actions: diagnosticOnly ? [] : defaultHelperActions('logo', false, false, hasOutput, hasReference, lastPersistentGeneration),
       mode: 'logo'
     })
   } catch (error: any) {

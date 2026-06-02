@@ -452,6 +452,28 @@ const checks = [
         /Revise Plan/.test(route)
     },
   },
+  {
+    name: 'AI helper supports diagnostic-only chat without forcing generator changes',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const diagnosticCard = read('app/image-studio/components/AIHelper/DiagnosticCard.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /responseMode\?: 'suggestion' \| 'diagnostic'/.test(hook) &&
+        /diagnosticFindings\?: string\[\]/.test(hook) &&
+        /responseMode: data\.responseMode/.test(hook) &&
+        /diagnosticFindings: data\.diagnosticFindings/.test(hook) &&
+        /DiagnosticCard/.test(sidebar) &&
+        /msg\.diagnosticFindings/.test(sidebar) &&
+        /Diagnosis/.test(diagnosticCard) &&
+        /No generator changes/.test(diagnosticCard) &&
+        /normalizeResponseMode/.test(route) &&
+        /normalizeDiagnosticFindings/.test(route) &&
+        /isDiagnosticOnlyRequest/.test(route) &&
+        /"responseMode": "diagnostic"/.test(route) &&
+        /Diagnostic-only questions/.test(route)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
