@@ -300,6 +300,20 @@ const checks = [
         /do not change the composition/.test(chips)
     },
   },
+  {
+    name: 'AI helper builds an iteration intent brief for natural follow-up edits',
+    pass: () => {
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /buildIterationIntentBrief/.test(route) &&
+        /ITERATION INTENT BRIEF/.test(route) &&
+        /single-change refinement/.test(route) &&
+        /background-only refinement/.test(route) &&
+        /typography-reference refinement/.test(route) &&
+        /exact-text refinement/.test(route) &&
+        /Preserve stable elements unless the user explicitly changes them/.test(route) &&
+        /const iterationIntentBrief = buildIterationIntentBrief/.test(route)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

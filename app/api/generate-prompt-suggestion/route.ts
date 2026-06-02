@@ -327,6 +327,58 @@ function formatPromptConstraints(constraints: PromptConstraint[]): string {
     .join('\n')
 }
 
+function buildIterationIntentBrief({
+  mode,
+  message,
+  currentPrompt,
+  hasReference,
+  hasOutput,
+  hasPreviousPrompt,
+}: {
+  mode: 'image' | 'logo'
+  message: unknown
+  currentPrompt?: unknown
+  hasReference: boolean
+  hasOutput: boolean
+  hasPreviousPrompt: boolean
+}): string {
+  const request = typeof message === 'string' ? message.toLowerCase() : ''
+  const activePrompt = typeof currentPrompt === 'string' && currentPrompt.trim()
+  const hasIterationContext = Boolean(activePrompt || hasOutput || hasPreviousPrompt)
+  const subjectLabel = mode === 'logo' ? 'logo, icon, wordmark, layout, exact text, typography, palette, material, and background' : 'subject, composition, style, palette, lighting, camera, and background'
+  const lines: string[] = ['- Preserve stable elements unless the user explicitly changes them.']
+
+  if (hasIterationContext && includesAny(request, ['same', 'keep', 'only', 'just', 'but', 'now', 'fix', 'change', 'make it', 'more ', 'less ', 'closer', 'background', 'font', 'text'])) {
+    lines.push('- Treat this as an iteration from the current draft, not a brand-new concept.')
+  }
+
+  if (includesAny(request, ['change only', 'only change', 'one thing', 'single change', 'just change', 'keep everything else', 'do not change', "don't change"])) {
+    lines.push(`- single-change refinement: make only the requested edit; preserve ${subjectLabel}.`)
+  }
+
+  if (includesAny(request, ['background', 'backdrop', 'white background', 'transparent', 'true png', 'no background', 'remove background', 'blue background'])) {
+    lines.push(`- background-only refinement: change the background request only; preserve ${subjectLabel.replace(', and background', '')}.`)
+  }
+
+  if (includesAny(request, ['font', 'typeface', 'typography', 'lettering', 'script', 'cursive', 'serif', 'sans serif', 'wordmark', 'match reference font'])) {
+    lines.push('- typography-reference refinement: prioritize requested/reference letter proportions, stroke contrast, spacing, capitalization, and visual rhythm.')
+  }
+
+  if (includesAny(request, ['exact text', 'exact wording', 'exact words', 'exact spelling', 'spelling', 'same text', 'brand name', 'capitalization'])) {
+    lines.push('- exact-text refinement: preserve spelling, capitalization, spacing, line breaks, and avoid extra/random words.')
+  }
+
+  if (hasReference) {
+    lines.push('- Reference context is available; use it as the target for typography, composition, palette, spacing, and background unless the user changes one of those.')
+  }
+
+  if (hasOutput) {
+    lines.push('- Latest output context is available; use it as the current draft to diagnose or iterate from, not as a new reference target.')
+  }
+
+  return lines.join('\n')
+}
+
 function appendUniqueCommaList(baseValue: unknown, addition: string): string {
   const base = typeof baseValue === 'string' ? baseValue.trim() : ''
   const additions = addition
@@ -515,6 +567,14 @@ export async function POST(request: Request) {
     const promptConstraints = extractPromptConstraints(message, currentPrompt, currentNegativePrompt, hasReference || hasImageAnalysis)
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
+    const iterationIntentBrief = buildIterationIntentBrief({
+      mode: 'image',
+      message,
+      currentPrompt,
+      hasReference: hasReference || hasImageAnalysis,
+      hasOutput,
+      hasPreviousPrompt: Boolean(lastGeneratedPrompt || lastPersistentGeneration?.prompt),
+    })
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
@@ -545,6 +605,9 @@ ${persistentPreferenceContext}
 
 EXPLICIT USER CONSTRAINTS (hard requirements):
 ${promptConstraintContext}
+
+ITERATION INTENT BRIEF:
+${iterationIntentBrief}
 
 Constraint discipline:
 - Treat these constraints as non-negotiable and preserve them across iterations.
@@ -814,6 +877,14 @@ async function handleLogoMode(
     )
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
+    const iterationIntentBrief = buildIterationIntentBrief({
+      mode: 'logo',
+      message,
+      currentPrompt: logoSettings.currentPrompt,
+      hasReference: hasReference || Boolean(logoAnalysis),
+      hasOutput,
+      hasPreviousPrompt: Boolean(lastLogoPrompt || lastPersistentGeneration?.prompt),
+    })
 
     const fullPrompt = `${logoSystemPrompt}
 
@@ -830,6 +901,9 @@ ${persistentPreferenceContext}
 
 EXPLICIT USER CONSTRAINTS (hard requirements):
 ${promptConstraintContext}
+
+ITERATION INTENT BRIEF:
+${iterationIntentBrief}
 
 Constraint discipline:
 - Treat these constraints as non-negotiable and preserve them across logo iterations.
