@@ -535,6 +535,23 @@ const checks = [
     },
   },
   {
+    name: 'AI helper local commands explain preserve change and action like a planner',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /buildLocalActionSummary/.test(sidebar) &&
+        /Preserving:/.test(sidebar) &&
+        /Changing:/.test(sidebar) &&
+        /Action:/.test(sidebar) &&
+        /Current prompt text and visual direction/.test(sidebar) &&
+        /Latest suggestion prompt and stable design choices/.test(sidebar) &&
+        /Only the requested refinement/.test(sidebar) &&
+        /No prompt text was changed/.test(sidebar) &&
+        /runDirectSettingsDecisionCommand/.test(sidebar) &&
+        /runDirectSuggestionPatchCommand/.test(sidebar) &&
+        /runDirectSuggestionCommand/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can patch the latest suggestion from natural single-change follow-ups',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

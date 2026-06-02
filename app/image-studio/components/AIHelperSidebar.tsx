@@ -340,6 +340,26 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return `${baseNegative}, ${directive}`
   }
 
+  const buildLocalActionSummary = ({
+    summary,
+    preserving,
+    changing,
+    action,
+    note,
+  }: {
+    summary: string
+    preserving: string
+    changing: string
+    action: string
+    note?: string
+  }) => [
+    summary,
+    `Preserving: ${preserving}`,
+    `Changing: ${changing}`,
+    `Action: ${action}`,
+    note,
+  ].filter(Boolean).join('\n')
+
   const extractRequestedBrandText = (userInput: string) => {
     const trimmedInput = userInput.trim().replace(/[.!?]+$/g, '')
     const brandTextPatterns = [
@@ -605,7 +625,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
     appendLocalMessage({
       role: 'assistant',
-      content: `Background removal set to ${settingLabel}. No prompt text was changed.`,
+      content: buildLocalActionSummary({
+        summary: `Background removal set to ${settingLabel}.`,
+        preserving: 'Current prompt text and visual direction.',
+        changing: 'Background removal setting only.',
+        action: `Applied the setting to the ${targetMode} generator.`,
+        note: 'No prompt text was changed.',
+      }),
       mode: targetMode,
     })
     return true
@@ -718,7 +744,15 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
     appendLocalMessage({
       role: 'assistant',
-      content: `${updateMessagePrefix}: ${changedLabels.join(', ')}. No prompt text was changed.`,
+      content: buildLocalActionSummary({
+        summary: `${updateMessagePrefix}: ${changedLabels.join(', ')}.`,
+        preserving: 'Current prompt text and visual direction.',
+        changing: `Generator settings: ${changedLabels.join(', ')}.`,
+        action: shouldGenerate
+          ? `Applied settings and started ${targetMode} generation.`
+          : `Applied settings to the ${targetMode} generator.`,
+        note: 'No prompt text was changed.',
+      }),
       mode: targetMode,
     })
     return true
@@ -829,9 +863,17 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     appendLocalMessage({ role: 'user', content: userInput, mode: latest.targetMode })
     appendLocalMessage({
       role: 'assistant',
-      content: shouldGenerateAfterPatch
-        ? `Updated the latest ${latest.targetMode} suggestion, applied it to the generator, and started generation. No extra model call was needed.`
-        : `Updated the latest ${latest.targetMode} suggestion and applied it to the generator. No model call was needed.`,
+      content: buildLocalActionSummary({
+        summary: shouldGenerateAfterPatch
+          ? `Updated the latest ${latest.targetMode} suggestion, applied it to the generator, and started generation.`
+          : `Updated the latest ${latest.targetMode} suggestion and applied it to the generator.`,
+        preserving: 'Latest suggestion prompt and stable design choices.',
+        changing: 'Only the requested refinement.',
+        action: shouldGenerateAfterPatch
+          ? `Applied the patched ${latest.targetMode} suggestion and started generation.`
+          : `Applied the patched ${latest.targetMode} suggestion.`,
+        note: shouldGenerateAfterPatch ? 'No extra model call was needed.' : 'No model call was needed.',
+      }),
       mode: latest.targetMode,
     })
     return true
@@ -919,7 +961,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
     appendLocalMessage({
       role: 'assistant',
-      content: `${updateMessagePrefix} ${changedLabels.join(', ')}. No prompt text was changed.`,
+      content: buildLocalActionSummary({
+        summary: `${updateMessagePrefix} ${changedLabels.join(', ')}.`,
+        preserving: 'Current prompt text and visual direction.',
+        changing: `Generator settings: ${changedLabels.join(', ')}.`,
+        action: `Applied settings to the ${targetMode} generator.`,
+        note: 'No prompt text was changed.',
+      }),
       mode: targetMode,
     })
     return true
@@ -963,9 +1011,16 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     appendLocalMessage({ role: 'user', content: userInput, mode: latest.targetMode })
     appendLocalMessage({
       role: 'assistant',
-      content: shouldGenerate
-        ? `Started generation from the latest ${latest.targetMode} suggestion.`
-        : `Applied the latest ${latest.targetMode} suggestion to the generator.`,
+      content: buildLocalActionSummary({
+        summary: shouldGenerate
+          ? `Started generation from the latest ${latest.targetMode} suggestion.`
+          : `Applied the latest ${latest.targetMode} suggestion to the generator.`,
+        preserving: 'Latest suggestion prompt and stable design choices.',
+        changing: shouldGenerate ? 'Generator run state only.' : 'Generator fields from the latest suggestion.',
+        action: shouldGenerate
+          ? `Applied the latest ${latest.targetMode} suggestion and started generation.`
+          : `Applied the latest ${latest.targetMode} suggestion.`,
+      }),
       mode: latest.targetMode,
     })
     setAppliedIndex(latest.index)
