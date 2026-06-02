@@ -7,6 +7,7 @@ import type { CreativeDirectionState } from '../../constants/creative-direction-
 interface ContextSnapshotProps {
   mode: AIHelperMode
   currentPromptSettings?: {
+    activeTab?: string
     currentPrompt?: string
     currentNegativePrompt?: string
     currentStyle?: string
@@ -14,6 +15,13 @@ interface ContextSnapshotProps {
     currentCameraLens?: string
     currentAspectRatio?: string
     styleStrength?: string
+    selectedModel?: string
+    imageSize?: string
+    imageCount?: number
+    seed?: number | null
+    analysisMode?: string
+    hasReferenceImage?: boolean
+    referenceImageMode?: string
     promptMode?: string
     creativeDirection?: CreativeDirectionState
   }
@@ -28,6 +36,14 @@ interface ContextSnapshotProps {
 }
 
 const hasPromptText = (value?: string) => Boolean(value && value.trim())
+
+const formatModelLabel = (model?: string) => {
+  if (!model) return 'No model'
+  if (model === 'gpt-image-2') return 'Model: ChatGPT Images 2.0'
+  if (model === 'gemini-3-pro-image-preview') return 'Model: Gemini 3 Pro'
+  if (model === 'gemini-3.1-flash-image-preview') return 'Model: Gemini 3.1 Flash'
+  return `Model: ${model}`
+}
 
 function ContextChip({ icon: Icon, label, active }: { icon: typeof FileText; label: string; active: boolean }) {
   return (
@@ -58,6 +74,7 @@ export function ContextSnapshot({
   const hasNegativePrompt = hasPromptText(currentPromptSettings.currentNegativePrompt)
   const hasStyle = hasPromptText(currentPromptSettings.currentStyle)
   const hasReferenceImage = uploadedImages.length > 0
+  const hasGeneratorReferenceImage = Boolean(currentPromptSettings.hasReferenceImage)
   const hasLatestOutput = Boolean(latestOutput?.url)
 
   return (
@@ -73,7 +90,11 @@ export function ContextSnapshot({
         <ContextChip icon={FileText} label={hasPrompt ? 'Prompt loaded' : 'No prompt'} active={hasPrompt} />
         <ContextChip icon={Layers} label={hasNegativePrompt ? 'Negative prompt' : 'No negative prompt'} active={hasNegativePrompt} />
         <ContextChip icon={MonitorCheck} label={hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style'} active={hasStyle} />
+        <ContextChip icon={MonitorCheck} label={formatModelLabel(currentPromptSettings.selectedModel)} active={Boolean(currentPromptSettings.selectedModel)} />
+        <ContextChip icon={MonitorCheck} label={currentPromptSettings.imageSize ? `Resolution: ${currentPromptSettings.imageSize}` : 'No resolution'} active={Boolean(currentPromptSettings.imageSize)} />
+        <ContextChip icon={Layers} label={currentPromptSettings.imageCount ? `Count: ${currentPromptSettings.imageCount}` : 'No count'} active={Boolean(currentPromptSettings.imageCount)} />
         <ContextChip icon={ImageIcon} label={hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image'} active={hasReferenceImage} />
+        <ContextChip icon={ImageIcon} label={hasGeneratorReferenceImage ? `Generator ref: ${currentPromptSettings.referenceImageMode || 'loaded'}` : 'No generator ref'} active={hasGeneratorReferenceImage} />
         <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />
         <ContextChip icon={Brain} label={preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory'} active={preferenceCount > 0} />
       </div>

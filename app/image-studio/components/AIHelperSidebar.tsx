@@ -32,6 +32,7 @@ interface AIHelperSidebarProps {
   isOpen: boolean
   onClose: () => void
   currentPromptSettings?: {
+    activeTab?: string
     currentPrompt?: string
     currentNegativePrompt?: string
     currentStyle?: string
@@ -39,6 +40,13 @@ interface AIHelperSidebarProps {
     currentCameraLens?: string
     currentAspectRatio?: string
     styleStrength?: string
+    selectedModel?: string
+    imageSize?: string
+    imageCount?: number
+    seed?: number | null
+    analysisMode?: string
+    hasReferenceImage?: boolean
+    referenceImageMode?: string
     promptMode?: string
     creativeDirection?: CreativeDirectionState
     latestImageOutput?: { hasOutput: boolean; prompt?: string; timestamp?: number }

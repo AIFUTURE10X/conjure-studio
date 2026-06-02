@@ -191,6 +191,7 @@ export default function ImageStudioPage() {
         isOpen={state.showAIHelper}
         onClose={() => state.setShowAIHelper(false)}
         currentPromptSettings={{
+          activeTab: state.activeTab,
           currentPrompt: state.mainPrompt,
           currentNegativePrompt: state.negativePrompt,
           currentStyle: state.selectedStylePreset,
@@ -198,6 +199,13 @@ export default function ImageStudioPage() {
           currentCameraLens: state.selectedCameraLens,
           currentAspectRatio: state.aspectRatio,
           styleStrength: state.styleStrength,
+          selectedModel: state.selectedModel,
+          imageSize: state.imageSize,
+          imageCount: state.imageCount,
+          seed: state.seed,
+          analysisMode: state.analysisMode,
+          hasReferenceImage: Boolean(state.referenceImage),
+          referenceImageMode: state.referenceImage?.mode || 'none',
           creativeDirection: state.creativeDirection,
           latestImageOutput: latestImageOutput ? {
             hasOutput: true,

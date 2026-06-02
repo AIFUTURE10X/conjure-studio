@@ -369,6 +369,28 @@ const checks = [
         /displayMessage: userInput/.test(sidebar)
     },
   },
+  {
+    name: 'AI helper receives and shows active generator operation context',
+    pass: () => {
+      const page = read('app/image-studio/page.tsx')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /selectedModel: state\.selectedModel/.test(page) &&
+        /imageSize: state\.imageSize/.test(page) &&
+        /imageCount: state\.imageCount/.test(page) &&
+        /activeTab: state\.activeTab/.test(page) &&
+        /hasReferenceImage: Boolean\(state\.referenceImage\)/.test(page) &&
+        /formatOperationalGeneratorContext/.test(route) &&
+        /OPERATIONAL GENERATOR CONTEXT/.test(route) &&
+        /selectedModel\?: string/.test(sidebar) &&
+        /imageSize\?: string/.test(snapshot) &&
+        /Model:/.test(snapshot) &&
+        /Resolution:/.test(snapshot) &&
+        /Count:/.test(snapshot) &&
+        /Generator ref/.test(snapshot)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
