@@ -237,6 +237,22 @@ const checks = [
         /onForgetPreference\?\.\(preference\.timestamp\)/.test(snapshot)
     },
   },
+  {
+    name: 'AI helper runs prompt preflight checks before generation',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const preflight = read('app/image-studio/components/AIHelper/PromptPreflightPanel.tsx')
+      return /PromptPreflightPanel/.test(sidebar) &&
+        /onAskHelper=\{setInput\}/.test(sidebar) &&
+        /getPromptPreflightIssues/.test(preflight) &&
+        /Prompt Preflight/.test(preflight) &&
+        /Background unclear/.test(preflight) &&
+        /Exact text risk/.test(preflight) &&
+        /Reference not mentioned/.test(preflight) &&
+        /Negative prompt weak/.test(preflight) &&
+        /Fix with helper/.test(preflight)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
