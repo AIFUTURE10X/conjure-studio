@@ -468,7 +468,9 @@ function buildClarificationGate({
     ? memory.activeTaskContext as Record<string, unknown>
     : {}
   const hasActiveTask = Object.keys(activeTaskContext).length > 0 || (typeof memory.activeDesignBrief === 'string' && memory.activeDesignBrief.trim().length > 0)
-  const hasClarificationAnswer = request.includes('clarifying question:') && request.includes('user answer:')
+  const hasLegacyClarificationAnswer = request.includes('clarifying question:') && request.includes('user answer:')
+  const hasStructuredClarificationContinuation = request.includes('clarification continuation') && request.includes('original question:') && request.includes('user answer:')
+  const hasClarificationAnswer = hasLegacyClarificationAnswer || hasStructuredClarificationContinuation
   const hasUsefulContext = hasCurrentPrompt || hasReference || hasOutput || hasActiveTask || hasClarificationAnswer
   const asksForCreativeOutput = includesAny(request, ['create', 'generate', 'make', 'design', 'write', 'prompt', 'build'])
   const asksForLogo = mode === 'logo' || includesAny(request, ['logo', 'wordmark', 'brand mark', 'brandmark', 'icon'])

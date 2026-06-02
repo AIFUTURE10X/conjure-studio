@@ -69,6 +69,17 @@ const scenarios = [
     ],
   },
   {
+    name: 'server recognizes structured clarification continuation answers',
+    expected: [
+      /hasStructuredClarificationContinuation/,
+      /CLARIFICATION CONTINUATION/i,
+      /original question:/i,
+      /user answer:/i,
+      /hasLegacyClarificationAnswer/,
+      /hasClarificationAnswer = hasLegacyClarificationAnswer \|\| hasStructuredClarificationContinuation/,
+    ],
+  },
+  {
     name: 'clarification answers carry structured continuity context',
     expected: [
       /buildClarificationContinuationRequest/,
