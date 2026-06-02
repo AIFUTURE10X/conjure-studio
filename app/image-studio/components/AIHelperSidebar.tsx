@@ -223,6 +223,39 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     .replace(/^(ok|okay|yes|yep|please|sure)[,\s]+/g, '')
     .trim()
 
+  const detectRequestedHelperMode = (value: string): AIHelperMode | null => {
+    const normalized = normalizeDirectCommand(value)
+    const logoRequestTerms = [
+      'logo',
+      'wordmark',
+      'brand mark',
+      'brandmark',
+      'monogram',
+      'business logo',
+      'company logo',
+      'symbol-only',
+      'text logo',
+    ]
+    const imageRequestTerms = [
+      'image',
+      'photo',
+      'picture',
+      'poster',
+      'flyer',
+      'illustration',
+      'artwork',
+      'ad creative',
+      'social media post',
+      'product shot',
+    ]
+    const asksForLogo = logoRequestTerms.some((term) => normalized.includes(term))
+    const asksForImage = imageRequestTerms.some((term) => normalized.includes(term))
+
+    if (asksForLogo && !asksForImage) return 'logo'
+    if (asksForImage && !asksForLogo) return 'image'
+    return null
+  }
+
   const matchesDirectCommand = (value: string, terms: string[]) => terms.includes(normalizeDirectCommand(value))
 
   const matchesNaturalDirectCommand = (value: string, terms: string[]) => {
@@ -355,7 +388,9 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       return
     }
     setInput('')
-    mode === 'logo' ? await sendLogoMessage(userInput, currentPromptSettings) : await sendMessage(userInput, currentPromptSettings)
+    const targetMode = !prompt ? detectRequestedHelperMode(userInput) || mode : mode
+    if (targetMode !== mode) setMode(targetMode)
+    targetMode === 'logo' ? await sendLogoMessage(userInput, currentPromptSettings) : await sendMessage(userInput, currentPromptSettings)
   }
 
   const handleSend = async () => runHelperPrompt()

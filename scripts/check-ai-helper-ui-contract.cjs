@@ -342,6 +342,18 @@ const checks = [
         /Making a new variation/.test(sidebar)
     },
   },
+  {
+    name: 'AI helper routes clear logo or image requests to the correct mode',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /detectRequestedHelperMode/.test(sidebar) &&
+        /logoRequestTerms/.test(sidebar) &&
+        /imageRequestTerms/.test(sidebar) &&
+        /const targetMode = !prompt \? detectRequestedHelperMode\(userInput\) \|\| mode : mode/.test(sidebar) &&
+        /if \(targetMode !== mode\) setMode\(targetMode\)/.test(sidebar) &&
+        /targetMode === 'logo' \? await sendLogoMessage/.test(sidebar)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
