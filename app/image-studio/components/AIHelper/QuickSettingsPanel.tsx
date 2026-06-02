@@ -82,9 +82,11 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
       ],
     },
   ]
+  const quickSettingsGridClass = 'grid grid-cols-2 gap-2'
+  const settingButtonClass = 'inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold transition-colors'
 
   return (
-    <div className="border-b border-[#c99850]/20 bg-zinc-950/40 px-4 py-3 sm:px-5">
+    <div className="border-b border-[#c99850]/20 bg-zinc-950/40 px-4 py-4 sm:px-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
           <Settings2 className="h-3.5 w-3.5 text-[#c99850]" />
@@ -96,7 +98,7 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
         {settingsGroups.map((group) => (
           <div key={group.label}>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{group.label}</div>
-            <div className="flex flex-wrap gap-2">
+            <div className={quickSettingsGridClass}>
               {group.actions.map((action) => {
                 const Icon = action.icon
                 return (
@@ -104,7 +106,7 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
                     key={`${group.label}-${action.label}`}
                     type="button"
                     onClick={() => onRunSetting(action.prompt)}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold transition-colors ${
+                    className={`${settingButtonClass} ${
                       action.active
                         ? 'border-[#c99850]/50 bg-[#c99850]/15 text-[#f0d49b]'
                         : 'border-zinc-700 bg-zinc-800/70 text-zinc-300 hover:border-[#c99850]/50 hover:text-white'
@@ -112,8 +114,17 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
                     title={action.prompt}
                     aria-label={action.prompt}
                   >
-                    <Icon className="h-3.5 w-3.5" />
-                    {action.label}
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
+                      action.active
+                        ? 'border-[#c99850]/30 bg-[#c99850]/10'
+                        : 'border-zinc-700 bg-zinc-900/80'
+                    }`}>
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate">{action.label}</span>
+                      <span className="block truncate text-[11px] font-medium text-zinc-500">{action.active ? 'Active' : action.prompt}</span>
+                    </span>
                   </button>
                 )
               })}

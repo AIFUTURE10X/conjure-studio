@@ -1153,10 +1153,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const suggestionMessages = messages.filter(m => m.suggestions)
   const contextVariant = isExpanded ? 'workspace' : 'drawer'
   const helperWorkspaceClass = isExpanded
-    ? 'grid min-h-0 flex-1 grid-cols-1 bg-zinc-900 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]'
+    ? 'grid min-h-0 flex-1 grid-cols-1 bg-zinc-900 lg:grid-cols-none'
     : 'flex min-h-0 flex-1 flex-col'
+  const helperWorkspaceStyle = isExpanded
+    ? { gridTemplateColumns: 'minmax(460px, 560px) minmax(0, 1fr)' }
+    : undefined
   const helperSettingsRailClass = isExpanded
-    ? 'min-h-0 overflow-y-auto border-b border-[#c99850]/20 bg-zinc-950/70 lg:border-b-0 lg:border-r'
+    ? 'min-h-0 overflow-y-auto border-b border-[#c99850]/20 bg-zinc-950/70 lg:border-b-0 lg:border-r lg:border-[#c99850]/25'
     : 'contents'
   const helperConversationClass = isExpanded
     ? 'flex min-h-0 flex-col bg-zinc-900'
@@ -1176,7 +1179,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         onClose={onClose}
       />
 
-      <div className={helperWorkspaceClass}>
+      <div className={helperWorkspaceClass} style={helperWorkspaceStyle}>
         <div className={helperSettingsRailClass}>
           <ContextSnapshot
             mode={mode}

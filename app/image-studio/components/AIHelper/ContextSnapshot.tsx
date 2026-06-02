@@ -88,6 +88,32 @@ function ContextChip({ icon: Icon, label, active }: { icon: typeof FileText; lab
   )
 }
 
+function ContextRow({ icon: Icon, label, value, active }: { icon: typeof FileText; label: string; value: string; active: boolean }) {
+  return (
+    <div
+      className={`flex min-h-[44px] items-center gap-3 rounded-md border px-3 py-2 ${
+        active
+          ? 'border-[#c99850]/35 bg-[#c99850]/10'
+          : 'border-zinc-800 bg-zinc-900/70'
+      }`}
+    >
+      <span
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
+          active
+            ? 'border-[#c99850]/30 bg-[#c99850]/10 text-[#f0d49b]'
+            : 'border-zinc-700 bg-zinc-800 text-zinc-500'
+        }`}
+      >
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{label}</span>
+        <span className={`block truncate text-xs font-semibold ${active ? 'text-[#f0d49b]' : 'text-zinc-400'}`}>{value}</span>
+      </span>
+    </div>
+  )
+}
+
 export function ContextSnapshot({
   mode,
   variant = 'drawer',
@@ -117,42 +143,45 @@ export function ContextSnapshot({
     {
       label: 'Core Settings',
       chips: [
-        { icon: FileText, label: hasPrompt ? 'Prompt loaded' : 'No prompt', active: hasPrompt },
-        { icon: Layers, label: hasNegativePrompt ? 'Negative prompt' : 'No negative prompt', active: hasNegativePrompt },
-        { icon: MonitorCheck, label: hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style', active: hasStyle },
-        { icon: MonitorCheck, label: formatModelLabel(currentPromptSettings.selectedModel), active: Boolean(currentPromptSettings.selectedModel) },
-        { icon: MonitorCheck, label: currentPromptSettings.imageSize ? `Resolution: ${currentPromptSettings.imageSize}` : 'No resolution', active: Boolean(currentPromptSettings.imageSize) },
-        { icon: Layers, label: currentPromptSettings.imageCount ? `Count: ${currentPromptSettings.imageCount}` : 'No count', active: Boolean(currentPromptSettings.imageCount) },
+        { icon: FileText, label: 'Prompt', value: hasPrompt ? 'Prompt loaded' : 'No prompt', active: hasPrompt },
+        { icon: Layers, label: 'Negative', value: hasNegativePrompt ? 'Loaded' : 'No negative prompt', active: hasNegativePrompt },
+        { icon: MonitorCheck, label: 'Style', value: hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style', active: hasStyle },
+        { icon: MonitorCheck, label: 'Model:', value: formatModelLabel(currentPromptSettings.selectedModel).replace('Model: ', ''), active: Boolean(currentPromptSettings.selectedModel) },
+        { icon: MonitorCheck, label: 'Resolution:', value: currentPromptSettings.imageSize || 'No resolution', active: Boolean(currentPromptSettings.imageSize) },
+        { icon: Layers, label: 'Count:', value: currentPromptSettings.imageCount ? `${currentPromptSettings.imageCount}` : 'No count', active: Boolean(currentPromptSettings.imageCount) },
         ...(mode === 'image'
-          ? [{ icon: Layers, label: formatBackgroundRemovalChip('image' as const, currentPromptSettings.imageBgRemovalMethod, imageBgRemovalEnabled), active: imageBgRemovalEnabled }]
-          : [{ icon: Layers, label: formatBackgroundRemovalChip('logo' as const, currentPromptSettings.logoBgRemovalMethod, logoBgRemovalEnabled), active: logoBgRemovalEnabled }]),
+          ? [{ icon: Layers, label: 'Background', value: formatBackgroundRemovalChip('image' as const, currentPromptSettings.imageBgRemovalMethod, imageBgRemovalEnabled), active: imageBgRemovalEnabled }]
+          : [{ icon: Layers, label: 'Background', value: formatBackgroundRemovalChip('logo' as const, currentPromptSettings.logoBgRemovalMethod, logoBgRemovalEnabled), active: logoBgRemovalEnabled }]),
       ],
     },
     {
       label: 'References',
       chips: [
-        { icon: ImageIcon, label: hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image', active: hasReferenceImage },
-        { icon: ImageIcon, label: hasGeneratorReferenceImage ? `Generator ref: ${generatorReferenceMode || 'loaded'}` : 'No generator ref', active: hasGeneratorReferenceImage },
-        { icon: Sparkles, label: hasLatestOutput ? 'Latest output' : 'No latest output', active: hasLatestOutput },
+        { icon: ImageIcon, label: 'Reference image', value: hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image', active: hasReferenceImage },
+        { icon: ImageIcon, label: 'Generator ref:', value: hasGeneratorReferenceImage ? `Generator ref: ${generatorReferenceMode || 'loaded'}` : 'No generator ref', active: hasGeneratorReferenceImage },
+        { icon: Sparkles, label: 'Latest output', value: hasLatestOutput ? 'Latest output' : 'No latest output', active: hasLatestOutput },
       ],
     },
     {
       label: 'Memory',
       chips: [
-        { icon: Brain, label: hasActiveDesignBrief ? 'Active brief' : 'No active brief', active: hasActiveDesignBrief },
-        { icon: Brain, label: hasSharedProjectBrief ? 'Shared project' : 'No shared project', active: hasSharedProjectBrief },
-        { icon: Brain, label: preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory', active: preferenceCount > 0 },
+        { icon: Brain, label: 'Active brief', value: hasActiveDesignBrief ? 'Active brief' : 'No active brief', active: hasActiveDesignBrief },
+        { icon: Brain, label: 'Project', value: hasSharedProjectBrief ? 'Shared project' : 'No shared project', active: hasSharedProjectBrief },
+        { icon: Brain, label: 'Preferences', value: preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory', active: preferenceCount > 0 },
       ],
     },
   ]
   const groupGridClass = variant === 'workspace'
     ? 'grid gap-3'
     : 'grid gap-3 lg:grid-cols-3'
+  const contextRowGridClass = variant === 'workspace'
+    ? 'grid grid-cols-2 gap-2'
+    : 'flex flex-wrap gap-2'
 
   return (
-    <div className="border-b border-[#c99850]/20 bg-zinc-950/50 px-4 py-3 sm:px-5">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Current Context</span>
+    <div className="border-b border-[#c99850]/20 bg-zinc-950/50 px-4 py-4 sm:px-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{variant === 'workspace' ? 'Settings overview' : 'Current Context'}</span>
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400">
           <Sparkles className="h-3.5 w-3.5 text-[#c99850]" />
           Mode: {mode === 'logo' ? 'Logo' : 'Image'}
@@ -162,9 +191,11 @@ export function ContextSnapshot({
         {contextGroups.map((group) => (
           <div key={group.label}>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{group.label}</div>
-            <div className="flex flex-wrap gap-2">
+            <div className={contextRowGridClass}>
               {group.chips.map((chip) => (
-                <ContextChip key={chip.label} icon={chip.icon} label={chip.label} active={chip.active} />
+                variant === 'workspace'
+                  ? <ContextRow key={chip.label} icon={chip.icon} label={chip.label} value={chip.value} active={chip.active} />
+                  : <ContextChip key={chip.label} icon={chip.icon} label={chip.value} active={chip.active} />
               ))}
             </div>
           </div>
