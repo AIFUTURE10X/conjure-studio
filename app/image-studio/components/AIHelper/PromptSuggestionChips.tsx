@@ -1,6 +1,6 @@
 'use client'
 
-import { Lightbulb, MessageSquarePlus } from 'lucide-react'
+import { Lightbulb, MessageSquarePlus, Send } from 'lucide-react'
 import type { AIHelperLatestOutput, AIHelperMode } from '../../hooks/useAIHelper'
 import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 
@@ -19,6 +19,7 @@ interface PromptSuggestionChipsProps {
     logo?: AIHelperLatestOutput | null
   }
   onSelectPrompt: (prompt: string) => void
+  onRunPrompt?: (prompt: string) => void
 }
 
 interface PromptSuggestionChip {
@@ -102,16 +103,32 @@ export function PromptSuggestionChips(props: PromptSuggestionChipsProps) {
           Next
         </span>
         {chips.map((chip) => (
-          <button
+          <span
             key={chip.label}
-            type="button"
-            onClick={() => props.onSelectPrompt(chip.prompt)}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[#c99850]/30 bg-zinc-800 px-2.5 text-xs font-semibold text-zinc-100 transition-colors hover:border-[#c99850]/60 hover:bg-zinc-700"
-            title={chip.prompt}
+            className="inline-flex h-8 shrink-0 overflow-hidden rounded-md border border-[#c99850]/30 bg-zinc-800 text-xs font-semibold text-zinc-100 transition-colors hover:border-[#c99850]/60"
           >
-            <MessageSquarePlus className="h-3.5 w-3.5 text-[#c99850]" />
-            {chip.label}
-          </button>
+            <button
+              type="button"
+              onClick={() => props.onSelectPrompt(chip.prompt)}
+              className="inline-flex items-center gap-1.5 px-2.5 transition-colors hover:bg-zinc-700"
+              title={chip.prompt}
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5 text-[#c99850]" />
+              {chip.label}
+            </button>
+            {props.onRunPrompt && (
+              <button
+                type="button"
+                onClick={() => props.onRunPrompt?.(chip.prompt)}
+                className="inline-flex items-center gap-1 border-l border-[#c99850]/20 px-2 text-[#f0d49b] transition-colors hover:bg-zinc-700"
+                title="Run now"
+                aria-label={`Run now: ${chip.label}`}
+              >
+                <Send className="h-3 w-3" />
+                Run now
+              </button>
+            )}
+          </span>
         ))}
       </div>
     </div>

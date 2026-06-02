@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, CheckCircle2, Wand2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Send, Wand2 } from 'lucide-react'
 import type { AIHelperMode } from '../../hooks/useAIHelper'
 import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 
@@ -15,6 +15,7 @@ interface PromptPreflightPanelProps {
   }
   uploadedImages: string[]
   onAskHelper: (prompt: string) => void
+  onRunFix?: (prompt: string) => void
 }
 
 interface PromptPreflightIssue {
@@ -92,10 +93,8 @@ export function PromptPreflightPanel(props: PromptPreflightPanelProps) {
       {issues.length > 0 ? (
         <div className="grid gap-2 sm:grid-cols-2">
           {issues.map((issue) => (
-            <button
+            <div
               key={issue.label}
-              type="button"
-              onClick={() => props.onAskHelper(issue.fixPrompt)}
               className="group rounded-md border border-amber-500/20 bg-amber-500/5 p-2 text-left transition-colors hover:border-amber-400/40 hover:bg-amber-500/10"
               title={issue.detail}
             >
@@ -107,7 +106,29 @@ export function PromptPreflightPanel(props: PromptPreflightPanelProps) {
                 </span>
               </div>
               <p className="line-clamp-2 text-xs leading-5 text-zinc-400">{issue.detail}</p>
-            </button>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => props.onAskHelper(issue.fixPrompt)}
+                  className="inline-flex h-7 items-center gap-1.5 rounded border border-[#c99850]/30 px-2 text-[11px] font-semibold text-[#f0d49b] transition-colors hover:bg-zinc-800"
+                >
+                  <Wand2 className="h-3 w-3" />
+                  Edit ask
+                </button>
+                {props.onRunFix && (
+                  <button
+                    type="button"
+                    onClick={() => props.onRunFix?.(issue.fixPrompt)}
+                    className="inline-flex h-7 items-center gap-1.5 rounded border border-amber-400/30 px-2 text-[11px] font-semibold text-amber-100 transition-colors hover:bg-amber-500/10"
+                    title="Run now"
+                    aria-label={`Run now: ${issue.label}`}
+                  >
+                    <Send className="h-3 w-3" />
+                    Run now
+                  </button>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       ) : (

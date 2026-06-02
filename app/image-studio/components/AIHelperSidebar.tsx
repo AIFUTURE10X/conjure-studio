@@ -67,13 +67,15 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
-  const handleSend = async () => {
-    if (!input.trim() && uploadedImages.length === 0) return
+  const runHelperPrompt = async (prompt?: string) => {
     if (isLoading) return
-    const userInput = input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
+    const userInput = prompt?.trim() || input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
+    if (!userInput.trim() && uploadedImages.length === 0) return
     setInput('')
     mode === 'logo' ? await sendLogoMessage(userInput, currentPromptSettings) : await sendMessage(userInput, currentPromptSettings)
   }
+
+  const handleSend = async () => runHelperPrompt()
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -249,6 +251,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         uploadedImages={uploadedImages}
         latestOutputs={latestOutputs}
         onSelectPrompt={setInput}
+        onRunPrompt={(prompt) => void runHelperPrompt(prompt)}
       />
 
       <PromptPreflightPanel
@@ -256,6 +259,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         currentPromptSettings={currentPromptSettings}
         uploadedImages={uploadedImages}
         onAskHelper={setInput}
+        onRunFix={(prompt) => void runHelperPrompt(prompt)}
       />
 
       {/* Messages */}

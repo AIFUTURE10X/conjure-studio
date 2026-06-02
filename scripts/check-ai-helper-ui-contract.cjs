@@ -253,6 +253,22 @@ const checks = [
         /Fix with helper/.test(preflight)
     },
   },
+  {
+    name: 'AI helper suggested prompts and preflight fixes can run immediately',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const chips = read('app/image-studio/components/AIHelper/PromptSuggestionChips.tsx')
+      const preflight = read('app/image-studio/components/AIHelper/PromptPreflightPanel.tsx')
+      return /runHelperPrompt/.test(sidebar) &&
+        /handleSend = async \(\) => runHelperPrompt/.test(sidebar) &&
+        /onRunPrompt=\{\(prompt\) => void runHelperPrompt\(prompt\)\}/.test(sidebar) &&
+        /onRunFix=\{\(prompt\) => void runHelperPrompt\(prompt\)\}/.test(sidebar) &&
+        /onRunPrompt\?: \(prompt: string\) => void/.test(chips) &&
+        /onRunFix\?: \(prompt: string\) => void/.test(preflight) &&
+        /Run now/.test(chips) &&
+        /Run now/.test(preflight)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
