@@ -5,6 +5,7 @@ const root = process.cwd()
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
 
 const route = read('app/api/generate-prompt-suggestion/route.ts')
+const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
 const packageJson = read('package.json')
 
 const scenarios = [
@@ -66,6 +67,21 @@ const scenarios = [
       /plannerDecision: 'ask_follow_up'/,
       /suggestions: undefined/,
     ],
+  },
+  {
+    name: 'clarification answers carry structured continuity context',
+    expected: [
+      /buildClarificationContinuationRequest/,
+      /CLARIFICATION CONTINUATION/,
+      /Original question:/,
+      /User answer:/,
+      /Active design brief:/,
+      /Active task:/,
+      /Current generator prompt:/,
+      /Continue from the pending clarification/,
+      /buildClarificationContinuationRequest\(/,
+    ],
+    source: sidebar,
   },
 ]
 

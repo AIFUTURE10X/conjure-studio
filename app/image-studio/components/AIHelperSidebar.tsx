@@ -299,6 +299,25 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return null
   }
 
+  const buildClarificationContinuationRequest = (question: string, answer: string) => {
+    const activeTaskSummary = activeTaskContext
+      ? `Goal: ${activeTaskContext.goal || 'Unclear'} | Preserve: ${activeTaskContext.preserve || 'None yet'} | Next: ${activeTaskContext.next || 'Use the user answer'}`
+      : 'None yet'
+    const currentPrompt = typeof currentPromptSettings.currentPrompt === 'string' && currentPromptSettings.currentPrompt.trim()
+      ? currentPromptSettings.currentPrompt.trim()
+      : 'None'
+
+    return [
+      'CLARIFICATION CONTINUATION',
+      `Original question: ${question}`,
+      `User answer: ${answer}`,
+      `Active design brief: ${activeDesignBrief || 'None yet'}`,
+      `Active task: ${activeTaskSummary}`,
+      `Current generator prompt: ${currentPrompt}`,
+      'Continue from the pending clarification. Use the user answer as the missing essential detail, preserve any active brief/task context, and now produce the generation-ready prompt or settings without asking the same question again.',
+    ].join('\n')
+  }
+
   const matchesDirectCommand = (value: string, terms: string[]) => terms.includes(normalizeDirectCommand(value))
 
   const matchesNaturalDirectCommand = (value: string, terms: string[]) => {
@@ -423,7 +442,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     const userInput = prompt?.trim() || input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
     if (!userInput.trim() && uploadedImages.length === 0) return
     if (!prompt && pendingFollowUp && userInput.trim()) {
-      const followUpRequest = `Clarifying question: ${pendingFollowUp.prompt}\nUser answer: ${userInput}`
+      const followUpRequest = buildClarificationContinuationRequest(pendingFollowUp.prompt, userInput)
       const followUpMode = pendingFollowUp.mode
       setPendingFollowUp(null)
       setInput('')

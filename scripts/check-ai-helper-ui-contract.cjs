@@ -455,8 +455,11 @@ const checks = [
         /pendingFollowUp/.test(sidebar) &&
         /Answering follow-up/.test(sidebar) &&
         /Clear follow-up/.test(sidebar) &&
-        /Clarifying question:/.test(sidebar) &&
+        /CLARIFICATION CONTINUATION/.test(sidebar) &&
+        /Original question:/.test(sidebar) &&
         /User answer:/.test(sidebar) &&
+        /Active design brief:/.test(sidebar) &&
+        /Current generator prompt:/.test(sidebar) &&
         /displayMessage: userInput/.test(sidebar)
     },
   },
