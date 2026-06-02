@@ -90,6 +90,8 @@ export interface ImageStudioState {
   setImageSize: (size: '1K' | '2K' | '4K') => void
   selectedModel: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
   setSelectedModel: (model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2') => void
+  useImageBgRemoval: boolean
+  setUseImageBgRemoval: (enabled: boolean) => void
   usePhotoRoomBgRemoval: boolean
   setUsePhotoRoomBgRemoval: (enabled: boolean) => void
   creativeDirection: CreativeDirectionState
@@ -163,6 +165,7 @@ export function useImageStudioState(): ImageStudioState {
   const [seed, setSeed] = useState<number | null>(null)
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K')
   const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'>('gemini-3.1-flash-image-preview')
+  const [useImageBgRemoval, setUseImageBgRemoval] = useState(true)
   const [usePhotoRoomBgRemoval, setUsePhotoRoomBgRemoval] = useState(true)
   const [creativeDirectionState, setCreativeDirectionState] = useState<CreativeDirectionState>(DEFAULT_CREATIVE_DIRECTION)
   const setCreativeDirection = useCallback((
@@ -216,6 +219,7 @@ export function useImageStudioState(): ImageStudioState {
     seed, setSeed,
     imageSize, setImageSize,
     selectedModel, setSelectedModel,
+    useImageBgRemoval, setUseImageBgRemoval,
     usePhotoRoomBgRemoval, setUsePhotoRoomBgRemoval,
     creativeDirection: creativeDirectionState, setCreativeDirection,
 

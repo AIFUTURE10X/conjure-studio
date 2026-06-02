@@ -64,6 +64,8 @@ export interface GeneratePanelProps {
   setImageSize?: (size: ImageSize) => void
   selectedModel?: GenerationModel
   setSelectedModel?: (model: GenerationModel) => void
+  useImageBgRemoval?: boolean
+  onImageBgRemovalChange?: (enabled: boolean) => void
   usePhotoRoomBgRemoval?: boolean
   onPhotoRoomBgRemovalChange?: (enabled: boolean) => void
   generationMode?: 'fast' | 'quality'
@@ -85,6 +87,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       generatedImages, setGeneratedImages, onOpenLightbox,
       seed: controlledSeed, setSeed: setControlledSeed,
       imageSize = '1K', setImageSize, selectedModel = 'gemini-3.1-flash-image-preview', setSelectedModel,
+      useImageBgRemoval: controlledUseImageBgRemoval, onImageBgRemovalChange,
       usePhotoRoomBgRemoval: controlledUsePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange,
       generationMode = 'quality', creativeDirection,
       showAdvancedOptions = true, onSaveGenerateParams, presets = [], onSavePreset, onLoadPreset,
@@ -98,6 +101,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     const { saveToHistory } = useGenerationHistory()
 
     const [showAdvanced, setShowAdvanced] = useState(showAdvancedOptions)
+    const [localUseImageBgRemoval, setLocalUseImageBgRemoval] = useState(true)
     const [localUsePhotoRoomBgRemoval, setLocalUsePhotoRoomBgRemoval] = useState(true)
     const [seed, setSeedInternal] = useState<number | null>(controlledSeed ?? null)
     const [editedSubject, setEditedSubject] = useState('')
@@ -111,6 +115,8 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
 
     const activeSeed = controlledSeed ?? seed
     const setSeed = setControlledSeed ?? setSeedInternal
+    const useImageBgRemoval = controlledUseImageBgRemoval ?? localUseImageBgRemoval
+    const setUseImageBgRemoval = onImageBgRemovalChange ?? setLocalUseImageBgRemoval
     const usePhotoRoomBgRemoval = controlledUsePhotoRoomBgRemoval ?? localUsePhotoRoomBgRemoval
     const setUsePhotoRoomBgRemoval = onPhotoRoomBgRemovalChange ?? setLocalUsePhotoRoomBgRemoval
 
@@ -173,6 +179,10 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     const handleRemoveBackground = async (index: number) => {
       const img = generatedImages[index]
       if (!img?.url) return
+      if (!useImageBgRemoval) {
+        toast.info('Background removal is turned off')
+        return
+      }
       try {
         const response = await fetch(img.url)
         const blob = await response.blob()
@@ -245,11 +255,22 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
               <ModelSelector selectedModel={selectedModel} onModelChange={m => setSelectedModel?.(m)} imageSize={imageSize} onImageSizeChange={s => setImageSize?.(s)} />
               <div className="flex items-center gap-2 flex-wrap">
                 <SeedControlDropdown seed={activeSeed} onSeedChange={setSeed} />
-                <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${usePhotoRoomBgRemoval ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}>
+                <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${useImageBgRemoval ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}>
                   <input
                     type="checkbox"
-                    checked={usePhotoRoomBgRemoval}
+                    checked={useImageBgRemoval}
+                    onChange={(e) => setUseImageBgRemoval(e.target.checked)}
+                    aria-label="Turn image background removal on or off"
+                    className="h-3.5 w-3.5 accent-[#c99850]"
+                  />
+                  Remove BG
+                </label>
+                <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${useImageBgRemoval && usePhotoRoomBgRemoval ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'} ${useImageBgRemoval ? '' : 'opacity-60'}`}>
+                  <input
+                    type="checkbox"
+                    checked={useImageBgRemoval && usePhotoRoomBgRemoval}
                     onChange={(e) => setUsePhotoRoomBgRemoval(e.target.checked)}
+                    disabled={!useImageBgRemoval}
                     aria-label="Use PhotoRoom for background removal"
                     className="h-3.5 w-3.5 accent-[#c99850]"
                   />

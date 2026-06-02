@@ -145,6 +145,7 @@ export function usePageState() {
     setStyleStrength: state.setStyleStrength,
     setImageSize: state.setImageSize,
     setSelectedModel: state.setSelectedModel,
+    setUseImageBgRemoval: state.setUseImageBgRemoval,
     setUsePhotoRoomBgRemoval: state.setUsePhotoRoomBgRemoval,
   })
 

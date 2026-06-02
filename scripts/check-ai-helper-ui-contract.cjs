@@ -828,13 +828,20 @@ const checks = [
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      return /usePhotoRoomBgRemoval/.test(state) &&
+      return /useImageBgRemoval/.test(state) &&
+        /setUseImageBgRemoval/.test(state) &&
+        /usePhotoRoomBgRemoval/.test(state) &&
         /setUsePhotoRoomBgRemoval/.test(state) &&
+        /useImageBgRemoval=/.test(generateTab) &&
+        /onImageBgRemovalChange=/.test(generateTab) &&
         /usePhotoRoomBgRemoval=/.test(generateTab) &&
         /onPhotoRoomBgRemovalChange=/.test(generateTab) &&
+        /useImageBgRemoval\?: boolean/.test(generatePanel) &&
+        /onImageBgRemovalChange\?: \(enabled: boolean\) => void/.test(generatePanel) &&
         /usePhotoRoomBgRemoval\?: boolean/.test(generatePanel) &&
         /onPhotoRoomBgRemovalChange\?: \(enabled: boolean\) => void/.test(generatePanel) &&
-        /imageBgRemovalMethod: state\.usePhotoRoomBgRemoval \? 'photoroom' : 'smart'/.test(page) &&
+        /imageBgRemovalEnabled: state\.useImageBgRemoval/.test(page) &&
+        /state\.useImageBgRemoval \? \(state\.usePhotoRoomBgRemoval \? 'photoroom' : 'smart'\) : 'none'/.test(page) &&
         /logoGeneratorContext/.test(page) &&
         /onLogoContextChange/.test(logoPanel) &&
         /logoBgRemovalMethod\?: string/.test(sidebar) &&

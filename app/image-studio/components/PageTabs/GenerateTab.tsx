@@ -73,6 +73,8 @@ interface GenerateTabProps {
   setImageSize: (size: '1K' | '2K' | '4K') => void
   selectedModel: string
   setSelectedModel: (model: any) => void
+  useImageBgRemoval: boolean
+  onImageBgRemovalChange: (enabled: boolean) => void
   usePhotoRoomBgRemoval: boolean
   onPhotoRoomBgRemovalChange: (enabled: boolean) => void
   showAdvancedOptions: boolean
@@ -94,7 +96,7 @@ export function GenerateTab(props: GenerateTabProps) {
     onClearSubjectAnalysis, onClearSceneAnalysis, onClearStyleAnalysis, negativePrompt, setNegativePrompt,
     referenceImage, setReferenceImage, mainPrompt, setMainPrompt, isFavorite, toggleFavorite, onParametersSave,
     generatedImages, setGeneratedImages, onOpenLightbox, seed, setSeed, imageSize, setImageSize, selectedModel,
-    setSelectedModel, usePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange, showAdvancedOptions, onSaveGenerateParams, presets, onSavePreset, onLoadPreset,
+    setSelectedModel, useImageBgRemoval, onImageBgRemovalChange, usePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange, showAdvancedOptions, onSaveGenerateParams, presets, onSavePreset, onLoadPreset,
     onRestoreParameters,
   } = props
 
@@ -193,6 +195,8 @@ export function GenerateTab(props: GenerateTabProps) {
           setImageSize={setImageSize}
           selectedModel={selectedModel as any}
           setSelectedModel={setSelectedModel}
+          useImageBgRemoval={useImageBgRemoval}
+          onImageBgRemovalChange={onImageBgRemovalChange}
           usePhotoRoomBgRemoval={usePhotoRoomBgRemoval}
           onPhotoRoomBgRemovalChange={onPhotoRoomBgRemovalChange}
           generationMode={analysisMode}

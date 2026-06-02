@@ -43,6 +43,7 @@ interface UseAISuggestionsHandlerProps {
   setStyleStrength: (value: StyleStrength) => void
   setImageSize: (value: '1K' | '2K' | '4K') => void
   setSelectedModel: (value: GenerationModel) => void
+  setUseImageBgRemoval: (enabled: boolean) => void
   setUsePhotoRoomBgRemoval: (enabled: boolean) => void
 }
 
@@ -62,6 +63,7 @@ export function useAISuggestionsHandler({
   setStyleStrength,
   setImageSize,
   setSelectedModel,
+  setUseImageBgRemoval,
   setUsePhotoRoomBgRemoval,
 }: UseAISuggestionsHandlerProps) {
   const handleApplyAISuggestions = useCallback((suggestions: AISuggestions) => {
@@ -168,8 +170,12 @@ export function useAISuggestionsHandler({
 
     const normalizedBgRemovalMethod = suggestions.bgRemovalMethod || suggestions.imageBgRemovalMethod
     if (normalizedBgRemovalMethod === 'photoroom' || normalizedBgRemovalMethod === 'smart') {
+      setUseImageBgRemoval(true)
       console.log('[v0] Setting PhotoRoom BG removal to:', normalizedBgRemovalMethod === 'photoroom')
       setUsePhotoRoomBgRemoval(normalizedBgRemovalMethod === 'photoroom')
+    } else if (normalizedBgRemovalMethod === 'none') {
+      console.log('[v0] Turning image background removal off')
+      setUseImageBgRemoval(false)
     } else if (normalizedBgRemovalMethod) {
       console.warn('[v0] Unrecognized image background removal suggestion:', normalizedBgRemovalMethod)
     }
@@ -185,6 +191,7 @@ export function useAISuggestionsHandler({
     setStyleStrength,
     setImageSize,
     setSelectedModel,
+    setUseImageBgRemoval,
     setUsePhotoRoomBgRemoval,
   ])
 

@@ -37,7 +37,7 @@ const IMAGE_GENERATION_MODELS = [
   'gpt-image-2',
 ] as const
 
-const IMAGE_BACKGROUND_REMOVAL_METHODS = ['photoroom', 'smart'] as const
+const IMAGE_BACKGROUND_REMOVAL_METHODS = ['photoroom', 'smart', 'none'] as const
 
 type HelperActionType =
   | 'apply_suggestions'
@@ -1378,7 +1378,7 @@ function formatBackgroundRemovalContext(currentPromptSettings: unknown): string 
 
   return [
     `- Image generator Remove BG action: ${formatBackgroundRemovalMethod(imageMethod, imageProvider, imageEnabled)}`,
-    `- Image generator PhotoRoom BG checkbox: ${settings.imagePhotoRoomBgRemovalEnabled ? 'checked, so PhotoRoom is selected for Remove BG' : 'unchecked, so Smart local cleanup is selected for Remove BG'}.`,
+    `- Image generator PhotoRoom BG checkbox: ${settings.imagePhotoRoomBgRemovalEnabled ? 'checked, so PhotoRoom is selected when Remove BG is on' : 'unchecked, so PhotoRoom is not selected; Smart cleanup is used only if Remove BG remains on'}.`,
     `- Logo generator background removal method: ${formatBackgroundRemovalMethod(logoMethod, logoProvider, logoEnabled)}`,
     `- Logo generator model for native transparent PNG: ${logoModel || 'unknown'}. native-transparent requires gpt-image-2; PhotoRoom can clean up Gemini or OpenAI outputs after generation.`,
     `- True PNG guidance: PhotoRoom and smart cleanup remove the background after the model creates the image. native-transparent is the only current model-side transparent PNG path, and only for gpt-image-2.`,
@@ -1712,7 +1712,7 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
 11. A plannerDecision and promptQualityChecklist that show whether you asked, diagnosed, iterated, or produced a generation-ready prompt
 
-Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2") and suggestions.bgRemovalMethod ("photoroom" or "smart"). Use "photoroom" when the user needs the best post-generation background removal/true PNG cleanup workflow; use "smart" only when they prefer local/free cleanup.
+Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2") and suggestions.bgRemovalMethod ("photoroom", "smart", or "none"). Use "photoroom" when the user needs the best post-generation background removal/true PNG cleanup workflow; use "smart" only when they prefer local/free cleanup; use "none" when they want a normal image with its generated background kept.
 
 Diagnostic-only questions:
 - If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, set "responseMode": "diagnostic".
@@ -1741,7 +1741,7 @@ Format your response as JSON:
     "aspectRatio": "aspect_ratio_value",
     "styleStrength": "moderate",
     "selectedModel": "optional image model id",
-    "bgRemovalMethod": "optional photoroom or smart"
+    "bgRemovalMethod": "optional photoroom, smart, or none"
   },
   "actions": [
     { "type": "ask_follow_up", "label": "Answer question", "description": "Reply with the missing detail before making a prompt" },

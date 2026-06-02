@@ -166,6 +166,8 @@ export default function ImageStudioPage() {
             setImageSize={state.setImageSize}
             selectedModel={state.selectedModel}
             setSelectedModel={state.setSelectedModel}
+            useImageBgRemoval={state.useImageBgRemoval}
+            onImageBgRemovalChange={state.setUseImageBgRemoval}
             usePhotoRoomBgRemoval={state.usePhotoRoomBgRemoval}
             onPhotoRoomBgRemovalChange={state.setUsePhotoRoomBgRemoval}
             showAdvancedOptions={settings.features.showAdvancedOptions}
@@ -254,10 +256,10 @@ export default function ImageStudioPage() {
           imageCount: state.imageCount,
           seed: state.seed,
           analysisMode: state.analysisMode,
-          imageBgRemovalEnabled: true,
-          imageBgRemovalMethod: state.usePhotoRoomBgRemoval ? 'photoroom' : 'smart',
-          imageBgRemovalProvider: state.usePhotoRoomBgRemoval ? 'PhotoRoom' : 'Smart local cleanup',
-          imagePhotoRoomBgRemovalEnabled: state.usePhotoRoomBgRemoval,
+          imageBgRemovalEnabled: state.useImageBgRemoval,
+          imageBgRemovalMethod: state.useImageBgRemoval ? (state.usePhotoRoomBgRemoval ? 'photoroom' : 'smart') : 'none',
+          imageBgRemovalProvider: state.useImageBgRemoval ? (state.usePhotoRoomBgRemoval ? 'PhotoRoom' : 'Smart local cleanup') : 'No background removal',
+          imagePhotoRoomBgRemovalEnabled: state.useImageBgRemoval && state.usePhotoRoomBgRemoval,
           logoBgRemovalEnabled: logoGeneratorContext.bgRemovalEnabled,
           logoBgRemovalMethod: logoGeneratorContext.bgRemovalMethod,
           logoBgRemovalProvider: formatBackgroundRemovalProvider(logoGeneratorContext.bgRemovalMethod),
