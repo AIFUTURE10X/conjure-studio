@@ -28,6 +28,7 @@ interface ContextSnapshotProps {
   uploadedImages: string[]
   preferenceCount?: number
   preferenceMemory?: AIHelperMemorySnapshot[]
+  activeDesignBrief?: string
   onForgetPreference?: (timestamp: number) => void
   latestOutputs?: {
     image?: AIHelperLatestOutput | null
@@ -66,6 +67,7 @@ export function ContextSnapshot({
   uploadedImages,
   preferenceCount = 0,
   preferenceMemory = [],
+  activeDesignBrief,
   onForgetPreference,
   latestOutputs = {},
 }: ContextSnapshotProps) {
@@ -76,6 +78,7 @@ export function ContextSnapshot({
   const hasReferenceImage = uploadedImages.length > 0
   const hasGeneratorReferenceImage = Boolean(currentPromptSettings.hasReferenceImage)
   const hasLatestOutput = Boolean(latestOutput?.url)
+  const hasActiveDesignBrief = hasPromptText(activeDesignBrief)
 
   return (
     <div className="border-b border-[#c99850]/20 bg-zinc-950/50 px-4 py-3 sm:px-5">
@@ -96,6 +99,7 @@ export function ContextSnapshot({
         <ContextChip icon={ImageIcon} label={hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image'} active={hasReferenceImage} />
         <ContextChip icon={ImageIcon} label={hasGeneratorReferenceImage ? `Generator ref: ${currentPromptSettings.referenceImageMode || 'loaded'}` : 'No generator ref'} active={hasGeneratorReferenceImage} />
         <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />
+        <ContextChip icon={Brain} label={hasActiveDesignBrief ? 'Active brief' : 'No active brief'} active={hasActiveDesignBrief} />
         <ContextChip icon={Brain} label={preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory'} active={preferenceCount > 0} />
       </div>
       {preferenceMemory.length > 0 && (

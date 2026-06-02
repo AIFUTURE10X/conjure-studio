@@ -73,7 +73,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const [pendingFollowUp, setPendingFollowUp] = useState<{ prompt: string; mode: AIHelperMode } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
+  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -444,6 +444,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         uploadedImages={uploadedImages}
         preferenceCount={preferenceCount}
         preferenceMemory={preferenceMemory}
+        activeDesignBrief={activeDesignBrief}
         onForgetPreference={forgetPreference}
         latestOutputs={latestOutputs}
       />

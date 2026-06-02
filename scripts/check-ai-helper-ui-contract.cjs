@@ -410,6 +410,24 @@ const checks = [
         /Working design brief/.test(route)
     },
   },
+  {
+    name: 'AI helper carries the active working brief forward across follow-up turns',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /activeDesignBrief\?: string/.test(hook) &&
+        /getActiveDesignBrief/.test(hook) &&
+        /activeDesignBrief: getActiveDesignBrief\(messages, mode\)/.test(hook) &&
+        /activeDesignBrief=/.test(sidebar) &&
+        /Active brief/.test(snapshot) &&
+        /formatActiveTaskBrief/.test(route) &&
+        /ACTIVE TASK BRIEF/.test(route) &&
+        /activeDesignBrief: memory\.activeDesignBrief/.test(route) &&
+        /\[Working Design Brief:/.test(route)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

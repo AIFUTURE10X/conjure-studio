@@ -443,6 +443,7 @@ function formatAgentMemory(agentMemory: unknown): string {
     lastLogoPrompt: memory.lastLogoPrompt || '',
     lastNegativePrompt: memory.lastNegativePrompt || '',
     lastAssistantSummary: memory.lastAssistantSummary || '',
+    activeDesignBrief: memory.activeDesignBrief || '',
     lastReferenceAnalysis: memory.lastReferenceAnalysis || '',
     persistentGenerations: Array.isArray(memory.persistentGenerations)
       ? memory.persistentGenerations.slice(-5)
@@ -452,6 +453,16 @@ function formatAgentMemory(agentMemory: unknown): string {
       : [],
     recentUserRequests: Array.isArray(memory.recentUserRequests) ? memory.recentUserRequests.slice(-4) : [],
   }, null, 2)
+}
+
+function formatActiveTaskBrief(agentMemory: unknown): string {
+  if (!agentMemory || typeof agentMemory !== 'object') return 'None yet'
+  const activeDesignBrief = (agentMemory as Record<string, unknown>).activeDesignBrief
+  if (typeof activeDesignBrief !== 'string' || !activeDesignBrief.trim()) return 'None yet'
+
+  return `${activeDesignBrief.trim()}
+
+Use this as the live continuity brief for the next response. Preserve the "What to preserve" items unless the user explicitly changes them, apply only the requested follow-up edit, and update designBrief with the new understanding.`
 }
 
 function formatPersistentPreferences(agentMemory: unknown): string {
@@ -562,6 +573,9 @@ export async function POST(request: Request) {
       ?.slice(-5) // Last 5 messages for context
       .map((msg: any) => {
         let context = `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`
+        if (msg.role === "assistant" && typeof msg.designBrief === "string" && msg.designBrief.trim()) {
+          context += `\n  [Working Design Brief: ${msg.designBrief.trim()}]`
+        }
         // Include the actual generated prompt if present (critical for "add to previous" requests)
         if (msg.role === "assistant" && msg.suggestions?.prompt) {
           context += `\n  [Generated Prompt: "${msg.suggestions.prompt}"]`
@@ -585,6 +599,7 @@ export async function POST(request: Request) {
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
+    const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'image',
       message,
@@ -621,6 +636,9 @@ ${CREATIVE_DIRECTION_OPTION_CONTEXT}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+ACTIVE TASK BRIEF:
+${activeTaskBrief}
 
 PERSISTENT USER PREFERENCES:
 ${persistentPreferenceContext}
@@ -859,6 +877,9 @@ async function handleLogoMode(
       ?.slice(-5)
       .map((msg: any) => {
         let context = `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`
+        if (msg.role === "assistant" && typeof msg.designBrief === "string" && msg.designBrief.trim()) {
+          context += `\n  [Working Design Brief: ${msg.designBrief.trim()}]`
+        }
         // Include key logo config settings if present (critical for "add to previous" requests)
         if (msg.role === "assistant" && msg.logoConfig) {
           const cfg = msg.logoConfig
@@ -906,6 +927,7 @@ async function handleLogoMode(
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
+    const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'logo',
       message,
@@ -927,6 +949,9 @@ ${operationalGeneratorContext}
 
 AGENT MEMORY:
 ${agentMemoryContext}
+
+ACTIVE TASK BRIEF:
+${activeTaskBrief}
 
 PERSISTENT USER PREFERENCES:
 ${persistentPreferenceContext}

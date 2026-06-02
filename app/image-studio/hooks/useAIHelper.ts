@@ -74,6 +74,7 @@ export interface AIHelperAgentMemory {
   lastLogoPrompt?: string
   lastNegativePrompt?: string
   lastAssistantSummary?: string
+  activeDesignBrief?: string
   lastReferenceAnalysis?: string
   persistentGenerations: AIHelperMemorySnapshot[]
   persistentPreferences: AIHelperMemorySnapshot[]
@@ -118,6 +119,7 @@ export function buildAgentMemory(
   const lastAssistant = [...messages]
     .reverse()
     .find((message) => message.role === 'assistant' && (!message.mode || message.mode === mode))
+  const activeDesignBrief = getActiveDesignBrief(messages, mode)
   const persistentGenerations = generationMemory
     .filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'suggestion')
     .slice(-5)
@@ -134,11 +136,21 @@ export function buildAgentMemory(
     lastLogoPrompt: lastLogoSuggestion?.suggestions?.prompt,
     lastNegativePrompt: lastLogoSuggestion?.suggestions?.negativePrompt || lastImageSuggestion?.suggestions?.negativePrompt,
     lastAssistantSummary: lastAssistant?.content,
+    activeDesignBrief,
     lastReferenceAnalysis,
     persistentGenerations,
     persistentPreferences,
     recentUserRequests,
   }
+}
+
+export function getActiveDesignBrief(messages: AIMessage[], mode: AIHelperMode): string | undefined {
+  return [...messages]
+    .reverse()
+    .find((message) => {
+      const messageMode: AIHelperMode = message.mode === 'logo' ? 'logo' : 'image'
+      return message.role === 'assistant' && messageMode === mode && Boolean(message.designBrief?.trim())
+    })?.designBrief
 }
 
 export function extractPreferenceMemory(userInput: string): string | null {
@@ -533,6 +545,7 @@ export function useAIHelper() {
     sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage,
     preferenceCount: preferenceMemory.length,
     preferenceMemory,
+    activeDesignBrief: getActiveDesignBrief(messages, mode),
     forgetPreference,
     cancelRequest,
     appendLocalMessage,
