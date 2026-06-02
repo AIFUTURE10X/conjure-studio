@@ -436,6 +436,94 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return true
   }
 
+  const runDirectLogoSettingsCommand = (userInput: string) => {
+    const normalized = normalizeDirectCommand(userInput)
+    const logoSettingsCommandTerms = [
+      'use exact text overlay',
+      'set exact text overlay',
+      'exact text overlay',
+      'exact text mode',
+      'use ai text',
+      'set ai text',
+      'ai text mode',
+      'let ai draw text',
+      'use chatgpt images 2.0',
+      'use chatgpt images 2',
+      'use gpt image 2',
+      'use openai image',
+      'use gemini flash',
+      'use gemini 3.1 flash',
+      'use gemini pro',
+      'use gemini 3 pro',
+      'set 1k',
+      'set 2k',
+      'set 4k',
+      '1k resolution',
+      '2k resolution',
+      '4k resolution',
+    ]
+
+    if (!matchesNaturalDirectCommand(userInput, logoSettingsCommandTerms)) return false
+
+    const wantsExactText = ['use exact text overlay', 'set exact text overlay', 'exact text overlay', 'exact text mode'].some((term) => normalized.includes(term))
+    const wantsAiText = ['use ai text', 'set ai text', 'ai text mode', 'let ai draw text'].some((term) => normalized.includes(term))
+    const wantsGptImage2 = ['use chatgpt images 2.0', 'use chatgpt images 2', 'use gpt image 2', 'use openai image'].some((term) => normalized.includes(term))
+    const wantsGeminiFlash = ['use gemini flash', 'use gemini 3.1 flash'].some((term) => normalized.includes(term))
+    const wantsGeminiPro = ['use gemini pro', 'use gemini 3 pro'].some((term) => normalized.includes(term))
+    const resolutionPatch = normalized.includes('set 4k') || normalized.includes('4k resolution')
+      ? { resolution: '4K' }
+      : normalized.includes('set 2k') || normalized.includes('2k resolution')
+        ? { resolution: '2K' }
+        : normalized.includes('set 1k') || normalized.includes('1k resolution')
+          ? { resolution: '1K' }
+          : {}
+    const requestedMode = detectRequestedHelperMode(userInput)
+    const targetMode: AIHelperMode = (wantsExactText || wantsAiText) ? 'logo' : requestedMode || mode
+
+    const settingsPatch = {
+      ...(wantsExactText ? { textMode: 'exact-text-overlay' } : {}),
+      ...(wantsAiText ? { textMode: 'ai-text' } : {}),
+      ...(wantsGptImage2 ? { selectedModel: 'gpt-image-2' } : {}),
+      ...(wantsGeminiFlash ? { selectedModel: 'gemini-3.1-flash-image-preview' } : {}),
+      ...(wantsGeminiPro ? { selectedModel: 'gemini-3-pro-image-preview' } : {}),
+      ...resolutionPatch,
+      _appliedAt: Date.now(),
+    }
+    const requestedResolution = typeof settingsPatch.resolution === 'string' ? settingsPatch.resolution : null
+
+    const changedLabels = [
+      wantsExactText ? 'exact text overlay' : null,
+      wantsAiText ? 'AI text mode' : null,
+      wantsGptImage2 ? 'ChatGPT Images 2.0' : null,
+      wantsGeminiFlash ? 'Gemini 3.1 Flash' : null,
+      wantsGeminiPro ? 'Gemini 3 Pro' : null,
+      requestedResolution ? `${requestedResolution} resolution` : null,
+    ].filter(Boolean)
+
+    if (changedLabels.length === 0) return false
+
+    const applyHandler = targetMode === 'logo'
+      ? (onApplyLogoSuggestions || onApplySuggestions)
+      : onApplySuggestions
+
+    if (!applyHandler) {
+      alert('Error: Apply callback is not connected.')
+      return true
+    }
+
+    applyHandler(settingsPatch)
+    setPendingFollowUp(null)
+    if (targetMode !== mode) setMode(targetMode)
+    const updateMessagePrefix = targetMode === 'logo' ? 'Logo settings updated:' : 'Image settings updated:'
+    appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
+    appendLocalMessage({
+      role: 'assistant',
+      content: `${updateMessagePrefix} ${changedLabels.join(', ')}. No prompt text was changed.`,
+      mode: targetMode,
+    })
+    return true
+  }
+
   const runDirectSuggestionCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
 
@@ -560,6 +648,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       }
     }
     if (!prompt && runDirectBackgroundRemovalCommand(userInput)) {
+      setInput('')
+      return
+    }
+    if (!prompt && runDirectLogoSettingsCommand(userInput)) {
       setInput('')
       return
     }

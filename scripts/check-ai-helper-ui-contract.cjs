@@ -478,6 +478,28 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can change logo text mode model and resolution from direct chat commands',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /runDirectLogoSettingsCommand/.test(sidebar) &&
+        /logoSettingsCommandTerms/.test(sidebar) &&
+        /use exact text overlay/.test(sidebar) &&
+        /use ai text/.test(sidebar) &&
+        /use chatgpt images 2\.0/.test(sidebar) &&
+        /use gemini flash/.test(sidebar) &&
+        /use gemini pro/.test(sidebar) &&
+        /set 4k/.test(sidebar) &&
+        /textMode: 'exact-text-overlay'/.test(sidebar) &&
+        /textMode: 'ai-text'/.test(sidebar) &&
+        /selectedModel: 'gpt-image-2'/.test(sidebar) &&
+        /selectedModel: 'gemini-3\.1-flash-image-preview'/.test(sidebar) &&
+        /selectedModel: 'gemini-3-pro-image-preview'/.test(sidebar) &&
+        /resolution: '4K'/.test(sidebar) &&
+        /Logo settings updated:/.test(sidebar) &&
+        /runDirectLogoSettingsCommand\(userInput\)/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
