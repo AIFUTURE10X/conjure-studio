@@ -518,6 +518,23 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can apply mixed settings decisions and optionally generate',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /buildDirectSettingsPatch/.test(sidebar) &&
+        /applyDirectSettingsPatch/.test(sidebar) &&
+        /settingsGenerateCommandTerms/.test(sidebar) &&
+        /use photoroom and 4k/.test(sidebar) &&
+        /exact text overlay and generate/.test(sidebar) &&
+        /native transparent png and generate/.test(sidebar) &&
+        /logo settings updated and generation started/.test(sidebar) &&
+        /image settings updated and generation started/.test(sidebar) &&
+        /onGenerateFromAIHelper\?\.\(targetMode\)/.test(sidebar) &&
+        /No prompt text was changed/.test(sidebar) &&
+        /changedLabels/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can patch the latest suggestion from natural single-change follow-ups',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

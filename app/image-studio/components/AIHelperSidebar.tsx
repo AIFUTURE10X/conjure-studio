@@ -611,6 +611,125 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return true
   }
 
+  const buildDirectSettingsPatch = (userInput: string) => {
+    const normalized = normalizeDirectCommand(userInput)
+    const settingsDecisionCommandTerms = [
+      'use photoroom and 4k',
+    ]
+    const settingsGenerateCommandTerms = [
+      'use photoroom and 4k and generate',
+      'exact text overlay and generate',
+      'native transparent png and generate',
+      'and generate',
+      'then generate',
+      'generate it',
+      'run it',
+    ]
+    const wantsNativeTransparent = ['native transparent png', 'native png', 'true native png', 'model-side transparent'].some((term) => normalized.includes(term))
+    const wantsPhotoRoom = ['use photoroom', 'turn on photoroom', 'photoroom bg', 'photoroom background removal'].some((term) => normalized.includes(term))
+    const wantsSmart = ['use smart cleanup', 'use smart background removal', 'use local cleanup', 'smart bg'].some((term) => normalized.includes(term))
+    const wantsOff = ['turn off background removal', 'disable background removal', 'no background removal', 'normal logo with background'].some((term) => normalized.includes(term))
+    const wantsExactText = ['use exact text overlay', 'set exact text overlay', 'exact text overlay', 'exact text mode'].some((term) => normalized.includes(term))
+    const wantsAiText = ['use ai text', 'set ai text', 'ai text mode', 'let ai draw text'].some((term) => normalized.includes(term))
+    const wantsGptImage2 = ['use chatgpt images 2.0', 'use chatgpt images 2', 'use gpt image 2', 'use openai image'].some((term) => normalized.includes(term))
+    const wantsGeminiFlash = ['use gemini flash', 'use gemini 3.1 flash'].some((term) => normalized.includes(term))
+    const wantsGeminiPro = ['use gemini pro', 'use gemini 3 pro'].some((term) => normalized.includes(term))
+    const resolution = normalized.includes('set 4k') || normalized.includes('4k resolution') || normalized.includes('and 4k') || normalized.endsWith('4k')
+      ? '4K'
+      : normalized.includes('set 2k') || normalized.includes('2k resolution') || normalized.includes('and 2k') || normalized.endsWith('2k')
+        ? '2K'
+        : normalized.includes('set 1k') || normalized.includes('1k resolution') || normalized.includes('and 1k') || normalized.endsWith('1k')
+          ? '1K'
+          : null
+    const requestedMode = detectRequestedHelperMode(userInput)
+    const targetMode: AIHelperMode = (wantsNativeTransparent || wantsExactText || wantsAiText || normalized.includes('normal logo with background'))
+      ? 'logo'
+      : requestedMode || mode
+    const settingsPatch: Partial<NonNullable<AIMessage['suggestions']>> = {}
+    const changedLabels: string[] = []
+
+    if (wantsNativeTransparent) {
+      settingsPatch.bgRemovalMethod = 'native-transparent'
+      settingsPatch.selectedModel = 'gpt-image-2'
+      changedLabels.push('native transparent PNG', 'ChatGPT Images 2.0')
+    } else if (wantsPhotoRoom) {
+      settingsPatch.bgRemovalMethod = 'photoroom'
+      changedLabels.push('PhotoRoom background removal')
+    } else if (wantsSmart) {
+      settingsPatch.bgRemovalMethod = 'smart'
+      changedLabels.push('smart cleanup')
+    } else if (wantsOff && targetMode === 'logo') {
+      settingsPatch.bgRemovalMethod = 'none'
+      changedLabels.push('background removal off')
+    }
+
+    if (wantsExactText) {
+      settingsPatch.textMode = 'exact-text-overlay'
+      changedLabels.push('exact text overlay')
+    } else if (wantsAiText) {
+      settingsPatch.textMode = 'ai-text'
+      changedLabels.push('AI text mode')
+    }
+
+    if (wantsGptImage2 && settingsPatch.selectedModel !== 'gpt-image-2') {
+      settingsPatch.selectedModel = 'gpt-image-2'
+      changedLabels.push('ChatGPT Images 2.0')
+    } else if (wantsGeminiFlash) {
+      settingsPatch.selectedModel = 'gemini-3.1-flash-image-preview'
+      changedLabels.push('Gemini 3.1 Flash')
+    } else if (wantsGeminiPro) {
+      settingsPatch.selectedModel = 'gemini-3-pro-image-preview'
+      changedLabels.push('Gemini 3 Pro')
+    }
+
+    if (resolution) {
+      settingsPatch.resolution = resolution
+      changedLabels.push(`${resolution} resolution`)
+    }
+
+    if (changedLabels.length === 0) return null
+
+    return {
+      targetMode,
+      settingsPatch: { ...settingsPatch, _appliedAt: Date.now() },
+      changedLabels,
+      shouldGenerate: matchesNaturalDirectCommand(userInput, settingsGenerateCommandTerms) && !matchesDirectCommand(userInput, settingsDecisionCommandTerms),
+    }
+  }
+
+  const applyDirectSettingsPatch = (userInput: string, settingsDecision: NonNullable<ReturnType<typeof buildDirectSettingsPatch>>) => {
+    const { targetMode, settingsPatch, changedLabels, shouldGenerate } = settingsDecision
+    const applyHandler = targetMode === 'logo'
+      ? (onApplyLogoSuggestions || onApplySuggestions)
+      : onApplySuggestions
+
+    if (!applyHandler) {
+      alert('Error: Apply callback is not connected.')
+      return true
+    }
+
+    applyHandler(settingsPatch)
+    setPendingFollowUp(null)
+    if (targetMode !== mode) setMode(targetMode)
+    if (shouldGenerate) onGenerateFromAIHelper?.(targetMode)
+    const updateMessagePrefix = shouldGenerate
+      ? targetMode === 'logo' ? 'logo settings updated and generation started' : 'image settings updated and generation started'
+      : targetMode === 'logo' ? 'Logo settings updated' : 'Image settings updated'
+    appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
+    appendLocalMessage({
+      role: 'assistant',
+      content: `${updateMessagePrefix}: ${changedLabels.join(', ')}. No prompt text was changed.`,
+      mode: targetMode,
+    })
+    return true
+  }
+
+  const runDirectSettingsDecisionCommand = (userInput: string) => {
+    const settingsDecision = buildDirectSettingsPatch(userInput)
+    if (!settingsDecision) return false
+    return applyDirectSettingsPatch(userInput, settingsDecision)
+  }
+
   const runDirectSuggestionPatchCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
 
@@ -928,6 +1047,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         setInput('')
         return
       }
+    }
+    if (!prompt && runDirectSettingsDecisionCommand(userInput)) {
+      setInput('')
+      return
     }
     if (!prompt && runDirectBackgroundRemovalCommand(userInput)) {
       setInput('')
