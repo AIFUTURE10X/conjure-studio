@@ -214,6 +214,10 @@ export function useAIHelper() {
     setIsLoading(false)
   }, [])
 
+  const appendLocalMessage = useCallback((message: Omit<AIMessage, 'timestamp'> & { timestamp?: number }) => {
+    setMessages(prev => [...prev, { ...message, timestamp: message.timestamp || Date.now() }])
+  }, [])
+
   const rememberMemorySnapshot = useCallback((snapshot: AIHelperMemorySnapshot) => {
     setGenerationMemory(prev => {
       const next = [...prev, snapshot].slice(-40)
@@ -526,6 +530,7 @@ export function useAIHelper() {
     preferenceMemory,
     forgetPreference,
     cancelRequest,
+    appendLocalMessage,
     clearHistory, updateMessageSuggestions, updateMessageLogoConfig
   }
 }

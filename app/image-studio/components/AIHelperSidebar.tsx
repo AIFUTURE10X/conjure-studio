@@ -63,19 +63,9 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const [isExpanded, setIsExpanded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, forgetPreference, cancelRequest } = useAIHelper()
+  const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
-
-  const runHelperPrompt = async (prompt?: string) => {
-    if (isLoading) return
-    const userInput = prompt?.trim() || input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
-    if (!userInput.trim() && uploadedImages.length === 0) return
-    setInput('')
-    mode === 'logo' ? await sendLogoMessage(userInput, currentPromptSettings) : await sendMessage(userInput, currentPromptSettings)
-  }
-
-  const handleSend = async () => runHelperPrompt()
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -214,6 +204,89 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       void sendActionMessage(action.type, currentPromptSettings, latestOutput, actionMode)
     }
   }
+
+  const getLatestSuggestionMessage = () => {
+    for (let index = messages.length - 1; index >= 0; index--) {
+      const message = messages[index]
+      const messageMode: AIHelperMode = message.mode === 'logo' ? 'logo' : 'image'
+      if (message.role === 'assistant' && message.suggestions?.prompt && messageMode === mode) {
+        return { index, message, targetMode: messageMode }
+      }
+    }
+    return null
+  }
+
+  const normalizeDirectCommand = (value: string) => value
+    .toLowerCase()
+    .trim()
+    .replace(/[.!?]+$/g, '')
+    .replace(/^(ok|okay|yes|yep|please|sure)[,\s]+/g, '')
+    .trim()
+
+  const matchesDirectCommand = (value: string, terms: string[]) => terms.includes(normalizeDirectCommand(value))
+
+  const runDirectSuggestionCommand = (userInput: string) => {
+    if (uploadedImages.length > 0) return false
+
+    const generateCommandTerms = [
+      'generate it',
+      'generate this',
+      'run it',
+      'try it',
+      'do it',
+      'go ahead',
+      'go ahead and generate',
+      'apply and generate',
+      'use it and generate',
+      'use that and generate',
+    ]
+    const applyCommandTerms = [
+      'apply it',
+      'apply this',
+      'apply that',
+      'use it',
+      'use this',
+      'use that',
+      'set it',
+      'load it',
+    ]
+    const shouldGenerate = matchesDirectCommand(userInput, generateCommandTerms)
+    const shouldApply = !shouldGenerate && matchesDirectCommand(userInput, applyCommandTerms)
+    if (!shouldGenerate && !shouldApply) return false
+
+    const latest = getLatestSuggestionMessage()
+    if (!latest?.message.suggestions) return false
+
+    const suggestions = { ...latest.message.suggestions, _appliedAt: Date.now() }
+    if (!applySuggestionsForMessage(suggestions, latest.index, latest.targetMode)) return true
+
+    appendLocalMessage({ role: 'user', content: userInput, mode: latest.targetMode })
+    appendLocalMessage({
+      role: 'assistant',
+      content: shouldGenerate
+        ? `Started generation from the latest ${latest.targetMode} suggestion.`
+        : `Applied the latest ${latest.targetMode} suggestion to the generator.`,
+      mode: latest.targetMode,
+    })
+    setAppliedIndex(latest.index)
+    setTimeout(() => setAppliedIndex(null), 2000)
+    if (shouldGenerate) onGenerateFromAIHelper?.(latest.targetMode)
+    return true
+  }
+
+  const runHelperPrompt = async (prompt?: string) => {
+    if (isLoading) return
+    const userInput = prompt?.trim() || input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
+    if (!userInput.trim() && uploadedImages.length === 0) return
+    if (!prompt && runDirectSuggestionCommand(userInput)) {
+      setInput('')
+      return
+    }
+    setInput('')
+    mode === 'logo' ? await sendLogoMessage(userInput, currentPromptSettings) : await sendMessage(userInput, currentPromptSettings)
+  }
+
+  const handleSend = async () => runHelperPrompt()
 
   const updateEditedField = (field: string, value: string) => setEditedSuggestions((prev: any) => ({ ...prev, [field]: value }))
 

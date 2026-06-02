@@ -314,6 +314,20 @@ const checks = [
         /const iterationIntentBrief = buildIterationIntentBrief/.test(route)
     },
   },
+  {
+    name: 'AI helper can run direct apply and generate commands from chat',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /appendLocalMessage/.test(hook) &&
+        /getLatestSuggestionMessage/.test(sidebar) &&
+        /runDirectSuggestionCommand/.test(sidebar) &&
+        /generateCommandTerms/.test(sidebar) &&
+        /applyCommandTerms/.test(sidebar) &&
+        /Applied the latest/.test(sidebar) &&
+        /Started generation from the latest/.test(sidebar)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
