@@ -460,6 +460,24 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can change background removal settings from direct chat commands',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /runDirectBackgroundRemovalCommand/.test(sidebar) &&
+        /backgroundRemovalCommandTerms/.test(sidebar) &&
+        /use photoroom/.test(sidebar) &&
+        /use smart cleanup/.test(sidebar) &&
+        /native transparent png/.test(sidebar) &&
+        /turn off background removal/.test(sidebar) &&
+        /bgRemovalMethod: 'photoroom'/.test(sidebar) &&
+        /bgRemovalMethod: 'smart'/.test(sidebar) &&
+        /bgRemovalMethod: 'native-transparent'/.test(sidebar) &&
+        /selectedModel: 'gpt-image-2'/.test(sidebar) &&
+        /Background removal set to/.test(sidebar) &&
+        /runDirectBackgroundRemovalCommand\(userInput\)/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

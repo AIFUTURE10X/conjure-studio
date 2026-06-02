@@ -353,6 +353,89 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return true
   }
 
+  const runDirectBackgroundRemovalCommand = (userInput: string) => {
+    const normalized = normalizeDirectCommand(userInput)
+    const backgroundRemovalCommandTerms = [
+      'use photoroom',
+      'turn on photoroom',
+      'photoroom bg',
+      'photoroom background removal',
+      'use smart cleanup',
+      'use smart background removal',
+      'use local cleanup',
+      'smart bg',
+      'native transparent png',
+      'native png',
+      'true native png',
+      'model-side transparent',
+      'turn off background removal',
+      'disable background removal',
+      'no background removal',
+      'normal logo with background',
+    ]
+
+    if (!matchesNaturalDirectCommand(userInput, backgroundRemovalCommandTerms)) return false
+
+    const wantsNativeTransparent = ['native transparent png', 'native png', 'true native png', 'model-side transparent'].some((term) => normalized.includes(term))
+    const wantsOff = ['turn off background removal', 'disable background removal', 'no background removal', 'normal logo with background'].some((term) => normalized.includes(term))
+    const wantsSmart = ['use smart cleanup', 'use smart background removal', 'use local cleanup', 'smart bg'].some((term) => normalized.includes(term))
+    const wantsPhotoRoom = ['use photoroom', 'turn on photoroom', 'photoroom bg', 'photoroom background removal'].some((term) => normalized.includes(term))
+    const requestedMode = detectRequestedHelperMode(userInput)
+    const targetMode: AIHelperMode = wantsNativeTransparent ? 'logo' : requestedMode || mode
+
+    if (!wantsNativeTransparent && !wantsOff && !wantsSmart && !wantsPhotoRoom) return false
+
+    if (targetMode === 'image' && (wantsNativeTransparent || wantsOff)) {
+      appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
+      appendLocalMessage({
+        role: 'assistant',
+        content: 'Image generator background cleanup can switch between PhotoRoom and smart cleanup. Native transparent PNG and background removal off are logo-generator settings.',
+        mode: targetMode,
+      })
+      return true
+    }
+
+    const suggestions = targetMode === 'logo'
+      ? wantsNativeTransparent
+        ? { bgRemovalMethod: 'native-transparent', selectedModel: 'gpt-image-2', _appliedAt: Date.now() }
+        : wantsOff
+          ? { bgRemovalMethod: 'none', _appliedAt: Date.now() }
+          : wantsSmart
+            ? { bgRemovalMethod: 'smart', _appliedAt: Date.now() }
+            : { bgRemovalMethod: 'photoroom', _appliedAt: Date.now() }
+      : wantsSmart
+        ? { bgRemovalMethod: 'smart', _appliedAt: Date.now() }
+        : { bgRemovalMethod: 'photoroom', _appliedAt: Date.now() }
+
+    const applyHandler = targetMode === 'logo'
+      ? (onApplyLogoSuggestions || onApplySuggestions)
+      : onApplySuggestions
+
+    if (!applyHandler) {
+      alert('Error: Apply callback is not connected.')
+      return true
+    }
+
+    applyHandler(suggestions)
+    setPendingFollowUp(null)
+    if (targetMode !== mode) setMode(targetMode)
+    const settingLabel = wantsNativeTransparent
+      ? 'Native transparent PNG with ChatGPT Images 2.0'
+      : wantsOff
+        ? 'off for normal logo backgrounds'
+        : wantsSmart
+          ? 'smart cleanup'
+          : 'PhotoRoom'
+
+    appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
+    appendLocalMessage({
+      role: 'assistant',
+      content: `Background removal set to ${settingLabel}. No prompt text was changed.`,
+      mode: targetMode,
+    })
+    return true
+  }
+
   const runDirectSuggestionCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
 
@@ -475,6 +558,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         setInput('')
         return
       }
+    }
+    if (!prompt && runDirectBackgroundRemovalCommand(userInput)) {
+      setInput('')
+      return
     }
     if (!prompt && pendingFollowUp && userInput.trim()) {
       const followUpRequest = buildClarificationContinuationRequest(pendingFollowUp.prompt, userInput)
