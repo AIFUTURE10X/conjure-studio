@@ -537,6 +537,17 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const runDirectSuggestionPatchCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
 
+    const patchGenerateCommandTerms = [
+      'make the background white and generate',
+      'make it transparent and generate',
+      'match reference font and generate',
+      'change only the font and generate',
+      'preserve exact text and generate',
+      'then generate',
+      'and generate',
+      'generate it',
+      'run it',
+    ]
     const singleChangePatchTerms = [
       'make the background white',
       'white background',
@@ -559,6 +570,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
     if (!matchesNaturalDirectCommand(userInput, singleChangePatchTerms)) return false
 
+    const shouldGenerateAfterPatch = matchesNaturalDirectCommand(userInput, patchGenerateCommandTerms)
     const latest = getLatestSuggestionMessage()
     if (!latest?.message.suggestions) return false
 
@@ -577,10 +589,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     setPendingFollowUp(null)
     setAppliedIndex(latest.index)
     setTimeout(() => setAppliedIndex(null), 2000)
+    if (shouldGenerateAfterPatch) onGenerateFromAIHelper?.(latest.targetMode)
     appendLocalMessage({ role: 'user', content: userInput, mode: latest.targetMode })
     appendLocalMessage({
       role: 'assistant',
-      content: `Updated the latest ${latest.targetMode} suggestion and applied it to the generator. No model call was needed.`,
+      content: shouldGenerateAfterPatch
+        ? `Updated the latest ${latest.targetMode} suggestion, applied it to the generator, and started generation. No extra model call was needed.`
+        : `Updated the latest ${latest.targetMode} suggestion and applied it to the generator. No model call was needed.`,
       mode: latest.targetMode,
     })
     return true

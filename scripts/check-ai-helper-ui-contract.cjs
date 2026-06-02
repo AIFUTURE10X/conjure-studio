@@ -522,6 +522,20 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can patch and generate the latest suggestion from one natural follow-up',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /patchGenerateCommandTerms/.test(sidebar) &&
+        /make the background white and generate/.test(sidebar) &&
+        /make it transparent and generate/.test(sidebar) &&
+        /shouldGenerateAfterPatch/.test(sidebar) &&
+        /onGenerateFromAIHelper\?\.\(latest\.targetMode\)/.test(sidebar) &&
+        /Updated the latest/.test(sidebar) &&
+        /and started generation/.test(sidebar) &&
+        /No extra model call was needed/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
