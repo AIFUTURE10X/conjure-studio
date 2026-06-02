@@ -55,9 +55,11 @@ export interface AIMessage {
   timestamp?: number
   mode?: AIHelperMode
   responseMode?: 'suggestion' | 'diagnostic'
+  plannerDecision?: string
   designBrief?: string
   executionPlan?: string[]
   diagnosticFindings?: string[]
+  promptQualityChecklist?: string[]
   suggestions?: {
     prompt: string
     negativePrompt?: string
@@ -421,7 +423,19 @@ export function useAIHelper() {
       if (response.ok) {
         const data = await response.json()
         rememberAssistantSuggestion(data, 'image')
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), responseMode: data.responseMode, designBrief: data.designBrief, executionPlan: data.executionPlan, diagnosticFindings: data.diagnosticFindings, suggestions: data.suggestions, actions: data.actions }])
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message,
+          timestamp: Date.now(),
+          responseMode: data.responseMode,
+          plannerDecision: data.plannerDecision,
+          designBrief: data.designBrief,
+          executionPlan: data.executionPlan,
+          diagnosticFindings: data.diagnosticFindings,
+          promptQualityChecklist: data.promptQualityChecklist,
+          suggestions: data.suggestions,
+          actions: data.actions,
+        }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now() }])
@@ -491,7 +505,21 @@ export function useAIHelper() {
       if (response.ok) {
         const data = await response.json()
         rememberAssistantSuggestion(data, 'logo')
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', responseMode: data.responseMode, designBrief: data.designBrief, executionPlan: data.executionPlan, diagnosticFindings: data.diagnosticFindings, logoConfig: data.logoConfig, suggestions: data.suggestions, actions: data.actions }])
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message,
+          timestamp: Date.now(),
+          mode: 'logo',
+          responseMode: data.responseMode,
+          plannerDecision: data.plannerDecision,
+          designBrief: data.designBrief,
+          executionPlan: data.executionPlan,
+          diagnosticFindings: data.diagnosticFindings,
+          promptQualityChecklist: data.promptQualityChecklist,
+          logoConfig: data.logoConfig,
+          suggestions: data.suggestions,
+          actions: data.actions,
+        }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: 'logo' }])
@@ -580,9 +608,11 @@ export function useAIHelper() {
           timestamp: Date.now(),
           mode: isLogo ? 'logo' : 'image',
           responseMode: data.responseMode,
+          plannerDecision: data.plannerDecision,
           designBrief: data.designBrief,
           executionPlan: data.executionPlan,
           diagnosticFindings: data.diagnosticFindings,
+          promptQualityChecklist: data.promptQualityChecklist,
           logoConfig: data.logoConfig,
           suggestions: data.suggestions,
           actions: data.actions,

@@ -27,6 +27,7 @@ import { PromptPreflightPanel } from './AIHelper/PromptPreflightPanel'
 import { DesignBriefCard } from './AIHelper/DesignBriefCard'
 import { ExecutionPlanCard } from './AIHelper/ExecutionPlanCard'
 import { DiagnosticCard } from './AIHelper/DiagnosticCard'
+import { PromptQualityCard } from './AIHelper/PromptQualityCard'
 
 const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
 const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
@@ -510,6 +511,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
             {msg.executionPlan && (
               <ExecutionPlanCard executionPlan={msg.executionPlan} />
+            )}
+
+            {msg.promptQualityChecklist && (
+              <PromptQualityCard plannerDecision={msg.plannerDecision} checklist={msg.promptQualityChecklist} />
             )}
 
             {msg.diagnosticFindings && (

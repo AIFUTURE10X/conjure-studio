@@ -64,6 +64,7 @@ interface HelperAction {
 }
 
 type HelperResponseMode = 'suggestion' | 'diagnostic'
+type HelperPlannerDecision = 'ask_follow_up' | 'suggest_prompt' | 'diagnose' | 'iterate_from_current' | 'compare_to_reference'
 
 interface PromptConstraint {
   key: string
@@ -120,7 +121,24 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - Use "revise_plan" when the user may want to adjust your plan before applying or generating
 - Diagnostic-only questions should use "responseMode": "diagnostic", return diagnosticFindings, and avoid apply/generate actions
 - Return "designBrief" as a compact Working design brief with three lines: What I understood, What to preserve, and What changes next
-- Return "executionPlan" as a Creative execution plan with 2-4 short steps before the user applies or generates`
+- Return "executionPlan" as a Creative execution plan with 2-4 short steps before the user applies or generates
+- Return "plannerDecision" and "promptQualityChecklist" so the UI can show the reasoning boundary before the user applies or generates`
+
+const PROMPT_PLANNER_POLICY = `PROMPT PLANNER POLICY:
+- Decide first, then answer: classify the turn with "plannerDecision" as "ask_follow_up", "suggest_prompt", "diagnose", "iterate_from_current", or "compare_to_reference".
+- Use "ask_follow_up" only when missing essential information would make the result misleading, such as no brand text for a wordmark, no subject for an image, or contradictory background/reference instructions.
+- If a reasonable prompt can be made from the current context, proceed with clear assumptions instead of asking unnecessary questions.
+- For follow-up edits, prefer "iterate_from_current" and preserve locked elements from CHANGE CONTROL CONTEXT.
+- For diagnostic-only questions, use "diagnose" and do not include apply/generate actions.
+- For latest-output plus reference comparison, use "compare_to_reference".
+
+PROMPT SELF-CHECK:
+- Return "promptQualityChecklist" as 3-5 short audit lines.
+- Include a reference match line when reference context exists, naming typography, layout, palette, or composition.
+- Include a locked elements line when CHANGE CONTROL CONTEXT has a preserve list or single requested edit.
+- Include a background line when the request or settings mention white, blue, transparent, true PNG, PhotoRoom, or background removal.
+- Include an exact text or typography line when logo text, spelling, capitalization, font, lettering, or typeface matters.
+- Include a generator settings line when model, resolution, text mode, or background-removal settings need to change.`
 
 function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperAction[] = []): HelperAction[] {
   if (!Array.isArray(rawActions)) return fallbackActions
@@ -165,6 +183,46 @@ function normalizeExecutionPlan(rawPlan: unknown): string[] {
 
 function normalizeResponseMode(rawMode: unknown, diagnosticOnly = false): HelperResponseMode {
   return rawMode === 'diagnostic' || diagnosticOnly ? 'diagnostic' : 'suggestion'
+}
+
+function normalizePlannerDecision(
+  rawDecision: unknown,
+  responseMode: HelperResponseMode,
+  hasSuggestions: boolean,
+  hasOutput: boolean,
+  hasReference: boolean
+): HelperPlannerDecision {
+  if (
+    rawDecision === 'ask_follow_up' ||
+    rawDecision === 'suggest_prompt' ||
+    rawDecision === 'diagnose' ||
+    rawDecision === 'iterate_from_current' ||
+    rawDecision === 'compare_to_reference'
+  ) {
+    return rawDecision
+  }
+
+  if (responseMode === 'diagnostic') return 'diagnose'
+  if (hasOutput && hasReference) return 'compare_to_reference'
+  if (hasOutput) return 'iterate_from_current'
+  return hasSuggestions ? 'suggest_prompt' : 'ask_follow_up'
+}
+
+function normalizePromptQualityChecklist(rawChecklist: unknown, fallbackItems: string[] = []): string[] {
+  const rawItems = Array.isArray(rawChecklist)
+    ? rawChecklist
+    : typeof rawChecklist === 'string'
+      ? rawChecklist.split(/\n|;/)
+      : []
+  const checklist = rawItems
+    .map((item) => typeof item === 'string' ? item.trim() : '')
+    .map((item) => item.replace(/^[-*\d.)\s]+/, '').trim())
+    .filter(Boolean)
+    .slice(0, 5)
+
+  return checklist.length > 0
+    ? checklist
+    : fallbackItems.map((item) => item.trim()).filter(Boolean).slice(0, 5)
 }
 
 function normalizeDiagnosticFindings(rawFindings: unknown, fallbackMessage = ''): string[] {
@@ -433,6 +491,47 @@ function formatPromptConstraints(constraints: PromptConstraint[]): string {
   return constraints
     .map((constraint) => `- ${constraint.label}: ${constraint.promptPhrase}${constraint.negativePhrase ? ` Negative prompt must block: ${constraint.negativePhrase}.` : ''}`)
     .join('\n')
+}
+
+function buildPromptQualityFallback({
+  mode,
+  responseMode,
+  hasReference,
+  hasOutput,
+  hasSuggestions,
+  constraints,
+  hasStrictChangeRequest,
+}: {
+  mode: 'image' | 'logo'
+  responseMode: HelperResponseMode
+  hasReference: boolean
+  hasOutput: boolean
+  hasSuggestions: boolean
+  constraints: PromptConstraint[]
+  hasStrictChangeRequest: boolean
+}): string[] {
+  const hasBackgroundConstraint = constraints.some((constraint) => constraint.key.startsWith('background:'))
+  const hasTypographyConstraint = constraints.some((constraint) => constraint.key === 'typography')
+  const hasExactTextConstraint = constraints.some((constraint) => constraint.key === 'exact-text')
+  const lines = [
+    responseMode === 'diagnostic'
+      ? 'Planner: diagnostic response selected, no generator changes should be applied.'
+      : `Planner: ${hasSuggestions ? 'generation-ready prompt returned' : 'missing essential prompt details, follow-up may be needed'}.`,
+    hasReference
+      ? 'Reference match: reference context was included for typography, layout, palette, or composition.'
+      : 'Reference match: no active reference context is available for this turn.',
+    hasStrictChangeRequest || hasOutput
+      ? 'Locked elements: current draft and preserve list should stay stable except for the requested change.'
+      : `Locked elements: preserve the core ${mode === 'logo' ? 'logo identity, text, layout, and palette' : 'subject, composition, style, and palette'}.`,
+    hasBackgroundConstraint
+      ? 'Background: hard background or transparent PNG constraint was promoted into the prompt and negative prompt.'
+      : 'Background: no hard background change was detected.',
+    hasTypographyConstraint || hasExactTextConstraint
+      ? 'Exact text/typography: text, spelling, capitalization, lettering, and font constraints were protected.'
+      : 'Exact text/typography: no exact text or typography constraint was detected.',
+  ]
+
+  return lines.slice(0, 5)
 }
 
 function buildIterationIntentBrief({
@@ -922,10 +1021,13 @@ export async function POST(request: Request) {
       hasReference: hasReference || hasImageAnalysis,
       hasOutput,
     })
+    const hasStrictChangeRequest = changeControlContext.includes('Change budget: single requested edit')
 
     const systemPrompt = `You are an expert AI image prompt assistant. Help users create detailed, effective prompts for AI image generation.
 
 ${AGENTIC_AI_HELPER_CONTRACT}
+
+${PROMPT_PLANNER_POLICY}
 
 Current Settings:
 - Prompt: ${currentPrompt || "None"}
@@ -1030,6 +1132,7 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 8. Style strength (subtle, moderate, or strong - how much to apply the style)
 9. A Working design brief that makes your assumptions visible before the user applies or generates
 10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
+11. A plannerDecision and promptQualityChecklist that show whether you asked, diagnosed, iterated, or produced a generation-ready prompt
 
 Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2") and suggestions.bgRemovalMethod ("photoroom" or "smart"). Use "photoroom" when the user needs the best post-generation background removal/true PNG cleanup workflow; use "smart" only when they prefer local/free cleanup.
 
@@ -1046,9 +1149,11 @@ Format your response as JSON:
 {
   "responseMode": "suggestion",
   "message": "Your conversational response here",
+  "plannerDecision": "suggest_prompt",
   "designBrief": "What I understood: concise design target.\\nWhat to preserve: stable elements from the prompt, reference, or latest output.\\nWhat changes next: the exact improvement this prompt makes.",
   "executionPlan": ["Plan step 1", "Plan step 2", "Plan step 3"],
   "diagnosticFindings": ["Only include this for diagnostic responses"],
+  "promptQualityChecklist": ["Reference match: ...", "Locked elements: ...", "Background: ...", "Exact text/typography: ..."],
   "suggestions": {
     "prompt": "improved prompt",
     "negativePrompt": "improved negative prompt",
@@ -1096,12 +1201,27 @@ Available style strengths: subtle, moderate, strong`
         ? undefined
         : applyPromptConstraintGuardrails(normalizeImagePromptSuggestions(jsonResponse.suggestions), promptConstraints)
       const hasSuggestions = Boolean(guardedSuggestions?.prompt)
+      const plannerDecision = normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, hasSuggestions, hasOutput, hasReference || hasImageAnalysis)
+      const promptQualityChecklist = normalizePromptQualityChecklist(
+        jsonResponse.promptQualityChecklist,
+        buildPromptQualityFallback({
+          mode: 'image',
+          responseMode,
+          hasReference: hasReference || hasImageAnalysis,
+          hasOutput,
+          hasSuggestions,
+          constraints: promptConstraints,
+          hasStrictChangeRequest,
+        })
+      )
       return NextResponse.json({
         ...jsonResponse,
         responseMode,
+        plannerDecision,
         designBrief: stringFromUnknown(jsonResponse.designBrief),
         executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
         diagnosticFindings: normalizeDiagnosticFindings(jsonResponse.diagnosticFindings, responseMode === 'diagnostic' ? jsonResponse.message : ''),
+        promptQualityChecklist,
         suggestions: guardedSuggestions,
         actions: normalizeHelperActions(
           jsonResponse.actions,
@@ -1114,11 +1234,21 @@ Available style strengths: subtle, moderate, strong`
     return NextResponse.json({
       message: responseText,
       responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
+      plannerDecision: diagnosticOnly ? 'diagnose' : 'iterate_from_current',
       designBrief: currentPrompt
         ? `What I understood: Improve the current prompt from the active generator context.\nWhat to preserve: Keep the current subject, style, and explicit constraints.\nWhat changes next: Reuse the current prompt until the helper can parse a stronger structured response.`
         : null,
       executionPlan: currentPrompt ? ['Review the current prompt and constraints', 'Preserve stable visual elements', 'Apply the requested follow-up change'] : [],
       diagnosticFindings: diagnosticOnly ? normalizeDiagnosticFindings([], responseText) : [],
+      promptQualityChecklist: buildPromptQualityFallback({
+        mode: 'image',
+        responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
+        hasReference: hasReference || hasImageAnalysis,
+        hasOutput,
+        hasSuggestions: Boolean(currentPrompt),
+        constraints: promptConstraints,
+        hasStrictChangeRequest,
+      }),
       suggestions: diagnosticOnly ? undefined : applyPromptConstraintGuardrails({
         prompt: currentPrompt || "",
         negativePrompt: currentNegativePrompt || "",
@@ -1316,10 +1446,13 @@ async function handleLogoMode(
       hasReference: hasReference || Boolean(logoAnalysis),
       hasOutput,
     })
+    const hasStrictChangeRequest = changeControlContext.includes('Change budget: single requested edit')
 
     const fullPrompt = `${logoSystemPrompt}
 
 ${AGENTIC_AI_HELPER_CONTRACT}
+
+${PROMPT_PLANNER_POLICY}
 
 Current Logo/Image Studio Settings:
 ${JSON.stringify(currentPromptSettings || {}, null, 2)}
@@ -1404,10 +1537,15 @@ User Request: ${message}
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
 Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", "smart", "native-transparent", etc.), and suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup; use native-transparent only with selectedModel gpt-image-2.
-Remember to respond with a JSON object containing "message", "designBrief", "executionPlan", "suggestions", "logoConfig", and "actions" as specified above.
+Remember to respond with a JSON object containing "message", "plannerDecision", "designBrief", "executionPlan", "promptQualityChecklist", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.
+Prompt self-check requirement: Return promptQualityChecklist as 3-5 short audit lines for reference match, locked elements, background, exact text/typography, and generator settings when relevant.
 Diagnostic-only questions: If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, return "responseMode": "diagnostic", include diagnosticFindings, set suggestions to null, keep logoConfig empty, and do not include apply/generate actions.
+
+JSON fields:
+"plannerDecision": "ask_follow_up | suggest_prompt | diagnose | iterate_from_current | compare_to_reference"
+"promptQualityChecklist": ["Reference match: ...", "Locked elements: ...", "Background: ...", "Exact text/typography: ...", "Generator settings: ..."]
 
 Action schema:
 "actions": [
@@ -1441,14 +1579,29 @@ Action schema:
           ? {}
           : applyLogoConfigConstraintGuardrails(jsonResponse.logoConfig, promptConstraints)
         const hasLogoConfig = Boolean(logoConfig && Object.keys(logoConfig).length > 0)
+        const plannerDecision = normalizePlannerDecision(jsonResponse.plannerDecision, responseMode, Boolean(logoSuggestions?.prompt), hasOutput, hasReference || Boolean(logoAnalysis))
+        const promptQualityChecklist = normalizePromptQualityChecklist(
+          jsonResponse.promptQualityChecklist,
+          buildPromptQualityFallback({
+            mode: 'logo',
+            responseMode,
+            hasReference: hasReference || Boolean(logoAnalysis),
+            hasOutput,
+            hasSuggestions: Boolean(logoSuggestions?.prompt),
+            constraints: promptConstraints,
+            hasStrictChangeRequest,
+          })
+        )
         console.log("[v0 API] Logo mode - Successfully parsed JSON response with config keys:",
           hasLogoConfig ? Object.keys(logoConfig) : 'none')
         return NextResponse.json({
           message: jsonResponse.message || "Here are my logo design suggestions.",
           responseMode,
+          plannerDecision,
           designBrief: stringFromUnknown(jsonResponse.designBrief),
           executionPlan: normalizeExecutionPlan(jsonResponse.executionPlan),
           diagnosticFindings: normalizeDiagnosticFindings(jsonResponse.diagnosticFindings, responseMode === 'diagnostic' ? jsonResponse.message : ''),
+          promptQualityChecklist,
           suggestions: logoSuggestions,
           logoConfig,
           actions: normalizeHelperActions(
@@ -1467,7 +1620,17 @@ Action schema:
     return NextResponse.json({
       message: responseText,
       responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
+      plannerDecision: diagnosticOnly ? 'diagnose' : 'ask_follow_up',
       diagnosticFindings: diagnosticOnly ? normalizeDiagnosticFindings([], responseText) : [],
+      promptQualityChecklist: buildPromptQualityFallback({
+        mode: 'logo',
+        responseMode: diagnosticOnly ? 'diagnostic' : 'suggestion',
+        hasReference: hasReference || Boolean(logoAnalysis),
+        hasOutput,
+        hasSuggestions: false,
+        constraints: promptConstraints,
+        hasStrictChangeRequest,
+      }),
       logoConfig: {},
       actions: diagnosticOnly ? [] : defaultHelperActions('logo', false, false, hasOutput, hasReference, lastPersistentGeneration),
       mode: 'logo'

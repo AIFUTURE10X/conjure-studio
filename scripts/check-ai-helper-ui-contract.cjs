@@ -598,6 +598,33 @@ const checks = [
     },
   },
   {
+    name: 'AI helper runs a planner policy and shows a prompt self-check audit',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const auditCard = read('app/image-studio/components/AIHelper/PromptQualityCard.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /plannerDecision\?: string/.test(hook) &&
+        /promptQualityChecklist\?: string\[\]/.test(hook) &&
+        /plannerDecision: data\.plannerDecision/.test(hook) &&
+        /promptQualityChecklist: data\.promptQualityChecklist/.test(hook) &&
+        /PromptQualityCard/.test(sidebar) &&
+        /msg\.promptQualityChecklist/.test(sidebar) &&
+        /Prompt self-check/.test(auditCard) &&
+        /Planner/.test(auditCard) &&
+        /normalizePromptQualityChecklist/.test(route) &&
+        /PROMPT PLANNER POLICY/.test(route) &&
+        /PROMPT SELF-CHECK/.test(route) &&
+        /plannerDecision/.test(route) &&
+        /promptQualityChecklist/.test(route) &&
+        /missing essential/.test(route) &&
+        /reference match/.test(route) &&
+        /locked elements/.test(route) &&
+        /background/.test(route) &&
+        /exact text/.test(route)
+    },
+  },
+  {
     name: 'AI helper supports diagnostic-only chat without forcing generator changes',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
