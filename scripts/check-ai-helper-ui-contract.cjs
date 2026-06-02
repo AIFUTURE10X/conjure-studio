@@ -301,6 +301,31 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can apply image generator setting patches from chat suggestions',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      const handler = read('app/image-studio/hooks/useAISuggestionsHandler.ts')
+      const page = read('app/image-studio/hooks/usePageState.ts')
+      const card = read('app/image-studio/components/AIHelper/SuggestionCard.tsx')
+      return /selectedModel\?: string/.test(hook) &&
+        /bgRemovalMethod\?: string/.test(hook) &&
+        /normalizeImagePromptSuggestions/.test(route) &&
+        /selectedModel: normalizeImageSetting/.test(route) &&
+        /bgRemovalMethod: normalizeImageSetting/.test(route) &&
+        /Image settings patch/.test(route) &&
+        /setSelectedModel: \(value: GenerationModel\) => void/.test(handler) &&
+        /setUsePhotoRoomBgRemoval: \(enabled: boolean\) => void/.test(handler) &&
+        /validImageModels/.test(handler) &&
+        /setSelectedModel\(normalizedModel as GenerationModel\)/.test(handler) &&
+        /setUsePhotoRoomBgRemoval\(normalizedBgRemovalMethod === 'photoroom'\)/.test(handler) &&
+        /setSelectedModel: state\.setSelectedModel/.test(page) &&
+        /setUsePhotoRoomBgRemoval: state\.setUsePhotoRoomBgRemoval/.test(page) &&
+        /Model:/.test(card) &&
+        /BG Method:/.test(card)
+    },
+  },
+  {
     name: 'AI helper suggested prompts and preflight fixes can run immediately',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')

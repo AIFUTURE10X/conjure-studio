@@ -31,6 +31,14 @@ const CREATIVE_DIRECTION_OPTION_CONTEXT = [
   `Decorative Elements: ${DECORATIVE_ELEMENT_OPTIONS.map((option) => option.label).join(", ")}`,
 ].join("\n")
 
+const IMAGE_GENERATION_MODELS = [
+  'gemini-3.1-flash-image-preview',
+  'gemini-3-pro-image-preview',
+  'gpt-image-2',
+] as const
+
+const IMAGE_BACKGROUND_REMOVAL_METHODS = ['photoroom', 'smart'] as const
+
 type HelperActionType =
   | 'apply_suggestions'
   | 'apply_and_generate'
@@ -62,6 +70,19 @@ interface PromptConstraint {
   label: string
   promptPhrase: string
   negativePhrase?: string
+}
+
+interface ImagePromptSuggestions {
+  prompt: string
+  negativePrompt?: string
+  style: string
+  cameraAngle: string
+  cameraLens: string
+  aspectRatio: string
+  styleStrength: 'subtle' | 'moderate' | 'strong'
+  resolution: string
+  selectedModel?: string
+  bgRemovalMethod?: string
 }
 
 const HELPER_ACTION_TYPES = new Set<HelperActionType>([
@@ -680,6 +701,42 @@ function formatCreativeDirectionContext(input: Partial<CreativeDirectionState> |
   return selectedLines.join("\n")
 }
 
+function normalizeImageSetting<T extends readonly string[]>(rawValue: unknown, allowedValues: T): T[number] | undefined {
+  if (typeof rawValue !== 'string') return undefined
+  const value = rawValue.trim()
+  return allowedValues.includes(value) ? value as T[number] : undefined
+}
+
+function normalizeImagePromptSuggestions(rawSuggestions: unknown): ImagePromptSuggestions | undefined {
+  if (!rawSuggestions || typeof rawSuggestions !== 'object') return undefined
+
+  const suggestions = rawSuggestions as Record<string, unknown>
+  const prompt = stringFromUnknown(suggestions.prompt)
+  if (!prompt) return undefined
+
+  const styleStrength = stringFromUnknown(suggestions.styleStrength, 'moderate').toLowerCase()
+  const normalizedStyleStrength: ImagePromptSuggestions['styleStrength'] =
+    styleStrength === 'subtle' || styleStrength === 'strong' ? styleStrength : 'moderate'
+  const negativePrompt = stringFromUnknown(suggestions.negativePrompt)
+  const normalizedImageSettings = {
+    selectedModel: normalizeImageSetting(suggestions.selectedModel || suggestions.model, IMAGE_GENERATION_MODELS),
+    bgRemovalMethod: normalizeImageSetting(suggestions.bgRemovalMethod || suggestions.imageBgRemovalMethod, IMAGE_BACKGROUND_REMOVAL_METHODS),
+  }
+
+  return {
+    prompt,
+    ...(negativePrompt ? { negativePrompt } : {}),
+    style: stringFromUnknown(suggestions.style, 'Realistic'),
+    cameraAngle: stringFromUnknown(suggestions.cameraAngle, 'None'),
+    cameraLens: stringFromUnknown(suggestions.cameraLens, 'None'),
+    aspectRatio: stringFromUnknown(suggestions.aspectRatio, '1:1'),
+    styleStrength: normalizedStyleStrength,
+    resolution: stringFromUnknown(suggestions.resolution || suggestions.imageSize, '1K'),
+    ...(normalizedImageSettings.selectedModel ? { selectedModel: normalizedImageSettings.selectedModel } : {}),
+    ...(normalizedImageSettings.bgRemovalMethod ? { bgRemovalMethod: normalizedImageSettings.bgRemovalMethod } : {}),
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const {
@@ -875,6 +932,8 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 9. A Working design brief that makes your assumptions visible before the user applies or generates
 10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
 
+Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2") and suggestions.bgRemovalMethod ("photoroom" or "smart"). Use "photoroom" when the user needs the best post-generation background removal/true PNG cleanup workflow; use "smart" only when they prefer local/free cleanup.
+
 Diagnostic-only questions:
 - If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, set "responseMode": "diagnostic".
 - In diagnostic mode, answer directly, return "diagnosticFindings", set "suggestions" to null, and use actions such as "copy_prompt" only when useful. Do not include apply/generate actions.
@@ -898,7 +957,9 @@ Format your response as JSON:
     "cameraAngle": "camera_angle_value or None",
     "cameraLens": "camera_lens_value or None",
     "aspectRatio": "aspect_ratio_value",
-    "styleStrength": "moderate"
+    "styleStrength": "moderate",
+    "selectedModel": "optional image model id",
+    "bgRemovalMethod": "optional photoroom or smart"
   },
   "actions": [
     { "type": "apply_suggestions", "label": "Apply to Image Generator", "description": "Use this prompt and settings" },
@@ -934,7 +995,7 @@ Available style strengths: subtle, moderate, strong`
       const responseMode = normalizeResponseMode(jsonResponse.responseMode, diagnosticOnly)
       const guardedSuggestions = responseMode === 'diagnostic'
         ? undefined
-        : applyPromptConstraintGuardrails(jsonResponse.suggestions, promptConstraints)
+        : applyPromptConstraintGuardrails(normalizeImagePromptSuggestions(jsonResponse.suggestions), promptConstraints)
       const hasSuggestions = Boolean(guardedSuggestions?.prompt)
       return NextResponse.json({
         ...jsonResponse,

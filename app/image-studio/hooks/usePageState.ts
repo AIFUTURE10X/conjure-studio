@@ -144,6 +144,8 @@ export function usePageState() {
     setSelectedCameraLens: state.setSelectedCameraLens,
     setStyleStrength: state.setStyleStrength,
     setImageSize: state.setImageSize,
+    setSelectedModel: state.setSelectedModel,
+    setUsePhotoRoomBgRemoval: state.setUsePhotoRoomBgRemoval,
   })
 
   const handleApplyLogoSuggestions = useCallback((suggestions: { prompt?: string; negativePrompt?: string }) => {

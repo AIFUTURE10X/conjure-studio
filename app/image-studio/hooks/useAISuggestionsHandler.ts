@@ -7,6 +7,7 @@
  */
 
 import { useCallback } from 'react'
+import type { GenerationModel } from '../components/GeneratePanel/ModelSelector'
 import {
   normalizeValue,
   styleSynonyms,
@@ -26,6 +27,10 @@ interface AISuggestions {
   cameraLens?: string
   styleStrength?: string
   resolution?: string
+  selectedModel?: string
+  model?: string
+  bgRemovalMethod?: string
+  imageBgRemovalMethod?: string
 }
 
 interface UseAISuggestionsHandlerProps {
@@ -37,7 +42,15 @@ interface UseAISuggestionsHandlerProps {
   setSelectedCameraLens: (value: string) => void
   setStyleStrength: (value: StyleStrength) => void
   setImageSize: (value: '1K' | '2K' | '4K') => void
+  setSelectedModel: (value: GenerationModel) => void
+  setUsePhotoRoomBgRemoval: (enabled: boolean) => void
 }
+
+const validImageModels: GenerationModel[] = [
+  'gemini-3.1-flash-image-preview',
+  'gemini-3-pro-image-preview',
+  'gpt-image-2',
+]
 
 export function useAISuggestionsHandler({
   setMainPrompt,
@@ -48,6 +61,8 @@ export function useAISuggestionsHandler({
   setSelectedCameraLens,
   setStyleStrength,
   setImageSize,
+  setSelectedModel,
+  setUsePhotoRoomBgRemoval,
 }: UseAISuggestionsHandlerProps) {
   const handleApplyAISuggestions = useCallback((suggestions: AISuggestions) => {
     console.log('[v0] ===== handleApplyAISuggestions CALLED =====')
@@ -140,6 +155,25 @@ export function useAISuggestionsHandler({
       }
     }
 
+    const suggestedModel = suggestions.selectedModel || suggestions.model
+    const normalizedModel = suggestedModel && validImageModels.includes(suggestedModel as GenerationModel)
+      ? suggestedModel
+      : null
+    if (normalizedModel) {
+      console.log('[v0] Setting selectedModel to:', normalizedModel)
+      setSelectedModel(normalizedModel as GenerationModel)
+    } else if (suggestedModel) {
+      console.warn('[v0] Unrecognized image model suggestion:', suggestedModel)
+    }
+
+    const normalizedBgRemovalMethod = suggestions.bgRemovalMethod || suggestions.imageBgRemovalMethod
+    if (normalizedBgRemovalMethod === 'photoroom' || normalizedBgRemovalMethod === 'smart') {
+      console.log('[v0] Setting PhotoRoom BG removal to:', normalizedBgRemovalMethod === 'photoroom')
+      setUsePhotoRoomBgRemoval(normalizedBgRemovalMethod === 'photoroom')
+    } else if (normalizedBgRemovalMethod) {
+      console.warn('[v0] Unrecognized image background removal suggestion:', normalizedBgRemovalMethod)
+    }
+
     console.log('[v0] ===== AI suggestions applied successfully =====')
   }, [
     setMainPrompt,
@@ -150,6 +184,8 @@ export function useAISuggestionsHandler({
     setSelectedCameraLens,
     setStyleStrength,
     setImageSize,
+    setSelectedModel,
+    setUsePhotoRoomBgRemoval,
   ])
 
   return handleApplyAISuggestions
