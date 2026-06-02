@@ -570,7 +570,10 @@ const checks = [
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /sharedProjectBrief\?: string/.test(hook) &&
         /getSharedProjectBrief/.test(hook) &&
-        /sharedProjectBrief: getSharedProjectBrief\(messages\)/.test(hook) &&
+        /designBrief\?: string/.test(hook) &&
+        /designBrief: typeof data\.designBrief === 'string'/.test(hook) &&
+        /getSharedProjectBrief\(messages, generationMemory\)/.test(hook) &&
+        /generationMemoryWithBrief/.test(hook) &&
         /sharedProjectBrief=/.test(sidebar) &&
         /Shared project brief:/.test(sidebar) &&
         /sharedProjectBrief\?: string/.test(snapshot) &&

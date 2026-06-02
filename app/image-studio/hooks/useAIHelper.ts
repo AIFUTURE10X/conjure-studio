@@ -108,6 +108,7 @@ export interface AIHelperMemorySnapshot {
   prompt?: string
   negativePrompt?: string
   summary?: string
+  designBrief?: string
   analysis?: string
   preference?: string
 }
@@ -140,7 +141,7 @@ export function buildAgentMemory(
     .reverse()
     .find((message) => message.role === 'assistant' && (!message.mode || message.mode === mode))
   const activeDesignBrief = getActiveDesignBrief(messages, mode)
-  const sharedProjectBrief = getSharedProjectBrief(messages)
+  const sharedProjectBrief = getSharedProjectBrief(messages, generationMemory)
   const activeTaskContext = buildActiveTaskContext(messages, mode)
   const persistentGenerations = generationMemory
     .filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'suggestion')
@@ -181,10 +182,17 @@ export function getActiveDesignBrief(messages: AIMessage[], mode: AIHelperMode):
     })?.designBrief
 }
 
-export function getSharedProjectBrief(messages: AIMessage[]): string | undefined {
-  return [...messages]
+export function getSharedProjectBrief(messages: AIMessage[], generationMemory: AIHelperMemorySnapshot[] = []): string | undefined {
+  const messageBrief = [...messages]
     .reverse()
     .find((message) => message.role === 'assistant' && Boolean(message.designBrief?.trim()))?.designBrief
+  if (messageBrief?.trim()) return messageBrief
+
+  const generationMemoryWithBrief = [...generationMemory]
+    .reverse()
+    .find((snapshot) => snapshot.kind === 'suggestion' && Boolean(snapshot.designBrief?.trim() || snapshot.summary?.trim()))
+
+  return generationMemoryWithBrief?.designBrief || generationMemoryWithBrief?.summary
 }
 
 export function parseDesignBriefLine(designBrief: string | undefined, label: string): string {
@@ -323,6 +331,7 @@ export function useAIHelper() {
       prompt: data.suggestions.prompt,
       negativePrompt: data.suggestions.negativePrompt,
       summary: typeof data.message === 'string' ? data.message : undefined,
+      designBrief: typeof data.designBrief === 'string' ? data.designBrief : undefined,
     })
   }, [rememberMemorySnapshot])
 
@@ -652,7 +661,7 @@ export function useAIHelper() {
     preferenceCount: preferenceMemory.length,
     preferenceMemory,
     activeDesignBrief: getActiveDesignBrief(messages, mode),
-    sharedProjectBrief: getSharedProjectBrief(messages),
+    sharedProjectBrief: getSharedProjectBrief(messages, generationMemory),
     activeTaskContext: buildActiveTaskContext(messages, mode),
     forgetPreference,
     cancelRequest,
