@@ -225,6 +225,11 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
   const matchesDirectCommand = (value: string, terms: string[]) => terms.includes(normalizeDirectCommand(value))
 
+  const matchesNaturalDirectCommand = (value: string, terms: string[]) => {
+    const normalized = normalizeDirectCommand(value)
+    return terms.some((term) => normalized === term || normalized.includes(term))
+  }
+
   const runDirectSuggestionCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
 
@@ -274,10 +279,77 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return true
   }
 
+  const runDirectLatestOutputCommand = (userInput: string) => {
+    if (uploadedImages.length > 0) return false
+
+    const critiqueCommandTerms = [
+      'critique',
+      'critique latest',
+      'critique this',
+      'what went wrong',
+      'what missed',
+      'why is it wrong',
+      'fix the latest',
+    ]
+    const compareCommandTerms = [
+      'compare to reference',
+      'compare it to the reference',
+      'compare latest to reference',
+      'match the reference',
+      'closer to the reference',
+    ]
+    const variationCommandTerms = [
+      'make a variation',
+      'make another variation',
+      'make another version',
+      'another version',
+      'new version',
+      'try another version',
+      'create another option',
+    ]
+
+    const directAction: Extract<AIHelperAction['type'], 'critique_last_output' | 'make_variation' | 'compare_to_reference'> | null =
+      matchesNaturalDirectCommand(userInput, compareCommandTerms)
+        ? 'compare_to_reference'
+        : matchesNaturalDirectCommand(userInput, variationCommandTerms)
+          ? 'make_variation'
+          : matchesNaturalDirectCommand(userInput, critiqueCommandTerms)
+            ? 'critique_last_output'
+            : null
+
+    if (!directAction) return false
+
+    const latestOutput = mode === 'logo' ? latestOutputs.logo : latestOutputs.image
+    const feedbackMessage = directAction === 'compare_to_reference'
+      ? `Comparing the latest ${mode} to the remembered reference.`
+      : directAction === 'make_variation'
+        ? `Making a new variation from the latest ${mode}.`
+        : `Critiquing the latest ${mode} output.`
+
+    appendLocalMessage({ role: 'user', content: userInput, mode })
+
+    if (!latestOutput?.url) {
+      appendLocalMessage({
+        role: 'assistant',
+        content: `Generate a ${mode} first, then I can ${directAction === 'make_variation' ? 'make a variation from it' : directAction === 'compare_to_reference' ? 'compare it to the reference' : 'critique it'}.`,
+        mode,
+      })
+      return true
+    }
+
+    appendLocalMessage({ role: 'assistant', content: feedbackMessage, mode })
+    void sendActionMessage(directAction, currentPromptSettings, latestOutput, mode, { skipUserMessage: true })
+    return true
+  }
+
   const runHelperPrompt = async (prompt?: string) => {
     if (isLoading) return
     const userInput = prompt?.trim() || input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
     if (!userInput.trim() && uploadedImages.length === 0) return
+    if (!prompt && runDirectLatestOutputCommand(userInput)) {
+      setInput('')
+      return
+    }
     if (!prompt && runDirectSuggestionCommand(userInput)) {
       setInput('')
       return

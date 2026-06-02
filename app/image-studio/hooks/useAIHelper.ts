@@ -435,7 +435,8 @@ export function useAIHelper() {
     actionType: Extract<AIHelperActionType, 'critique_last_output' | 'make_variation' | 'compare_to_reference'>,
     currentPromptSettings: any = {},
     latestOutput?: AIHelperLatestOutput | null,
-    targetMode: AIHelperMode = mode
+    targetMode: AIHelperMode = mode,
+    options: { skipUserMessage?: boolean } = {}
   ) => {
     const isLogo = targetMode === 'logo'
     const actionLabel = actionType === 'critique_last_output'
@@ -449,7 +450,9 @@ export function useAIHelper() {
         ? `Compare the latest generated ${isLogo ? 'logo' : 'image'} against my most recent reference analysis. Identify exact mismatches and give me a corrected prompt and settings.`
         : `Make a new variation from the latest generated ${isLogo ? 'logo' : 'image'}. Keep what works, fix weak parts, and give me the next prompt and settings.`
 
-    setMessages(prev => [...prev, { role: 'user', content: actionLabel, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
+    if (!options.skipUserMessage) {
+      setMessages(prev => [...prev, { role: 'user', content: actionLabel, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
+    }
     const requestController = new AbortController()
     abortControllerRef.current = requestController
     setIsLoading(true)

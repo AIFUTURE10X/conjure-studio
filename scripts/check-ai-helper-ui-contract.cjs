@@ -328,6 +328,20 @@ const checks = [
         /Started generation from the latest/.test(sidebar)
     },
   },
+  {
+    name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /runDirectLatestOutputCommand/.test(sidebar) &&
+        /critiqueCommandTerms/.test(sidebar) &&
+        /compareCommandTerms/.test(sidebar) &&
+        /variationCommandTerms/.test(sidebar) &&
+        /sendActionMessage\(directAction/.test(sidebar) &&
+        /Critiquing the latest/.test(sidebar) &&
+        /Comparing the latest/.test(sidebar) &&
+        /Making a new variation/.test(sidebar)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
