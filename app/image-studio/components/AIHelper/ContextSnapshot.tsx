@@ -175,7 +175,7 @@ export function ContextSnapshot({
     ? 'grid gap-3'
     : 'grid gap-3 lg:grid-cols-3'
   const contextRowGridClass = variant === 'workspace'
-    ? 'grid grid-cols-2 gap-2'
+    ? 'grid grid-cols-2 gap-2 xl:grid-cols-3'
     : 'flex flex-wrap gap-2'
 
   return (

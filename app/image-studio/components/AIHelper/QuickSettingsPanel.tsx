@@ -82,8 +82,8 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
       ],
     },
   ]
-  const quickSettingsGridClass = 'grid grid-cols-2 gap-2'
-  const settingButtonClass = 'inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold transition-colors'
+  const quickSettingsGridClass = 'grid grid-cols-2 gap-2 xl:grid-cols-3'
+  const settingButtonClass = 'inline-flex min-h-[52px] items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold transition-colors'
 
   return (
     <div className="border-b border-[#c99850]/20 bg-zinc-950/40 px-4 py-4 sm:px-5">

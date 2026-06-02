@@ -22,10 +22,11 @@ const checks = [
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       return /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
         /helperWorkspaceClass/.test(sidebar) &&
+        /halfCanvasWorkspaceStyle/.test(sidebar) &&
         /helperWorkspaceStyle/.test(sidebar) &&
         /helperSettingsRailClass/.test(sidebar) &&
         /helperConversationClass/.test(sidebar) &&
-        /gridTemplateColumns: 'minmax\(460px, 560px\) minmax\(0, 1fr\)'/.test(sidebar) &&
+        /gridTemplateColumns: 'minmax\(0, 1fr\) minmax\(0, 1fr\)'/.test(sidebar) &&
         /isExpanded \? 'workspace' : 'drawer'/.test(sidebar) &&
         /variant\?: 'drawer' \| 'workspace'/.test(snapshot) &&
         /contextGroups/.test(snapshot) &&
@@ -40,17 +41,17 @@ const checks = [
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
-      return /gridTemplateColumns: 'minmax\(460px, 560px\) minmax\(0, 1fr\)'/.test(sidebar) &&
+      return /gridTemplateColumns: 'minmax\(0, 1fr\) minmax\(0, 1fr\)'/.test(sidebar) &&
         /helperWorkspaceStyle/.test(sidebar) &&
         /ContextRow/.test(snapshot) &&
         /contextRowGridClass/.test(snapshot) &&
         /variant === 'workspace'/.test(snapshot) &&
         /Settings overview/.test(snapshot) &&
-        /grid-cols-2/.test(snapshot) &&
+        /grid-cols-3/.test(snapshot) &&
         /quickSettingsGridClass/.test(quickSettings) &&
         /settingButtonClass/.test(quickSettings) &&
-        /grid-cols-2/.test(quickSettings) &&
-        /min-h-\[44px\]/.test(quickSettings)
+        /grid-cols-3/.test(quickSettings) &&
+        /min-h-\[52px\]/.test(quickSettings)
     },
   },
   {
