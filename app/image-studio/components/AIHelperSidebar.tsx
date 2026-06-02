@@ -30,8 +30,8 @@ import { ExecutionPlanCard } from './AIHelper/ExecutionPlanCard'
 import { DiagnosticCard } from './AIHelper/DiagnosticCard'
 import { PromptQualityCard } from './AIHelper/PromptQualityCard'
 
-const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
 const AI_HELPER_PANEL_EXPANDED_WIDTH = '100vw'
+type AIHelperSettingsTab = 'overview' | 'quick-settings'
 
 interface AIHelperSidebarProps {
   isOpen: boolean
@@ -87,13 +87,14 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editedSuggestions, setEditedSuggestions] = useState<any>({})
   const [appliedIndex, setAppliedIndex] = useState<number | null>(null)
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [helperSettingsTab, setHelperSettingsTab] = useState<AIHelperSettingsTab>('overview')
   const [pendingFollowUp, setPendingFollowUp] = useState<{ prompt: string; mode: AIHelperMode } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, sharedProjectBrief, activeTaskContext, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => { if (isOpen) setHelperSettingsTab('overview') }, [isOpen])
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -1156,73 +1157,100 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   if (!isOpen) return null
 
   const suggestionMessages = messages.filter(m => m.suggestions)
-  const contextVariant = isExpanded ? 'workspace' : 'drawer'
+  const contextVariant = 'workspace'
   const halfCanvasWorkspaceStyle = { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }
-  const helperWorkspaceClass = isExpanded
-    ? 'grid min-h-0 flex-1 grid-cols-1 bg-zinc-900 lg:grid-cols-none'
-    : 'flex min-h-0 flex-1 flex-col'
-  const helperWorkspaceStyle = isExpanded
-    ? halfCanvasWorkspaceStyle
-    : undefined
-  const helperSettingsRailClass = isExpanded
-    ? 'min-h-0 overflow-y-auto border-b border-[#c99850]/20 bg-zinc-950/70 lg:border-b-0 lg:border-r lg:border-[#c99850]/25'
-    : 'contents'
-  const helperConversationClass = isExpanded
-    ? 'flex min-h-0 flex-col bg-zinc-900'
-    : 'flex min-h-0 flex-1 flex-col'
+  const helperWorkspaceClass = 'grid min-h-0 flex-1 grid-cols-1 bg-zinc-900 lg:grid-cols-none'
+  const helperWorkspaceStyle = halfCanvasWorkspaceStyle
+  const helperSettingsRailClass = 'min-h-0 overflow-y-auto border-b border-[#c99850]/20 bg-zinc-950/70 lg:border-b-0 lg:border-r lg:border-[#c99850]/25'
+  const helperConversationClass = 'flex min-h-0 flex-col bg-zinc-900'
+  const settingsTabButtonClass = 'flex min-h-[52px] flex-1 flex-col items-start justify-center rounded-md border px-3 py-2 text-left transition-colors'
 
   return (
     <div
       className="fixed right-0 top-0 z-50 flex h-full max-w-full flex-col border-l border-[#c99850]/30 bg-zinc-900 shadow-2xl transition-[width] duration-300 animate-in slide-in-from-right"
-      style={{ width: isExpanded ? AI_HELPER_PANEL_EXPANDED_WIDTH : AI_HELPER_PANEL_WIDTH }}
+      style={{ width: AI_HELPER_PANEL_EXPANDED_WIDTH }}
     >
       <AIHelperHeader
         mode={mode}
         setMode={setMode}
-        isExpanded={isExpanded}
-        onToggleExpanded={() => setIsExpanded((value) => !value)}
         onClearHistory={clearHistory}
         onClose={onClose}
       />
 
       <div className={helperWorkspaceClass} style={helperWorkspaceStyle}>
         <div className={helperSettingsRailClass}>
-          <ContextSnapshot
-            mode={mode}
-            variant={contextVariant}
-            currentPromptSettings={currentPromptSettings}
-            uploadedImages={uploadedImages}
-            preferenceCount={preferenceCount}
-            preferenceMemory={preferenceMemory}
-            activeDesignBrief={activeDesignBrief}
-            sharedProjectBrief={sharedProjectBrief}
-            activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
-            onForgetPreference={forgetPreference}
-            latestOutputs={latestOutputs}
-          />
+          <div className="sticky top-0 z-10 border-b border-[#c99850]/20 bg-zinc-950/95 px-4 py-3 backdrop-blur sm:px-5">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Settings</div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setHelperSettingsTab('overview')}
+                className={`${settingsTabButtonClass} ${
+                  helperSettingsTab === 'overview'
+                    ? 'border-[#c99850]/50 bg-[#c99850]/15 text-[#f0d49b]'
+                    : 'border-zinc-700 bg-zinc-900/80 text-zinc-400 hover:border-[#c99850]/40 hover:text-zinc-100'
+                }`}
+              >
+                <span className="text-sm font-semibold">Overview</span>
+                <span className="text-[11px] font-medium text-zinc-500">References & Memory</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHelperSettingsTab('quick-settings')}
+                className={`${settingsTabButtonClass} ${
+                  helperSettingsTab === 'quick-settings'
+                    ? 'border-[#c99850]/50 bg-[#c99850]/15 text-[#f0d49b]'
+                    : 'border-zinc-700 bg-zinc-900/80 text-zinc-400 hover:border-[#c99850]/40 hover:text-zinc-100'
+                }`}
+              >
+                <span className="text-sm font-semibold">Quick Settings</span>
+                <span className="text-[11px] font-medium text-zinc-500">Resolution & Next</span>
+              </button>
+            </div>
+          </div>
 
-          <QuickSettingsPanel
-            mode={mode}
-            currentPromptSettings={currentPromptSettings}
-            onRunSetting={handleQuickSettingClick}
-          />
+          {helperSettingsTab === 'overview' && (
+            <ContextSnapshot
+              mode={mode}
+              variant={contextVariant}
+              currentPromptSettings={currentPromptSettings}
+              uploadedImages={uploadedImages}
+              preferenceCount={preferenceCount}
+              preferenceMemory={preferenceMemory}
+              activeDesignBrief={activeDesignBrief}
+              sharedProjectBrief={sharedProjectBrief}
+              activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
+              onForgetPreference={forgetPreference}
+              latestOutputs={latestOutputs}
+            />
+          )}
 
-          <PromptSuggestionChips
-            mode={mode}
-            currentPromptSettings={currentPromptSettings}
-            uploadedImages={uploadedImages}
-            latestOutputs={latestOutputs}
-            onSelectPrompt={setInput}
-            onRunPrompt={(prompt) => void runHelperPrompt(prompt)}
-          />
+          {helperSettingsTab === 'quick-settings' && (
+            <>
+              <QuickSettingsPanel
+                mode={mode}
+                currentPromptSettings={currentPromptSettings}
+                onRunSetting={handleQuickSettingClick}
+              />
 
-          <PromptPreflightPanel
-            mode={mode}
-            currentPromptSettings={currentPromptSettings}
-            uploadedImages={uploadedImages}
-            onAskHelper={setInput}
-            onRunFix={(prompt) => void runHelperPrompt(prompt)}
-          />
+              <PromptSuggestionChips
+                mode={mode}
+                currentPromptSettings={currentPromptSettings}
+                uploadedImages={uploadedImages}
+                latestOutputs={latestOutputs}
+                onSelectPrompt={setInput}
+                onRunPrompt={(prompt) => void runHelperPrompt(prompt)}
+              />
+
+              <PromptPreflightPanel
+                mode={mode}
+                currentPromptSettings={currentPromptSettings}
+                uploadedImages={uploadedImages}
+                onAskHelper={setInput}
+                onRunFix={(prompt) => void runHelperPrompt(prompt)}
+              />
+            </>
+          )}
         </div>
 
         <div className={helperConversationClass}>

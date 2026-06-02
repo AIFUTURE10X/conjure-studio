@@ -1,18 +1,16 @@
 'use client'
 
-import { X, Trash2, ImageIcon, Sparkles, Maximize2, Minimize2 } from 'lucide-react'
+import { X, Trash2, ImageIcon, Sparkles } from 'lucide-react'
 import type { AIHelperMode } from '../../hooks/useAIHelper'
 
 interface AIHelperHeaderProps {
   mode: AIHelperMode
   setMode: (mode: AIHelperMode) => void
-  isExpanded: boolean
-  onToggleExpanded: () => void
   onClearHistory: () => void
   onClose: () => void
 }
 
-export function AIHelperHeader({ mode, setMode, isExpanded, onToggleExpanded, onClearHistory, onClose }: AIHelperHeaderProps) {
+export function AIHelperHeader({ mode, setMode, onClearHistory, onClose }: AIHelperHeaderProps) {
   return (
     <>
       {/* Header */}
@@ -21,18 +19,6 @@ export function AIHelperHeader({ mode, setMode, isExpanded, onToggleExpanded, on
           {mode === 'logo' ? 'AI Logo Designer' : 'AI Prompt Helper'}
         </h3>
         <div className="flex shrink-0 gap-2">
-          <button
-            onClick={onToggleExpanded}
-            className="p-2 hover:bg-zinc-800 rounded transition-colors"
-            title={isExpanded ? 'Use compact drawer' : 'Expand drawer'}
-            aria-label={isExpanded ? 'Use compact drawer' : 'Expand drawer'}
-          >
-            {isExpanded ? (
-              <Minimize2 className="w-4 h-4 text-[#c99850]" />
-            ) : (
-              <Maximize2 className="w-4 h-4 text-[#c99850]" />
-            )}
-          </button>
           <button
             onClick={async () => {
               if (confirm('Clear all AI Helper messages? This will remove all chat history.')) {

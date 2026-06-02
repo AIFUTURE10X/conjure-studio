@@ -7,12 +7,17 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 
 const checks = [
   {
-    name: 'AI helper drawer uses a wide responsive panel instead of the narrow legacy width',
+    name: 'AI helper opens as a single full-canvas workspace',
     pass: () => {
+      const header = read('app/image-studio/components/AIHelper/AIHelperHeader.tsx')
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
-      return /AI_HELPER_PANEL_WIDTH\s*=\s*'min\(720px, 100vw\)'/.test(sidebar) &&
-        /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
-        !/w-\[400px\]/.test(sidebar)
+      return /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
+        /style=\{\{ width: AI_HELPER_PANEL_EXPANDED_WIDTH \}\}/.test(sidebar) &&
+        !/const isExpanded/.test(sidebar) &&
+        !/AI_HELPER_PANEL_WIDTH/.test(sidebar) &&
+        !/setIsExpanded/.test(sidebar) &&
+        !/Maximize2/.test(header) &&
+        !/Minimize2/.test(header)
     },
   },
   {
@@ -27,7 +32,7 @@ const checks = [
         /helperSettingsRailClass/.test(sidebar) &&
         /helperConversationClass/.test(sidebar) &&
         /gridTemplateColumns: 'minmax\(0, 1fr\) minmax\(0, 1fr\)'/.test(sidebar) &&
-        /isExpanded \? 'workspace' : 'drawer'/.test(sidebar) &&
+        /const contextVariant = 'workspace'/.test(sidebar) &&
         /variant\?: 'drawer' \| 'workspace'/.test(snapshot) &&
         /contextGroups/.test(snapshot) &&
         /Core Settings/.test(snapshot) &&
@@ -52,6 +57,21 @@ const checks = [
         /settingButtonClass/.test(quickSettings) &&
         /grid-cols-3/.test(quickSettings) &&
         /min-h-\[52px\]/.test(quickSettings)
+    },
+  },
+  {
+    name: 'AI helper settings rail has overview and quick settings tabs',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /AIHelperSettingsTab/.test(sidebar) &&
+        /helperSettingsTab/.test(sidebar) &&
+        /settingsTabButtonClass/.test(sidebar) &&
+        /Overview/.test(sidebar) &&
+        /References & Memory/.test(sidebar) &&
+        /Quick Settings/.test(sidebar) &&
+        /Resolution & Next/.test(sidebar) &&
+        /helperSettingsTab === 'overview'/.test(sidebar) &&
+        /helperSettingsTab === 'quick-settings'/.test(sidebar)
     },
   },
   {
@@ -92,15 +112,15 @@ const checks = [
     },
   },
   {
-    name: 'AI helper header exposes an expand collapse control',
+    name: 'AI helper header uses one full-canvas view without expand collapse controls',
     pass: () => {
       const header = read('app/image-studio/components/AIHelper/AIHelperHeader.tsx')
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
-      return /isExpanded/.test(header) &&
-        /onToggleExpanded/.test(header) &&
-        /Maximize2/.test(header) &&
-        /Minimize2/.test(header) &&
-        /setIsExpanded/.test(sidebar)
+      return !/isExpanded/.test(header) &&
+        !/onToggleExpanded/.test(header) &&
+        !/Maximize2/.test(header) &&
+        !/Minimize2/.test(header) &&
+        !/setIsExpanded/.test(sidebar)
     },
   },
   {
