@@ -88,7 +88,7 @@ export interface GeneratedLogo {
 export const DEFAULT_LOGO_GENERATION_SETTINGS = {
   aspectRatio: '1:1',
   resolution: '1K',
-  model: 'gemini-3.1-flash-image-preview',
+  model: 'gpt-image-2',
   textMode: 'ai-text',
   bgRemovalMethod: 'photoroom',
 } satisfies {

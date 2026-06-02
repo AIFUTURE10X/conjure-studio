@@ -143,6 +143,13 @@ const checks = [
       !/bgRemovalMethod:\s*'replicate'/.test(read('lib/logo-generation-contract.ts')),
   },
   {
+    name: 'default logo model uses ChatGPT Images when Gemini key is optional',
+    pass: () => /model:\s*'gpt-image-2'/.test(read('lib/logo-generation-contract.ts')) &&
+      /useState<LogoGenerationModel>\(DEFAULT_LOGO_GENERATION_SETTINGS\.model\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
+      /setSelectedModel\(DEFAULT_LOGO_GENERATION_SETTINGS\.model\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
+      /selectedModel:\s*'gpt-image-2'/.test(read('app/image-studio/page.tsx')),
+  },
+  {
     name: 'logo generation applies selected background removal by default',
     pass: () => /options\.skipBgRemoval === true \? 'true' : 'false'/.test(read('app/image-studio/hooks/useLogoGeneration.ts')) &&
       /DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod/.test(read('app/image-studio/hooks/useLogoGeneration.ts')) &&

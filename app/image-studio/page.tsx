@@ -20,7 +20,7 @@ const DEFAULT_LOGO_GENERATOR_CONTEXT: LogoGeneratorContext = {
   bgRemovalMethod: 'photoroom',
   bgRemovalEnabled: true,
   removeBackgroundOnly: false,
-  selectedModel: 'gemini-3.1-flash-image-preview',
+  selectedModel: 'gpt-image-2',
   resolution: '1K',
   aspectRatio: '1:1',
   textMode: 'ai-text',
