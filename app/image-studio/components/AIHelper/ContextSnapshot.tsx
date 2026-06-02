@@ -20,6 +20,20 @@ interface ContextSnapshotProps {
     imageCount?: number
     seed?: number | null
     analysisMode?: string
+    imageBgRemovalEnabled?: boolean
+    imageBgRemovalMethod?: string
+    imageBgRemovalProvider?: string
+    imagePhotoRoomBgRemovalEnabled?: boolean
+    logoBgRemovalEnabled?: boolean
+    logoBgRemovalMethod?: string
+    logoBgRemovalProvider?: string
+    logoRemoveBackgroundOnly?: boolean
+    logoSelectedModel?: string
+    logoResolution?: string
+    logoAspectRatio?: string
+    logoTextMode?: string
+    logoHasReferenceImage?: boolean
+    logoReferenceMode?: string
     hasReferenceImage?: boolean
     referenceImageMode?: string
     promptMode?: string
@@ -44,6 +58,16 @@ const formatModelLabel = (model?: string) => {
   if (model === 'gemini-3-pro-image-preview') return 'Model: Gemini 3 Pro'
   if (model === 'gemini-3.1-flash-image-preview') return 'Model: Gemini 3.1 Flash'
   return `Model: ${model}`
+}
+
+const formatBackgroundRemovalChip = (scope: 'image' | 'logo', method?: string, enabled = true) => {
+  const scopeLabel = scope === 'logo' ? 'Logo' : 'Image'
+  if (!enabled || method === 'none') return `${scopeLabel} BG off`
+  if (method === 'photoroom') return 'PhotoRoom BG'
+  if (method === 'native-transparent') return 'Native PNG'
+  if (method === 'smart') return `${scopeLabel} Smart BG`
+  if (!method) return `${scopeLabel} BG unknown`
+  return `${scopeLabel} BG: ${method}`
 }
 
 function ContextChip({ icon: Icon, label, active }: { icon: typeof FileText; label: string; active: boolean }) {
@@ -79,6 +103,8 @@ export function ContextSnapshot({
   const hasGeneratorReferenceImage = Boolean(currentPromptSettings.hasReferenceImage)
   const hasLatestOutput = Boolean(latestOutput?.url)
   const hasActiveDesignBrief = hasPromptText(activeDesignBrief)
+  const imageBgRemovalEnabled = currentPromptSettings.imageBgRemovalEnabled !== false && Boolean(currentPromptSettings.imageBgRemovalMethod)
+  const logoBgRemovalEnabled = currentPromptSettings.logoBgRemovalEnabled !== false && Boolean(currentPromptSettings.logoBgRemovalMethod)
 
   return (
     <div className="border-b border-[#c99850]/20 bg-zinc-950/50 px-4 py-3 sm:px-5">
@@ -96,6 +122,20 @@ export function ContextSnapshot({
         <ContextChip icon={MonitorCheck} label={formatModelLabel(currentPromptSettings.selectedModel)} active={Boolean(currentPromptSettings.selectedModel)} />
         <ContextChip icon={MonitorCheck} label={currentPromptSettings.imageSize ? `Resolution: ${currentPromptSettings.imageSize}` : 'No resolution'} active={Boolean(currentPromptSettings.imageSize)} />
         <ContextChip icon={Layers} label={currentPromptSettings.imageCount ? `Count: ${currentPromptSettings.imageCount}` : 'No count'} active={Boolean(currentPromptSettings.imageCount)} />
+        {mode === 'image' && (
+          <ContextChip
+            icon={Layers}
+            label={formatBackgroundRemovalChip('image', currentPromptSettings.imageBgRemovalMethod, imageBgRemovalEnabled)}
+            active={imageBgRemovalEnabled}
+          />
+        )}
+        {mode === 'logo' && (
+          <ContextChip
+            icon={Layers}
+            label={formatBackgroundRemovalChip('logo', currentPromptSettings.logoBgRemovalMethod, logoBgRemovalEnabled)}
+            active={logoBgRemovalEnabled}
+          />
+        )}
         <ContextChip icon={ImageIcon} label={hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image'} active={hasReferenceImage} />
         <ContextChip icon={ImageIcon} label={hasGeneratorReferenceImage ? `Generator ref: ${currentPromptSettings.referenceImageMode || 'loaded'}` : 'No generator ref'} active={hasGeneratorReferenceImage} />
         <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />

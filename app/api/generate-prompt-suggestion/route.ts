@@ -578,6 +578,52 @@ function formatOperationalGeneratorContext(currentPromptSettings: unknown): stri
   return lines.join('\n')
 }
 
+function getStringSetting(settings: Record<string, unknown>, key: string): string {
+  const value = settings[key]
+  return typeof value === 'string' && value.trim() ? value.trim() : ''
+}
+
+function formatBackgroundRemovalMethod(method: string, provider: string, enabled: boolean): string {
+  if (!enabled || method === 'none') {
+    return 'off. Keep a normal generated background unless the user asks for transparent output.'
+  }
+
+  if (method === 'photoroom') {
+    return `${provider || 'PhotoRoom'} API post-generation background removal for professional transparent PNG cleanup.`
+  }
+
+  if (method === 'native-transparent') {
+    return 'native-transparent. This asks ChatGPT Images 2.0 for real transparent PNG alpha and skips post-generation removal; it requires selected model gpt-image-2.'
+  }
+
+  if (method === 'smart') {
+    return `${provider || 'Smart local cleanup'} post-generation background removal.`
+  }
+
+  return `${provider || method} post-generation background removal.`
+}
+
+function formatBackgroundRemovalContext(currentPromptSettings: unknown): string {
+  if (!currentPromptSettings || typeof currentPromptSettings !== 'object') return 'None available'
+  const settings = currentPromptSettings as Record<string, unknown>
+  const imageMethod = getStringSetting(settings, 'imageBgRemovalMethod')
+  const imageProvider = getStringSetting(settings, 'imageBgRemovalProvider')
+  const imageEnabled = settings.imageBgRemovalEnabled !== false && Boolean(imageMethod)
+  const logoMethod = getStringSetting(settings, 'logoBgRemovalMethod')
+  const logoProvider = getStringSetting(settings, 'logoBgRemovalProvider')
+  const logoEnabled = settings.logoBgRemovalEnabled !== false && Boolean(logoMethod)
+  const logoModel = getStringSetting(settings, 'logoSelectedModel')
+
+  return [
+    `- Image generator Remove BG action: ${formatBackgroundRemovalMethod(imageMethod, imageProvider, imageEnabled)}`,
+    `- Image generator PhotoRoom BG checkbox: ${settings.imagePhotoRoomBgRemovalEnabled ? 'checked, so PhotoRoom is selected for Remove BG' : 'unchecked, so Smart local cleanup is selected for Remove BG'}.`,
+    `- Logo generator background removal method: ${formatBackgroundRemovalMethod(logoMethod, logoProvider, logoEnabled)}`,
+    `- Logo generator model for native transparent PNG: ${logoModel || 'unknown'}. native-transparent requires gpt-image-2; PhotoRoom can clean up Gemini or OpenAI outputs after generation.`,
+    `- True PNG guidance: PhotoRoom and smart cleanup remove the background after the model creates the image. native-transparent is the only current model-side transparent PNG path, and only for gpt-image-2.`,
+    `- If the user asks for a normal logo/image with a visible background, keep background removal off or avoid promising transparent PNG output.`,
+  ].join('\n')
+}
+
 function formatCreativeDirectionContext(input: Partial<CreativeDirectionState> | null | undefined): string {
   const creativeDirection = normalizeCreativeDirection(input)
   if (!hasCreativeDirection(creativeDirection)) return "None selected"
@@ -684,6 +730,7 @@ export async function POST(request: Request) {
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
+    const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'image',
@@ -712,6 +759,9 @@ ${creativeDirectionContext}
 
 OPERATIONAL GENERATOR CONTEXT:
 ${operationalGeneratorContext}
+
+BACKGROUND REMOVAL CONTEXT:
+${backgroundRemovalContext}
 
 - Raw currentPromptSettings snapshot:
 ${JSON.stringify(currentPromptSettings || {}, null, 2)}
@@ -1037,6 +1087,7 @@ async function handleLogoMode(
     const promptConstraintContext = formatPromptConstraints(promptConstraints)
     const persistentPreferenceContext = formatPersistentPreferences(agentMemory)
     const operationalGeneratorContext = formatOperationalGeneratorContext(currentPromptSettings)
+    const backgroundRemovalContext = formatBackgroundRemovalContext(currentPromptSettings)
     const activeTaskBrief = formatActiveTaskBrief(agentMemory)
     const iterationIntentBrief = buildIterationIntentBrief({
       mode: 'logo',
@@ -1056,6 +1107,9 @@ ${JSON.stringify(currentPromptSettings || {}, null, 2)}
 
 OPERATIONAL GENERATOR CONTEXT:
 ${operationalGeneratorContext}
+
+BACKGROUND REMOVAL CONTEXT:
+${backgroundRemovalContext}
 
 AGENT MEMORY:
 ${agentMemoryContext}

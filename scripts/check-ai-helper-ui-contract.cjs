@@ -392,6 +392,37 @@ const checks = [
     },
   },
   {
+    name: 'AI helper receives and explains background removal and true PNG context',
+    pass: () => {
+      const state = read('app/image-studio/hooks/useImageStudioState.ts')
+      const generateTab = read('app/image-studio/components/PageTabs/GenerateTab.tsx')
+      const generatePanel = read('app/image-studio/components/GeneratePanel.tsx')
+      const page = read('app/image-studio/page.tsx')
+      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /usePhotoRoomBgRemoval/.test(state) &&
+        /setUsePhotoRoomBgRemoval/.test(state) &&
+        /usePhotoRoomBgRemoval=/.test(generateTab) &&
+        /onPhotoRoomBgRemovalChange=/.test(generateTab) &&
+        /usePhotoRoomBgRemoval\?: boolean/.test(generatePanel) &&
+        /onPhotoRoomBgRemovalChange\?: \(enabled: boolean\) => void/.test(generatePanel) &&
+        /imageBgRemovalMethod: state\.usePhotoRoomBgRemoval \? 'photoroom' : 'smart'/.test(page) &&
+        /logoGeneratorContext/.test(page) &&
+        /onLogoContextChange/.test(logoPanel) &&
+        /logoBgRemovalMethod\?: string/.test(sidebar) &&
+        /imageBgRemovalMethod\?: string/.test(snapshot) &&
+        /PhotoRoom BG/.test(snapshot) &&
+        /Native PNG/.test(snapshot) &&
+        /formatBackgroundRemovalContext/.test(route) &&
+        /BACKGROUND REMOVAL CONTEXT/.test(route) &&
+        /PhotoRoom/.test(route) &&
+        /native-transparent/.test(route) &&
+        /transparent PNG/.test(route)
+    },
+  },
+  {
     name: 'AI helper carries a visible working design brief with each suggestion',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')

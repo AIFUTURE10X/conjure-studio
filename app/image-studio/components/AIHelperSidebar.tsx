@@ -48,6 +48,20 @@ interface AIHelperSidebarProps {
     imageCount?: number
     seed?: number | null
     analysisMode?: string
+    imageBgRemovalEnabled?: boolean
+    imageBgRemovalMethod?: string
+    imageBgRemovalProvider?: string
+    imagePhotoRoomBgRemovalEnabled?: boolean
+    logoBgRemovalEnabled?: boolean
+    logoBgRemovalMethod?: string
+    logoBgRemovalProvider?: string
+    logoRemoveBackgroundOnly?: boolean
+    logoSelectedModel?: string
+    logoResolution?: string
+    logoAspectRatio?: string
+    logoTextMode?: string
+    logoHasReferenceImage?: boolean
+    logoReferenceMode?: string
     hasReferenceImage?: boolean
     referenceImageMode?: string
     promptMode?: string

@@ -1,6 +1,6 @@
 "use client"
 
-import { forwardRef, useImperativeHandle, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { useLogoGeneration } from '../../hooks/useLogoGeneration'
@@ -28,6 +28,7 @@ interface LogoPanelProps {
   externalNegativePrompt?: string
   pendingLogoConfig?: Partial<DotMatrixConfig> | null
   onClearPendingConfig?: () => void
+  onLogoContextChange?: (context: LogoGeneratorContext) => void
 }
 
 export interface LogoPanelRef {
@@ -35,12 +36,25 @@ export interface LogoPanelRef {
   isGenerating: boolean
 }
 
+export interface LogoGeneratorContext {
+  bgRemovalMethod: string
+  bgRemovalEnabled: boolean
+  removeBackgroundOnly: boolean
+  selectedModel: string
+  resolution: string
+  aspectRatio: string
+  textMode: string
+  hasReferenceImage: boolean
+  referenceMode: string
+}
+
 export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoPanel({
   onLogoGenerated,
   externalPrompt,
   externalNegativePrompt,
   pendingLogoConfig,
-  onClearPendingConfig
+  onClearPendingConfig,
+  onLogoContextChange
 }, ref) {
   // Use extracted state hook
   const state = useLogoPanelState({
@@ -64,6 +78,30 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
 
   // Track color filter from LogoPreviewPanel for mockups
   const [logoFilter, setLogoFilter] = useState<LogoFilterStyle>({})
+
+  useEffect(() => {
+    onLogoContextChange?.({
+      bgRemovalMethod: state.bgRemovalMethod,
+      bgRemovalEnabled: state.bgRemovalMethod !== 'none',
+      removeBackgroundOnly: state.removeBackgroundOnly,
+      selectedModel: state.selectedModel,
+      resolution: state.resolution,
+      aspectRatio: state.aspectRatio,
+      textMode: state.textMode,
+      hasReferenceImage: Boolean(state.referenceImage),
+      referenceMode: state.referenceMode,
+    })
+  }, [
+    onLogoContextChange,
+    state.bgRemovalMethod,
+    state.removeBackgroundOnly,
+    state.selectedModel,
+    state.resolution,
+    state.aspectRatio,
+    state.textMode,
+    state.referenceImage,
+    state.referenceMode,
+  ])
 
   // Use extracted hooks for generate and favorite logic
   const { handleGenerate } = useLogoPanelGenerate({

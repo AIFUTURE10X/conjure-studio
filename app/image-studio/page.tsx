@@ -7,7 +7,7 @@ import { MockupPhotoGenerator } from './components/Logo/MockupPreview/MockupPhot
 import { ProductMockupsPanel } from './components/Logo/MockupPreview/ProductMockupsPanel'
 import { ImageStudioHeader } from './components/ImageStudioHeader'
 import { ImageLightbox } from './components/ImageLightbox'
-import { LogoPanel, type LogoPanelRef } from './components/LogoPanel'
+import { LogoPanel, type LogoGeneratorContext, type LogoPanelRef } from './components/LogoPanel'
 import { BackgroundRemoverPanel } from './components/BackgroundRemover'
 import { AIHelperSidebar } from './components/AIHelperSidebar'
 import { FavoritesModal } from './components/SimpleFavorites'
@@ -16,10 +16,31 @@ import { SettingsPanel } from './components/Settings'
 import { GenerateTab } from './components/PageTabs'
 import { usePageState } from './hooks/usePageState'
 
+const DEFAULT_LOGO_GENERATOR_CONTEXT: LogoGeneratorContext = {
+  bgRemovalMethod: 'photoroom',
+  bgRemovalEnabled: true,
+  removeBackgroundOnly: false,
+  selectedModel: 'gemini-3.1-flash-image-preview',
+  resolution: '1K',
+  aspectRatio: '1:1',
+  textMode: 'ai-text',
+  hasReferenceImage: false,
+  referenceMode: 'none',
+}
+
+function formatBackgroundRemovalProvider(method: string) {
+  if (method === 'photoroom') return 'PhotoRoom'
+  if (method === 'native-transparent') return 'Native transparent PNG'
+  if (method === 'smart') return 'Smart local cleanup'
+  if (method === 'none') return 'No background removal'
+  return method
+}
+
 export default function ImageStudioPage() {
   const generatePanelRef = useRef<{ triggerGenerate: () => void; isGenerating: boolean }>(null)
   const logoPanelRef = useRef<LogoPanelRef>(null)
   const [latestLogoOutput, setLatestLogoOutput] = useState<{ url: string; prompt?: string; timestamp: number } | null>(null)
+  const [logoGeneratorContext, setLogoGeneratorContext] = useState<LogoGeneratorContext>(DEFAULT_LOGO_GENERATOR_CONTEXT)
 
   const {
     uploadState, analyzing, favorites, toggleFavorite, isFavorite, clearAll, state, hasStoredParams,
@@ -121,6 +142,8 @@ export default function ImageStudioPage() {
             setImageSize={state.setImageSize}
             selectedModel={state.selectedModel}
             setSelectedModel={state.setSelectedModel}
+            usePhotoRoomBgRemoval={state.usePhotoRoomBgRemoval}
+            onPhotoRoomBgRemovalChange={state.setUsePhotoRoomBgRemoval}
             showAdvancedOptions={settings.features.showAdvancedOptions}
             onSaveGenerateParams={saveGenerateParams}
             presets={presets}
@@ -138,6 +161,7 @@ export default function ImageStudioPage() {
             pendingLogoConfig={state.pendingLogoConfig}
             onClearPendingConfig={() => state.setPendingLogoConfig(null)}
             onLogoGenerated={(url) => setLatestLogoOutput({ url, prompt: state.mainPrompt, timestamp: Date.now() })}
+            onLogoContextChange={setLogoGeneratorContext}
           />
         )}
 
@@ -204,6 +228,20 @@ export default function ImageStudioPage() {
           imageCount: state.imageCount,
           seed: state.seed,
           analysisMode: state.analysisMode,
+          imageBgRemovalEnabled: true,
+          imageBgRemovalMethod: state.usePhotoRoomBgRemoval ? 'photoroom' : 'smart',
+          imageBgRemovalProvider: state.usePhotoRoomBgRemoval ? 'PhotoRoom' : 'Smart local cleanup',
+          imagePhotoRoomBgRemovalEnabled: state.usePhotoRoomBgRemoval,
+          logoBgRemovalEnabled: logoGeneratorContext.bgRemovalEnabled,
+          logoBgRemovalMethod: logoGeneratorContext.bgRemovalMethod,
+          logoBgRemovalProvider: formatBackgroundRemovalProvider(logoGeneratorContext.bgRemovalMethod),
+          logoRemoveBackgroundOnly: logoGeneratorContext.removeBackgroundOnly,
+          logoSelectedModel: logoGeneratorContext.selectedModel,
+          logoResolution: logoGeneratorContext.resolution,
+          logoAspectRatio: logoGeneratorContext.aspectRatio,
+          logoTextMode: logoGeneratorContext.textMode,
+          logoHasReferenceImage: logoGeneratorContext.hasReferenceImage,
+          logoReferenceMode: logoGeneratorContext.referenceMode,
           hasReferenceImage: Boolean(state.referenceImage),
           referenceImageMode: state.referenceImage?.mode || 'none',
           creativeDirection: state.creativeDirection,

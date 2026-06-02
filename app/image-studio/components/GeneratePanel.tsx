@@ -64,6 +64,8 @@ export interface GeneratePanelProps {
   setImageSize?: (size: ImageSize) => void
   selectedModel?: GenerationModel
   setSelectedModel?: (model: GenerationModel) => void
+  usePhotoRoomBgRemoval?: boolean
+  onPhotoRoomBgRemovalChange?: (enabled: boolean) => void
   generationMode?: 'fast' | 'quality'
   creativeDirection?: CreativeDirectionState
   showAdvancedOptions?: boolean
@@ -83,6 +85,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       generatedImages, setGeneratedImages, onOpenLightbox,
       seed: controlledSeed, setSeed: setControlledSeed,
       imageSize = '1K', setImageSize, selectedModel = 'gemini-3.1-flash-image-preview', setSelectedModel,
+      usePhotoRoomBgRemoval: controlledUsePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange,
       generationMode = 'quality', creativeDirection,
       showAdvancedOptions = true, onSaveGenerateParams, presets = [], onSavePreset, onLoadPreset,
     } = props
@@ -95,7 +98,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     const { saveToHistory } = useGenerationHistory()
 
     const [showAdvanced, setShowAdvanced] = useState(showAdvancedOptions)
-    const [usePhotoRoomBgRemoval, setUsePhotoRoomBgRemoval] = useState(true)
+    const [localUsePhotoRoomBgRemoval, setLocalUsePhotoRoomBgRemoval] = useState(true)
     const [seed, setSeedInternal] = useState<number | null>(controlledSeed ?? null)
     const [editedSubject, setEditedSubject] = useState('')
     const [editedScene, setEditedScene] = useState('')
@@ -108,6 +111,8 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
 
     const activeSeed = controlledSeed ?? seed
     const setSeed = setControlledSeed ?? setSeedInternal
+    const usePhotoRoomBgRemoval = controlledUsePhotoRoomBgRemoval ?? localUsePhotoRoomBgRemoval
+    const setUsePhotoRoomBgRemoval = onPhotoRoomBgRemovalChange ?? setLocalUsePhotoRoomBgRemoval
 
     const subjectText = useMemo(() => editedSubject || subjectImages.filter(i => i.selected).map(i => analysisResults.subjects.find(s => s.id === i.id)?.analysis).filter(Boolean).join('\n\n'), [subjectImages, analysisResults.subjects, editedSubject])
     const sceneText = useMemo(() => editedScene || analysisResults.scene?.analysis || '', [analysisResults.scene, editedScene])

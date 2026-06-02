@@ -73,6 +73,8 @@ interface GenerateTabProps {
   setImageSize: (size: '1K' | '2K' | '4K') => void
   selectedModel: string
   setSelectedModel: (model: any) => void
+  usePhotoRoomBgRemoval: boolean
+  onPhotoRoomBgRemovalChange: (enabled: boolean) => void
   showAdvancedOptions: boolean
   onSaveGenerateParams: (params: any) => void
   presets: GeneratePreset[]
@@ -92,7 +94,7 @@ export function GenerateTab(props: GenerateTabProps) {
     onClearSubjectAnalysis, onClearSceneAnalysis, onClearStyleAnalysis, negativePrompt, setNegativePrompt,
     referenceImage, setReferenceImage, mainPrompt, setMainPrompt, isFavorite, toggleFavorite, onParametersSave,
     generatedImages, setGeneratedImages, onOpenLightbox, seed, setSeed, imageSize, setImageSize, selectedModel,
-    setSelectedModel, showAdvancedOptions, onSaveGenerateParams, presets, onSavePreset, onLoadPreset,
+    setSelectedModel, usePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange, showAdvancedOptions, onSaveGenerateParams, presets, onSavePreset, onLoadPreset,
     onRestoreParameters,
   } = props
 
@@ -191,6 +193,8 @@ export function GenerateTab(props: GenerateTabProps) {
           setImageSize={setImageSize}
           selectedModel={selectedModel as any}
           setSelectedModel={setSelectedModel}
+          usePhotoRoomBgRemoval={usePhotoRoomBgRemoval}
+          onPhotoRoomBgRemovalChange={onPhotoRoomBgRemovalChange}
           generationMode={analysisMode}
           creativeDirection={creativeDirection}
           setGeneratedImages={setGeneratedImages}
