@@ -145,6 +145,9 @@ export function ContextSnapshot({
   const activeResolution = mode === 'logo'
     ? currentPromptSettings.logoResolution
     : currentPromptSettings.imageSize
+  const activeAspectRatio = mode === 'logo'
+    ? currentPromptSettings.logoAspectRatio
+    : currentPromptSettings.currentAspectRatio
   const contextGroups = [
     {
       label: 'Core Settings',
@@ -154,6 +157,7 @@ export function ContextSnapshot({
         { icon: MonitorCheck, label: 'Style', value: hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style', active: hasStyle },
         { icon: MonitorCheck, label: 'Model:', value: formatModelLabel(activeGeneratorModel).replace('Model: ', ''), active: Boolean(activeGeneratorModel) },
         { icon: MonitorCheck, label: 'Resolution:', value: activeResolution || 'No resolution', active: Boolean(activeResolution) },
+        { icon: Layers, label: 'Ratio:', value: activeAspectRatio || 'No ratio', active: Boolean(activeAspectRatio) },
         { icon: Layers, label: 'Count:', value: currentPromptSettings.imageCount ? `${currentPromptSettings.imageCount}` : 'No count', active: Boolean(currentPromptSettings.imageCount) },
         ...(mode === 'image'
           ? [{ icon: Layers, label: 'Background', value: formatBackgroundRemovalChip('image' as const, currentPromptSettings.imageBgRemovalMethod, imageBgRemovalEnabled), active: imageBgRemovalEnabled }]

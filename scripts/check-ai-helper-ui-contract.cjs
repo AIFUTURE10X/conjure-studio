@@ -792,6 +792,8 @@ const checks = [
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /selectedModel: state\.selectedModel/.test(page) &&
         /imageSize: state\.imageSize/.test(page) &&
+        /currentAspectRatio: state\.aspectRatio/.test(page) &&
+        /logoAspectRatio: logoGeneratorContext\.aspectRatio/.test(page) &&
         /imageCount: state\.imageCount/.test(page) &&
         /activeTab: state\.activeTab/.test(page) &&
         /hasReferenceImage: Boolean\(state\.referenceImage\)/.test(page) &&
@@ -799,8 +801,12 @@ const checks = [
         /OPERATIONAL GENERATOR CONTEXT/.test(route) &&
         /selectedModel\?: string/.test(sidebar) &&
         /imageSize\?: string/.test(snapshot) &&
+        /activeAspectRatio/.test(snapshot) &&
+        /mode === 'logo'\s*\?\s*currentPromptSettings\.logoAspectRatio/.test(snapshot) &&
+        /value: activeAspectRatio \|\| 'No ratio'/.test(snapshot) &&
         /Model:/.test(snapshot) &&
         /Resolution:/.test(snapshot) &&
+        /Ratio:/.test(snapshot) &&
         /Count:/.test(snapshot) &&
         /Generator ref/.test(snapshot)
     },
