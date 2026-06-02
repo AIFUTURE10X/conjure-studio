@@ -248,11 +248,12 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     }
   }
 
-  const getLatestSuggestionMessage = () => {
+  const getLatestSuggestionMessage = (targetMode?: AIHelperMode) => {
+    const lookupMode = targetMode || mode
     for (let index = messages.length - 1; index >= 0; index--) {
       const message = messages[index]
       const messageMode: AIHelperMode = message.mode === 'logo' ? 'logo' : 'image'
-      if (message.role === 'assistant' && message.suggestions?.prompt && messageMode === mode) {
+      if (message.role === 'assistant' && message.suggestions?.prompt && messageMode === lookupMode) {
         return { index, message, targetMode: messageMode }
       }
     }
@@ -538,8 +539,11 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     if (uploadedImages.length > 0) return false
 
     const patchGenerateCommandTerms = [
+      'make the logo background white and generate',
+      'make the image background white and generate',
       'make the background white and generate',
       'make it transparent and generate',
+      'match the logo reference font and generate',
       'match reference font and generate',
       'change only the font and generate',
       'preserve exact text and generate',
@@ -549,6 +553,8 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'run it',
     ]
     const singleChangePatchTerms = [
+      'make the logo background white',
+      'make the image background white',
       'make the background white',
       'white background',
       'plain white background',
@@ -558,6 +564,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'true png',
       'no visible background',
       'remove the background',
+      'match the logo reference font',
       'match reference font',
       'match the reference font',
       'use reference font',
@@ -571,7 +578,9 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     if (!matchesNaturalDirectCommand(userInput, singleChangePatchTerms)) return false
 
     const shouldGenerateAfterPatch = matchesNaturalDirectCommand(userInput, patchGenerateCommandTerms)
-    const latest = getLatestSuggestionMessage()
+    const requestedPatchMode = detectRequestedHelperMode(userInput)
+    const patchMode = requestedPatchMode || mode
+    const latest = getLatestSuggestionMessage(patchMode)
     if (!latest?.message.suggestions) return false
 
     const suggestionPatch = buildSuggestionPatchFromFollowUp(userInput, latest.message.suggestions, latest.targetMode)
@@ -587,6 +596,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
     updateMessageSuggestions(latest.index, patchedSuggestions)
     setPendingFollowUp(null)
+    if (patchMode !== mode) setMode(patchMode)
     setAppliedIndex(latest.index)
     setTimeout(() => setAppliedIndex(null), 2000)
     if (shouldGenerateAfterPatch) onGenerateFromAIHelper?.(latest.targetMode)

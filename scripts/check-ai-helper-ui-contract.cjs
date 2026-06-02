@@ -536,6 +536,21 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can patch named logo or image suggestions from any helper mode',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /const getLatestSuggestionMessage = \(targetMode\?: AIHelperMode\)/.test(sidebar) &&
+        /const requestedPatchMode = detectRequestedHelperMode\(userInput\)/.test(sidebar) &&
+        /const patchMode = requestedPatchMode \|\| mode/.test(sidebar) &&
+        /getLatestSuggestionMessage\(patchMode\)/.test(sidebar) &&
+        /if \(patchMode !== mode\) setMode\(patchMode\)/.test(sidebar) &&
+        /make the logo background white/.test(sidebar) &&
+        /make the image background white/.test(sidebar) &&
+        /match the logo reference font/.test(sidebar) &&
+        /Updated the latest \$\{latest\.targetMode\} suggestion/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
