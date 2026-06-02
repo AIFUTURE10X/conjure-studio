@@ -326,6 +326,104 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     return terms.some((term) => normalized === term || normalized.includes(term))
   }
 
+  const appendPromptDirective = (prompt: string | undefined, directive: string) => {
+    const basePrompt = prompt?.trim() || ''
+    if (basePrompt.toLowerCase().includes(directive.toLowerCase())) return basePrompt
+    return basePrompt ? `${basePrompt}\n\n${directive}` : directive
+  }
+
+  const appendNegativeDirective = (negativePrompt: string | undefined, directive: string) => {
+    const baseNegative = negativePrompt?.trim() || ''
+    if (!baseNegative) return directive
+    if (baseNegative.toLowerCase().includes(directive.toLowerCase())) return baseNegative
+    return `${baseNegative}, ${directive}`
+  }
+
+  const buildSuggestionPatchFromFollowUp = (
+    userInput: string,
+    suggestions: AIMessage['suggestions'],
+    targetMode: AIHelperMode
+  ): Partial<NonNullable<AIMessage['suggestions']>> | null => {
+    const normalized = normalizeDirectCommand(userInput)
+    const wantsWhiteBackground = [
+      'make the background white',
+      'white background',
+      'plain white background',
+      'pure white background',
+      'make it white',
+    ].some((term) => normalized.includes(term))
+    const wantsTransparentBackground = [
+      'make it transparent',
+      'transparent background',
+      'true png',
+      'no visible background',
+      'remove the background',
+    ].some((term) => normalized.includes(term))
+    const wantsReferenceTypography = [
+      'match reference font',
+      'match the reference font',
+      'use reference font',
+      'make font like reference',
+      'match reference typography',
+    ].some((term) => normalized.includes(term))
+    const wantsFontOnlyChange = [
+      'change only the font',
+      'font only',
+      'only change the font',
+      'just change the font',
+    ].some((term) => normalized.includes(term))
+    const wantsExactText = [
+      'preserve exact text',
+      'keep exact text',
+      'exact spelling',
+      'do not change the words',
+      'same words',
+    ].some((term) => normalized.includes(term))
+
+    if (!suggestions || (!wantsWhiteBackground && !wantsTransparentBackground && !wantsReferenceTypography && !wantsFontOnlyChange && !wantsExactText)) {
+      return null
+    }
+
+    let prompt = suggestions.prompt || ''
+    let negativePrompt = suggestions.negativePrompt || ''
+    const patch: Partial<NonNullable<AIMessage['suggestions']>> = {}
+
+    if (wantsWhiteBackground) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: make the background a visible flat pure white (#FFFFFF) background; preserve every other approved element.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'blue background, navy background, dark background, gradient background, transparent background')
+      if (targetMode === 'logo') patch.bgRemovalMethod = 'none'
+    }
+
+    if (wantsTransparentBackground) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: create a transparent PNG with no visible background; preserve every other approved element.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'visible background, white box, dark backdrop, colored backdrop, checkerboard pattern')
+      patch.bgRemovalMethod = 'photoroom'
+    }
+
+    if (wantsReferenceTypography) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: match the reference typography as closely as possible, including letter proportions, stroke contrast, spacing, capitalization, and visual rhythm; preserve every other approved element.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'wrong font, generic font, dot matrix style, mismatched typography, altered wording')
+      if (targetMode === 'logo') patch.textMode = 'exact-text-overlay'
+    }
+
+    if (wantsFontOnlyChange) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: change only the font/typography treatment; preserve every other approved element, layout, colors, background, icon, and composition.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'composition changes, color changes, background changes, icon changes, extra words')
+    }
+
+    if (wantsExactText) {
+      prompt = appendPromptDirective(prompt, 'Single-change refinement: preserve exact text, spelling, capitalization, spacing, and line breaks; preserve every other approved element.')
+      negativePrompt = appendNegativeDirective(negativePrompt, 'misspelled text, extra words, missing words, incorrect capitalization, altered wording')
+      if (targetMode === 'logo') patch.textMode = 'exact-text-overlay'
+    }
+
+    return {
+      ...patch,
+      prompt,
+      negativePrompt,
+    }
+  }
+
   const runDirectClearMemoryCommand = async (userInput: string) => {
     const clearMemoryCommandTerms = [
       'clear helper memory',
@@ -432,6 +530,58 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       role: 'assistant',
       content: `Background removal set to ${settingLabel}. No prompt text was changed.`,
       mode: targetMode,
+    })
+    return true
+  }
+
+  const runDirectSuggestionPatchCommand = (userInput: string) => {
+    if (uploadedImages.length > 0) return false
+
+    const singleChangePatchTerms = [
+      'make the background white',
+      'white background',
+      'plain white background',
+      'pure white background',
+      'make it transparent',
+      'transparent background',
+      'true png',
+      'no visible background',
+      'remove the background',
+      'match reference font',
+      'match the reference font',
+      'use reference font',
+      'match reference typography',
+      'change only the font',
+      'font only',
+      'preserve exact text',
+      'keep exact text',
+    ]
+
+    if (!matchesNaturalDirectCommand(userInput, singleChangePatchTerms)) return false
+
+    const latest = getLatestSuggestionMessage()
+    if (!latest?.message.suggestions) return false
+
+    const suggestionPatch = buildSuggestionPatchFromFollowUp(userInput, latest.message.suggestions, latest.targetMode)
+    if (!suggestionPatch) return false
+
+    const patchedSuggestions = {
+      ...latest.message.suggestions,
+      ...suggestionPatch,
+      _appliedAt: Date.now(),
+    }
+
+    if (!applySuggestionsForMessage(patchedSuggestions, latest.index, latest.targetMode)) return true
+
+    updateMessageSuggestions(latest.index, patchedSuggestions)
+    setPendingFollowUp(null)
+    setAppliedIndex(latest.index)
+    setTimeout(() => setAppliedIndex(null), 2000)
+    appendLocalMessage({ role: 'user', content: userInput, mode: latest.targetMode })
+    appendLocalMessage({
+      role: 'assistant',
+      content: `Updated the latest ${latest.targetMode} suggestion and applied it to the generator. No model call was needed.`,
+      mode: latest.targetMode,
     })
     return true
   }
@@ -652,6 +802,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       return
     }
     if (!prompt && runDirectLogoSettingsCommand(userInput)) {
+      setInput('')
+      return
+    }
+    if (!prompt && runDirectSuggestionPatchCommand(userInput)) {
       setInput('')
       return
     }

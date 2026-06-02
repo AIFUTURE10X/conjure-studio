@@ -500,6 +500,28 @@ const checks = [
     },
   },
   {
+    name: 'AI helper can patch the latest suggestion from natural single-change follow-ups',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /runDirectSuggestionPatchCommand/.test(sidebar) &&
+        /buildSuggestionPatchFromFollowUp/.test(sidebar) &&
+        /appendPromptDirective/.test(sidebar) &&
+        /singleChangePatchTerms/.test(sidebar) &&
+        /make the background white/.test(sidebar) &&
+        /make it transparent/.test(sidebar) &&
+        /match reference font/.test(sidebar) &&
+        /change only the font/.test(sidebar) &&
+        /preserve every other approved element/.test(sidebar) &&
+        /flat pure white/.test(sidebar) &&
+        /transparent PNG with no visible background/.test(sidebar) &&
+        /reference typography/.test(sidebar) &&
+        /updateMessageSuggestions\(latest\.index, patchedSuggestions\)/.test(sidebar) &&
+        /Updated the latest/.test(sidebar) &&
+        /No model call was needed/.test(sidebar) &&
+        /runDirectSuggestionPatchCommand\(userInput\)/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
