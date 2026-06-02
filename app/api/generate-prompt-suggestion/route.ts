@@ -86,7 +86,8 @@ const AGENTIC_AI_HELPER_CONTRACT = `AGENTIC AI HELPER CONTRACT:
 - Use "generate_variation_set" for image mode when the user may want several options at once
 - Use "copy_prompt" when the prompt is useful but should not immediately change settings
 - Use "switch_to_logo" or "switch_to_image" only when the user is in the wrong mode
-- Use "ask_follow_up" only when one short answer is required before making a good prompt`
+- Use "ask_follow_up" only when one short answer is required before making a good prompt
+- Return "designBrief" as a compact Working design brief with three lines: What I understood, What to preserve, and What changes next`
 
 function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperAction[] = []): HelperAction[] {
   if (!Array.isArray(rawActions)) return fallbackActions
@@ -685,15 +686,17 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 6. Recommended camera lens (use "None" if not applicable)
 7. Recommended aspect ratio
 8. Style strength (subtle, moderate, or strong - how much to apply the style)
+9. A Working design brief that makes your assumptions visible before the user applies or generates
 
 Creative Direction guidance:
 - Treat the selected Creative Direction settings as active context. Do not contradict them unless the user asks to change direction.
 - If the user asks what style to use, or uploads an ad/design to iterate on, name the closest Creative Direction controls to use in the conversational "message".
-- Keep the JSON schema unchanged. Put Creative Direction recommendations in the conversational message and incorporate visual direction into the improved prompt.
+- Use the JSON schema below. Put Creative Direction recommendations in the conversational message and incorporate visual direction into the improved prompt.
 
 Format your response as JSON:
 {
   "message": "Your conversational response here",
+  "designBrief": "What I understood: concise design target.\\nWhat to preserve: stable elements from the prompt, reference, or latest output.\\nWhat changes next: the exact improvement this prompt makes.",
   "suggestions": {
     "prompt": "improved prompt",
     "negativePrompt": "improved negative prompt",
@@ -737,6 +740,7 @@ Available style strengths: subtle, moderate, strong`
       const hasSuggestions = Boolean(guardedSuggestions?.prompt)
       return NextResponse.json({
         ...jsonResponse,
+        designBrief: stringFromUnknown(jsonResponse.designBrief),
         suggestions: guardedSuggestions,
         actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('image', hasSuggestions, false, hasOutput, hasReference, lastPersistentGeneration)),
       })
@@ -745,6 +749,9 @@ Available style strengths: subtle, moderate, strong`
     console.warn("[v0 API] Failed to parse JSON, using fallback response")
     return NextResponse.json({
       message: responseText,
+      designBrief: currentPrompt
+        ? `What I understood: Improve the current prompt from the active generator context.\nWhat to preserve: Keep the current subject, style, and explicit constraints.\nWhat changes next: Reuse the current prompt until the helper can parse a stronger structured response.`
+        : null,
       suggestions: applyPromptConstraintGuardrails({
         prompt: currentPrompt || "",
         negativePrompt: currentNegativePrompt || "",
@@ -982,6 +989,7 @@ User Request: ${message}
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
 Remember to respond with a JSON object containing "message", "designBrief", "suggestions", "logoConfig", and "actions" as specified above.
+Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 
 Action schema:
 "actions": [
@@ -1013,7 +1021,7 @@ Action schema:
           hasLogoConfig ? Object.keys(logoConfig) : 'none')
         return NextResponse.json({
           message: jsonResponse.message || "Here are my logo design suggestions.",
-          designBrief: jsonResponse.designBrief || null,
+          designBrief: stringFromUnknown(jsonResponse.designBrief),
           suggestions: logoSuggestions,
           logoConfig,
           actions: normalizeHelperActions(jsonResponse.actions, defaultHelperActions('logo', Boolean(logoSuggestions?.prompt), hasLogoConfig, hasOutput, hasReference, lastPersistentGeneration)),

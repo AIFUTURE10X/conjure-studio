@@ -53,6 +53,7 @@ export interface AIMessage {
   content: string
   timestamp?: number
   mode?: AIHelperMode
+  designBrief?: string
   suggestions?: {
     prompt: string
     negativePrompt?: string
@@ -344,7 +345,7 @@ export function useAIHelper() {
       if (response.ok) {
         const data = await response.json()
         rememberAssistantSuggestion(data, 'image')
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), suggestions: data.suggestions, actions: data.actions }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), designBrief: data.designBrief, suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now() }])
@@ -414,7 +415,7 @@ export function useAIHelper() {
       if (response.ok) {
         const data = await response.json()
         rememberAssistantSuggestion(data, 'logo')
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', logoConfig: data.logoConfig, suggestions: data.suggestions, actions: data.actions }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: Date.now(), mode: 'logo', designBrief: data.designBrief, logoConfig: data.logoConfig, suggestions: data.suggestions, actions: data.actions }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: 'logo' }])
@@ -502,6 +503,7 @@ export function useAIHelper() {
           content: data.message,
           timestamp: Date.now(),
           mode: isLogo ? 'logo' : 'image',
+          designBrief: data.designBrief,
           logoConfig: data.logoConfig,
           suggestions: data.suggestions,
           actions: data.actions,

@@ -24,6 +24,7 @@ import { SmartActionBar } from './AIHelper/SmartActionBar'
 import { ContextSnapshot } from './AIHelper/ContextSnapshot'
 import { PromptSuggestionChips } from './AIHelper/PromptSuggestionChips'
 import { PromptPreflightPanel } from './AIHelper/PromptPreflightPanel'
+import { DesignBriefCard } from './AIHelper/DesignBriefCard'
 
 const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
 const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
@@ -471,6 +472,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         {messages.map((msg, idx) => (
           <div key={idx}>
             <MessageBubble role={msg.role} content={msg.content} />
+
+            {msg.designBrief && (
+              <DesignBriefCard designBrief={msg.designBrief} />
+            )}
 
             {msg.actions && msg.actions.length > 0 && (
               <SmartActionBar actions={msg.actions} onRunAction={(action) => handleRunAction(action, idx, msg)} />

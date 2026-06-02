@@ -391,6 +391,25 @@ const checks = [
         /Generator ref/.test(snapshot)
     },
   },
+  {
+    name: 'AI helper carries a visible working design brief with each suggestion',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const card = read('app/image-studio/components/AIHelper/DesignBriefCard.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /designBrief\?: string/.test(hook) &&
+        /designBrief: data\.designBrief/.test(hook) &&
+        /DesignBriefCard/.test(sidebar) &&
+        /msg\.designBrief/.test(sidebar) &&
+        /Working brief/.test(card) &&
+        /What I understood/.test(card) &&
+        /What to preserve/.test(card) &&
+        /What changes next/.test(card) &&
+        /"designBrief"/.test(route) &&
+        /Working design brief/.test(route)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
