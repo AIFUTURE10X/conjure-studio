@@ -216,6 +216,19 @@ const checks = [
     },
   },
   {
+    name: 'AI helper has a local memory status entry point',
+    pass: () => {
+      const chips = read('app/image-studio/components/AIHelper/PromptSuggestionChips.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /What do you remember\?/.test(chips) &&
+        /What do you remember about this project/.test(chips) &&
+        /isMemoryStatusRequest/.test(route) &&
+        /buildLocalMemoryStatusResponse/.test(route) &&
+        /Memory status:/.test(route) &&
+        /Saved preferences:/.test(route)
+    },
+  },
+  {
     name: 'AI helper persists durable user preferences in agent memory',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')

@@ -49,6 +49,13 @@ export function getPromptSuggestionChips({
       : 'What can you do as my AI image helper with my current prompt, reference image, latest output, settings, and background removal options?',
   })
 
+  chips.push({
+    label: 'What do you remember?',
+    prompt: mode === 'logo'
+      ? 'What do you remember about this project, my last logo prompt, reference, preferences, and current active task?'
+      : 'What do you remember about this project, my last image prompt, reference, preferences, and current active task?',
+  })
+
   if (hasPrompt) {
     chips.push({
       label: 'Improve this prompt',

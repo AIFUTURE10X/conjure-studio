@@ -114,6 +114,21 @@ const scenarios = [
     ],
   },
   {
+    name: 'memory questions can be answered locally before Gemini is required',
+    expected: [
+      /isMemoryStatusRequest/,
+      /buildLocalMemoryStatusResponse/,
+      /const earlyMemoryStatusResponse = buildLocalMemoryStatusResponse/,
+      /return earlyMemoryStatusResponse/,
+      /Memory status:/,
+      /Last prompt:/,
+      /Active task:/,
+      /Saved preferences:/,
+      /Reference memory:/,
+      /Restore Last Prompt/,
+    ],
+  },
+  {
     name: 'server recognizes structured clarification continuation answers',
     expected: [
       /hasStructuredClarificationContinuation/,
@@ -176,6 +191,14 @@ if (postImageCapabilityIndex === -1 || postGeminiCheckIndex === -1 || postImageC
   })
 }
 
+const postImageMemoryIndex = route.indexOf('return earlyMemoryStatusResponse')
+if (postImageMemoryIndex === -1 || postGeminiCheckIndex === -1 || postImageMemoryIndex > postGeminiCheckIndex) {
+  failures.push({
+    name: 'image memory status happens before Gemini availability check',
+    missing: [/return earlyMemoryStatusResponse before \/\/ Check if Gemini is available/],
+  })
+}
+
 const logoHandlerIndex = route.indexOf('async function handleLogoMode')
 const logoClarificationIndex = route.indexOf("return buildClarificationResponse('logo', earlyClarificationGate)", logoHandlerIndex)
 const logoGeminiCheckIndex = route.indexOf('// Check if Gemini is available', logoHandlerIndex)
@@ -199,6 +222,14 @@ if (logoCapabilityIndex === -1 || logoGeminiCheckIndex === -1 || logoCapabilityI
   failures.push({
     name: 'logo capability guide happens before Gemini availability check',
     missing: [/return earlyCapabilityGuideResponse before logo \/\/ Check if Gemini is available/],
+  })
+}
+
+const logoMemoryIndex = route.indexOf('return earlyMemoryStatusResponse', logoHandlerIndex)
+if (logoMemoryIndex === -1 || logoGeminiCheckIndex === -1 || logoMemoryIndex > logoGeminiCheckIndex) {
+  failures.push({
+    name: 'logo memory status happens before Gemini availability check',
+    missing: [/return earlyMemoryStatusResponse before logo \/\/ Check if Gemini is available/],
   })
 }
 

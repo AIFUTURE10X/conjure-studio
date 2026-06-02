@@ -773,6 +773,135 @@ function buildLocalCapabilityGuideResponse(
   })
 }
 
+function isMemoryStatusRequest(message: unknown): boolean {
+  if (typeof message !== 'string') return false
+  const text = message.toLowerCase().trim()
+  const memoryTerms = [
+    'what do you remember',
+    'what do you know about this',
+    'what is in memory',
+    "what's in memory",
+    'show memory',
+    'memory status',
+    'last prompt',
+    'previous prompt',
+    'what prompt did',
+    'what are we working on',
+    'active task',
+    'active brief',
+    'saved preferences',
+    'what did i ask',
+    'what have i told you',
+  ]
+  const generationTerms = [
+    'create a',
+    'create an',
+    'generate a',
+    'generate an',
+    'make me',
+    'write a prompt for',
+    'design a',
+    'design an',
+  ]
+
+  return includesAny(text, memoryTerms) && !includesAny(text, generationTerms)
+}
+
+function truncateMemoryLine(value: string, maxLength = 220): string {
+  const normalized = value.trim().replace(/\s+/g, ' ')
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 3)}...` : normalized
+}
+
+function getLatestMemoryPrompt(mode: 'image' | 'logo', agentMemory: unknown): { prompt: string; negativePrompt?: string } | null {
+  if (!agentMemory || typeof agentMemory !== 'object') return null
+  const memory = agentMemory as Record<string, unknown>
+  const promptKey = mode === 'logo' ? 'lastLogoPrompt' : 'lastImagePrompt'
+  const prompt = stringFromUnknown(memory[promptKey])
+  const negativePrompt = stringFromUnknown(memory.lastNegativePrompt)
+  if (prompt) {
+    return {
+      prompt,
+      ...(negativePrompt ? { negativePrompt } : {}),
+    }
+  }
+  return getLastPersistentGeneration(agentMemory)
+}
+
+function buildMemoryStatusFindings(mode: 'image' | 'logo', agentMemory: unknown, currentPromptSettings: unknown): string[] {
+  const memory = agentMemory && typeof agentMemory === 'object'
+    ? agentMemory as Record<string, unknown>
+    : {}
+  const latestPrompt = getLatestMemoryPrompt(mode, agentMemory)
+  const activeTask = formatActiveTaskSnapshot(agentMemory)
+  const savedPreferences = formatPersistentPreferences(agentMemory)
+  const referenceMemory = stringFromUnknown(memory.lastReferenceAnalysis)
+  const hasSettingsReference = hasCurrentSettingsReference(mode, currentPromptSettings)
+  const recentUserRequests = Array.isArray(memory.recentUserRequests)
+    ? memory.recentUserRequests
+      .filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+      .slice(-3)
+    : []
+  const persistentGenerations = Array.isArray(memory.persistentGenerations) ? memory.persistentGenerations.length : 0
+  const persistentPreferences = Array.isArray(memory.persistentPreferences) ? memory.persistentPreferences.length : 0
+  const memoryStatus = latestPrompt || activeTask !== 'None yet' || savedPreferences !== 'None saved' || referenceMemory || hasSettingsReference
+    ? `I found active ${mode} helper memory.`
+    : `No saved ${mode} helper memory yet.`
+
+  return [
+    `Memory status: ${memoryStatus} Stored prompt snapshots: ${persistentGenerations}; saved preferences: ${persistentPreferences}.`,
+    `Last prompt: ${latestPrompt?.prompt ? truncateMemoryLine(latestPrompt.prompt) : 'None remembered yet.'}`,
+    `Active task: ${activeTask}`,
+    `Saved preferences: ${savedPreferences}`,
+    `Reference memory: ${referenceMemory ? truncateMemoryLine(referenceMemory) : hasSettingsReference ? 'Generator reference image is loaded in current settings.' : 'None remembered yet.'}${recentUserRequests.length > 0 ? ` Recent requests: ${recentUserRequests.map((item) => truncateMemoryLine(item, 80)).join(' | ')}` : ''}`,
+  ]
+}
+
+function buildLocalMemoryStatusResponse(
+  mode: 'image' | 'logo',
+  message: unknown,
+  agentMemory: unknown,
+  currentPromptSettings: unknown
+) {
+  if (!isMemoryStatusRequest(message)) return null
+
+  const latestPrompt = getLatestMemoryPrompt(mode, agentMemory)
+  const diagnosticFindings = buildMemoryStatusFindings(mode, agentMemory, currentPromptSettings)
+  const actions: HelperAction[] = latestPrompt?.prompt
+    ? [{
+      type: 'restore_memory_prompt',
+      label: 'Restore Last Prompt',
+      description: 'Load the remembered prompt back into the generator',
+      prompt: latestPrompt.prompt,
+      ...(latestPrompt.negativePrompt ? { negativePrompt: latestPrompt.negativePrompt } : {}),
+      target: mode,
+    }]
+    : []
+
+  return NextResponse.json({
+    message: [
+      `I checked the current ${mode} helper memory before Gemini is required.`,
+      diagnosticFindings.join('\n'),
+      latestPrompt?.prompt
+        ? 'You can keep iterating from this memory, ask for a single change, or restore the last prompt with the action below.'
+        : 'Once you generate or accept a helper prompt, I can carry that brief forward for natural follow-up edits.',
+    ].join('\n\n'),
+    responseMode: 'diagnostic',
+    plannerDecision: 'diagnose',
+    designBrief: '',
+    executionPlan: ['Read active helper memory', 'Summarize the last prompt, task, preferences, and reference memory', 'Offer restoration only if a remembered prompt exists'],
+    diagnosticFindings,
+    promptQualityChecklist: [
+      'Planner: local memory status selected, no generator changes should be applied automatically.',
+      'Memory: last prompt, active task, preferences, reference context, and recent requests were checked.',
+      latestPrompt?.prompt ? 'Action: Restore Last Prompt is available as an explicit user action.' : 'Action: no restore action was offered because no prompt is remembered yet.',
+    ],
+    suggestions: undefined,
+    logoConfig: mode === 'logo' ? {} : undefined,
+    actions,
+    ...(mode === 'logo' ? { mode: 'logo' } : {}),
+  })
+}
+
 function addPromptConstraint(constraints: PromptConstraint[], constraint: PromptConstraint): void {
   if (constraints.some((item) => item.key === constraint.key)) return
   constraints.push(constraint)
@@ -1364,6 +1493,11 @@ export async function POST(request: Request) {
       return earlyCapabilityGuideResponse
     }
 
+    const earlyMemoryStatusResponse = buildLocalMemoryStatusResponse('image', message, agentMemory, currentPromptSettings)
+    if (earlyMemoryStatusResponse) {
+      return earlyMemoryStatusResponse
+    }
+
     // Check if Gemini is available
     if (!genAI) {
       console.error(`[v0 API] Gemini API not initialized - missing ${getGeminiApiKeyNames()}`)
@@ -1824,6 +1958,11 @@ async function handleLogoMode(
     const earlyCapabilityGuideResponse = buildLocalCapabilityGuideResponse('logo', message, currentPromptSettings, agentMemory)
     if (earlyCapabilityGuideResponse) {
       return earlyCapabilityGuideResponse
+    }
+
+    const earlyMemoryStatusResponse = buildLocalMemoryStatusResponse('logo', message, agentMemory, currentPromptSettings)
+    if (earlyMemoryStatusResponse) {
+      return earlyMemoryStatusResponse
     }
 
     // Check if Gemini is available
