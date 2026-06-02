@@ -10,13 +10,18 @@ import {
   LOGO_RESOLUTIONS,
   LOGO_TEXT_MODES,
 } from '@/lib/logo-generation-contract'
+import {
+  LOGO_RENDER_TREATMENT_VALUES,
+  LOGO_TYPE_VALUES,
+  LOGO_TYPOGRAPHY_DIRECTION_VALUES,
+  LOGO_VISUAL_STYLE_VALUES,
+} from '../../constants/logo-constants'
 import { useLogoGeneration } from '../../hooks/useLogoGeneration'
 import { useLogoPanelHandlers } from '../../hooks/useLogoPanelHandlers'
 import { useLogoPanelState } from '../../hooks/useLogoPanelState'
 import { useFavorites } from '../SimpleFavorites'
 
 import { LogoPromptSection } from '../Logo/LogoPromptSection'
-import { LogoStyleSelector } from '../Logo/LogoStyleSelector'
 import { LogoAdvancedSettings } from '../Logo/LogoAdvancedSettings'
 import { LogoPreviewPanel, type LogoFilterStyle } from '../Logo/LogoPreviewPanel'
 import { LogoActionButtons } from '../Logo/LogoActionButtons'
@@ -66,6 +71,10 @@ export interface LogoGeneratorContext {
   resolution: string
   aspectRatio: string
   textMode: string
+  logoType: string
+  logoVisualStyle: string
+  logoRenderTreatment: string
+  logoTypographyDirection: string
   hasReferenceImage: boolean
   referenceMode: string
 }
@@ -76,6 +85,10 @@ export interface LogoGeneratorSettingsPatch {
   selectedModel?: string
   resolution?: string
   aspectRatio?: string
+  logoType?: string
+  logoVisualStyle?: string
+  logoRenderTreatment?: string
+  logoTypographyDirection?: string
 }
 
 const isAllowedSetting = <T extends readonly string[]>(value: string | undefined, allowed: T): value is T[number] => {
@@ -173,9 +186,25 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
     if (isAllowedSetting(settings.aspectRatio, LOGO_ASPECT_RATIOS)) {
       state.setAspectRatio(settings.aspectRatio)
     }
+    if (isAllowedSetting(settings.logoType, LOGO_TYPE_VALUES)) {
+      state.setLogoType(settings.logoType)
+    }
+    if (isAllowedSetting(settings.logoVisualStyle, LOGO_VISUAL_STYLE_VALUES)) {
+      state.setLogoVisualStyle(settings.logoVisualStyle)
+    }
+    if (isAllowedSetting(settings.logoRenderTreatment, LOGO_RENDER_TREATMENT_VALUES)) {
+      state.setLogoRenderTreatment(settings.logoRenderTreatment)
+    }
+    if (isAllowedSetting(settings.logoTypographyDirection, LOGO_TYPOGRAPHY_DIRECTION_VALUES)) {
+      state.setLogoTypographyDirection(settings.logoTypographyDirection)
+    }
   }, [
     state.setAspectRatio,
     state.setBgRemovalMethod,
+    state.setLogoRenderTreatment,
+    state.setLogoType,
+    state.setLogoTypographyDirection,
+    state.setLogoVisualStyle,
     state.setResolution,
     state.setSelectedModel,
     state.setTextMode,
@@ -196,6 +225,10 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
       resolution: state.resolution,
       aspectRatio: state.aspectRatio,
       textMode: state.textMode,
+      logoType: state.logoType,
+      logoVisualStyle: state.logoVisualStyle,
+      logoRenderTreatment: state.logoRenderTreatment,
+      logoTypographyDirection: state.logoTypographyDirection,
       hasReferenceImage: Boolean(state.referenceImage),
       referenceMode: state.referenceMode,
     })
@@ -207,6 +240,10 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
     state.resolution,
     state.aspectRatio,
     state.textMode,
+    state.logoType,
+    state.logoVisualStyle,
+    state.logoRenderTreatment,
+    state.logoTypographyDirection,
     state.referenceImage,
     state.referenceMode,
   ])
@@ -295,16 +332,6 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
             isRemovingBackground={isRemovingRefBg}
           />
 
-          {!state.removeBackgroundOnly && state.logoMode === 'expert' && (
-            <LogoStyleSelector
-              selectedConcept={state.selectedConcept}
-              setSelectedConcept={state.setSelectedConcept}
-              selectedRenders={state.selectedRenders}
-              setSelectedRenders={state.setSelectedRenders}
-              isGenerating={isGenerating}
-            />
-          )}
-
           <LogoAdvancedSettings
             showAdvanced={state.showAdvanced}
             setShowAdvanced={state.setShowAdvanced}
@@ -316,6 +343,18 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
             setSelectedModel={state.setSelectedModel}
             textMode={state.textMode}
             setTextMode={state.setTextMode}
+            logoType={state.logoType}
+            setLogoType={state.setLogoType}
+            logoVisualStyle={state.logoVisualStyle}
+            setLogoVisualStyle={state.setLogoVisualStyle}
+            logoRenderTreatment={state.logoRenderTreatment}
+            setLogoRenderTreatment={state.setLogoRenderTreatment}
+            logoTypographyDirection={state.logoTypographyDirection}
+            setLogoTypographyDirection={state.setLogoTypographyDirection}
+            selectedConcept={state.selectedConcept}
+            setSelectedConcept={state.setSelectedConcept}
+            selectedRenders={state.selectedRenders}
+            setSelectedRenders={state.setSelectedRenders}
             seedLocked={state.seedLocked}
             setSeedLocked={state.setSeedLocked}
             seedValue={state.seedValue}

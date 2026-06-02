@@ -1,5 +1,70 @@
 // Logo concept styles - the "what" of the logo
 export type LogoConcept = 'minimalist' | 'modern' | 'vintage' | 'playful' | 'elegant' | 'bold'
+export type LogoType = 'wordmark' | 'monogram' | 'icon-wordmark' | 'badge' | 'emblem' | 'mascot'
+export type LogoVisualStyle = 'minimal' | 'luxury' | 'modern' | 'vintage' | 'boutique' | 'corporate' | 'tech' | 'handcrafted'
+export type LogoRenderTreatment = 'flat-vector' | 'soft-3d' | 'metallic' | 'embossed' | 'foil' | 'glass' | 'neon'
+export type LogoTypographyDirection = 'clean-sans' | 'elegant-serif' | 'script' | 'geometric' | 'bold-display' | 'reference-match'
+
+export const LOGO_TYPE_VALUES: readonly LogoType[] = ['wordmark', 'monogram', 'icon-wordmark', 'badge', 'emblem', 'mascot']
+export const LOGO_VISUAL_STYLE_VALUES: readonly LogoVisualStyle[] = ['minimal', 'luxury', 'modern', 'vintage', 'boutique', 'corporate', 'tech', 'handcrafted']
+export const LOGO_RENDER_TREATMENT_VALUES: readonly LogoRenderTreatment[] = ['flat-vector', 'soft-3d', 'metallic', 'embossed', 'foil', 'glass', 'neon']
+export const LOGO_TYPOGRAPHY_DIRECTION_VALUES: readonly LogoTypographyDirection[] = ['clean-sans', 'elegant-serif', 'script', 'geometric', 'bold-display', 'reference-match']
+
+export const LOGO_TYPE_OPTIONS: Array<{
+  value: LogoType
+  label: string
+  description: string
+  icon: string
+}> = [
+  { value: 'wordmark', label: 'Wordmark', description: 'Text-led brand name', icon: 'Aa' },
+  { value: 'monogram', label: 'Monogram', description: 'Initials or lettermark', icon: 'M' },
+  { value: 'icon-wordmark', label: 'Icon + Wordmark', description: 'Symbol with brand text', icon: '◆' },
+  { value: 'badge', label: 'Badge', description: 'Contained stamp layout', icon: '◉' },
+  { value: 'emblem', label: 'Emblem', description: 'Integrated mark and text', icon: '◇' },
+  { value: 'mascot', label: 'Mascot', description: 'Character-led identity', icon: '★' },
+]
+
+export const LOGO_VISUAL_STYLE_OPTIONS: Array<{
+  value: LogoVisualStyle
+  label: string
+  description: string
+}> = [
+  { value: 'minimal', label: 'Minimal', description: 'Simple and restrained' },
+  { value: 'luxury', label: 'Luxury', description: 'Premium and refined' },
+  { value: 'modern', label: 'Modern', description: 'Clean contemporary' },
+  { value: 'vintage', label: 'Vintage', description: 'Heritage character' },
+  { value: 'boutique', label: 'Boutique', description: 'Warm crafted premium' },
+  { value: 'corporate', label: 'Corporate', description: 'Professional and stable' },
+  { value: 'tech', label: 'Tech', description: 'Precise and futuristic' },
+  { value: 'handcrafted', label: 'Handcrafted', description: 'Human and artisanal' },
+]
+
+export const LOGO_RENDER_TREATMENT_OPTIONS: Array<{
+  value: LogoRenderTreatment
+  label: string
+  description: string
+}> = [
+  { value: 'flat-vector', label: 'Flat Vector', description: 'Crisp 2D mark' },
+  { value: 'soft-3d', label: 'Soft 3D', description: 'Gentle depth' },
+  { value: 'metallic', label: 'Metallic', description: 'Gold or chrome finish' },
+  { value: 'embossed', label: 'Embossed', description: 'Raised/debossed surface' },
+  { value: 'foil', label: 'Foil', description: 'Premium stamped shine' },
+  { value: 'glass', label: 'Glass', description: 'Translucent polished look' },
+  { value: 'neon', label: 'Neon', description: 'Glow treatment' },
+]
+
+export const LOGO_TYPOGRAPHY_DIRECTION_OPTIONS: Array<{
+  value: LogoTypographyDirection
+  label: string
+  description: string
+}> = [
+  { value: 'clean-sans', label: 'Clean Sans', description: 'Readable modern type' },
+  { value: 'elegant-serif', label: 'Elegant Serif', description: 'Luxury editorial type' },
+  { value: 'script', label: 'Script', description: 'Flowing signature style' },
+  { value: 'geometric', label: 'Geometric', description: 'Precise constructed forms' },
+  { value: 'bold-display', label: 'Bold Display', description: 'Strong headline lettering' },
+  { value: 'reference-match', label: 'Reference Match', description: 'Follow uploaded typography' },
+]
 
 export const LOGO_CONCEPTS: Array<{
   value: LogoConcept

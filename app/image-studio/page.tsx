@@ -24,6 +24,10 @@ const DEFAULT_LOGO_GENERATOR_CONTEXT: LogoGeneratorContext = {
   resolution: '1K',
   aspectRatio: '1:1',
   textMode: 'ai-text',
+  logoType: 'icon-wordmark',
+  logoVisualStyle: 'modern',
+  logoRenderTreatment: 'flat-vector',
+  logoTypographyDirection: 'clean-sans',
   hasReferenceImage: false,
   referenceMode: 'none',
 }
@@ -48,6 +52,10 @@ function extractLogoSettingsPatch(suggestions: Record<string, unknown> | null | 
     ...(selectedModel ? { selectedModel } : {}),
     ...(typeof suggestions.resolution === 'string' ? { resolution: suggestions.resolution } : {}),
     ...(typeof suggestions.aspectRatio === 'string' ? { aspectRatio: suggestions.aspectRatio } : {}),
+    ...(typeof suggestions.logoType === 'string' ? { logoType: suggestions.logoType } : {}),
+    ...(typeof suggestions.logoVisualStyle === 'string' ? { logoVisualStyle: suggestions.logoVisualStyle } : {}),
+    ...(typeof suggestions.logoRenderTreatment === 'string' ? { logoRenderTreatment: suggestions.logoRenderTreatment } : {}),
+    ...(typeof suggestions.logoTypographyDirection === 'string' ? { logoTypographyDirection: suggestions.logoTypographyDirection } : {}),
   }
   return Object.keys(patch).length > 0 ? patch : null
 }
@@ -267,6 +275,10 @@ export default function ImageStudioPage() {
           logoResolution: logoGeneratorContext.resolution,
           logoAspectRatio: logoGeneratorContext.aspectRatio,
           logoTextMode: logoGeneratorContext.textMode,
+          logoType: logoGeneratorContext.logoType,
+          logoVisualStyle: logoGeneratorContext.logoVisualStyle,
+          logoRenderTreatment: logoGeneratorContext.logoRenderTreatment,
+          logoTypographyDirection: logoGeneratorContext.logoTypographyDirection,
           logoHasReferenceImage: logoGeneratorContext.hasReferenceImage,
           logoReferenceMode: logoGeneratorContext.referenceMode,
           hasReferenceImage: Boolean(state.referenceImage),

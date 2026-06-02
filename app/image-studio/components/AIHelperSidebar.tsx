@@ -62,6 +62,10 @@ interface AIHelperSidebarProps {
     logoResolution?: string
     logoAspectRatio?: string
     logoTextMode?: string
+    logoType?: string
+    logoVisualStyle?: string
+    logoRenderTreatment?: string
+    logoTypographyDirection?: string
     logoHasReferenceImage?: boolean
     logoReferenceMode?: string
     hasReferenceImage?: boolean
@@ -643,6 +647,42 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     const wantsGptImage2 = ['use chatgpt images 2.0', 'use chatgpt images 2', 'use gpt image 2', 'use openai image'].some((term) => normalized.includes(term))
     const wantsGeminiFlash = ['use gemini flash', 'use gemini 3.1 flash'].some((term) => normalized.includes(term))
     const wantsGeminiPro = ['use gemini pro', 'use gemini 3 pro'].some((term) => normalized.includes(term))
+    const logoType = normalized.includes('set logo type wordmark') || normalized.includes('logo type wordmark')
+      ? 'wordmark'
+      : normalized.includes('set logo type icon wordmark') || normalized.includes('icon wordmark')
+        ? 'icon-wordmark'
+        : normalized.includes('set logo type monogram') || normalized.includes('logo type monogram')
+          ? 'monogram'
+          : normalized.includes('set logo type badge') || normalized.includes('logo type badge')
+            ? 'badge'
+            : null
+    const logoVisualStyle = normalized.includes('set logo style luxury') || normalized.includes('logo style luxury')
+      ? 'luxury'
+      : normalized.includes('set logo style minimal') || normalized.includes('logo style minimal')
+        ? 'minimal'
+        : normalized.includes('set logo style modern') || normalized.includes('logo style modern')
+          ? 'modern'
+          : normalized.includes('set logo style boutique') || normalized.includes('logo style boutique')
+            ? 'boutique'
+            : null
+    const logoRenderTreatment = normalized.includes('set logo render flat vector') || normalized.includes('logo render flat vector')
+      ? 'flat-vector'
+      : normalized.includes('set logo render metallic') || normalized.includes('logo render metallic')
+        ? 'metallic'
+        : normalized.includes('set logo render foil') || normalized.includes('logo render foil')
+          ? 'foil'
+          : normalized.includes('set logo render soft 3d') || normalized.includes('logo render soft 3d')
+            ? 'soft-3d'
+            : null
+    const logoTypographyDirection = normalized.includes('set logo typography elegant serif') || normalized.includes('logo typography elegant serif')
+      ? 'elegant-serif'
+      : normalized.includes('set logo typography clean sans') || normalized.includes('logo typography clean sans')
+        ? 'clean-sans'
+        : normalized.includes('set logo typography script') || normalized.includes('logo typography script')
+          ? 'script'
+          : normalized.includes('set logo typography reference match') || normalized.includes('logo typography reference match')
+            ? 'reference-match'
+            : null
     const resolution = normalized.includes('set 4k') || normalized.includes('4k resolution') || normalized.includes('and 4k') || normalized.endsWith('4k')
       ? '4K'
       : normalized.includes('set 2k') || normalized.includes('2k resolution') || normalized.includes('and 2k') || normalized.endsWith('2k')
@@ -651,7 +691,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
           ? '1K'
           : null
     const requestedMode = detectRequestedHelperMode(userInput)
-    const targetMode: AIHelperMode = (wantsExactText || wantsAiText || normalized.includes('normal logo with background'))
+    const targetMode: AIHelperMode = (wantsExactText || wantsAiText || Boolean(logoType) || Boolean(logoVisualStyle) || Boolean(logoRenderTreatment) || Boolean(logoTypographyDirection) || normalized.includes('normal logo with background'))
       ? 'logo'
       : requestedMode || mode
     const settingsPatch: Partial<NonNullable<AIMessage['suggestions']>> = {}
@@ -687,6 +727,25 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     if (resolution) {
       settingsPatch.resolution = resolution
       changedLabels.push(`${resolution} resolution`)
+    }
+
+    if (targetMode === 'logo') {
+      if (logoType) {
+        settingsPatch.logoType = logoType
+        changedLabels.push(`logo type ${logoType.replace('-', ' + ')}`)
+      }
+      if (logoVisualStyle) {
+        settingsPatch.logoVisualStyle = logoVisualStyle
+        changedLabels.push(`${logoVisualStyle} style`)
+      }
+      if (logoRenderTreatment) {
+        settingsPatch.logoRenderTreatment = logoRenderTreatment
+        changedLabels.push(`${logoRenderTreatment.replace('-', ' ')} render`)
+      }
+      if (logoTypographyDirection) {
+        settingsPatch.logoTypographyDirection = logoTypographyDirection
+        changedLabels.push(`${logoTypographyDirection.replace('-', ' ')} typography`)
+      }
     }
 
     if (changedLabels.length === 0) return null

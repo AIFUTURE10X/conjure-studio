@@ -72,6 +72,10 @@ export interface AIMessage {
     textMode?: string
     bgRemovalMethod?: string
     selectedModel?: string
+    logoType?: string
+    logoVisualStyle?: string
+    logoRenderTreatment?: string
+    logoTypographyDirection?: string
   }
   logoConfig?: Partial<DotMatrixConfig>
   actions?: AIHelperAction[]

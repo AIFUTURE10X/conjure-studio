@@ -2,6 +2,12 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 import { NextResponse } from "next/server"
 import { buildLogoSystemPrompt } from "@/app/image-studio/constants/ai-logo-knowledge"
 import {
+  LOGO_RENDER_TREATMENT_VALUES,
+  LOGO_TYPE_VALUES,
+  LOGO_TYPOGRAPHY_DIRECTION_VALUES,
+  LOGO_VISUAL_STYLE_VALUES,
+} from "@/app/image-studio/constants/logo-constants"
+import {
   CREATIVE_DIRECTION_SINGLE_GROUPS,
   DECORATIVE_ELEMENT_OPTIONS,
   buildCreativeDirectionPrompt,
@@ -1329,6 +1335,12 @@ function formatOperationalGeneratorContext(mode: 'image' | 'logo', currentPrompt
     isLogoMode
       ? `- Logo text mode: ${settings.logoTextMode || 'unknown'}`
       : `- Seed: ${settings.seed ?? 'random'}`,
+    ...(isLogoMode ? [
+      `- Logo type: ${settings.logoType || 'unknown'}`,
+      `- Logo visual style: ${settings.logoVisualStyle || 'unknown'}`,
+      `- Logo render treatment: ${settings.logoRenderTreatment || 'unknown'}`,
+      `- Logo typography direction: ${settings.logoTypographyDirection || 'unknown'}`,
+    ] : []),
     isLogoMode
       ? `- Logo remove-background-only: ${settings.logoRemoveBackgroundOnly ? 'on' : 'off'}`
       : `- Analysis mode: ${settings.analysisMode || 'unknown'}`,
@@ -1887,6 +1899,10 @@ interface LogoPromptSuggestions {
   textMode?: string
   bgRemovalMethod?: string
   selectedModel?: string
+  logoType?: string
+  logoVisualStyle?: string
+  logoRenderTreatment?: string
+  logoTypographyDirection?: string
 }
 
 function stringFromUnknown(value: unknown, fallback = ''): string {
@@ -1914,6 +1930,10 @@ function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSugg
     textMode: normalizeLogoSetting(suggestions.textMode, LOGO_TEXT_MODES),
     bgRemovalMethod: normalizeLogoSetting(suggestions.bgRemovalMethod, LOGO_BACKGROUND_REMOVAL_METHODS),
     selectedModel: normalizeLogoSetting(suggestions.selectedModel || suggestions.model, LOGO_GENERATION_MODELS),
+    logoType: normalizeLogoSetting(suggestions.logoType, LOGO_TYPE_VALUES),
+    logoVisualStyle: normalizeLogoSetting(suggestions.logoVisualStyle, LOGO_VISUAL_STYLE_VALUES),
+    logoRenderTreatment: normalizeLogoSetting(suggestions.logoRenderTreatment, LOGO_RENDER_TREATMENT_VALUES),
+    logoTypographyDirection: normalizeLogoSetting(suggestions.logoTypographyDirection, LOGO_TYPOGRAPHY_DIRECTION_VALUES),
   }
 
   return {
@@ -1928,6 +1948,10 @@ function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSugg
     ...(normalizedLogoSettings.textMode ? { textMode: normalizedLogoSettings.textMode } : {}),
     ...(normalizedLogoSettings.bgRemovalMethod ? { bgRemovalMethod: normalizedLogoSettings.bgRemovalMethod } : {}),
     ...(normalizedLogoSettings.selectedModel ? { selectedModel: normalizedLogoSettings.selectedModel } : {}),
+    ...(normalizedLogoSettings.logoType ? { logoType: normalizedLogoSettings.logoType } : {}),
+    ...(normalizedLogoSettings.logoVisualStyle ? { logoVisualStyle: normalizedLogoSettings.logoVisualStyle } : {}),
+    ...(normalizedLogoSettings.logoRenderTreatment ? { logoRenderTreatment: normalizedLogoSettings.logoRenderTreatment } : {}),
+    ...(normalizedLogoSettings.logoTypographyDirection ? { logoTypographyDirection: normalizedLogoSettings.logoTypographyDirection } : {}),
   }
 }
 
@@ -2176,7 +2200,7 @@ User Request: ${message}
 
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
-Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", "native-transparent", etc.), and suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup; use native-transparent only with selectedModel gpt-image-2.
+Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", "native-transparent", etc.), suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2"), suggestions.logoType ("wordmark", "monogram", "icon-wordmark", "badge", "emblem", or "mascot"), suggestions.logoVisualStyle ("minimal", "luxury", "modern", "vintage", "boutique", "corporate", "tech", or "handcrafted"), suggestions.logoRenderTreatment ("flat-vector", "soft-3d", "metallic", "embossed", "foil", "glass", or "neon"), and suggestions.logoTypographyDirection ("clean-sans", "elegant-serif", "script", "geometric", "bold-display", or "reference-match"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup; use native-transparent only with selectedModel gpt-image-2.
 Remember to respond with a JSON object containing "message", "plannerDecision", "designBrief", "executionPlan", "promptQualityChecklist", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.
@@ -2186,6 +2210,12 @@ Diagnostic-only questions: If the user is asking why something happened, what AP
 JSON fields:
 "plannerDecision": "ask_follow_up | suggest_prompt | diagnose | iterate_from_current | compare_to_reference"
 "promptQualityChecklist": ["Reference match: ...", "Locked elements: ...", "Background: ...", "Exact text/typography: ...", "Generator settings: ..."]
+
+Logo style settings fields:
+"logoType": "optional logo type value",
+"logoVisualStyle": "optional visual style value",
+"logoRenderTreatment": "optional render treatment value",
+"logoTypographyDirection": "optional typography direction value"
 
 Action schema:
 "actions": [

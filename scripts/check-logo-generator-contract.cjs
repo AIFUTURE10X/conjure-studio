@@ -32,6 +32,32 @@ const checks = [
     pass: () => /Text Handling/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
   },
   {
+    name: 'advanced settings exposes logo-native style controls',
+    pass: () => {
+      const constants = read('app/image-studio/constants/logo-constants.ts')
+      const advanced = read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')
+      const selector = read('app/image-studio/components/Logo/LogoStyleSelector.tsx')
+      const state = read('app/image-studio/hooks/useLogoPanelState.ts')
+      const promptBuilder = read('app/api/generate-logo/logo-prompts.ts')
+      return /LogoType/.test(constants) &&
+        /LogoVisualStyle/.test(constants) &&
+        /LogoRenderTreatment/.test(constants) &&
+        /LogoTypographyDirection/.test(constants) &&
+        /Logo Style/.test(advanced) &&
+        /LogoStyleSelector/.test(advanced) &&
+        /Logo Type/.test(selector) &&
+        /Visual Style/.test(selector) &&
+        /Render Treatment/.test(selector) &&
+        /Typography Direction/.test(selector) &&
+        /useState<LogoType>\('icon-wordmark'\)/.test(state) &&
+        /useState<LogoVisualStyle>\('modern'\)/.test(state) &&
+        /useState<LogoRenderTreatment>\('flat-vector'\)/.test(state) &&
+        /useState<LogoTypographyDirection>\('clean-sans'\)/.test(state) &&
+        /SELECTED LOGO STYLE SETTINGS/.test(promptBuilder) &&
+        /formatSelectedLogoStyleGuidance/.test(promptBuilder)
+    },
+  },
+  {
     name: 'logo AI knowledge exposes prompt blueprint instructions',
     pass: () => /buildLogoPromptBlueprintInstructions/.test(read('app/image-studio/constants/ai-logo-knowledge.ts')),
   },

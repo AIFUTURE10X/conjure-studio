@@ -100,6 +100,36 @@ const checks = [
     },
   },
   {
+    name: 'AI helper exposes logo style quick settings and passes them to the logo generator',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const page = read('app/image-studio/page.tsx')
+      const route = read('app/api/generate-prompt-suggestion/route.ts')
+      return /logoType\?: string/.test(sidebar) &&
+        /logoVisualStyle\?: string/.test(sidebar) &&
+        /logoRenderTreatment\?: string/.test(sidebar) &&
+        /logoTypographyDirection\?: string/.test(sidebar) &&
+        /Logo Type/.test(quickSettings) &&
+        /Logo Style/.test(quickSettings) &&
+        /Render Treatment/.test(quickSettings) &&
+        /Typography/.test(quickSettings) &&
+        /set logo style luxury/.test(quickSettings) &&
+        /set logo typography elegant serif/.test(quickSettings) &&
+        /settingsPatch\.logoType = logoType/.test(sidebar) &&
+        /settingsPatch\.logoVisualStyle = logoVisualStyle/.test(sidebar) &&
+        /settingsPatch\.logoRenderTreatment = logoRenderTreatment/.test(sidebar) &&
+        /settingsPatch\.logoTypographyDirection = logoTypographyDirection/.test(sidebar) &&
+        /logoStyleSummary/.test(snapshot) &&
+        /logoType: logoGeneratorContext\.logoType/.test(page) &&
+        /suggestions\.logoType/.test(route) &&
+        /suggestions\.logoVisualStyle/.test(route) &&
+        /suggestions\.logoRenderTreatment/.test(route) &&
+        /suggestions\.logoTypographyDirection/.test(route)
+    },
+  },
+  {
     name: 'AI helper settings overview reads the active mode settings',
     pass: () => {
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')

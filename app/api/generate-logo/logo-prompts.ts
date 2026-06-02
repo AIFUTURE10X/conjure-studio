@@ -6,6 +6,16 @@
  */
 
 import type { LogoReferenceMode, LogoTextMode } from '@/lib/logo-generation-contract'
+import {
+  LOGO_RENDER_TREATMENT_VALUES,
+  LOGO_TYPE_VALUES,
+  LOGO_TYPOGRAPHY_DIRECTION_VALUES,
+  LOGO_VISUAL_STYLE_VALUES,
+  type LogoRenderTreatment,
+  type LogoType,
+  type LogoTypographyDirection,
+  type LogoVisualStyle,
+} from '@/app/image-studio/constants/logo-constants'
 
 // Logo concept styles - the "what" of the logo (design philosophy)
 export type LogoConcept = 'minimalist' | 'modern' | 'vintage' | 'playful' | 'elegant' | 'bold'
@@ -13,6 +23,15 @@ export type LogoConcept = 'minimalist' | 'modern' | 'vintage' | 'playful' | 'ele
 // Rendering styles - the "how" of the logo (material/effect)
 export type RenderStyle = 'flat' | '3d' | '3d-metallic' | '3d-crystal' | '3d-gradient' | 'neon'
 export type LogoBackgroundMode = 'presentation' | 'removable' | 'native-transparent'
+
+interface ParsedLogoStyle {
+  concept: LogoConcept
+  render: RenderStyle
+  logoType?: LogoType
+  visualStyle?: LogoVisualStyle
+  renderTreatment?: LogoRenderTreatment
+  typographyDirection?: LogoTypographyDirection
+}
 
 // Concept prompts - define the design philosophy
 export const CONCEPT_PROMPTS: Record<LogoConcept, string> = {
@@ -270,15 +289,96 @@ ${getReferenceBackgroundRequirements(backgroundMode)}
 Generate one clean logo result only. Keep the requested text, reference typography direction, and requested background intact.`
 }
 
-// Parse combined style format: "concept+render" (e.g., "modern+3d-metallic")
-export function parseStyle(style: string): { concept: LogoConcept; render: RenderStyle } {
-  if (style.includes('+')) {
-    const [conceptPart, renderPart] = style.split('+')
+const isLogoType = (value: string): value is LogoType => LOGO_TYPE_VALUES.includes(value as LogoType)
+const isLogoVisualStyle = (value: string): value is LogoVisualStyle => LOGO_VISUAL_STYLE_VALUES.includes(value as LogoVisualStyle)
+const isLogoRenderTreatment = (value: string): value is LogoRenderTreatment => LOGO_RENDER_TREATMENT_VALUES.includes(value as LogoRenderTreatment)
+const isLogoTypographyDirection = (value: string): value is LogoTypographyDirection => LOGO_TYPOGRAPHY_DIRECTION_VALUES.includes(value as LogoTypographyDirection)
+const isLogoConcept = (value: string): value is LogoConcept => value in CONCEPT_PROMPTS
+const isRenderStyle = (value: string): value is RenderStyle => value in RENDER_PROMPTS
+
+const mapVisualStyleToConcept = (visualStyle?: LogoVisualStyle): LogoConcept => {
+  if (visualStyle === 'minimal') return 'minimalist'
+  if (visualStyle === 'luxury' || visualStyle === 'boutique') return 'elegant'
+  if (visualStyle === 'vintage' || visualStyle === 'handcrafted') return 'vintage'
+  if (visualStyle === 'corporate' || visualStyle === 'tech') return 'modern'
+  return 'modern'
+}
+
+const mapRenderTreatmentToRender = (renderTreatment?: LogoRenderTreatment): RenderStyle => {
+  if (renderTreatment === 'flat-vector') return 'flat'
+  if (renderTreatment === 'soft-3d' || renderTreatment === 'embossed') return '3d'
+  if (renderTreatment === 'metallic' || renderTreatment === 'foil') return '3d-metallic'
+  if (renderTreatment === 'glass') return '3d-crystal'
+  if (renderTreatment === 'neon') return 'neon'
+  return 'flat'
+}
+
+function formatSelectedLogoStyleGuidance(style: ParsedLogoStyle): string {
+  const logoTypeGuidance: Record<LogoType, string> = {
+    wordmark: 'Logo type: wordmark. Prioritize distinctive readable lettering as the main brand mark.',
+    monogram: 'Logo type: monogram. Build the identity around initials or a compact lettermark.',
+    'icon-wordmark': 'Logo type: icon plus wordmark. Balance a standalone symbol with readable brand text.',
+    badge: 'Logo type: badge. Use a contained stamp or label composition with controlled hierarchy.',
+    emblem: 'Logo type: emblem. Integrate the mark and typography into one unified identity.',
+    mascot: 'Logo type: mascot. Use a simplified character identity suitable for a real logo.',
+  }
+  const visualStyleGuidance: Record<LogoVisualStyle, string> = {
+    minimal: 'Visual style: minimal, restrained, uncluttered, and highly scalable.',
+    luxury: 'Visual style: luxury, refined, premium, elegant, and spacious.',
+    modern: 'Visual style: modern, clean, contemporary, and confident.',
+    vintage: 'Visual style: vintage, established, heritage-led, and timeless.',
+    boutique: 'Visual style: boutique, warm premium, crafted, personal, and tasteful.',
+    corporate: 'Visual style: corporate, trustworthy, professional, and stable.',
+    tech: 'Visual style: tech, precise, futuristic, geometric, and polished.',
+    handcrafted: 'Visual style: handcrafted, artisanal, human, and carefully imperfect.',
+  }
+  const renderTreatmentGuidance: Record<LogoRenderTreatment, string> = {
+    'flat-vector': 'Render treatment: flat vector with crisp edges, simple fills, and no unnecessary depth.',
+    'soft-3d': 'Render treatment: soft 3D with restrained depth and clean highlights.',
+    metallic: 'Render treatment: metallic finish such as gold, chrome, bronze, or polished metal.',
+    embossed: 'Render treatment: embossed or debossed surface with subtle relief.',
+    foil: 'Render treatment: premium foil-stamped shine, restrained and elegant.',
+    glass: 'Render treatment: glass or crystal polish, translucent highlights, and clean refraction.',
+    neon: 'Render treatment: neon glow, luminous tube-like edges, and controlled bloom.',
+  }
+  const typographyGuidance: Record<LogoTypographyDirection, string> = {
+    'clean-sans': 'Typography direction: clean sans-serif, readable, modern, and balanced.',
+    'elegant-serif': 'Typography direction: elegant serif, refined stroke contrast, editorial luxury feel.',
+    script: 'Typography direction: script or signature style, flowing but still readable.',
+    geometric: 'Typography direction: geometric letterforms with precise spacing and constructed rhythm.',
+    'bold-display': 'Typography direction: bold display lettering with strong presence and clear hierarchy.',
+    'reference-match': 'Typography direction: match the uploaded/reference typography as closely as possible.',
+  }
+
+  return [
+    style.logoType ? logoTypeGuidance[style.logoType] : null,
+    style.visualStyle ? visualStyleGuidance[style.visualStyle] : null,
+    style.renderTreatment ? renderTreatmentGuidance[style.renderTreatment] : null,
+    style.typographyDirection ? typographyGuidance[style.typographyDirection] : null,
+  ].filter(Boolean).join('\n')
+}
+
+// Parse combined style format. Supports both legacy "concept+render" and richer logo settings tokens.
+export function parseStyle(style: string): ParsedLogoStyle {
+  const tokens = style.split('+').map((token) => token.trim()).filter(Boolean)
+  const logoType = tokens.find(isLogoType)
+  const visualStyle = tokens.find(isLogoVisualStyle)
+  const renderTreatment = tokens.find(isLogoRenderTreatment)
+  const typographyDirection = tokens.find(isLogoTypographyDirection)
+  const conceptToken = tokens.find(isLogoConcept)
+  const renderToken = tokens.find(isRenderStyle)
+
+  if (tokens.length > 1) {
     return {
-      concept: (conceptPart as LogoConcept) || 'modern',
-      render: (renderPart as RenderStyle) || '3d-metallic'
+      concept: conceptToken || mapVisualStyleToConcept(visualStyle),
+      render: renderToken || mapRenderTreatmentToRender(renderTreatment),
+      logoType,
+      visualStyle,
+      renderTreatment,
+      typographyDirection,
     }
   }
+
   // Legacy single style - map to new system
   const legacyMap: Record<string, { concept: LogoConcept; render: RenderStyle }> = {
     'minimalist': { concept: 'minimalist', render: 'flat' },
@@ -304,6 +404,7 @@ export function buildFreeFormLogoPrompt(
   const { concept, render } = parseStyle(style)
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
+  const selectedStyleGuidance = formatSelectedLogoStyleGuidance(parseStyle(style))
   const textRequirements = getTextHandlingRequirements(textMode)
   const userPromptPriority = getUserPromptPriorityRequirements()
   const isNativeTransparent = backgroundMode === 'native-transparent'
@@ -339,6 +440,9 @@ ${userPromptPriority}
 DESIGN PHILOSOPHY:
 ${conceptDescription}
 
+SELECTED LOGO STYLE SETTINGS:
+${selectedStyleGuidance || 'Use a modern professional logo style suitable for the prompt.'}
+
 RENDERING STYLE:
 ${renderDescription}
 
@@ -371,6 +475,7 @@ export function buildLogoPrompt(
   const { concept, render } = parseStyle(style)
   const conceptDescription = CONCEPT_PROMPTS[concept] || CONCEPT_PROMPTS.modern
   const renderDescription = RENDER_PROMPTS[render] || RENDER_PROMPTS['3d-metallic']
+  const selectedStyleGuidance = formatSelectedLogoStyleGuidance(parseStyle(style))
   const backgroundReqs = getBackgroundRequirements(render, backgroundMode)
   const textRequirements = getTextHandlingRequirements(textMode)
   const userPromptPriority = getUserPromptPriorityRequirements()
@@ -417,6 +522,9 @@ ${userPromptPriority}
 
 DESIGN PHILOSOPHY:
 ${conceptDescription}
+
+SELECTED LOGO STYLE SETTINGS:
+${selectedStyleGuidance || 'Use a modern professional logo style suitable for the prompt.'}
 
 RENDERING STYLE:
 ${renderDescription}

@@ -33,6 +33,10 @@ interface ContextSnapshotProps {
     logoResolution?: string
     logoAspectRatio?: string
     logoTextMode?: string
+    logoType?: string
+    logoVisualStyle?: string
+    logoRenderTreatment?: string
+    logoTypographyDirection?: string
     logoHasReferenceImage?: boolean
     logoReferenceMode?: string
     hasReferenceImage?: boolean
@@ -146,6 +150,12 @@ export function ContextSnapshot({
   const activeAspectRatio = mode === 'logo'
     ? currentPromptSettings.logoAspectRatio
     : currentPromptSettings.currentAspectRatio
+  const logoStyleSummary = [
+    currentPromptSettings.logoType,
+    currentPromptSettings.logoVisualStyle,
+    currentPromptSettings.logoRenderTreatment,
+    currentPromptSettings.logoTypographyDirection,
+  ].filter(Boolean).join(' / ')
   const contextGroups = [
     {
       label: 'Core Settings',
@@ -153,6 +163,9 @@ export function ContextSnapshot({
         { icon: FileText, label: 'Prompt', value: hasPrompt ? 'Prompt loaded' : 'No prompt', active: hasPrompt },
         { icon: Layers, label: 'Negative', value: hasNegativePrompt ? 'Loaded' : 'No negative prompt', active: hasNegativePrompt },
         { icon: MonitorCheck, label: 'Style', value: hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style', active: hasStyle },
+        ...(mode === 'logo'
+          ? [{ icon: Sparkles, label: 'Logo Style:', value: logoStyleSummary || 'No logo style', active: Boolean(logoStyleSummary) }]
+          : []),
         { icon: MonitorCheck, label: 'Model:', value: formatModelLabel(activeGeneratorModel).replace('Model: ', ''), active: Boolean(activeGeneratorModel) },
         { icon: MonitorCheck, label: 'Resolution:', value: activeResolution || 'No resolution', active: Boolean(activeResolution) },
         { icon: Layers, label: 'Ratio:', value: activeAspectRatio || 'No ratio', active: Boolean(activeAspectRatio) },

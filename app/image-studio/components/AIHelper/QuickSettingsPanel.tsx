@@ -1,6 +1,6 @@
 'use client'
 
-import { BadgeCheck, MonitorCog, Scissors, Settings2, Type } from 'lucide-react'
+import { BadgeCheck, Boxes, Crown, MonitorCog, PenLine, Scissors, Settings2, Type } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AIHelperMode } from '../../hooks/useAIHelper'
 
@@ -16,6 +16,10 @@ interface QuickSettingsPanelProps {
     logoSelectedModel?: string
     logoResolution?: string
     logoTextMode?: string
+    logoType?: string
+    logoVisualStyle?: string
+    logoRenderTreatment?: string
+    logoTypographyDirection?: string
   }
   onRunSetting: (prompt: string) => void
 }
@@ -60,6 +64,37 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
     },
     ...(mode === 'logo'
       ? [{
+          label: 'Logo Type',
+          actions: [
+            { label: 'Wordmark', prompt: 'set logo type wordmark', icon: Type, active: currentPromptSettings.logoType === 'wordmark' },
+            { label: 'Icon + Wordmark', prompt: 'set logo type icon wordmark', icon: Boxes, active: currentPromptSettings.logoType === 'icon-wordmark' },
+            { label: 'Monogram', prompt: 'set logo type monogram', icon: Type, active: currentPromptSettings.logoType === 'monogram' },
+          ],
+        }, {
+          label: 'Logo Style',
+          actions: [
+            { label: 'Luxury', prompt: 'set logo style luxury', icon: Crown, active: currentPromptSettings.logoVisualStyle === 'luxury' },
+            { label: 'Minimal', prompt: 'set logo style minimal', icon: BadgeCheck, active: currentPromptSettings.logoVisualStyle === 'minimal' },
+            { label: 'Modern', prompt: 'set logo style modern', icon: Settings2, active: currentPromptSettings.logoVisualStyle === 'modern' },
+            { label: 'Boutique', prompt: 'set logo style boutique', icon: Crown, active: currentPromptSettings.logoVisualStyle === 'boutique' },
+          ],
+        }, {
+          label: 'Render Treatment',
+          actions: [
+            { label: 'Flat Vector', prompt: 'set logo render flat vector', icon: BadgeCheck, active: currentPromptSettings.logoRenderTreatment === 'flat-vector' },
+            { label: 'Metallic', prompt: 'set logo render metallic', icon: Crown, active: currentPromptSettings.logoRenderTreatment === 'metallic' },
+            { label: 'Foil', prompt: 'set logo render foil', icon: Crown, active: currentPromptSettings.logoRenderTreatment === 'foil' },
+            { label: 'Soft 3D', prompt: 'set logo render soft 3d', icon: Boxes, active: currentPromptSettings.logoRenderTreatment === 'soft-3d' },
+          ],
+        }, {
+          label: 'Typography',
+          actions: [
+            { label: 'Elegant Serif', prompt: 'set logo typography elegant serif', icon: Type, active: currentPromptSettings.logoTypographyDirection === 'elegant-serif' },
+            { label: 'Clean Sans', prompt: 'set logo typography clean sans', icon: Type, active: currentPromptSettings.logoTypographyDirection === 'clean-sans' },
+            { label: 'Script', prompt: 'set logo typography script', icon: PenLine, active: currentPromptSettings.logoTypographyDirection === 'script' },
+            { label: 'Reference Match', prompt: 'set logo typography reference match', icon: Type, active: currentPromptSettings.logoTypographyDirection === 'reference-match' },
+          ],
+        }, {
           label: 'Text Mode',
           actions: [
             { label: 'Exact Overlay', prompt: 'use exact text overlay', icon: Type, active: currentPromptSettings.logoTextMode === 'exact-text-overlay' },

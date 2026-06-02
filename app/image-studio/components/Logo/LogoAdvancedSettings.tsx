@@ -4,12 +4,19 @@ import { Settings2, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
 import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
 import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from '../../hooks/useLogoGeneration'
 import {
+  LogoConcept,
+  LogoRenderTreatment,
   LogoResolution,
+  LogoType,
+  LogoTypographyDirection,
+  LogoVisualStyle,
+  RenderStyle,
   RESOLUTION_OPTIONS,
   LOGO_MODEL_OPTIONS,
   LOGO_TEXT_MODE_OPTIONS
 } from '../../constants/logo-constants'
 import { ASPECT_RATIO_OPTIONS, getAspectRatioDimensions } from '../../constants/toolbar-options'
+import { LogoStyleSelector } from './LogoStyleSelector'
 
 interface LogoAdvancedSettingsProps {
   showAdvanced: boolean
@@ -22,6 +29,18 @@ interface LogoAdvancedSettingsProps {
   setSelectedModel: (model: LogoGenerationModel) => void
   textMode: LogoTextMode
   setTextMode: (mode: LogoTextMode) => void
+  logoType: LogoType
+  setLogoType: (type: LogoType) => void
+  logoVisualStyle: LogoVisualStyle
+  setLogoVisualStyle: (style: LogoVisualStyle) => void
+  logoRenderTreatment: LogoRenderTreatment
+  setLogoRenderTreatment: (treatment: LogoRenderTreatment) => void
+  logoTypographyDirection: LogoTypographyDirection
+  setLogoTypographyDirection: (direction: LogoTypographyDirection) => void
+  selectedConcept: LogoConcept | null
+  setSelectedConcept: (concept: LogoConcept | null) => void
+  selectedRenders: RenderStyle[]
+  setSelectedRenders: (renders: RenderStyle[]) => void
   seedLocked: boolean
   setSeedLocked: (locked: boolean) => void
   seedValue: number | undefined
@@ -43,6 +62,18 @@ export function LogoAdvancedSettings({
   setSelectedModel,
   textMode,
   setTextMode,
+  logoType,
+  setLogoType,
+  logoVisualStyle,
+  setLogoVisualStyle,
+  logoRenderTreatment,
+  setLogoRenderTreatment,
+  logoTypographyDirection,
+  setLogoTypographyDirection,
+  selectedConcept,
+  setSelectedConcept,
+  selectedRenders,
+  setSelectedRenders,
   seedLocked,
   setSeedLocked,
   seedValue,
@@ -78,6 +109,26 @@ export function LogoAdvancedSettings({
       {/* Advanced Settings Panel */}
       {showAdvanced && (
         <div className="p-2 bg-zinc-800/50 rounded-lg border border-zinc-700 space-y-2">
+          {/* Logo Style Settings */}
+          <div className="space-y-1.5 rounded-md border border-zinc-700 bg-zinc-900/60 p-2">
+            <label className="text-[10px] text-zinc-400">Logo Style</label>
+            <LogoStyleSelector
+              logoType={logoType}
+              setLogoType={setLogoType}
+              logoVisualStyle={logoVisualStyle}
+              setLogoVisualStyle={setLogoVisualStyle}
+              logoRenderTreatment={logoRenderTreatment}
+              setLogoRenderTreatment={setLogoRenderTreatment}
+              logoTypographyDirection={logoTypographyDirection}
+              setLogoTypographyDirection={setLogoTypographyDirection}
+              selectedConcept={selectedConcept}
+              setSelectedConcept={setSelectedConcept}
+              selectedRenders={selectedRenders}
+              setSelectedRenders={setSelectedRenders}
+              isGenerating={isDisabled}
+            />
+          </div>
+
           {/* Model Setting */}
           <div className="space-y-1.5">
             <label className="text-[10px] text-zinc-400">AI Model</label>

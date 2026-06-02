@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
 import type { BgRemovalMethod, GeneratedLogo, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from './useLogoGeneration'
-import { LogoConcept, RenderStyle, LogoResolution } from '../constants/logo-constants'
+import { LogoConcept, LogoRenderTreatment, LogoResolution, LogoType, LogoTypographyDirection, LogoVisualStyle, RenderStyle } from '../constants/logo-constants'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import { BatchGenerationOptions } from './useBatchGeneration'
 import { LogoHistoryItem } from '../components/Logo/LogoHistory'
@@ -26,6 +26,10 @@ export function useLogoPanelState({
   // Style state
   const [selectedConcept, setSelectedConcept] = useState<LogoConcept | null>(null)
   const [selectedRenders, setSelectedRenders] = useState<RenderStyle[]>([])
+  const [logoType, setLogoType] = useState<LogoType>('icon-wordmark')
+  const [logoVisualStyle, setLogoVisualStyle] = useState<LogoVisualStyle>('modern')
+  const [logoRenderTreatment, setLogoRenderTreatment] = useState<LogoRenderTreatment>('flat-vector')
+  const [logoTypographyDirection, setLogoTypographyDirection] = useState<LogoTypographyDirection>('clean-sans')
 
   // Settings state
   const [bgRemovalMethod, setBgRemovalMethod] = useState<BgRemovalMethod>(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
@@ -86,6 +90,10 @@ export function useLogoPanelState({
     setNegativePrompt('')
     setSelectedConcept(null)
     setSelectedRenders([])
+    setLogoType('icon-wordmark')
+    setLogoVisualStyle('modern')
+    setLogoRenderTreatment('flat-vector')
+    setLogoTypographyDirection('clean-sans')
     setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
     setAspectRatio('1:1')
     setResolution('1K')
@@ -103,9 +111,16 @@ export function useLogoPanelState({
 
   // Get combined style string
   const getCombinedStyle = useCallback(() => {
-    const styleParts = [selectedConcept, ...selectedRenders].filter(Boolean)
+    const styleParts = [
+      logoType,
+      logoVisualStyle,
+      logoRenderTreatment,
+      logoTypographyDirection,
+      selectedConcept,
+      ...selectedRenders,
+    ].filter(Boolean)
     return (styleParts.length > 0 ? styleParts.join('+') : 'modern') as any
-  }, [selectedConcept, selectedRenders])
+  }, [logoType, logoVisualStyle, logoRenderTreatment, logoTypographyDirection, selectedConcept, selectedRenders])
 
   return {
     // Core state
@@ -115,6 +130,10 @@ export function useLogoPanelState({
     // Style state
     selectedConcept, setSelectedConcept,
     selectedRenders, setSelectedRenders,
+    logoType, setLogoType,
+    logoVisualStyle, setLogoVisualStyle,
+    logoRenderTreatment, setLogoRenderTreatment,
+    logoTypographyDirection, setLogoTypographyDirection,
 
     // Settings state
     bgRemovalMethod, setBgRemovalMethod,
