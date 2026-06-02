@@ -147,6 +147,13 @@ PROMPT SELF-CHECK:
 - Include an exact text or typography line when logo text, spelling, capitalization, font, lettering, or typeface matters.
 - Include a generator settings line when model, resolution, text mode, or background-removal settings need to change.`
 
+const SCENARIO_QUALITY_GATES = `SCENARIO QUALITY GATES:
+- Reference wordmark typography: when the user gives or describes a clean script/serif/sans wordmark reference, match the letter proportions, stroke contrast, spacing, capitalization, and visual rhythm. Do not replace a clean wordmark reference with dot matrix, generic geometric lettering, unrelated 3D icon systems, or decorative effects unless the user asks for that change.
+- Exact brand text: if the user cares about a brand name, spelling, capitalization, or wording, use exact-text-overlay when available, repeat the exact text in the prompt, and do not invent words, suffixes, slogans, or alternate spellings.
+- Background intent: white background means visible flat pure white #FFFFFF; transparent PNG means no visible background and needs true PNG cleanup such as PhotoRoom or native transparent output. If both are requested together, ask which output is wanted before generating.
+- Single-change follow-up: when CHANGE CONTROL CONTEXT says single requested edit, change only the named attribute, preserve locked elements, and do not reinterpret the concept, palette, typography, icon, camera, or composition.
+- Generator settings: if the request needs professional true PNG cleanup, prefer PhotoRoom. Use native-transparent only when the selected model supports it, such as gpt-image-2.`
+
 function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperAction[] = []): HelperAction[] {
   if (!Array.isArray(rawActions)) return fallbackActions
 
@@ -1154,6 +1161,8 @@ ${AGENTIC_AI_HELPER_CONTRACT}
 
 ${PROMPT_PLANNER_POLICY}
 
+${SCENARIO_QUALITY_GATES}
+
 Current Settings:
 - Prompt: ${currentPrompt || "None"}
 - Negative Prompt: ${currentNegativePrompt || "None"}
@@ -1601,6 +1610,8 @@ async function handleLogoMode(
 ${AGENTIC_AI_HELPER_CONTRACT}
 
 ${PROMPT_PLANNER_POLICY}
+
+${SCENARIO_QUALITY_GATES}
 
 Current Logo/Image Studio Settings:
 ${JSON.stringify(currentPromptSettings || {}, null, 2)}
