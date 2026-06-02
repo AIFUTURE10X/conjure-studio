@@ -91,7 +91,7 @@ const checks = [
         /Model/.test(quickSettings) &&
         /Resolution/.test(quickSettings) &&
         /use photoroom/.test(quickSettings) &&
-        /native transparent png/.test(quickSettings) &&
+        !/native transparent png/.test(quickSettings) &&
         /normal logo with background/.test(quickSettings) &&
         /use exact text overlay/.test(quickSettings) &&
         /use chatgpt images 2.0/.test(quickSettings) &&
@@ -579,12 +579,10 @@ const checks = [
       return /runDirectBackgroundRemovalCommand/.test(sidebar) &&
         /backgroundRemovalCommandTerms/.test(sidebar) &&
         /use photoroom/.test(sidebar) &&
-        /native transparent png/.test(sidebar) &&
         /turn off background removal/.test(sidebar) &&
         /bgRemovalMethod: 'photoroom'/.test(sidebar) &&
         !/bgRemovalMethod: 'smart'/.test(sidebar) &&
-        /bgRemovalMethod: 'native-transparent'/.test(sidebar) &&
-        /selectedModel: 'gpt-image-2'/.test(sidebar) &&
+        !/bgRemovalMethod: 'native-transparent'/.test(sidebar) &&
         /Background removal set to/.test(sidebar) &&
         /runDirectBackgroundRemovalCommand\(userInput\)/.test(sidebar)
     },
@@ -620,7 +618,7 @@ const checks = [
         /settingsGenerateCommandTerms/.test(sidebar) &&
         /use photoroom and 4k/.test(sidebar) &&
         /exact text overlay and generate/.test(sidebar) &&
-        /native transparent png and generate/.test(sidebar) &&
+        !/native transparent png and generate/.test(sidebar) &&
         /logo settings updated and generation started/.test(sidebar) &&
         /image settings updated and generation started/.test(sidebar) &&
         /onGenerateFromAIHelper\?\.\(targetMode\)/.test(sidebar) &&
@@ -854,7 +852,7 @@ const checks = [
         /logoBgRemovalMethod\?: string/.test(sidebar) &&
         /imageBgRemovalMethod\?: string/.test(snapshot) &&
         /PhotoRoom BG/.test(snapshot) &&
-        /Native PNG/.test(snapshot) &&
+        !/Native PNG/.test(snapshot) &&
         /formatBackgroundRemovalContext/.test(route) &&
         /BACKGROUND REMOVAL CONTEXT/.test(route) &&
         /PhotoRoom/.test(route) &&

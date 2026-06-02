@@ -1,6 +1,6 @@
 'use client'
 
-import { BadgeCheck, ImageIcon, MonitorCog, Scissors, Settings2, Type } from 'lucide-react'
+import { BadgeCheck, MonitorCog, Scissors, Settings2, Type } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AIHelperMode } from '../../hooks/useAIHelper'
 
@@ -51,7 +51,6 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
       actions: mode === 'logo'
         ? [
             { label: 'PhotoRoom', prompt: 'use photoroom', icon: Scissors, active: activeBgMethod === 'photoroom' },
-            { label: 'Native PNG', prompt: 'native transparent png', icon: ImageIcon, active: activeBgMethod === 'native-transparent' },
             { label: 'Normal BG', prompt: 'normal logo with background', icon: BadgeCheck, active: activeBgMethod === 'none' },
           ]
         : [

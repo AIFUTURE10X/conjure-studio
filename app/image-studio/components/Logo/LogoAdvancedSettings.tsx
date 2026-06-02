@@ -1,13 +1,11 @@
 "use client"
 
-import { useEffect } from 'react'
 import { Settings2, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
 import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
 import type { BgRemovalMethod, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from '../../hooks/useLogoGeneration'
 import {
   LogoResolution,
   RESOLUTION_OPTIONS,
-  BG_REMOVAL_METHODS,
   LOGO_MODEL_OPTIONS,
   LOGO_TEXT_MODE_OPTIONS
 } from '../../constants/logo-constants'
@@ -56,7 +54,6 @@ export function LogoAdvancedSettings({
 }: LogoAdvancedSettingsProps) {
   const isDisabled = isGenerating || isRemovingBackground
   const seedDisabled = isDisabled || selectedModel === 'gpt-image-2'
-  const backgroundRemovalEnabled = bgRemovalMethod !== 'none'
   const handleBackgroundRemovalToggle = (enabled: boolean) => {
     if (enabled) {
       setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
@@ -65,12 +62,6 @@ export function LogoAdvancedSettings({
 
     setBgRemovalMethod('none')
   }
-
-  useEffect(() => {
-    if (bgRemovalMethod === 'native-transparent' && selectedModel !== 'gpt-image-2') {
-      setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
-    }
-  }, [bgRemovalMethod, selectedModel, setBgRemovalMethod])
 
   return (
     <>
@@ -252,7 +243,7 @@ export function LogoAdvancedSettings({
             </p>
           </div>
 
-          {/* Background Removal Method */}
+          {/* Background Removal */}
           <div className="space-y-1">
             <label className="text-[10px] text-zinc-400">Background Removal</label>
             <label className="flex items-center gap-2 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-white">
@@ -263,31 +254,13 @@ export function LogoAdvancedSettings({
                 disabled={isDisabled}
                 className="h-3.5 w-3.5 accent-[#c99850]"
               />
-              Transparent PNG
+              PhotoRoom BG
             </label>
-            {bgRemovalMethod !== 'none' && (
-              <select
-                value={bgRemovalMethod}
-                onChange={(e) => setBgRemovalMethod(e.target.value as BgRemovalMethod)}
-                disabled={isGenerating}
-                className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-white focus:outline-none focus:border-[#c99850]"
-              >
-                {BG_REMOVAL_METHODS.map((method) => (
-                  <option
-                    key={method.value}
-                    value={method.value}
-                    disabled={!!method.requiresModel && method.requiresModel !== selectedModel}
-                  >
-                    {method.label} - {method.description}
-                  </option>
-                ))}
-              </select>
-            )}
-            {backgroundRemovalEnabled && bgRemovalMethod === 'native-transparent' && (
-              <p className="text-[9px] text-zinc-500">
-                Uses ChatGPT Images 2.0 native transparency and skips post-generation background removal.
-              </p>
-            )}
+            <p className="text-[9px] text-zinc-500">
+              {bgRemovalMethod === 'none'
+                ? 'Off keeps the generated logo background intact.'
+                : 'PhotoRoom removes the background after generation for a cleaner PNG.'}
+            </p>
           </div>
         </div>
       )}

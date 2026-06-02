@@ -557,10 +557,6 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       'turn on photoroom',
       'photoroom bg',
       'photoroom background removal',
-      'native transparent png',
-      'native png',
-      'true native png',
-      'model-side transparent',
       'turn off background removal',
       'disable background removal',
       'no background removal',
@@ -570,30 +566,17 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
 
     if (!matchesNaturalDirectCommand(userInput, backgroundRemovalCommandTerms)) return false
 
-    const wantsNativeTransparent = ['native transparent png', 'native png', 'true native png', 'model-side transparent'].some((term) => normalized.includes(term))
     const wantsOff = ['turn off background removal', 'disable background removal', 'no background removal', 'normal logo with background', 'normal image with background'].some((term) => normalized.includes(term))
     const wantsPhotoRoom = ['use photoroom', 'turn on photoroom', 'photoroom bg', 'photoroom background removal'].some((term) => normalized.includes(term))
     const requestedMode = detectRequestedHelperMode(userInput)
-    const targetMode: AIHelperMode = wantsNativeTransparent ? 'logo' : requestedMode || mode
+    const targetMode: AIHelperMode = requestedMode || mode
 
-    if (!wantsNativeTransparent && !wantsOff && !wantsPhotoRoom) return false
-
-    if (targetMode === 'image' && wantsNativeTransparent) {
-      appendLocalMessage({ role: 'user', content: userInput, mode: targetMode })
-      appendLocalMessage({
-        role: 'assistant',
-        content: 'Native transparent PNG is a logo-generator setting. For images, use PhotoRoom or turn background removal off.',
-        mode: targetMode,
-      })
-      return true
-    }
+    if (!wantsOff && !wantsPhotoRoom) return false
 
     const suggestions = targetMode === 'logo'
-      ? wantsNativeTransparent
-        ? { bgRemovalMethod: 'native-transparent', selectedModel: 'gpt-image-2', _appliedAt: Date.now() }
-        : wantsOff
-          ? { bgRemovalMethod: 'none', _appliedAt: Date.now() }
-          : { bgRemovalMethod: 'photoroom', _appliedAt: Date.now() }
+      ? wantsOff
+        ? { bgRemovalMethod: 'none', _appliedAt: Date.now() }
+        : { bgRemovalMethod: 'photoroom', _appliedAt: Date.now() }
       : wantsOff
           ? { bgRemovalMethod: 'none', _appliedAt: Date.now() }
           : { bgRemovalMethod: 'photoroom', _appliedAt: Date.now() }
@@ -610,9 +593,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     applyHandler(suggestions)
     setPendingFollowUp(null)
     if (targetMode !== mode) setMode(targetMode)
-    const settingLabel = wantsNativeTransparent
-      ? 'Native transparent PNG with ChatGPT Images 2.0'
-      : wantsOff
+    const settingLabel = wantsOff
         ? `off for normal ${targetMode} backgrounds`
         : 'PhotoRoom'
 
@@ -639,13 +620,11 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     const settingsGenerateCommandTerms = [
       'use photoroom and 4k and generate',
       'exact text overlay and generate',
-      'native transparent png and generate',
       'and generate',
       'then generate',
       'generate it',
       'run it',
     ]
-    const wantsNativeTransparent = ['native transparent png', 'native png', 'true native png', 'model-side transparent'].some((term) => normalized.includes(term))
     const wantsPhotoRoom = ['use photoroom', 'turn on photoroom', 'photoroom bg', 'photoroom background removal'].some((term) => normalized.includes(term))
     const wantsOff = ['turn off background removal', 'disable background removal', 'no background removal', 'normal logo with background', 'normal image with background'].some((term) => normalized.includes(term))
     const wantsExactText = ['use exact text overlay', 'set exact text overlay', 'exact text overlay', 'exact text mode'].some((term) => normalized.includes(term))
@@ -661,17 +640,13 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
           ? '1K'
           : null
     const requestedMode = detectRequestedHelperMode(userInput)
-    const targetMode: AIHelperMode = (wantsNativeTransparent || wantsExactText || wantsAiText || normalized.includes('normal logo with background'))
+    const targetMode: AIHelperMode = (wantsExactText || wantsAiText || normalized.includes('normal logo with background'))
       ? 'logo'
       : requestedMode || mode
     const settingsPatch: Partial<NonNullable<AIMessage['suggestions']>> = {}
     const changedLabels: string[] = []
 
-    if (wantsNativeTransparent) {
-      settingsPatch.bgRemovalMethod = 'native-transparent'
-      settingsPatch.selectedModel = 'gpt-image-2'
-      changedLabels.push('native transparent PNG', 'ChatGPT Images 2.0')
-    } else if (wantsPhotoRoom) {
+    if (wantsPhotoRoom) {
       settingsPatch.bgRemovalMethod = 'photoroom'
       changedLabels.push('PhotoRoom background removal')
     } else if (wantsOff) {

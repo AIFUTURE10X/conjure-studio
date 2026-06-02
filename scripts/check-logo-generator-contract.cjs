@@ -76,10 +76,12 @@ const checks = [
     pass: () => /native-transparent/.test(read('lib/logo-generation-contract.ts')),
   },
   {
-    name: 'advanced settings exposes native transparent PNG option for OpenAI',
-    pass: () => /Native transparent PNG/.test(read('app/image-studio/constants/logo-constants.ts')) &&
-      /requiresModel:\s*'gpt-image-2'/.test(read('app/image-studio/constants/logo-constants.ts')) &&
-      /method\.requiresModel/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
+    name: 'advanced settings exposes only PhotoRoom on off background removal',
+    pass: () => /PhotoRoom BG/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      /setBgRemovalMethod\(DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod\)/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      /setBgRemovalMethod\('none'\)/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      !/BG_REMOVAL_METHODS/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      !/<select/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
   },
   {
     name: 'OpenAI image client can request transparent PNG output',
@@ -160,15 +162,15 @@ const checks = [
   },
   {
     name: 'advanced logo settings expose PhotoRoom cleanup',
-    pass: () => /value:\s*'photoroom'/.test(read('app/image-studio/constants/logo-constants.ts')) &&
-      /PhotoRoom/.test(read('app/image-studio/constants/logo-constants.ts')),
+    pass: () => /PhotoRoom BG/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
+      /PhotoRoom removes the background after generation/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
   },
   {
     name: 'advanced logo settings can disable background removal for normal logo backgrounds',
     pass: () => /checked=\{bgRemovalMethod !== 'none'\}/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
       /setBgRemovalMethod\('none'\)/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
       /DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')) &&
-      /bgRemovalMethod !== 'none' &&/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
+      /Off keeps the generated logo background intact/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
   },
   {
     name: 'logo pipeline calls PhotoRoom for selected cleanup without smart fallback',
