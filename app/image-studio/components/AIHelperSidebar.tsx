@@ -61,6 +61,7 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   const [editedSuggestions, setEditedSuggestions] = useState<any>({})
   const [appliedIndex, setAppliedIndex] = useState<number | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [pendingFollowUp, setPendingFollowUp] = useState<{ prompt: string; mode: AIHelperMode } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
@@ -142,7 +143,10 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     }
 
     if (action.type === 'ask_follow_up' && action.prompt) {
-      setInput(action.prompt)
+      const followUpMode = action.target || (message.mode === 'logo' ? 'logo' : mode)
+      setPendingFollowUp({ prompt: action.prompt, mode: followUpMode })
+      if (followUpMode !== mode) setMode(followUpMode)
+      setInput('')
       return
     }
 
@@ -379,6 +383,16 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
     if (isLoading) return
     const userInput = prompt?.trim() || input.trim() || (mode === 'logo' ? 'Help me design a logo based on this reference' : 'Help me create a prompt based on this reference image')
     if (!userInput.trim() && uploadedImages.length === 0) return
+    if (!prompt && pendingFollowUp && userInput.trim()) {
+      const followUpRequest = `Clarifying question: ${pendingFollowUp.prompt}\nUser answer: ${userInput}`
+      const followUpMode = pendingFollowUp.mode
+      setPendingFollowUp(null)
+      setInput('')
+      followUpMode === 'logo'
+        ? await sendLogoMessage(followUpRequest, currentPromptSettings, { displayMessage: userInput })
+        : await sendMessage(followUpRequest, currentPromptSettings, { displayMessage: userInput })
+      return
+    }
     if (!prompt && runDirectLatestOutputCommand(userInput)) {
       setInput('')
       return
@@ -488,6 +502,25 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
       </div>
 
       <ImageUploadPreview images={uploadedImages} onRemove={removeImage} />
+      {pendingFollowUp && (
+        <div className="border-t border-[#c99850]/20 bg-zinc-950/70 px-4 py-3 sm:px-5">
+          <div className="flex items-start justify-between gap-3 rounded-md border border-[#c99850]/30 bg-[#c99850]/10 px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#f0d49b]">Answering follow-up</div>
+              <div className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-200">{pendingFollowUp.prompt}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingFollowUp(null)}
+              className="shrink-0 rounded border border-zinc-700 px-2 py-1 text-xs font-semibold text-zinc-300 transition-colors hover:border-[#c99850]/50 hover:text-white"
+              title="Clear follow-up"
+              aria-label="Clear follow-up"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
       <ChatInput input={input} setInput={setInput} mode={mode} isLoading={isLoading} hasImages={uploadedImages.length > 0} onSend={handleSend} onCancelRequest={cancelRequest} onImageUpload={handleImageUpload} />
     </div>
   )

@@ -279,8 +279,8 @@ export function useAIHelper() {
     })
   }, [])
 
-  const sendMessage = useCallback(async (userInput: string, currentPromptSettings: any) => {
-    const displayMessage = userInput.trim() || '📷 [Image uploaded]'
+  const sendMessage = useCallback(async (userInput: string, currentPromptSettings: any, options: { displayMessage?: string } = {}) => {
+    const displayMessage = options.displayMessage?.trim() || userInput.trim() || '📷 [Image uploaded]'
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now() }
     setMessages(prev => [...prev, userMessage])
     rememberUserPreference(userInput, 'image')
@@ -361,8 +361,8 @@ export function useAIHelper() {
     }
   }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot, rememberUserPreference])
 
-  const sendLogoMessage = useCallback(async (userInput: string, currentPromptSettings: any = {}) => {
-    const displayMessage = userInput.trim() || '📷 [Logo reference uploaded]'
+  const sendLogoMessage = useCallback(async (userInput: string, currentPromptSettings: any = {}, options: { displayMessage?: string } = {}) => {
+    const displayMessage = options.displayMessage?.trim() || userInput.trim() || '📷 [Logo reference uploaded]'
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now(), mode: 'logo' }
     setMessages(prev => [...prev, userMessage])
     rememberUserPreference(userInput, 'logo')

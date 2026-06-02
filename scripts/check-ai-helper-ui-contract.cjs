@@ -354,6 +354,21 @@ const checks = [
         /targetMode === 'logo' \? await sendLogoMessage/.test(sidebar)
     },
   },
+  {
+    name: 'AI helper supports answer mode for clarifying follow-up questions',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /displayMessage\?: string/.test(hook) &&
+        /setPendingFollowUp/.test(sidebar) &&
+        /pendingFollowUp/.test(sidebar) &&
+        /Answering follow-up/.test(sidebar) &&
+        /Clear follow-up/.test(sidebar) &&
+        /Clarifying question:/.test(sidebar) &&
+        /User answer:/.test(sidebar) &&
+        /displayMessage: userInput/.test(sidebar)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
