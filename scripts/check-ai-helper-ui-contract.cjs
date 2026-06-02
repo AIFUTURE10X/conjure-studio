@@ -288,6 +288,18 @@ const checks = [
         /Stop/.test(input)
     },
   },
+  {
+    name: 'AI helper exposes targeted refinement chips for iterative fixes',
+    pass: () => {
+      const chips = read('app/image-studio/components/AIHelper/PromptSuggestionChips.tsx')
+      return /Fix background/.test(chips) &&
+        /Match reference font/.test(chips) &&
+        /Preserve exact text/.test(chips) &&
+        /Change only one thing/.test(chips) &&
+        /Keep the strongest parts/.test(chips) &&
+        /do not change the composition/.test(chips)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

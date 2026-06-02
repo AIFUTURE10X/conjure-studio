@@ -69,6 +69,37 @@ export function getPromptSuggestionChips({
     })
   }
 
+  if (hasPrompt || hasLatestOutput) {
+    chips.push({
+      label: 'Change only one thing',
+      prompt: mode === 'logo'
+        ? 'Keep the strongest parts of the current logo and change only one thing: I will describe the single change next. Do not change the composition, exact text, typography style, icon shape, color palette, or background unless that single change requires it.'
+        : 'Keep the strongest parts of the current image and change only one thing: I will describe the single change next. Do not change the composition, subject, style, color palette, lighting, or background unless that single change requires it.',
+    })
+    chips.push({
+      label: 'Fix background',
+      prompt: mode === 'logo'
+        ? 'Keep the strongest parts of the current logo and fix the background only. If I asked for white, use a flat pure white #FFFFFF background. If I asked for true PNG, use transparent PNG/no background. Remove any blue, dark, gradient, textured, or scene backdrop; do not change the composition, exact text, typography, icon, or colors.'
+        : 'Keep the strongest parts of the current image and fix the background only. Follow my background request exactly, especially flat pure white #FFFFFF or transparent/no background if requested. Remove any blue, dark, gradient, textured, or unwanted backdrop; do not change the composition, subject, style, or colors.',
+    })
+  }
+
+  if (mode === 'logo') {
+    chips.push({
+      label: 'Preserve exact text',
+      prompt: 'Preserve exact text, spelling, capitalization, spacing, and line breaks. If the image model may misspell it, create a symbol-only logo prompt ready for exact text overlay, and keep the generated artwork free of extra words or random letters.',
+    })
+  }
+
+  if (hasReferenceImage || mode === 'logo') {
+    chips.push({
+      label: 'Match reference font',
+      prompt: mode === 'logo'
+        ? 'Match reference font style as closely as possible: letter proportions, stroke contrast, script/geometric character, spacing, capitalization, and visual rhythm. Keep the wording exact and do not change the composition unless required to match the reference.'
+        : 'Match the reference typography or lettering style as closely as possible: proportions, stroke contrast, spacing, capitalization, and visual rhythm. Keep the rest of the design stable unless required to match the reference.',
+    })
+  }
+
   if (mode === 'logo') {
     chips.push({
       label: 'Make exact text logo',
@@ -88,7 +119,7 @@ export function getPromptSuggestionChips({
       : 'Make a stronger variation that keeps the core idea but improves composition, lighting, style clarity, and prompt precision.',
   })
 
-  return chips.slice(0, 5)
+  return chips.slice(0, 8)
 }
 
 export function PromptSuggestionChips(props: PromptSuggestionChipsProps) {
