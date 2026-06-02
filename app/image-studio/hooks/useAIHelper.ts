@@ -92,6 +92,29 @@ export interface AIHelperAgentMemory {
   recentUserRequests: string[]
 }
 
+interface AIHelperErrorPayload {
+  error?: string
+  details?: string
+}
+
+function formatAIHelperErrorMessage(errorData: AIHelperErrorPayload, status: number): string {
+  const error = errorData.error || 'Unknown error'
+  const details = errorData.details
+  const isRateLimit = status === 429 || /rate limit|quota/i.test(`${error} ${details || ''}`)
+
+  if (isRateLimit) {
+    return [
+      `Error: ${error}.`,
+      details || 'The AI Prompt Helper is being throttled by the prompt service.',
+      'Wait about a minute, then try again. You can still change the generator settings directly while this cools down.',
+    ].join('\n\n')
+  }
+
+  return details
+    ? `Error: ${error}.\n\n${details}`
+    : `Error: ${error}. Please try again.`
+}
+
 export interface AIHelperActiveTask {
   mode: AIHelperMode
   goal: string
@@ -456,7 +479,7 @@ export function useAIHelper() {
         }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now() }])
+        setMessages(prev => [...prev, { role: 'assistant', content: formatAIHelperErrorMessage(errorData, response.status), timestamp: Date.now() }])
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
@@ -540,7 +563,7 @@ export function useAIHelper() {
         }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: 'logo' }])
+        setMessages(prev => [...prev, { role: 'assistant', content: formatAIHelperErrorMessage(errorData, response.status), timestamp: Date.now(), mode: 'logo' }])
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
@@ -637,7 +660,7 @@ export function useAIHelper() {
         }])
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorData.error}. Please try again.`, timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
+        setMessages(prev => [...prev, { role: 'assistant', content: formatAIHelperErrorMessage(errorData, response.status), timestamp: Date.now(), mode: isLogo ? 'logo' : 'image' }])
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return

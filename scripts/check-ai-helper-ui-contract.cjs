@@ -156,6 +156,18 @@ const checks = [
     },
   },
   {
+    name: 'AI helper rate limit errors include actionable details',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      return /formatAIHelperErrorMessage/.test(hook) &&
+        /details\?: string/.test(hook) &&
+        /status === 429/.test(hook) &&
+        /Wait about a minute/.test(hook) &&
+        /change the generator settings directly/.test(hook) &&
+        /formatAIHelperErrorMessage\(errorData, response\.status\)/.test(hook)
+    },
+  },
+  {
     name: 'AI helper sends current context and memory to logo mode',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
