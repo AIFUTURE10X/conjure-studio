@@ -221,6 +221,22 @@ const checks = [
         /Preference memory/.test(snapshot)
     },
   },
+  {
+    name: 'AI helper preference memory can be inspected and forgotten',
+    pass: () => {
+      const hook = read('app/image-studio/hooks/useAIHelper.ts')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      return /preferenceMemory/.test(hook) &&
+        /forgetPreference/.test(hook) &&
+        /filter\(\(snapshot\) => snapshot\.kind !== 'preference' \|\| snapshot\.timestamp !== timestamp\)/.test(hook) &&
+        /preferenceMemory=/.test(sidebar) &&
+        /onForgetPreference=/.test(sidebar) &&
+        /Saved Preferences/.test(snapshot) &&
+        /Forget preference/.test(snapshot) &&
+        /onForgetPreference\?\.\(preference\.timestamp\)/.test(snapshot)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

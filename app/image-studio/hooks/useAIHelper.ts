@@ -239,6 +239,14 @@ export function useAIHelper() {
     })
   }, [rememberMemorySnapshot])
 
+  const forgetPreference = useCallback((timestamp: number) => {
+    setGenerationMemory(prev => {
+      const next = prev.filter((snapshot) => snapshot.kind !== 'preference' || snapshot.timestamp !== timestamp)
+      saveAgentMemory(next)
+      return next
+    })
+  }, [])
+
   const updateMessageSuggestions = useCallback((index: number, newSuggestions: any) => {
     console.log('[v0] Updating message', index, 'with new suggestions:', newSuggestions)
     setMessages(prev => {
@@ -459,10 +467,16 @@ export function useAIHelper() {
     }
   }, [messages, mode, generationMemory, rememberAssistantSuggestion])
 
+  const preferenceMemory = generationMemory
+    .filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'preference')
+    .slice(-8)
+
   return {
     messages, uploadedImages, isLoading, mode, setMode,
     sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage,
-    preferenceCount: generationMemory.filter((snapshot) => snapshot.mode === mode && snapshot.kind === 'preference').length,
+    preferenceCount: preferenceMemory.length,
+    preferenceMemory,
+    forgetPreference,
     clearHistory, updateMessageSuggestions, updateMessageLogoConfig
   }
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import { Brain, FileText, ImageIcon, Layers, MonitorCheck, Sparkles } from 'lucide-react'
-import type { AIHelperLatestOutput, AIHelperMode } from '../../hooks/useAIHelper'
+import { Brain, FileText, ImageIcon, Layers, MonitorCheck, Sparkles, X } from 'lucide-react'
+import type { AIHelperLatestOutput, AIHelperMemorySnapshot, AIHelperMode } from '../../hooks/useAIHelper'
 import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 
 interface ContextSnapshotProps {
@@ -19,6 +19,8 @@ interface ContextSnapshotProps {
   }
   uploadedImages: string[]
   preferenceCount?: number
+  preferenceMemory?: AIHelperMemorySnapshot[]
+  onForgetPreference?: (timestamp: number) => void
   latestOutputs?: {
     image?: AIHelperLatestOutput | null
     logo?: AIHelperLatestOutput | null
@@ -42,7 +44,15 @@ function ContextChip({ icon: Icon, label, active }: { icon: typeof FileText; lab
   )
 }
 
-export function ContextSnapshot({ mode, currentPromptSettings = {}, uploadedImages, preferenceCount = 0, latestOutputs = {} }: ContextSnapshotProps) {
+export function ContextSnapshot({
+  mode,
+  currentPromptSettings = {},
+  uploadedImages,
+  preferenceCount = 0,
+  preferenceMemory = [],
+  onForgetPreference,
+  latestOutputs = {},
+}: ContextSnapshotProps) {
   const latestOutput = mode === 'logo' ? latestOutputs.logo : latestOutputs.image
   const hasPrompt = hasPromptText(currentPromptSettings.currentPrompt)
   const hasNegativePrompt = hasPromptText(currentPromptSettings.currentNegativePrompt)
@@ -67,6 +77,32 @@ export function ContextSnapshot({ mode, currentPromptSettings = {}, uploadedImag
         <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />
         <ContextChip icon={Brain} label={preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory'} active={preferenceCount > 0} />
       </div>
+      {preferenceMemory.length > 0 && (
+        <div className="mt-3 border-t border-zinc-800 pt-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Saved Preferences</div>
+          <div className="flex flex-wrap gap-2">
+            {preferenceMemory.map((preference) => (
+              <span
+                key={preference.timestamp}
+                className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-md border border-[#c99850]/30 bg-[#c99850]/10 px-2.5 py-1 text-xs font-medium text-[#f0d49b]"
+                title={preference.preference || 'Saved preference'}
+              >
+                <Brain className="h-3.5 w-3.5 shrink-0" />
+                <span className="max-w-[360px] truncate">{preference.preference}</span>
+                <button
+                  type="button"
+                  onClick={() => onForgetPreference?.(preference.timestamp)}
+                  className="rounded p-0.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+                  title="Forget preference"
+                  aria-label="Forget preference"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
