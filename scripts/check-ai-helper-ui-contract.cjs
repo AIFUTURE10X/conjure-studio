@@ -11,8 +11,26 @@ const checks = [
     pass: () => {
       const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
       return /AI_HELPER_PANEL_WIDTH\s*=\s*'min\(720px, 100vw\)'/.test(sidebar) &&
-        /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'min\(960px, 100vw\)'/.test(sidebar) &&
+        /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
         !/w-\[400px\]/.test(sidebar)
+    },
+  },
+  {
+    name: 'AI helper expanded mode uses the full canvas with organized settings and chat columns',
+    pass: () => {
+      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
+      return /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
+        /helperWorkspaceClass/.test(sidebar) &&
+        /helperSettingsRailClass/.test(sidebar) &&
+        /helperConversationClass/.test(sidebar) &&
+        /lg:grid-cols-\[minmax\(320px,380px\)_minmax\(0,1fr\)\]/.test(sidebar) &&
+        /isExpanded \? 'workspace' : 'drawer'/.test(sidebar) &&
+        /variant\?: 'drawer' \| 'workspace'/.test(snapshot) &&
+        /contextGroups/.test(snapshot) &&
+        /Core Settings/.test(snapshot) &&
+        /References/.test(snapshot) &&
+        /Memory/.test(snapshot)
     },
   },
   {

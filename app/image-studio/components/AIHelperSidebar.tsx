@@ -30,7 +30,7 @@ import { DiagnosticCard } from './AIHelper/DiagnosticCard'
 import { PromptQualityCard } from './AIHelper/PromptQualityCard'
 
 const AI_HELPER_PANEL_WIDTH = 'min(720px, 100vw)'
-const AI_HELPER_PANEL_EXPANDED_WIDTH = 'min(960px, 100vw)'
+const AI_HELPER_PANEL_EXPANDED_WIDTH = '100vw'
 
 interface AIHelperSidebarProps {
   isOpen: boolean
@@ -972,6 +972,16 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
   if (!isOpen) return null
 
   const suggestionMessages = messages.filter(m => m.suggestions)
+  const contextVariant = isExpanded ? 'workspace' : 'drawer'
+  const helperWorkspaceClass = isExpanded
+    ? 'grid min-h-0 flex-1 grid-cols-1 bg-zinc-900 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]'
+    : 'flex min-h-0 flex-1 flex-col'
+  const helperSettingsRailClass = isExpanded
+    ? 'min-h-0 overflow-y-auto border-b border-[#c99850]/20 bg-zinc-950/70 lg:border-b-0 lg:border-r'
+    : 'contents'
+  const helperConversationClass = isExpanded
+    ? 'flex min-h-0 flex-col bg-zinc-900'
+    : 'flex min-h-0 flex-1 flex-col'
 
   return (
     <div
@@ -987,128 +997,135 @@ export function AIHelperSidebar({ isOpen, onClose, currentPromptSettings = {}, l
         onClose={onClose}
       />
 
-      <ContextSnapshot
-        mode={mode}
-        currentPromptSettings={currentPromptSettings}
-        uploadedImages={uploadedImages}
-        preferenceCount={preferenceCount}
-        preferenceMemory={preferenceMemory}
-        activeDesignBrief={activeDesignBrief}
-        sharedProjectBrief={sharedProjectBrief}
-        activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
-        onForgetPreference={forgetPreference}
-        latestOutputs={latestOutputs}
-      />
+      <div className={helperWorkspaceClass}>
+        <div className={helperSettingsRailClass}>
+          <ContextSnapshot
+            mode={mode}
+            variant={contextVariant}
+            currentPromptSettings={currentPromptSettings}
+            uploadedImages={uploadedImages}
+            preferenceCount={preferenceCount}
+            preferenceMemory={preferenceMemory}
+            activeDesignBrief={activeDesignBrief}
+            sharedProjectBrief={sharedProjectBrief}
+            activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
+            onForgetPreference={forgetPreference}
+            latestOutputs={latestOutputs}
+          />
 
-      <PromptSuggestionChips
-        mode={mode}
-        currentPromptSettings={currentPromptSettings}
-        uploadedImages={uploadedImages}
-        latestOutputs={latestOutputs}
-        onSelectPrompt={setInput}
-        onRunPrompt={(prompt) => void runHelperPrompt(prompt)}
-      />
+          <PromptSuggestionChips
+            mode={mode}
+            currentPromptSettings={currentPromptSettings}
+            uploadedImages={uploadedImages}
+            latestOutputs={latestOutputs}
+            onSelectPrompt={setInput}
+            onRunPrompt={(prompt) => void runHelperPrompt(prompt)}
+          />
 
-      <PromptPreflightPanel
-        mode={mode}
-        currentPromptSettings={currentPromptSettings}
-        uploadedImages={uploadedImages}
-        onAskHelper={setInput}
-        onRunFix={(prompt) => void runHelperPrompt(prompt)}
-      />
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-        {messages.length === 0 && !isLoading && <EmptyState mode={mode} />}
-
-        {messages.map((msg, idx) => (
-          <div key={idx}>
-            <MessageBubble role={msg.role} content={msg.content} />
-
-            {msg.designBrief && (
-              <DesignBriefCard designBrief={msg.designBrief} />
-            )}
-
-            {msg.executionPlan && (
-              <ExecutionPlanCard executionPlan={msg.executionPlan} />
-            )}
-
-            {msg.promptQualityChecklist && (
-              <PromptQualityCard plannerDecision={msg.plannerDecision} checklist={msg.promptQualityChecklist} />
-            )}
-
-            {msg.diagnosticFindings && (
-              <DiagnosticCard findings={msg.diagnosticFindings} />
-            )}
-
-            {msg.actions && msg.actions.length > 0 && (
-              <SmartActionBar actions={msg.actions} onRunAction={(action) => handleRunAction(action, idx, msg)} />
-            )}
-
-            {msg.logoConfig && Object.keys(msg.logoConfig).length > 0 && onApplyLogoConfig && (
-              <LogoConfigCard
-                logoConfig={msg.logoConfig}
-                isApplied={appliedIndex === idx}
-                onApply={() => { onApplyLogoConfig(msg.logoConfig!); setAppliedIndex(idx); setTimeout(() => setAppliedIndex(null), 2000) }}
-              />
-            )}
-
-            {msg.suggestions && (onApplySuggestions || onApplyLogoSuggestions) && (
-              <SuggestionCard
-                suggestions={msg.suggestions}
-                idx={idx}
-                isLatest={idx === suggestionMessages.length - 1 && suggestionMessages.length > 1}
-                isEditing={editingIndex === idx}
-                isApplied={appliedIndex === idx}
-                applyLabel={msg.mode === 'logo' ? SUGGESTION_APPLY_LABELS.logo : SUGGESTION_APPLY_LABELS.image}
-                editedSuggestions={editedSuggestions}
-                onEditStart={handleEditStart}
-                onEditCancel={handleEditCancel}
-                onEditSave={handleEditSave}
-                onApply={handleApplyClick}
-                onCopy={handleCopy}
-                copiedField={copiedField}
-                updateEditedField={updateEditedField}
-              />
-            )}
-          </div>
-        ))}
-
-        {isLoading && <LoadingIndicator />}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <ImageUploadPreview images={uploadedImages} onRemove={removeImage} />
-      {pendingFollowUp && (
-        <div className="border-t border-[#c99850]/20 bg-zinc-950/70 px-4 py-3 sm:px-5">
-          <div className="flex items-start justify-between gap-3 rounded-md border border-[#c99850]/30 bg-[#c99850]/10 px-3 py-2">
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#f0d49b]">Answering follow-up</div>
-              <div className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-200">{pendingFollowUp.prompt}</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPendingFollowUp(null)}
-              className="shrink-0 rounded border border-zinc-700 px-2 py-1 text-xs font-semibold text-zinc-300 transition-colors hover:border-[#c99850]/50 hover:text-white"
-              title="Clear follow-up"
-              aria-label="Clear follow-up"
-            >
-              Clear
-            </button>
-          </div>
+          <PromptPreflightPanel
+            mode={mode}
+            currentPromptSettings={currentPromptSettings}
+            uploadedImages={uploadedImages}
+            onAskHelper={setInput}
+            onRunFix={(prompt) => void runHelperPrompt(prompt)}
+          />
         </div>
-      )}
-      <ChatInput
-        input={input}
-        setInput={setInput}
-        mode={mode}
-        isLoading={isLoading}
-        hasImages={uploadedImages.length > 0}
-        pendingQuestion={pendingFollowUp?.prompt}
-        onSend={handleSend}
-        onCancelRequest={cancelRequest}
-        onImageUpload={handleImageUpload}
-      />
+
+        <div className={helperConversationClass}>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+            {messages.length === 0 && !isLoading && <EmptyState mode={mode} />}
+
+            {messages.map((msg, idx) => (
+              <div key={idx}>
+                <MessageBubble role={msg.role} content={msg.content} />
+
+                {msg.designBrief && (
+                  <DesignBriefCard designBrief={msg.designBrief} />
+                )}
+
+                {msg.executionPlan && (
+                  <ExecutionPlanCard executionPlan={msg.executionPlan} />
+                )}
+
+                {msg.promptQualityChecklist && (
+                  <PromptQualityCard plannerDecision={msg.plannerDecision} checklist={msg.promptQualityChecklist} />
+                )}
+
+                {msg.diagnosticFindings && (
+                  <DiagnosticCard findings={msg.diagnosticFindings} />
+                )}
+
+                {msg.actions && msg.actions.length > 0 && (
+                  <SmartActionBar actions={msg.actions} onRunAction={(action) => handleRunAction(action, idx, msg)} />
+                )}
+
+                {msg.logoConfig && Object.keys(msg.logoConfig).length > 0 && onApplyLogoConfig && (
+                  <LogoConfigCard
+                    logoConfig={msg.logoConfig}
+                    isApplied={appliedIndex === idx}
+                    onApply={() => { onApplyLogoConfig(msg.logoConfig!); setAppliedIndex(idx); setTimeout(() => setAppliedIndex(null), 2000) }}
+                  />
+                )}
+
+                {msg.suggestions && (onApplySuggestions || onApplyLogoSuggestions) && (
+                  <SuggestionCard
+                    suggestions={msg.suggestions}
+                    idx={idx}
+                    isLatest={idx === suggestionMessages.length - 1 && suggestionMessages.length > 1}
+                    isEditing={editingIndex === idx}
+                    isApplied={appliedIndex === idx}
+                    applyLabel={msg.mode === 'logo' ? SUGGESTION_APPLY_LABELS.logo : SUGGESTION_APPLY_LABELS.image}
+                    editedSuggestions={editedSuggestions}
+                    onEditStart={handleEditStart}
+                    onEditCancel={handleEditCancel}
+                    onEditSave={handleEditSave}
+                    onApply={handleApplyClick}
+                    onCopy={handleCopy}
+                    copiedField={copiedField}
+                    updateEditedField={updateEditedField}
+                  />
+                )}
+              </div>
+            ))}
+
+            {isLoading && <LoadingIndicator />}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <ImageUploadPreview images={uploadedImages} onRemove={removeImage} />
+          {pendingFollowUp && (
+            <div className="border-t border-[#c99850]/20 bg-zinc-950/70 px-4 py-3 sm:px-5">
+              <div className="flex items-start justify-between gap-3 rounded-md border border-[#c99850]/30 bg-[#c99850]/10 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#f0d49b]">Answering follow-up</div>
+                  <div className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-200">{pendingFollowUp.prompt}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingFollowUp(null)}
+                  className="shrink-0 rounded border border-zinc-700 px-2 py-1 text-xs font-semibold text-zinc-300 transition-colors hover:border-[#c99850]/50 hover:text-white"
+                  title="Clear follow-up"
+                  aria-label="Clear follow-up"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            mode={mode}
+            isLoading={isLoading}
+            hasImages={uploadedImages.length > 0}
+            pendingQuestion={pendingFollowUp?.prompt}
+            onSend={handleSend}
+            onCancelRequest={cancelRequest}
+            onImageUpload={handleImageUpload}
+          />
+        </div>
+      </div>
     </div>
   )
 }

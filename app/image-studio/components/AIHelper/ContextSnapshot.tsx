@@ -6,6 +6,7 @@ import type { CreativeDirectionState } from '../../constants/creative-direction-
 
 interface ContextSnapshotProps {
   mode: AIHelperMode
+  variant?: 'drawer' | 'workspace'
   currentPromptSettings?: {
     activeTab?: string
     currentPrompt?: string
@@ -89,6 +90,7 @@ function ContextChip({ icon: Icon, label, active }: { icon: typeof FileText; lab
 
 export function ContextSnapshot({
   mode,
+  variant = 'drawer',
   currentPromptSettings = {},
   uploadedImages,
   preferenceCount = 0,
@@ -111,6 +113,41 @@ export function ContextSnapshot({
   const hasSharedProjectBrief = hasPromptText(sharedProjectBrief)
   const imageBgRemovalEnabled = currentPromptSettings.imageBgRemovalEnabled !== false && Boolean(currentPromptSettings.imageBgRemovalMethod)
   const logoBgRemovalEnabled = currentPromptSettings.logoBgRemovalEnabled !== false && Boolean(currentPromptSettings.logoBgRemovalMethod)
+  const contextGroups = [
+    {
+      label: 'Core Settings',
+      chips: [
+        { icon: FileText, label: hasPrompt ? 'Prompt loaded' : 'No prompt', active: hasPrompt },
+        { icon: Layers, label: hasNegativePrompt ? 'Negative prompt' : 'No negative prompt', active: hasNegativePrompt },
+        { icon: MonitorCheck, label: hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style', active: hasStyle },
+        { icon: MonitorCheck, label: formatModelLabel(currentPromptSettings.selectedModel), active: Boolean(currentPromptSettings.selectedModel) },
+        { icon: MonitorCheck, label: currentPromptSettings.imageSize ? `Resolution: ${currentPromptSettings.imageSize}` : 'No resolution', active: Boolean(currentPromptSettings.imageSize) },
+        { icon: Layers, label: currentPromptSettings.imageCount ? `Count: ${currentPromptSettings.imageCount}` : 'No count', active: Boolean(currentPromptSettings.imageCount) },
+        ...(mode === 'image'
+          ? [{ icon: Layers, label: formatBackgroundRemovalChip('image' as const, currentPromptSettings.imageBgRemovalMethod, imageBgRemovalEnabled), active: imageBgRemovalEnabled }]
+          : [{ icon: Layers, label: formatBackgroundRemovalChip('logo' as const, currentPromptSettings.logoBgRemovalMethod, logoBgRemovalEnabled), active: logoBgRemovalEnabled }]),
+      ],
+    },
+    {
+      label: 'References',
+      chips: [
+        { icon: ImageIcon, label: hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image', active: hasReferenceImage },
+        { icon: ImageIcon, label: hasGeneratorReferenceImage ? `Generator ref: ${generatorReferenceMode || 'loaded'}` : 'No generator ref', active: hasGeneratorReferenceImage },
+        { icon: Sparkles, label: hasLatestOutput ? 'Latest output' : 'No latest output', active: hasLatestOutput },
+      ],
+    },
+    {
+      label: 'Memory',
+      chips: [
+        { icon: Brain, label: hasActiveDesignBrief ? 'Active brief' : 'No active brief', active: hasActiveDesignBrief },
+        { icon: Brain, label: hasSharedProjectBrief ? 'Shared project' : 'No shared project', active: hasSharedProjectBrief },
+        { icon: Brain, label: preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory', active: preferenceCount > 0 },
+      ],
+    },
+  ]
+  const groupGridClass = variant === 'workspace'
+    ? 'grid gap-3'
+    : 'grid gap-3 lg:grid-cols-3'
 
   return (
     <div className="border-b border-[#c99850]/20 bg-zinc-950/50 px-4 py-3 sm:px-5">
@@ -121,33 +158,17 @@ export function ContextSnapshot({
           Mode: {mode === 'logo' ? 'Logo' : 'Image'}
         </span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <ContextChip icon={FileText} label={hasPrompt ? 'Prompt loaded' : 'No prompt'} active={hasPrompt} />
-        <ContextChip icon={Layers} label={hasNegativePrompt ? 'Negative prompt' : 'No negative prompt'} active={hasNegativePrompt} />
-        <ContextChip icon={MonitorCheck} label={hasStyle ? currentPromptSettings.currentStyle || 'Style set' : 'No style'} active={hasStyle} />
-        <ContextChip icon={MonitorCheck} label={formatModelLabel(currentPromptSettings.selectedModel)} active={Boolean(currentPromptSettings.selectedModel)} />
-        <ContextChip icon={MonitorCheck} label={currentPromptSettings.imageSize ? `Resolution: ${currentPromptSettings.imageSize}` : 'No resolution'} active={Boolean(currentPromptSettings.imageSize)} />
-        <ContextChip icon={Layers} label={currentPromptSettings.imageCount ? `Count: ${currentPromptSettings.imageCount}` : 'No count'} active={Boolean(currentPromptSettings.imageCount)} />
-        {mode === 'image' && (
-          <ContextChip
-            icon={Layers}
-            label={formatBackgroundRemovalChip('image', currentPromptSettings.imageBgRemovalMethod, imageBgRemovalEnabled)}
-            active={imageBgRemovalEnabled}
-          />
-        )}
-        {mode === 'logo' && (
-          <ContextChip
-            icon={Layers}
-            label={formatBackgroundRemovalChip('logo', currentPromptSettings.logoBgRemovalMethod, logoBgRemovalEnabled)}
-            active={logoBgRemovalEnabled}
-          />
-        )}
-        <ContextChip icon={ImageIcon} label={hasReferenceImage ? `Reference image x${uploadedImages.length}` : 'No reference image'} active={hasReferenceImage} />
-        <ContextChip icon={ImageIcon} label={hasGeneratorReferenceImage ? `Generator ref: ${generatorReferenceMode || 'loaded'}` : 'No generator ref'} active={hasGeneratorReferenceImage} />
-        <ContextChip icon={Sparkles} label={hasLatestOutput ? 'Latest output' : 'No latest output'} active={hasLatestOutput} />
-        <ContextChip icon={Brain} label={hasActiveDesignBrief ? 'Active brief' : 'No active brief'} active={hasActiveDesignBrief} />
-        <ContextChip icon={Brain} label={hasSharedProjectBrief ? 'Shared project' : 'No shared project'} active={hasSharedProjectBrief} />
-        <ContextChip icon={Brain} label={preferenceCount > 0 ? `Preference memory x${preferenceCount}` : 'No preference memory'} active={preferenceCount > 0} />
+      <div className={groupGridClass}>
+        {contextGroups.map((group) => (
+          <div key={group.label}>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{group.label}</div>
+            <div className="flex flex-wrap gap-2">
+              {group.chips.map((chip) => (
+                <ContextChip key={chip.label} icon={chip.icon} label={chip.label} active={chip.active} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
       {hasSharedProjectBrief && (
         <div className="mt-3 rounded-md border border-zinc-700/70 bg-zinc-900/70 p-3">
