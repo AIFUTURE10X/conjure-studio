@@ -43,7 +43,7 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
     ? currentPromptSettings.logoBgRemovalMethod
     : currentPromptSettings.imageBgRemovalEnabled === false
       ? 'none'
-      : currentPromptSettings.imageBgRemovalMethod || (currentPromptSettings.imagePhotoRoomBgRemovalEnabled ? 'photoroom' : 'smart')
+      : currentPromptSettings.imageBgRemovalMethod || (currentPromptSettings.imagePhotoRoomBgRemovalEnabled ? 'photoroom' : 'none')
 
   const settingsGroups: QuickSettingGroup[] = [
     {
@@ -56,7 +56,6 @@ export function QuickSettingsPanel({ mode, currentPromptSettings = {}, onRunSett
           ]
         : [
             { label: 'PhotoRoom', prompt: 'use photoroom', icon: Scissors, active: activeBgMethod === 'photoroom' },
-            { label: 'Smart BG', prompt: 'use smart cleanup', icon: ImageIcon, active: activeBgMethod === 'smart' },
             { label: 'Normal BG', prompt: 'turn off background removal', icon: BadgeCheck, active: activeBgMethod === 'none' },
           ],
     },

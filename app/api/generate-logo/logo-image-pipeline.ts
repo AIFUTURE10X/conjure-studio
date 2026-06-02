@@ -134,11 +134,7 @@ export async function removeLogoBackgroundIfNeeded(
       return result(await removeBackgroundWithPhotoRoom(imageBase64, request.cloudApiKey || undefined, request.resolution !== '1K'))
     }
 
-    console.warn('[Logo API] PhotoRoom unavailable (missing PHOTOROOM_API_KEY); using local smart fallback')
-    return result(await removeBackgroundSmart(imageBase64, {
-      tolerance: 25,
-      edgeSmoothing: false,
-    }), 'smart')
+    throw new Error('PhotoRoom background removal is selected but PHOTOROOM_API_KEY is not configured.')
   }
 
   if (request.bgRemovalMethod === 'smart') {

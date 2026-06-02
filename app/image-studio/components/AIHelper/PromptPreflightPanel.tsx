@@ -37,7 +37,7 @@ function includesAny(text: string, terms: string[]): boolean {
 export function getPromptPreflightIssues({ mode, currentPromptSettings = {}, uploadedImages }: Omit<PromptPreflightPanelProps, 'onAskHelper'>): PromptPreflightIssue[] {
   const prompt = currentPromptSettings.currentPrompt?.toLowerCase() || ''
   const negativePrompt = currentPromptSettings.currentNegativePrompt?.toLowerCase() || ''
-  const imageBgRemovalMethod = currentPromptSettings.imageBgRemovalMethod || 'smart'
+  const imageBgRemovalMethod = currentPromptSettings.imageBgRemovalMethod || 'none'
   const logoBgRemovalMethod = currentPromptSettings.logoBgRemovalMethod || 'none'
   const logoSelectedModel = currentPromptSettings.logoSelectedModel || ''
   const logoTextMode = currentPromptSettings.logoTextMode || 'ai-text'
@@ -82,7 +82,7 @@ export function getPromptPreflightIssues({ mode, currentPromptSettings = {}, upl
     issues.push({
       label: 'Native PNG model mismatch',
       detail: 'Native transparent PNG only works with ChatGPT Images 2.0.',
-      fixPrompt: 'Check this logo setup for native transparent PNG. If I need true model-side transparency, tell me to use ChatGPT Images 2.0; otherwise rewrite the prompt for PhotoRoom or smart cleanup after generation.',
+      fixPrompt: 'Check this logo setup for native transparent PNG. If I need true model-side transparency, tell me to use ChatGPT Images 2.0; otherwise rewrite the prompt for PhotoRoom cleanup after generation.',
     })
   }
 

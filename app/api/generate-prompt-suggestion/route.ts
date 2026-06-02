@@ -37,7 +37,7 @@ const IMAGE_GENERATION_MODELS = [
   'gpt-image-2',
 ] as const
 
-const IMAGE_BACKGROUND_REMOVAL_METHODS = ['photoroom', 'smart', 'none'] as const
+const IMAGE_BACKGROUND_REMOVAL_METHODS = ['photoroom', 'none'] as const
 
 type HelperActionType =
   | 'apply_suggestions'
@@ -643,9 +643,9 @@ function getActiveBackgroundRemovalSummary(settings: Record<string, unknown>, mo
     return formatBackgroundRemovalMethod(method, provider, enabled)
   }
 
-  const method = getStringSetting(settings, 'imageBgRemovalMethod') || (settings.imagePhotoRoomBgRemovalEnabled ? 'photoroom' : 'smart')
-  const provider = getStringSetting(settings, 'imageBgRemovalProvider') || (method === 'photoroom' ? 'PhotoRoom' : 'Smart local cleanup')
-  const enabled = settings.imageBgRemovalEnabled !== false && Boolean(method)
+  const method = getStringSetting(settings, 'imageBgRemovalMethod') || (settings.imagePhotoRoomBgRemovalEnabled ? 'photoroom' : 'none')
+  const provider = getStringSetting(settings, 'imageBgRemovalProvider') || (method === 'photoroom' ? 'PhotoRoom' : 'No background removal')
+  const enabled = settings.imageBgRemovalEnabled !== false && Boolean(method) && method !== 'none'
   return formatBackgroundRemovalMethod(method, provider, enabled)
 }
 
@@ -1358,10 +1358,6 @@ function formatBackgroundRemovalMethod(method: string, provider: string, enabled
     return 'native-transparent. This asks ChatGPT Images 2.0 for real transparent PNG alpha and skips post-generation removal; it requires selected model gpt-image-2.'
   }
 
-  if (method === 'smart') {
-    return `${provider || 'Smart local cleanup'} post-generation background removal.`
-  }
-
   return `${provider || method} post-generation background removal.`
 }
 
@@ -1377,11 +1373,11 @@ function formatBackgroundRemovalContext(currentPromptSettings: unknown): string 
   const logoModel = getStringSetting(settings, 'logoSelectedModel')
 
   return [
-    `- Image generator Remove BG action: ${formatBackgroundRemovalMethod(imageMethod, imageProvider, imageEnabled)}`,
-    `- Image generator PhotoRoom BG checkbox: ${settings.imagePhotoRoomBgRemovalEnabled ? 'checked, so PhotoRoom is selected when Remove BG is on' : 'unchecked, so PhotoRoom is not selected; Smart cleanup is used only if Remove BG remains on'}.`,
+    `- Image generator PhotoRoom BG checkbox: ${settings.imagePhotoRoomBgRemovalEnabled ? 'checked, so PhotoRoom API cleanup is on' : 'unchecked, so image background removal is off'}.`,
+    `- Image generator background removal action: ${formatBackgroundRemovalMethod(imageMethod, imageProvider, imageEnabled)}`,
     `- Logo generator background removal method: ${formatBackgroundRemovalMethod(logoMethod, logoProvider, logoEnabled)}`,
     `- Logo generator model for native transparent PNG: ${logoModel || 'unknown'}. native-transparent requires gpt-image-2; PhotoRoom can clean up Gemini or OpenAI outputs after generation.`,
-    `- True PNG guidance: PhotoRoom and smart cleanup remove the background after the model creates the image. native-transparent is the only current model-side transparent PNG path, and only for gpt-image-2.`,
+    `- True PNG guidance: PhotoRoom removes the background after the model creates the image. native-transparent is the only current model-side transparent PNG path, and only for gpt-image-2.`,
     `- If the user asks for a normal logo/image with a visible background, keep background removal off or avoid promising transparent PNG output.`,
   ].join('\n')
 }
@@ -1712,7 +1708,7 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
 11. A plannerDecision and promptQualityChecklist that show whether you asked, diagnosed, iterated, or produced a generation-ready prompt
 
-Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2") and suggestions.bgRemovalMethod ("photoroom", "smart", or "none"). Use "photoroom" when the user needs the best post-generation background removal/true PNG cleanup workflow; use "smart" only when they prefer local/free cleanup; use "none" when they want a normal image with its generated background kept.
+Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2") and suggestions.bgRemovalMethod ("photoroom" or "none"). Use "photoroom" when the user needs post-generation background removal/true PNG cleanup; use "none" when they want a normal image with its generated background kept.
 
 Diagnostic-only questions:
 - If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, set "responseMode": "diagnostic".
@@ -1741,7 +1737,7 @@ Format your response as JSON:
     "aspectRatio": "aspect_ratio_value",
     "styleStrength": "moderate",
     "selectedModel": "optional image model id",
-    "bgRemovalMethod": "optional photoroom, smart, or none"
+    "bgRemovalMethod": "optional photoroom or none"
   },
   "actions": [
     { "type": "ask_follow_up", "label": "Answer question", "description": "Reply with the missing detail before making a prompt" },
@@ -2180,7 +2176,7 @@ User Request: ${message}
 
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
-Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", "smart", "native-transparent", etc.), and suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup; use native-transparent only with selectedModel gpt-image-2.
+Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", "native-transparent", etc.), and suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup; use native-transparent only with selectedModel gpt-image-2.
 Remember to respond with a JSON object containing "message", "plannerDecision", "designBrief", "executionPlan", "promptQualityChecklist", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.

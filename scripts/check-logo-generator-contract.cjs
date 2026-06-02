@@ -126,15 +126,13 @@ const checks = [
       /setBgRemovalMethod\(DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')),
   },
   {
-    name: 'image generator exposes separate background removal and PhotoRoom toggles',
+    name: 'image generator exposes PhotoRoom background removal toggle',
     pass: () => /useImageBgRemoval/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /checked=\{useImageBgRemoval\}/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /setUseImageBgRemoval\(e\.target\.checked\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /Remove BG/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       /usePhotoRoomBgRemoval/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /checked=\{useImageBgRemoval && usePhotoRoomBgRemoval\}/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /disabled=\{!useImageBgRemoval\}/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /setUsePhotoRoomBgRemoval\(e\.target\.checked\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /photoRoomBgRemovalEnabled/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /checked=\{photoRoomBgRemovalEnabled\}/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /setPhotoRoomBgRemovalEnabled\(e\.target\.checked\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      !/usePhotoRoomBgRemoval \? 'photoroom' : 'smart'/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       /PhotoRoom BG/.test(read('app/image-studio/components/GeneratePanel.tsx')),
   },
   {
@@ -143,20 +141,20 @@ const checks = [
       !/handleBulkRemoveBackground/.test(read('app/image-studio/components/GeneratePanel.tsx')),
   },
   {
-    name: 'manual background removal avoids Replicate',
-    pass: () => /if \(!useImageBgRemoval\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /formData\.append\('bgRemovalMethod', usePhotoRoomBgRemoval \? 'photoroom' : 'smart'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+    name: 'manual background removal uses PhotoRoom and avoids Replicate',
+    pass: () => /if \(!photoRoomBgRemovalEnabled\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       !/formData\.append\('bgRemovalMethod', 'replicate'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /formData\.append\('bgRemovalMethod', 'smart'\)/.test(read('app/image-studio/components/Logo/MockupPreview/generic/useBackgroundRemoval.ts')) &&
-      /useState<BgRemovalMethod>\('smart'\)/.test(read('app/image-studio/hooks/useBackgroundRemoverState.ts')),
+      /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(read('app/image-studio/components/Logo/MockupPreview/generic/useBackgroundRemoval.ts')) &&
+      /useState<BgRemovalMethod>\('photoroom'\)/.test(read('app/image-studio/hooks/useBackgroundRemoverState.ts')),
   },
   {
-    name: 'batch generation fallback metadata uses smart background removal',
+    name: 'batch generation fallback metadata uses shared background removal default',
     pass: () => /DEFAULT_LOGO_GENERATION_SETTINGS\.bgRemovalMethod/.test(read('app/image-studio/hooks/useBatchGeneration.ts')) &&
       !/options\.bgRemovalMethod \|\| 'replicate'/.test(read('app/image-studio/hooks/useBatchGeneration.ts')),
   },
   {
-    name: 'logo pipeline handles smart removal without Replicate',
+    name: 'logo pipeline keeps legacy smart removal without Replicate',
     pass: () => /removeBackgroundSmart/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
       /request\.bgRemovalMethod === 'smart'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
   },
@@ -173,11 +171,12 @@ const checks = [
       /bgRemovalMethod !== 'none' &&/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
   },
   {
-    name: 'logo pipeline calls PhotoRoom for selected cleanup with smart fallback',
+    name: 'logo pipeline calls PhotoRoom for selected cleanup without smart fallback',
     pass: () => /removeBackgroundWithPhotoRoom/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
       /isPhotoRoomBgRemovalAvailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
       /request\.bgRemovalMethod === 'photoroom'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
-      /PhotoRoom unavailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
+      /PhotoRoom background removal is selected but PHOTOROOM_API_KEY is not configured/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
+      !/PhotoRoom unavailable/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
   },
   {
     name: 'normal background logos use free-form presentation prompt',

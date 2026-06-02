@@ -119,6 +119,11 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     const setUseImageBgRemoval = onImageBgRemovalChange ?? setLocalUseImageBgRemoval
     const usePhotoRoomBgRemoval = controlledUsePhotoRoomBgRemoval ?? localUsePhotoRoomBgRemoval
     const setUsePhotoRoomBgRemoval = onPhotoRoomBgRemovalChange ?? setLocalUsePhotoRoomBgRemoval
+    const photoRoomBgRemovalEnabled = useImageBgRemoval && usePhotoRoomBgRemoval
+    const setPhotoRoomBgRemovalEnabled = (enabled: boolean) => {
+      setUseImageBgRemoval(enabled)
+      setUsePhotoRoomBgRemoval(enabled)
+    }
 
     const subjectText = useMemo(() => editedSubject || subjectImages.filter(i => i.selected).map(i => analysisResults.subjects.find(s => s.id === i.id)?.analysis).filter(Boolean).join('\n\n'), [subjectImages, analysisResults.subjects, editedSubject])
     const sceneText = useMemo(() => editedScene || analysisResults.scene?.analysis || '', [analysisResults.scene, editedScene])
@@ -179,8 +184,8 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     const handleRemoveBackground = async (index: number) => {
       const img = generatedImages[index]
       if (!img?.url) return
-      if (!useImageBgRemoval) {
-        toast.info('Background removal is turned off')
+      if (!photoRoomBgRemovalEnabled) {
+        toast.info('PhotoRoom BG is turned off')
         return
       }
       try {
@@ -189,7 +194,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
         const file = new File([blob], 'image.png', { type: 'image/png' })
         const formData = new FormData()
         formData.append('image', file)
-        formData.append('bgRemovalMethod', usePhotoRoomBgRemoval ? 'photoroom' : 'smart')
+        formData.append('bgRemovalMethod', 'photoroom')
         const result = await fetch('/api/remove-background', { method: 'POST', body: formData })
         const data = await result.json()
         if (!data.success || !data.image) throw new Error(data.error || 'Failed to remove background')
@@ -255,23 +260,12 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
               <ModelSelector selectedModel={selectedModel} onModelChange={m => setSelectedModel?.(m)} imageSize={imageSize} onImageSizeChange={s => setImageSize?.(s)} />
               <div className="flex items-center gap-2 flex-wrap">
                 <SeedControlDropdown seed={activeSeed} onSeedChange={setSeed} />
-                <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${useImageBgRemoval ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}>
+                <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${photoRoomBgRemovalEnabled ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}>
                   <input
                     type="checkbox"
-                    checked={useImageBgRemoval}
-                    onChange={(e) => setUseImageBgRemoval(e.target.checked)}
-                    aria-label="Turn image background removal on or off"
-                    className="h-3.5 w-3.5 accent-[#c99850]"
-                  />
-                  Remove BG
-                </label>
-                <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${useImageBgRemoval && usePhotoRoomBgRemoval ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'} ${useImageBgRemoval ? '' : 'opacity-60'}`}>
-                  <input
-                    type="checkbox"
-                    checked={useImageBgRemoval && usePhotoRoomBgRemoval}
-                    onChange={(e) => setUsePhotoRoomBgRemoval(e.target.checked)}
-                    disabled={!useImageBgRemoval}
-                    aria-label="Use PhotoRoom for background removal"
+                    checked={photoRoomBgRemovalEnabled}
+                    onChange={(e) => setPhotoRoomBgRemovalEnabled(e.target.checked)}
+                    aria-label="Turn PhotoRoom background removal on or off"
                     className="h-3.5 w-3.5 accent-[#c99850]"
                   />
                   PhotoRoom BG

@@ -169,13 +169,14 @@ export function useAISuggestionsHandler({
     }
 
     const normalizedBgRemovalMethod = suggestions.bgRemovalMethod || suggestions.imageBgRemovalMethod
-    if (normalizedBgRemovalMethod === 'photoroom' || normalizedBgRemovalMethod === 'smart') {
+    if (normalizedBgRemovalMethod === 'photoroom') {
       setUseImageBgRemoval(true)
-      console.log('[v0] Setting PhotoRoom BG removal to:', normalizedBgRemovalMethod === 'photoroom')
-      setUsePhotoRoomBgRemoval(normalizedBgRemovalMethod === 'photoroom')
+      console.log('[v0] Turning PhotoRoom BG removal on')
+      setUsePhotoRoomBgRemoval(true)
     } else if (normalizedBgRemovalMethod === 'none') {
       console.log('[v0] Turning image background removal off')
       setUseImageBgRemoval(false)
+      setUsePhotoRoomBgRemoval(false)
     } else if (normalizedBgRemovalMethod) {
       console.warn('[v0] Unrecognized image background removal suggestion:', normalizedBgRemovalMethod)
     }

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const imageFile = formData.get('image') as File | null
-    const bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'auto'
+    const bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'photoroom'
     const cloudApiKey = formData.get('cloudApiKey') as string | null
 
     // Optional: metadata for saving to history (server-side save)

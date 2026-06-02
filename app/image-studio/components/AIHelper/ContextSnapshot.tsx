@@ -68,7 +68,6 @@ const formatBackgroundRemovalChip = (scope: 'image' | 'logo', method?: string, e
   if (!enabled || method === 'none') return `${scopeLabel} BG off`
   if (method === 'photoroom') return 'PhotoRoom BG'
   if (method === 'native-transparent') return 'Native PNG'
-  if (method === 'smart') return `${scopeLabel} Smart BG`
   if (!method) return `${scopeLabel} BG unknown`
   return `${scopeLabel} BG: ${method}`
 }

@@ -52,12 +52,6 @@ export const BG_REMOVAL_METHODS: Array<{
     requiresModel: 'gpt-image-2',
   },
   {
-    value: 'smart',
-    label: 'Smart (Local)',
-    description: 'Free local cleanup - detects the background color and keeps logo content',
-    badge: 'Recommended'
-  },
-  {
     value: 'photoroom',
     label: 'PhotoRoom',
     description: 'Professional API cleanup for the cleanest transparent PNG edges',

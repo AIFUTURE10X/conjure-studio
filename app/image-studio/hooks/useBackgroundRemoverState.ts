@@ -4,14 +4,14 @@
  * Background Remover State Management
  *
  * Manages queue of images for background removal with batch processing support.
- * Uses local smart background removal as the default method.
+ * Uses PhotoRoom background removal as the default method.
  */
 
 import { useState, useCallback } from 'react'
 
 // ============ Types ============
 
-export type BgRemovalMethod = 'replicate' | 'photoroom' | 'smart' | 'auto'
+export type BgRemovalMethod = 'photoroom'
 
 export interface QueueItem {
   id: string
@@ -59,7 +59,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function useBackgroundRemoverState(): BackgroundRemoverState {
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [selectedMethod, setSelectedMethod] = useState<BgRemovalMethod>('smart')
+  const [selectedMethod, setSelectedMethod] = useState<BgRemovalMethod>('photoroom')
   const [isProcessingAll, setIsProcessingAll] = useState(false)
 
   // Add files to queue

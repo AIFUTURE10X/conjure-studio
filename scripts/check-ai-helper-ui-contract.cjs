@@ -455,7 +455,9 @@ const checks = [
         /setUsePhotoRoomBgRemoval: \(enabled: boolean\) => void/.test(handler) &&
         /validImageModels/.test(handler) &&
         /setSelectedModel\(normalizedModel as GenerationModel\)/.test(handler) &&
-        /setUsePhotoRoomBgRemoval\(normalizedBgRemovalMethod === 'photoroom'\)/.test(handler) &&
+        /setUsePhotoRoomBgRemoval\(true\)/.test(handler) &&
+        /setUsePhotoRoomBgRemoval\(false\)/.test(handler) &&
+        !/normalizedBgRemovalMethod === 'smart'/.test(handler) &&
         /setSelectedModel: state\.setSelectedModel/.test(page) &&
         /setUsePhotoRoomBgRemoval: state\.setUsePhotoRoomBgRemoval/.test(page) &&
         /Model:/.test(card) &&
@@ -577,11 +579,10 @@ const checks = [
       return /runDirectBackgroundRemovalCommand/.test(sidebar) &&
         /backgroundRemovalCommandTerms/.test(sidebar) &&
         /use photoroom/.test(sidebar) &&
-        /use smart cleanup/.test(sidebar) &&
         /native transparent png/.test(sidebar) &&
         /turn off background removal/.test(sidebar) &&
         /bgRemovalMethod: 'photoroom'/.test(sidebar) &&
-        /bgRemovalMethod: 'smart'/.test(sidebar) &&
+        !/bgRemovalMethod: 'smart'/.test(sidebar) &&
         /bgRemovalMethod: 'native-transparent'/.test(sidebar) &&
         /selectedModel: 'gpt-image-2'/.test(sidebar) &&
         /Background removal set to/.test(sidebar) &&
@@ -847,7 +848,7 @@ const checks = [
         /usePhotoRoomBgRemoval\?: boolean/.test(generatePanel) &&
         /onPhotoRoomBgRemovalChange\?: \(enabled: boolean\) => void/.test(generatePanel) &&
         /imageBgRemovalEnabled: state\.useImageBgRemoval/.test(page) &&
-        /state\.useImageBgRemoval \? \(state\.usePhotoRoomBgRemoval \? 'photoroom' : 'smart'\) : 'none'/.test(page) &&
+        /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval \? 'photoroom' : 'none'/.test(page) &&
         /logoGeneratorContext/.test(page) &&
         /onLogoContextChange/.test(logoPanel) &&
         /logoBgRemovalMethod\?: string/.test(sidebar) &&

@@ -31,7 +31,6 @@ const DEFAULT_LOGO_GENERATOR_CONTEXT: LogoGeneratorContext = {
 function formatBackgroundRemovalProvider(method: string) {
   if (method === 'photoroom') return 'PhotoRoom'
   if (method === 'native-transparent') return 'Native transparent PNG'
-  if (method === 'smart') return 'Smart local cleanup'
   if (method === 'none') return 'No background removal'
   return method
 }
@@ -257,8 +256,8 @@ export default function ImageStudioPage() {
           seed: state.seed,
           analysisMode: state.analysisMode,
           imageBgRemovalEnabled: state.useImageBgRemoval,
-          imageBgRemovalMethod: state.useImageBgRemoval ? (state.usePhotoRoomBgRemoval ? 'photoroom' : 'smart') : 'none',
-          imageBgRemovalProvider: state.useImageBgRemoval ? (state.usePhotoRoomBgRemoval ? 'PhotoRoom' : 'Smart local cleanup') : 'No background removal',
+          imageBgRemovalMethod: state.useImageBgRemoval && state.usePhotoRoomBgRemoval ? 'photoroom' : 'none',
+          imageBgRemovalProvider: state.useImageBgRemoval && state.usePhotoRoomBgRemoval ? 'PhotoRoom' : 'No background removal',
           imagePhotoRoomBgRemovalEnabled: state.useImageBgRemoval && state.usePhotoRoomBgRemoval,
           logoBgRemovalEnabled: logoGeneratorContext.bgRemovalEnabled,
           logoBgRemovalMethod: logoGeneratorContext.bgRemovalMethod,
