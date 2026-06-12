@@ -78,14 +78,14 @@ const formatBackgroundRemovalChip = (scope: 'image' | 'logo', method?: string, e
 function ContextChip({ icon: Icon, label, active }: { icon: typeof FileText; label: string; active: boolean }) {
   return (
     <span
-      className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium ${
+      className={`flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium ${
         active
           ? 'border-[#c99850]/40 bg-[#c99850]/10 text-[#f0d49b]'
           : 'border-zinc-700 bg-zinc-800/70 text-zinc-500'
       }`}
     >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="min-w-0 flex-1 truncate" title={label}>{label}</span>
     </span>
   )
 }
@@ -192,12 +192,14 @@ export function ContextSnapshot({
       ],
     },
   ]
+  // Drawer (narrow side panel): stack groups and chips vertically as
+  // full-width rows so labels never wrap into their icons at any zoom.
   const groupGridClass = variant === 'workspace'
     ? 'grid gap-3'
-    : 'grid gap-3 lg:grid-cols-3'
+    : 'grid gap-4'
   const contextRowGridClass = variant === 'workspace'
     ? 'grid grid-cols-2 gap-2 xl:grid-cols-3'
-    : 'flex flex-wrap gap-2'
+    : 'flex flex-col gap-1.5'
 
   return (
     <div className="border-b border-[#c99850]/20 bg-zinc-950/50 px-4 py-4 sm:px-5">
