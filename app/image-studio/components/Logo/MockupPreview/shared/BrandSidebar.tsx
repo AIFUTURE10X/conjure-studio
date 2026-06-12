@@ -140,10 +140,10 @@ export function BrandSidebar({
           <FontDropdown
             brandFont={brandFont}
             isOpen={isFontDropdownOpen}
-            showFontPicker={showFontPicker}
+            showAllFonts={showFontPicker}
             onToggle={() => { setIsFontDropdownOpen(!isFontDropdownOpen); setIsColorDropdownOpen(false) }}
             onFontChange={(font) => { onBrandFontChange(font); setIsFontDropdownOpen(false) }}
-            onToggleFontPicker={onToggleFontPicker}
+            onToggleShowAllFonts={onToggleFontPicker}
           />
 
           {/* Font Weight Selector - only show if font has multiple weights */}

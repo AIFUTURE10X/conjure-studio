@@ -15,8 +15,8 @@ interface SavePresetModalProps {
   onClose: () => void
   presetName: string
   onPresetNameChange: (name: string) => void
-  inputRef: RefObject<HTMLInputElement>
-  onSave: (name: string, thumbnail?: string, brandSettings?: any) => void
+  inputRef: RefObject<HTMLInputElement | null>
+  onSave: (logoUrl: string, name: string, thumbnail?: string, brandSettings?: any) => void
   captureCanvas?: () => Promise<HTMLCanvasElement | null>
   getBrandSettings?: () => any
   effectiveLogoUrl: string

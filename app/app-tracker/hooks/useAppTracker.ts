@@ -5,7 +5,7 @@ import { useProjects } from './useProjects'
 import { useFeatures } from './useFeatures'
 import { useTasks } from './useTasks'
 import { useTestItems } from './useTestItems'
-import { STORAGE_KEYS } from '../constants/types'
+import { STORAGE_KEYS, type ActiveView } from '../constants/types'
 import { getFromStorage, saveToStorage, existsInStorage } from '../utils/storage'
 import { getDefaultData } from '../constants/default-data'
 
@@ -17,7 +17,7 @@ export function useAppTracker() {
 
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   const [activeFeatureId, setActiveFeatureId] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<'tasks' | 'tests' | 'settings'>('tests')
+  const [activeView, setActiveView] = useState<ActiveView>('tests')
   const [isInitialized, setIsInitialized] = useState(false)
 
   // Initialize with default data on first load

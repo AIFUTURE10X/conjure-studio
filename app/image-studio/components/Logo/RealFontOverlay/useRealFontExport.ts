@@ -145,7 +145,7 @@ export function useRealFontExport({
 
       if (tagline) {
         ctx.font = `400 ${taglineFontSize}px "${font?.name || 'sans-serif'}"`
-        let taglineText = textTransform === 'uppercase' ? tagline.toUpperCase()
+        const taglineText = textTransform === 'uppercase' ? tagline.toUpperCase()
           : textTransform === 'lowercase' ? tagline.toLowerCase() : tagline
         drawTextWithSpacing(ctx, taglineText, textX, textY + taglineFontSize + 8, letterSpacing / 2, 'center')
       }

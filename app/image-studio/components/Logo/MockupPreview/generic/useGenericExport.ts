@@ -21,7 +21,7 @@ interface UseGenericExportConfig {
   /** Mockup configuration */
   mockupConfig: MockupConfig
   /** Reference to the mockup container element for DOM capture */
-  containerRef: RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement | null>
   /** Logo image URL (optional - can show blank product) */
   logoUrl?: string
   /** Logo position (percentage) */

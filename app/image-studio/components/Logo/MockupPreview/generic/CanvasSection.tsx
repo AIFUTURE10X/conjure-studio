@@ -16,18 +16,18 @@ import type { MockupConfig, ShapeRendererProps, ProductColor, MockupView, TextIt
 
 interface CanvasSectionProps {
   config: MockupConfig
-  containerRef: RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement | null>
   containerWidth: number
   containerHeight: number
   // Photo rendering
   usePhotoRendering: boolean
   photoUrl: string | null
   selectedColor: ProductColor
-  effectiveProductImageUrl: string | null
+  effectiveProductImageUrl: string | null | undefined
   onCustomProductImageUpload?: (url: string) => void
   onPhotoLoadError: () => void
   // Logo
-  effectiveLogoUrl: string | null
+  effectiveLogoUrl: string | null | undefined
   logoPosition: Position
   logoScale: number
   isDraggingLogo: boolean
@@ -135,7 +135,7 @@ export function CanvasSection({
             <ShapeComponent
               color={selectedColor}
               view={selectedView}
-              customImageUrl={effectiveProductImageUrl}
+              customImageUrl={effectiveProductImageUrl || undefined}
               onImageUpload={onCustomProductImageUpload}
             />
           )}

@@ -100,7 +100,7 @@ export function InteractiveTShirtMockup({
     setLogoPosition({ x: node.x(), y: node.y() })
   }
 
-  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (e.target === stageRef.current || e.target.getClassName() === 'Path') {
       setIsSelected(false)
     }

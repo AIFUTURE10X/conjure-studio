@@ -18,7 +18,7 @@ interface PresetControlsProps {
   selectedCameraAngle: string
   selectedCameraLens: string
   styleStrength: 'subtle' | 'moderate' | 'strong'
-  imageSize: string
+  imageSize: '1K' | '2K' | '4K'
   selectedModel: string
   creativeDirection: CreativeDirectionState
   presets: GeneratePreset[]

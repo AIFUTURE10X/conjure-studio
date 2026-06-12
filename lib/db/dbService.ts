@@ -12,6 +12,8 @@ export interface FavoriteImage {
     dimensions?: string
     fileSize?: string
     params?: any
+    /** Legacy key for params on favorites saved by older builds. */
+    parameters?: any
   }
 }
 

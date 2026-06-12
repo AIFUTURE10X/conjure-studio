@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /c/Projects/v0promptsgenie 2>/dev/null && [ \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null)\" = \"master\" ] && ahead=$(git rev-list --count origin/master..HEAD 2>/dev/null || echo 0) && [ \"${ahead:-0}\" -gt 0 ] && { git push origin master:master >/dev/null 2>&1 && echo \"{\\\"systemMessage\\\":\\\"Auto-deploy: pushed $ahead commit(s) to Vercel\\\"}\"; } || true",
+            "timeout": 30,
+            "statusMessage": "Auto-pushing to Vercel..."
+          }
+        ]
+      }
+    ]
+  }
+}

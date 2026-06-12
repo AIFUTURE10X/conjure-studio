@@ -203,12 +203,18 @@ export async function generateImageWithRetry({
         ? [{ googleSearch: {} }]
         : undefined
 
-      const response = await geminiClient.models.generateContent({
+      // Type-only cast: `tools` at the top level is not in the SDK's param
+      // type, but the request structure is pinned by
+      // WORKING_CONFIG_DO_NOT_MODIFY.md and must not change.
+      const generateContentParams = {
         model: model,
         contents: contentParts,
         config,
         tools,
-      })
+      }
+      const response = await geminiClient.models.generateContent(
+        generateContentParams as Parameters<typeof geminiClient.models.generateContent>[0],
+      )
 
       console.log(`[v0 SERVER] API response received`)
       console.log(`[v0 SERVER] Response object keys:`, Object.keys(response))

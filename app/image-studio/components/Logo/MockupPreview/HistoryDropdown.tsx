@@ -15,7 +15,7 @@ interface HistoryDropdownProps {
   isOpen: boolean
   onToggle: () => void
   onLoadImage: (item: LogoHistoryItem) => void
-  dropdownRef: RefObject<HTMLDivElement>
+  dropdownRef: RefObject<HTMLDivElement | null>
   refreshRef: RefObject<(() => void) | null>
 }
 

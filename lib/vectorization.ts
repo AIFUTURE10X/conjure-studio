@@ -109,7 +109,7 @@ export async function vectorizeLogo(
     : imageBuffer
 
   // Auto-detect mode if needed
-  let effectiveMode: 'color' | 'monochrome' = mode === 'auto'
+  const effectiveMode: 'color' | 'monochrome' = mode === 'auto'
     ? await detectImageType(buffer)
     : mode as 'color' | 'monochrome'
 

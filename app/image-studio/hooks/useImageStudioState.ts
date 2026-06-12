@@ -65,7 +65,7 @@ export interface ImageStudioState {
   lightboxOpen: boolean
   setLightboxOpen: (open: boolean) => void
   lightboxIndex: number
-  setLightboxIndex: (index: number) => void
+  setLightboxIndex: (index: number | ((prev: number) => number)) => void
   generatedImages: GeneratedImage[]
   setGeneratedImages: (images: GeneratedImage[]) => void
 

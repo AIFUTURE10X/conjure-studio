@@ -18,7 +18,7 @@ interface LoadPresetDropdownProps {
   onLoadMockup: (mockup: SavedMockup) => void
   onDeleteMockup: (id: string) => void
   onDeleteAll: () => void
-  dropdownRef: RefObject<HTMLDivElement>
+  dropdownRef: RefObject<HTMLDivElement | null>
 }
 
 function getTimeAgo(timestamp: number): string {

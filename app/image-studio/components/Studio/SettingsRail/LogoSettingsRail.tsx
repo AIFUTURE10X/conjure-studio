@@ -239,7 +239,6 @@ export function LogoSettingsRail() {
         {state.referenceImage ? (
           <div className="space-y-2">
             <div className="relative rounded-md border border-zinc-700 bg-zinc-900 p-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={state.referenceImage.preview}
                 alt="Logo reference"

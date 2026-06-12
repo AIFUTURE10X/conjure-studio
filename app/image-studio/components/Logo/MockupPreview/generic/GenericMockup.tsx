@@ -104,7 +104,7 @@ export function GenericMockup({
     return `${config.photoAssets.baseUrl}${photo}`
   }, [config.photoAssets, state.selectedColor.id])
 
-  const usePhotoRendering = config.renderMode === 'photo' && photoUrl && !state.photoLoadFailed
+  const usePhotoRendering = Boolean(config.renderMode === 'photo' && photoUrl && !state.photoLoadFailed)
 
   // Drag hook
   const drag = useGenericDrag({

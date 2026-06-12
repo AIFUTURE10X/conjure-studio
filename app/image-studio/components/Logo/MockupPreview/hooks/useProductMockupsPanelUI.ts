@@ -27,10 +27,10 @@ export interface ProductMockupsPanelUIState {
   presetName: string
   setPresetName: (name: string) => void
   // Refs
-  dropdownRef: RefObject<HTMLDivElement>
-  historyDropdownRef: RefObject<HTMLDivElement>
+  dropdownRef: RefObject<HTMLDivElement | null>
+  historyDropdownRef: RefObject<HTMLDivElement | null>
   historyRefreshRef: RefObject<(() => void) | null>
-  presetInputRef: RefObject<HTMLInputElement>
+  presetInputRef: RefObject<HTMLInputElement | null>
   // Actions
   openSavePresetModal: (defaultName: string) => void
 }

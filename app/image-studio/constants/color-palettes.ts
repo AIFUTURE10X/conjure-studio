@@ -15,9 +15,10 @@ export interface ColorOption {
 
 export type ColorCategory = 'primary' | 'metallic' | 'neon' | 'pastel' | 'earth' | 'gradient'
 
+/** Per-letter color assignment: 1-based letter position → palette color. */
 export interface LetterColorConfig {
-  letter: string
-  color: string | null
+  position: number
+  color: ColorOption
 }
 
 // ============================================

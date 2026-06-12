@@ -45,7 +45,7 @@ export const ProductMockupsPanel = forwardRef<ProductMockupsPanelRef, ProductMoc
     const ui = useProductMockupsPanelUI({
       isExpanded: state.isExpanded,
       setIsExpanded: state.setIsExpanded,
-      mockupControls: state.mockupControls
+      mockupControls: state.controls
     })
 
     useImperativeHandle(ref, () => ({
