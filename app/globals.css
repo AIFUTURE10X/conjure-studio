@@ -78,4 +78,35 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, Opera */
   }
+
+  /* Dark-themed scrollbars (the app is dark; default OS scrollbars are
+     white and break the look). Firefox: thin + dark track/thumb. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 #09090b; /* thumb (zinc-700) / track (zinc-950) */
+  }
+
+  /* WebKit (Chrome, Edge, Safari): no arrow buttons, dark track + thumb. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #09090b; /* zinc-950 */
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3f3f46; /* zinc-700 */
+    border-radius: 6px;
+    border: 2px solid #09090b; /* track-colored inset so the thumb reads pill-shaped */
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #52525b; /* zinc-600 */
+  }
+  ::-webkit-scrollbar-corner {
+    background: #09090b;
+  }
+  /* Hide the up/down arrow buttons that ship with native Windows scrollbars */
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
 }
