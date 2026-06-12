@@ -5,32 +5,15 @@
  *
  * Builds the AI helper's currentPromptSettings + latestOutputs from studio
  * context — the reactive replacement for the one-way snapshot prop that
- * page.tsx assembles inline. Logo generator fields use defaults until logo
- * state lifts into the provider (workspace step 7), after which they become
- * live values.
+ * page.tsx assembles inline. Logo settings come live from the lifted logo
+ * state; the latest logo output is supplied by the logo engine (shell-only)
+ * via options.
  */
 
 import { useMemo } from 'react'
 import type { AIHelperLatestOutputs, AIHelperPromptSettings } from '../components/AIHelper/useAIHelperChatController'
-import { useStudioCore } from './useStudio'
-
-// Mirrors DEFAULT_LOGO_GENERATOR_CONTEXT in page.tsx; replaced by lifted
-// logo state in workspace step 7.
-const DEFAULT_LOGO_SNAPSHOT = {
-  bgRemovalMethod: 'photoroom',
-  bgRemovalEnabled: true,
-  removeBackgroundOnly: false,
-  selectedModel: 'gpt-image-2',
-  resolution: '1K',
-  aspectRatio: '1:1',
-  textMode: 'ai-text',
-  logoType: 'icon-wordmark',
-  logoVisualStyle: 'modern',
-  logoRenderTreatment: 'flat-vector',
-  logoTypographyDirection: 'clean-sans',
-  hasReferenceImage: false,
-  referenceMode: 'none',
-}
+import type { LogoOutputContext } from '../components/LogoPanel'
+import { useStudioCore, useStudioLogoState } from './useStudio'
 
 function formatBackgroundRemovalProvider(method: string) {
   if (method === 'photoroom') return 'PhotoRoom'
@@ -39,11 +22,13 @@ function formatBackgroundRemovalProvider(method: string) {
   return method
 }
 
-export function useStudioSnapshot(): {
+export function useStudioSnapshot(options?: { latestLogoOutput?: LogoOutputContext | null }): {
   currentPromptSettings: AIHelperPromptSettings
   latestOutputs: AIHelperLatestOutputs
 } {
   const { state } = useStudioCore()
+  const logo = useStudioLogoState()
+  const latestLogoOutput = options?.latestLogoOutput ?? null
 
   const latestImageOutput = state.generatedImages.length > 0
     ? state.generatedImages[state.generatedImages.length - 1]
@@ -67,20 +52,20 @@ export function useStudioSnapshot(): {
     imageBgRemovalMethod: state.useImageBgRemoval && state.usePhotoRoomBgRemoval ? 'photoroom' : 'none',
     imageBgRemovalProvider: state.useImageBgRemoval && state.usePhotoRoomBgRemoval ? 'PhotoRoom' : 'No background removal',
     imagePhotoRoomBgRemovalEnabled: state.useImageBgRemoval && state.usePhotoRoomBgRemoval,
-    logoBgRemovalEnabled: DEFAULT_LOGO_SNAPSHOT.bgRemovalEnabled,
-    logoBgRemovalMethod: DEFAULT_LOGO_SNAPSHOT.bgRemovalMethod,
-    logoBgRemovalProvider: formatBackgroundRemovalProvider(DEFAULT_LOGO_SNAPSHOT.bgRemovalMethod),
-    logoRemoveBackgroundOnly: DEFAULT_LOGO_SNAPSHOT.removeBackgroundOnly,
-    logoSelectedModel: DEFAULT_LOGO_SNAPSHOT.selectedModel,
-    logoResolution: DEFAULT_LOGO_SNAPSHOT.resolution,
-    logoAspectRatio: DEFAULT_LOGO_SNAPSHOT.aspectRatio,
-    logoTextMode: DEFAULT_LOGO_SNAPSHOT.textMode,
-    logoType: DEFAULT_LOGO_SNAPSHOT.logoType,
-    logoVisualStyle: DEFAULT_LOGO_SNAPSHOT.logoVisualStyle,
-    logoRenderTreatment: DEFAULT_LOGO_SNAPSHOT.logoRenderTreatment,
-    logoTypographyDirection: DEFAULT_LOGO_SNAPSHOT.logoTypographyDirection,
-    logoHasReferenceImage: DEFAULT_LOGO_SNAPSHOT.hasReferenceImage,
-    logoReferenceMode: DEFAULT_LOGO_SNAPSHOT.referenceMode,
+    logoBgRemovalEnabled: logo.bgRemovalMethod !== 'none',
+    logoBgRemovalMethod: logo.bgRemovalMethod,
+    logoBgRemovalProvider: formatBackgroundRemovalProvider(logo.bgRemovalMethod),
+    logoRemoveBackgroundOnly: logo.removeBackgroundOnly,
+    logoSelectedModel: logo.selectedModel,
+    logoResolution: logo.resolution,
+    logoAspectRatio: logo.aspectRatio,
+    logoTextMode: logo.textMode,
+    logoType: logo.logoType,
+    logoVisualStyle: logo.logoVisualStyle,
+    logoRenderTreatment: logo.logoRenderTreatment,
+    logoTypographyDirection: logo.logoTypographyDirection,
+    logoHasReferenceImage: Boolean(logo.referenceImage),
+    logoReferenceMode: logo.referenceMode,
     hasReferenceImage: Boolean(state.referenceImage),
     referenceImageMode: state.referenceImage?.mode || 'none',
     creativeDirection: state.creativeDirection,
@@ -89,13 +74,24 @@ export function useStudioSnapshot(): {
       prompt: latestImageOutput.prompt || state.mainPrompt,
       timestamp: latestImageOutput.timestamp,
     } : { hasOutput: false },
-    latestLogoOutput: { hasOutput: false },
-  }), [state, latestImageOutput])
+    latestLogoOutput: latestLogoOutput ? {
+      hasOutput: true,
+      prompt: latestLogoOutput.prompt || state.mainPrompt,
+      negativePrompt: latestLogoOutput.negativePrompt,
+      timestamp: latestLogoOutput.timestamp,
+      source: latestLogoOutput.source,
+      aspectRatio: latestLogoOutput.aspectRatio,
+      textMode: latestLogoOutput.textMode,
+      bgRemovalMethod: latestLogoOutput.bgRemovalMethod,
+      seed: latestLogoOutput.seed,
+      style: latestLogoOutput.style,
+    } : { hasOutput: false },
+  }), [state, logo, latestImageOutput, latestLogoOutput])
 
   const latestOutputs = useMemo<AIHelperLatestOutputs>(() => ({
     image: latestImageOutput,
-    logo: null,
-  }), [latestImageOutput])
+    logo: latestLogoOutput,
+  }), [latestImageOutput, latestLogoOutput])
 
   return { currentPromptSettings, latestOutputs }
 }

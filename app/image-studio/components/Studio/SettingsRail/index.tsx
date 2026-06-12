@@ -11,11 +11,13 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { SlidersHorizontal } from 'lucide-react'
 import { SuggestionBanner } from './SuggestionBanner'
 import { ImageSettingsRail } from './ImageSettingsRail'
+import { LogoSettingsRail } from './LogoSettingsRail'
 import { useStudioMode } from '../../../context/useStudio'
 
 export { SettingField } from './SettingField'
 export { SuggestionBanner } from './SuggestionBanner'
 export { ImageSettingsRail } from './ImageSettingsRail'
+export { LogoSettingsRail } from './LogoSettingsRail'
 
 export function SettingsRail() {
   const { mode } = useStudioMode()
@@ -30,9 +32,9 @@ export function SettingsRail() {
       <SuggestionBanner />
 
       <ScrollArea className="flex-1 min-h-0">
-        {mode === 'image' ? (
-          <ImageSettingsRail />
-        ) : (
+        {mode === 'image' && <ImageSettingsRail />}
+        {mode === 'logo' && <LogoSettingsRail />}
+        {mode !== 'image' && mode !== 'logo' && (
           <div className="p-6">
             <p className="text-xs text-zinc-500 text-center leading-5">
               Settings for this mode join the rail when it enters the

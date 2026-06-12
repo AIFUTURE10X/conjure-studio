@@ -1,0 +1,218 @@
+"use client"
+
+/**
+ * LogoSettingsRail
+ *
+ * Logo-mode body of the settings rail: model, resolution, ratio, text
+ * mode, logo type, visual style, render treatment, typography, background
+ * removal, reference image, and seed — bound to the lifted logo state.
+ * SettingField wrappers surface pending AI-suggestion diffs per field.
+ */
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { SettingField } from './SettingField'
+import { useStudioLogoState, usePendingSuggestion } from '../../../context/useStudio'
+import {
+  LOGO_ASPECT_RATIOS,
+  LOGO_RESOLUTIONS,
+} from '@/lib/logo-generation-contract'
+import {
+  LOGO_RENDER_TREATMENT_OPTIONS,
+  LOGO_TYPE_OPTIONS,
+  LOGO_TYPOGRAPHY_DIRECTION_OPTIONS,
+  LOGO_VISUAL_STYLE_OPTIONS,
+} from '../../../constants/logo-constants'
+import type { LogoSettingsSuggestionPatch } from '../../../context/suggestion-patch'
+
+const LOGO_MODEL_OPTIONS = [
+  { value: 'gpt-image-2', label: 'ChatGPT Images 2.0' },
+  { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash' },
+  { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro' },
+] as const
+
+const TEXT_MODE_OPTIONS = [
+  { value: 'ai-text', label: 'AI Text' },
+  { value: 'exact-text-overlay', label: 'Exact Text Overlay' },
+] as const
+
+const selectTriggerClass = 'w-full h-8 bg-zinc-900 border-zinc-700 text-xs text-zinc-200'
+const selectContentClass = 'bg-zinc-900 border-zinc-700 text-zinc-200'
+
+export function LogoSettingsRail() {
+  const state = useStudioLogoState()
+  const { pendingSuggestion } = usePendingSuggestion()
+
+  const patch: LogoSettingsSuggestionPatch | null =
+    pendingSuggestion?.patch.mode === 'logo' ? pendingSuggestion.patch.logo : null
+
+  const diff = (field: keyof LogoSettingsSuggestionPatch, current: string) => {
+    const suggested = patch?.[field]
+    if (suggested === undefined || suggested === null) return null
+    const suggestedText = String(suggested)
+    return suggestedText !== current ? { current, suggested: suggestedText } : null
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      <SettingField label="AI Model" suggestion={diff('selectedModel', state.selectedModel)}>
+        <Select value={state.selectedModel} onValueChange={(v) => state.setSelectedModel(v as typeof state.selectedModel)}>
+          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+          <SelectContent className={selectContentClass}>
+            {LOGO_MODEL_OPTIONS.map((m) => (
+              <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingField>
+
+      <SettingField label="Resolution" suggestion={diff('resolution', state.resolution)}>
+        <div className="grid grid-cols-3 gap-1">
+          {LOGO_RESOLUTIONS.map((size) => (
+            <button
+              key={size}
+              onClick={() => state.setResolution(size)}
+              className={`h-8 rounded-md text-xs font-bold transition-colors ${
+                state.resolution === size
+                  ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+              }`}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </SettingField>
+
+      <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
+        <Select value={state.aspectRatio} onValueChange={(v) => state.setAspectRatio(v as typeof state.aspectRatio)}>
+          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+          <SelectContent className={selectContentClass}>
+            {LOGO_ASPECT_RATIOS.map((ratio) => (
+              <SelectItem key={ratio} value={ratio} className="text-xs">{ratio}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingField>
+
+      <SettingField label="Text Mode" suggestion={diff('textMode', state.textMode)}>
+        <div className="grid grid-cols-2 gap-1">
+          {TEXT_MODE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => state.setTextMode(option.value)}
+              className={`h-8 rounded-md text-xs font-medium transition-colors ${
+                state.textMode === option.value
+                  ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </SettingField>
+
+      <Separator className="bg-zinc-800" />
+
+      <SettingField label="Logo Type" suggestion={diff('logoType', state.logoType)}>
+        <Select value={state.logoType} onValueChange={(v) => state.setLogoType(v as typeof state.logoType)}>
+          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+          <SelectContent className={selectContentClass}>
+            {LOGO_TYPE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingField>
+
+      <SettingField label="Visual Style" suggestion={diff('logoVisualStyle', state.logoVisualStyle)}>
+        <Select value={state.logoVisualStyle} onValueChange={(v) => state.setLogoVisualStyle(v as typeof state.logoVisualStyle)}>
+          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+          <SelectContent className={selectContentClass}>
+            {LOGO_VISUAL_STYLE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingField>
+
+      <SettingField label="Render Treatment" suggestion={diff('logoRenderTreatment', state.logoRenderTreatment)}>
+        <Select value={state.logoRenderTreatment} onValueChange={(v) => state.setLogoRenderTreatment(v as typeof state.logoRenderTreatment)}>
+          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+          <SelectContent className={selectContentClass}>
+            {LOGO_RENDER_TREATMENT_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingField>
+
+      <SettingField label="Typography" suggestion={diff('logoTypographyDirection', state.logoTypographyDirection)}>
+        <Select value={state.logoTypographyDirection} onValueChange={(v) => state.setLogoTypographyDirection(v as typeof state.logoTypographyDirection)}>
+          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+          <SelectContent className={selectContentClass}>
+            {LOGO_TYPOGRAPHY_DIRECTION_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingField>
+
+      <Separator className="bg-zinc-800" />
+
+      <SettingField label="Background Removal" suggestion={diff('bgRemovalMethod', state.bgRemovalMethod)}>
+        <label
+          className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors cursor-pointer ${
+            state.bgRemovalMethod !== 'none'
+              ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]'
+              : 'border-zinc-700 bg-zinc-900 text-zinc-300'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={state.bgRemovalMethod !== 'none'}
+            onChange={(e) => state.setBgRemovalMethod(e.target.checked ? 'photoroom' : 'none')}
+            aria-label="Turn logo background removal on or off"
+            className="h-3.5 w-3.5 accent-[#c99850]"
+          />
+          PhotoRoom BG
+        </label>
+        <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
+          Off keeps the generated logo background intact.
+        </p>
+      </SettingField>
+
+      <SettingField label="Seed">
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={state.seedValue ?? ''}
+            placeholder="Random"
+            onChange={(e) => {
+              const parsed = Number.parseInt(e.target.value, 10)
+              state.setSeedValue(Number.isInteger(parsed) ? parsed : undefined)
+            }}
+            className="h-8 w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200 placeholder:text-zinc-600"
+          />
+          <button
+            onClick={() => state.setSeedLocked(!state.seedLocked)}
+            className={`h-8 shrink-0 rounded-md px-3 text-xs font-medium transition-colors ${
+              state.seedLocked
+                ? 'bg-[#c99850]/15 text-[#f2d39d] border border-[#c99850]/50'
+                : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
+            }`}
+          >
+            {state.seedLocked ? 'Locked' : 'Lock'}
+          </button>
+        </div>
+      </SettingField>
+    </div>
+  )
+}

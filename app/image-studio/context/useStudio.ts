@@ -13,9 +13,11 @@ import { useContext } from 'react'
 import {
   PendingSuggestionContext,
   StudioCoreContext,
+  StudioLogoContext,
   StudioModeContext,
   type PendingSuggestionValue,
   type StudioCore,
+  type StudioLogoState,
   type StudioModeValue,
 } from './StudioProvider'
 
@@ -36,4 +38,8 @@ export function useStudioMode(): StudioModeValue {
 
 export function usePendingSuggestion(): PendingSuggestionValue {
   return requireContext(useContext(PendingSuggestionContext), 'usePendingSuggestion')
+}
+
+export function useStudioLogoState(): StudioLogoState {
+  return requireContext(useContext(StudioLogoContext), 'useStudioLogoState')
 }

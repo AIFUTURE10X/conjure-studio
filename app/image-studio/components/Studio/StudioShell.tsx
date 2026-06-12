@@ -25,6 +25,7 @@ import { CanvasPanel } from './CanvasPanel'
 import { SettingsRail } from './SettingsRail'
 import { useStudioCore } from '../../context/useStudio'
 import { ImageGenerationProvider } from '../../context/ImageGenerationProvider'
+import { LogoGenerationProvider } from '../../context/LogoGenerationProvider'
 
 export function StudioShell() {
   const {
@@ -40,6 +41,7 @@ export function StudioShell() {
 
       <div className="flex-1 min-h-0">
         <ImageGenerationProvider>
+        <LogoGenerationProvider>
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}
@@ -57,6 +59,7 @@ export function StudioShell() {
               <SettingsRail />
             </ResizablePanel>
           </ResizablePanelGroup>
+        </LogoGenerationProvider>
         </ImageGenerationProvider>
       </div>
 

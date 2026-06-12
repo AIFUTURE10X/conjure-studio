@@ -16,21 +16,36 @@ import { useAIHelperChatController } from '../AIHelper/useAIHelperChatController
 import { useStudioCore, useStudioMode, usePendingSuggestion } from '../../context/useStudio'
 import { useStudioSnapshot } from '../../context/useStudioSnapshot'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
-import type { ImageSettingsPatch } from '../../context/suggestion-patch'
+import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
+import type { ImageSettingsPatch, LogoSettingsSuggestionPatch } from '../../context/suggestion-patch'
 
 export function HelperPanel() {
-  const { handleApplyAISuggestions, handleApplyLogoSuggestions, handleApplyLogoConfig, state } = useStudioCore()
+  const { handleApplyAISuggestions, state } = useStudioCore()
   const { setMode } = useStudioMode()
   const { setPendingSuggestion } = usePendingSuggestion()
   const { requestGenerate } = useImageGenerationEngine()
-  const { currentPromptSettings, latestOutputs } = useStudioSnapshot()
+  const logoEngine = useLogoGenerationEngine()
+  const { currentPromptSettings, latestOutputs } = useStudioSnapshot({
+    latestLogoOutput: logoEngine.latestLogoOutput,
+  })
 
   const controller = useAIHelperChatController({
     currentPromptSettings,
     latestOutputs,
     onApplySuggestions: handleApplyAISuggestions,
-    onApplyLogoSuggestions: handleApplyLogoSuggestions,
-    onApplyLogoConfig: handleApplyLogoConfig,
+    // Logo applies route through the lifted state: prompt/negative go to the
+    // shared prompt (one-way sync into logo state), settings to the engine.
+    onApplyLogoSuggestions: (suggestions) => {
+      if (!suggestions) return
+      if (typeof suggestions.prompt === 'string') state.setMainPrompt(suggestions.prompt)
+      if (typeof suggestions.negativePrompt === 'string') state.setNegativePrompt(suggestions.negativePrompt)
+      logoEngine.applyLogoSettingsPatch(suggestions)
+      setMode('logo')
+    },
+    onApplyLogoConfig: (config) => {
+      state.setPendingLogoConfig(config)
+      setMode('logo')
+    },
     onGenerateFromAIHelper: (generateMode, options) => {
       if (generateMode === 'image') {
         if (options?.imageCount) state.setImageCount(options.imageCount)
@@ -38,45 +53,69 @@ export function HelperPanel() {
         requestGenerate()
         return
       }
-      // Logo generation joins the workspace with logo mode (step 7).
       setMode('logo')
+      logoEngine.requestGenerate()
     },
   })
 
   const { messages, mode, clearHistory } = controller
 
-  // Auto-preview: the newest assistant image suggestion flows into the
-  // settings rail as a pending patch (amber ring + diff chips).
+  // Auto-preview: the newest assistant suggestion flows into the settings
+  // rail as a pending patch (amber ring + diff chips). Logo suggestions get
+  // the cross-mode "Switch to Logo & preview" affordance in the banner.
   const lastPreviewedIndexRef = useRef(-1)
   useEffect(() => {
     for (let index = messages.length - 1; index >= 0; index--) {
       const message = messages[index]
       if (message.role !== 'assistant' || !message.suggestions) continue
       if (index === lastPreviewedIndexRef.current) return
-      const messageMode = message.mode === 'logo' ? 'logo' : 'image'
-      if (messageMode !== 'image') return
       lastPreviewedIndexRef.current = index
 
       const s = message.suggestions
-      const patch: ImageSettingsPatch = {
+      const messageMode = message.mode === 'logo' ? 'logo' : 'image'
+
+      if (messageMode === 'image') {
+        const patch: ImageSettingsPatch = {
+          ...(typeof s.prompt === 'string' ? { prompt: s.prompt } : {}),
+          ...(typeof s.negativePrompt === 'string' ? { negativePrompt: s.negativePrompt } : {}),
+          ...(typeof s.style === 'string' ? { style: s.style } : {}),
+          ...(typeof s.aspectRatio === 'string' ? { aspectRatio: s.aspectRatio } : {}),
+          ...(typeof s.cameraAngle === 'string' ? { cameraAngle: s.cameraAngle } : {}),
+          ...(typeof s.cameraLens === 'string' ? { cameraLens: s.cameraLens } : {}),
+          ...(typeof s.styleStrength === 'string' ? { styleStrength: s.styleStrength } : {}),
+          ...(typeof s.resolution === 'string' ? { resolution: s.resolution } : {}),
+          ...(typeof s.selectedModel === 'string' ? { selectedModel: s.selectedModel } : {}),
+          ...(typeof s.bgRemovalMethod === 'string' ? { bgRemovalMethod: s.bgRemovalMethod } : {}),
+        }
+        if (Object.keys(patch).length === 0) return
+        setPendingSuggestion({
+          id: `helper-msg-${index}`,
+          sourceMessageId: String(index),
+          mode: 'image',
+          patch: { mode: 'image', image: patch },
+        })
+        return
+      }
+
+      const logoPatch: LogoSettingsSuggestionPatch = {
         ...(typeof s.prompt === 'string' ? { prompt: s.prompt } : {}),
         ...(typeof s.negativePrompt === 'string' ? { negativePrompt: s.negativePrompt } : {}),
-        ...(typeof s.style === 'string' ? { style: s.style } : {}),
-        ...(typeof s.aspectRatio === 'string' ? { aspectRatio: s.aspectRatio } : {}),
-        ...(typeof s.cameraAngle === 'string' ? { cameraAngle: s.cameraAngle } : {}),
-        ...(typeof s.cameraLens === 'string' ? { cameraLens: s.cameraLens } : {}),
-        ...(typeof s.styleStrength === 'string' ? { styleStrength: s.styleStrength } : {}),
-        ...(typeof s.resolution === 'string' ? { resolution: s.resolution } : {}),
-        ...(typeof s.selectedModel === 'string' ? { selectedModel: s.selectedModel } : {}),
+        ...(typeof s.textMode === 'string' ? { textMode: s.textMode } : {}),
         ...(typeof s.bgRemovalMethod === 'string' ? { bgRemovalMethod: s.bgRemovalMethod } : {}),
+        ...(typeof s.selectedModel === 'string' ? { selectedModel: s.selectedModel } : {}),
+        ...(typeof s.resolution === 'string' ? { resolution: s.resolution } : {}),
+        ...(typeof s.aspectRatio === 'string' ? { aspectRatio: s.aspectRatio } : {}),
+        ...(typeof s.logoType === 'string' ? { logoType: s.logoType } : {}),
+        ...(typeof s.logoVisualStyle === 'string' ? { logoVisualStyle: s.logoVisualStyle } : {}),
+        ...(typeof s.logoRenderTreatment === 'string' ? { logoRenderTreatment: s.logoRenderTreatment } : {}),
+        ...(typeof s.logoTypographyDirection === 'string' ? { logoTypographyDirection: s.logoTypographyDirection } : {}),
       }
-      if (Object.keys(patch).length === 0) return
-
+      if (Object.keys(logoPatch).length === 0) return
       setPendingSuggestion({
         id: `helper-msg-${index}`,
         sourceMessageId: String(index),
-        mode: 'image',
-        patch: { mode: 'image', image: patch },
+        mode: 'logo',
+        patch: { mode: 'logo', logo: logoPatch },
       })
       return
     }

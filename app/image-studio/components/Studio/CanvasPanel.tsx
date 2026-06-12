@@ -10,11 +10,11 @@
 
 import { Card } from '@/components/ui/card'
 import { ResultsCanvas } from './ResultsCanvas'
+import { LogoCanvas } from './LogoCanvas'
 import { PromptDock } from './PromptDock'
 import { useStudioMode } from '../../context/useStudio'
 
 const PENDING_MODE_LABELS: Record<string, string> = {
-  logo: 'Logo generator',
   mockups: 'Product mockups',
   'bg-remover': 'Background remover',
 }
@@ -22,7 +22,7 @@ const PENDING_MODE_LABELS: Record<string, string> = {
 export function CanvasPanel() {
   const { mode } = useStudioMode()
 
-  if (mode !== 'image') {
+  if (mode !== 'image' && mode !== 'logo') {
     return (
       <div className="h-full flex items-center justify-center p-8 bg-zinc-950">
         <Card className="bg-zinc-900/90 border-zinc-800 px-8 py-6 max-w-md text-center">
@@ -40,7 +40,7 @@ export function CanvasPanel() {
 
   return (
     <div className="h-full flex flex-col bg-zinc-950">
-      <ResultsCanvas />
+      {mode === 'image' ? <ResultsCanvas /> : <LogoCanvas />}
       <PromptDock />
     </div>
   )

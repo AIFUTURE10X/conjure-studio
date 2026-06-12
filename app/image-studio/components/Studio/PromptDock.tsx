@@ -12,20 +12,27 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Minus, Wand2 } from 'lucide-react'
-import { useStudioCore } from '../../context/useStudio'
+import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
+import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
 
 export function PromptDock() {
   const { state } = useStudioCore()
-  const { isGenerating, generateNow } = useImageGenerationEngine()
+  const { mode } = useStudioMode()
+  const imageEngine = useImageGenerationEngine()
+  const logoEngine = useLogoGenerationEngine()
   const [showNegative, setShowNegative] = useState(false)
+
+  const isLogoMode = mode === 'logo'
+  const isGenerating = isLogoMode ? logoEngine.isGenerating : imageEngine.isGenerating
+  const generate = isLogoMode ? logoEngine.requestGenerate : imageEngine.requestGenerate
 
   return (
     <div className="border-t border-zinc-800 bg-zinc-900/95 backdrop-blur-sm p-3 space-y-2">
       <Textarea
         value={state.mainPrompt}
         onChange={(e) => state.setMainPrompt(e.target.value)}
-        placeholder="Describe the image you want to generate…"
+        placeholder={isLogoMode ? 'Describe the logo you want to generate…' : 'Describe the image you want to generate…'}
         className="min-h-[64px] max-h-40 bg-zinc-950 border-zinc-700 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y"
       />
 
@@ -52,26 +59,28 @@ export function PromptDock() {
             Negative
           </button>
 
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-zinc-500">Images:</span>
-            {[1, 2].map(count => (
-              <button
-                key={count}
-                onClick={() => state.setImageCount(count)}
-                className={`w-7 h-7 rounded-md text-xs font-bold transition-colors ${
-                  state.imageCount === count
-                    ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
-                    : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
-                }`}
-              >
-                {count}
-              </button>
-            ))}
-          </div>
+          {!isLogoMode && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-zinc-500">Images:</span>
+              {[1, 2].map(count => (
+                <button
+                  key={count}
+                  onClick={() => state.setImageCount(count)}
+                  className={`w-7 h-7 rounded-md text-xs font-bold transition-colors ${
+                    state.imageCount === count
+                      ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
+                      : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <Button
-          onClick={() => void generateNow()}
+          onClick={generate}
           disabled={isGenerating}
           className={`px-6 font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] ${
             isGenerating ? 'animate-pulse cursor-not-allowed opacity-80' : ''
