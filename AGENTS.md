@@ -192,7 +192,9 @@ This is a single Next.js 16 (App Router, Turbopack) app at the repo root — no 
 ### AI generation (provider/model caveat)
 - The Image Studio defaults its AI Model dropdown to a **Gemini** image model, which only works if `GOOGLE_AI_API_KEY`/`GEMINI_API_KEY` has quota. Gemini free-tier keys can return `429 ... limit: 0` (no quota) — that is a billing/quota issue on the key, not a code/env problem.
 - To generate with OpenAI instead, select the **"ChatGPT Images 2.0"** model (`gpt-image-2`) in Settings; it uses `OPENAI_API_KEY`. The AI Helper / `generate-prompt-suggestion` route is **Gemini-only** (no OpenAI fallback).
-- DB-backed routes (`/api/favorites`, `/api/history`, `/api/logo-history`, auth, credits) throw `No database connection string configured` unless `NEON_DATABASE_URL` is a real Postgres connection string (`postgres://...`); these failures are non-fatal to the rest of the app.
+- DB-backed routes (`/api/favorites`, `/api/history`, `/api/logo-history`, auth, credits) throw `No database connection string configured` unless `NEON_DATABASE_URL` is a real Postgres connection string (`postgres://...`); these failures are non-fatal to the rest of the app. Set `DATABASE_URL` to the same value (the image-analysis routes read that alias).
+- Apply migrations with `node scripts/run-sql.cjs scripts/<file>.sql` in numeric order (`004,005,002,006,007,008,009,010`). Prefer this over `run-migrations.js`, which `require`s `dotenv` (not installed) and only covers a subset.
+- Saving favorites/history *images* additionally needs `BLOB_READ_WRITE_TOKEN` (Vercel Blob); without it, reads and account/credits/auth writes still work but `POST /api/favorites` fails at blob upload.
 
 ### Notes
 - `npm run lint` reports many `no-explicit-any` warnings but **0 errors** — that is the expected baseline.
