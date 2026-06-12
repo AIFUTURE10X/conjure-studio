@@ -487,7 +487,9 @@ const checks = [
         /Text Mode:/.test(card) &&
         /BG Method:/.test(card) &&
         /applyLogoSettingsPatch/.test(logoEngine) &&
-        /LogoGeneratorSettingsPatch/.test(logoEngine) &&
+        /LogoSettingsSuggestionPatch/.test(logoEngine) &&
+        /coreState\.setMainPrompt\(settings\.prompt\)/.test(logoEngine) &&
+        /state\.setPrompt\(settings\.prompt\)/.test(logoEngine) &&
         /state\.setTextMode\(settings\.textMode\)/.test(logoEngine) &&
         /state\.setBgRemovalMethod\(settings\.bgRemovalMethod\)/.test(logoEngine) &&
         /logoEngine\.applyLogoSettingsPatch\(suggestions\)/.test(helperPanel)

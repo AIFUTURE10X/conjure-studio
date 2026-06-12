@@ -18,7 +18,7 @@ import { useLogoGenerationEngine } from '../../../context/LogoGenerationProvider
 
 export function SuggestionBanner() {
   const { pendingSuggestion, clearPendingSuggestion } = usePendingSuggestion()
-  const { handleApplyAISuggestions, state } = useStudioCore()
+  const { handleApplyAISuggestions } = useStudioCore()
   const { mode, setMode } = useStudioMode()
   const imageEngine = useImageGenerationEngine()
   const logoEngine = useLogoGenerationEngine()
@@ -37,10 +37,7 @@ export function SuggestionBanner() {
       handleApplyAISuggestions(pendingSuggestion.patch.image)
       setMode('image')
     } else {
-      const { prompt, negativePrompt, ...settings } = pendingSuggestion.patch.logo
-      if (prompt !== undefined) state.setMainPrompt(prompt)
-      if (negativePrompt !== undefined) state.setNegativePrompt(negativePrompt)
-      logoEngine.applyLogoSettingsPatch(settings)
+      logoEngine.applyLogoSettingsPatch(pendingSuggestion.patch.logo)
       setMode('logo')
     }
     clearPendingSuggestion()

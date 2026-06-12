@@ -37,12 +37,10 @@ export function HelperPanel() {
     currentPromptSettings,
     latestOutputs,
     onApplySuggestions: handleApplyAISuggestions,
-    // Logo applies route through the lifted state: prompt/negative go to the
-    // shared prompt (one-way sync into logo state), settings to the engine.
+    // Logo applies route through the engine, which writes prompt/negative to
+    // both the shared prompt and the lifted logo state in one batch.
     onApplyLogoSuggestions: (suggestions) => {
       if (!suggestions) return
-      if (typeof suggestions.prompt === 'string') state.setMainPrompt(suggestions.prompt)
-      if (typeof suggestions.negativePrompt === 'string') state.setNegativePrompt(suggestions.negativePrompt)
       logoEngine.applyLogoSettingsPatch(suggestions)
       setMode('logo')
     },

@@ -30,8 +30,9 @@ import { useLogoPanelHandlers } from '../hooks/useLogoPanelHandlers'
 import { useFavorites } from '../components/SimpleFavorites'
 import { useLogoHistory } from '../components/Logo/LogoHistory'
 import { useLogoPanelGenerate, useLogoFavorite } from '../components/LogoPanel/useLogoPanelGenerate'
-import type { LogoGeneratorSettingsPatch, LogoOutputContext } from '../components/LogoPanel'
-import { useStudioLogoState } from './useStudio'
+import type { LogoOutputContext } from '../components/LogoPanel'
+import type { LogoSettingsSuggestionPatch } from './suggestion-patch'
+import { useStudioCore, useStudioLogoState } from './useStudio'
 
 const isAllowedSetting = <T extends readonly string[]>(value: string | undefined, allowed: T): value is T[number] => {
   return Boolean(value && allowed.includes(value))
@@ -51,8 +52,13 @@ export interface LogoGenerationEngine {
   downloadLogo: ReturnType<typeof useLogoGeneration>['downloadLogo']
   setLogo: ReturnType<typeof useLogoGeneration>['setLogo']
   addToHistory: ReturnType<typeof useLogoHistory>['addToHistory']
-  /** Apply a validated settings patch to the lifted logo state. */
-  applyLogoSettingsPatch: (settings: LogoGeneratorSettingsPatch) => void
+  /**
+   * Apply a validated settings patch to the lifted logo state. Prompt and
+   * negative prompt (when present) are written to both the shared prompt
+   * and the logo state in the same batch, so a queued generate on the next
+   * flush sees them — never rely on the one-way external sync for this.
+   */
+  applyLogoSettingsPatch: (settings: LogoSettingsSuggestionPatch) => void
   handleLogoGenerated: (url: string) => void
   /** Record a non-generated output (history restore, mockup send) as the latest logo output. */
   recordLogoOutput: (output: LogoOutputContext) => void
@@ -92,6 +98,7 @@ const LogoGenerationContext = createContext<LogoGenerationEngine | null>(null)
 
 export function LogoGenerationProvider({ children }: { children: ReactNode }) {
   const state = useStudioLogoState()
+  const { state: coreState } = useStudioCore()
   const { addToHistory } = useLogoHistory()
   const {
     isGenerating, error, generatedLogo, generateLogo, clearLogo, downloadLogo, setLogo,
@@ -174,8 +181,18 @@ export function LogoGenerationProvider({ children }: { children: ReactNode }) {
     void handleGenerate()
   }, [generateQueued, handleGenerate])
 
-  // Same validation rules as LogoPanel's applyPendingLogoSettings.
-  const applyLogoSettingsPatch = useCallback((settings: LogoGeneratorSettingsPatch) => {
+  // Same validation rules as LogoPanel's applyPendingLogoSettings, plus
+  // prompt handling: write the shared prompt AND the logo state together so
+  // a generate queued in the same click sees the new prompt on next flush.
+  const applyLogoSettingsPatch = useCallback((settings: LogoSettingsSuggestionPatch) => {
+    if (typeof settings.prompt === 'string') {
+      coreState.setMainPrompt(settings.prompt)
+      state.setPrompt(settings.prompt)
+    }
+    if (typeof settings.negativePrompt === 'string') {
+      coreState.setNegativePrompt(settings.negativePrompt)
+      state.setNegativePrompt(settings.negativePrompt)
+    }
     if (isAllowedSetting(settings.textMode, LOGO_TEXT_MODES)) {
       state.setTextMode(settings.textMode)
     }
@@ -207,6 +224,10 @@ export function LogoGenerationProvider({ children }: { children: ReactNode }) {
       state.setLogoTypographyDirection(settings.logoTypographyDirection)
     }
   }, [
+    coreState.setMainPrompt,
+    coreState.setNegativePrompt,
+    state.setPrompt,
+    state.setNegativePrompt,
     state.setAspectRatio,
     state.setBgRemovalMethod,
     state.setLogoRenderTreatment,

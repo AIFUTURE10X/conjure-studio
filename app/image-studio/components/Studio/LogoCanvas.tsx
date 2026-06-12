@@ -18,11 +18,23 @@ import { LogoPanelModals } from '../LogoPanel/LogoPanelModals'
 import { LogoActionButtons } from '../Logo/LogoActionButtons'
 import { LogoPreviewPanel, type LogoFilterStyle } from '../Logo/LogoPreviewPanel'
 import { LogoHistoryPanel } from '../Logo/LogoHistory'
-import { useStudioLogoState } from '../../context/useStudio'
+import { useStudioCore, useStudioLogoState } from '../../context/useStudio'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
 
 export function LogoCanvas() {
   const state = useStudioLogoState()
+  const { state: coreState } = useStudioCore()
+
+  // History restores write the prompt to both stores so the shared
+  // PromptDock reflects it and a follow-up generate uses it.
+  const restorePrompts = (prompt: string, negativePrompt?: string) => {
+    coreState.setMainPrompt(prompt)
+    state.setPrompt(prompt)
+    if (negativePrompt) {
+      coreState.setNegativePrompt(negativePrompt)
+      state.setNegativePrompt(negativePrompt)
+    }
+  }
   const {
     isGenerating, error, generatedLogo,
     clearLogo, downloadLogo, setLogo, addToHistory, generateLogo,
@@ -95,8 +107,7 @@ export function LogoCanvas() {
 
             <LogoHistoryPanel
               onUseSettings={(item) => {
-                state.setPrompt(item.prompt)
-                if (item.negativePrompt) state.setNegativePrompt(item.negativePrompt)
+                restorePrompts(item.prompt, item.negativePrompt)
                 if (item.seed) {
                   state.setSeedValue(item.seed)
                   state.setSeedLocked(true)
@@ -116,8 +127,7 @@ export function LogoCanvas() {
                   timestamp: item.timestamp,
                   seed: item.seed
                 })
-                state.setPrompt(item.prompt)
-                if (item.negativePrompt) state.setNegativePrompt(item.negativePrompt)
+                restorePrompts(item.prompt, item.negativePrompt)
                 if (item.seed) {
                   state.setSeedValue(item.seed)
                   state.setSeedLocked(true)
