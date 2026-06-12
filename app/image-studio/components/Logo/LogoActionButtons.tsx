@@ -21,6 +21,7 @@ import {
   FileText
 } from 'lucide-react'
 import { GeneratedLogo } from '../../hooks/useLogoGeneration'
+import { BrandKitButton } from './BrandKitButton'
 
 interface LogoActionButtonsProps {
   generatedLogo: GeneratedLogo
@@ -232,10 +233,10 @@ export function LogoActionButtons({
         {isFavorite ? 'Saved' : 'Fav'}
       </Button>
 
-      {/* Second Row - Real Font & Mockup Buttons */}
-      {(onShowRealFontOverlay || onShowMockup) && (
-        <div className="col-span-8 flex gap-1 mt-1">
-          {onShowRealFontOverlay && (
+      {/* Second Row - Brand Kit, Real Font & Mockup Buttons */}
+      <div className="col-span-8 flex gap-1 mt-1">
+        <BrandKitButton generatedLogo={generatedLogo} />
+        {onShowRealFontOverlay && (
             <Button
               onClick={onShowRealFontOverlay}
               size="sm"
@@ -249,18 +250,17 @@ export function LogoActionButtons({
               {needsExactText ? 'Add Exact Text' : 'Real Font Overlay'}
             </Button>
           )}
-          {onShowMockup && (
-            <Button
-              onClick={onShowMockup}
-              size="sm"
-              className="h-8 flex-1 bg-linear-to-r from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 text-cyan-400 border border-cyan-500/30 text-xs"
-            >
-              <CreditCard className="w-3 h-3 mr-1.5" />
-              Preview on Mockups
-            </Button>
-          )}
-        </div>
-      )}
+        {onShowMockup && (
+          <Button
+            onClick={onShowMockup}
+            size="sm"
+            className="h-8 flex-1 bg-linear-to-r from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 text-cyan-400 border border-cyan-500/30 text-xs"
+          >
+            <CreditCard className="w-3 h-3 mr-1.5" />
+            Preview on Mockups
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
