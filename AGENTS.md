@@ -173,3 +173,22 @@ npm run build    # Production build (catches type errors)
 &nbsp; 2. Add to `CLOTHING\_WITH\_VIEWS`, `HATS\_CATEGORY`, or `OTHER\_PRODUCTS` in the UI
 
 &nbsp; 3. Add hex color to `COLOR\_HEX\_MAP` if using new colors
+
+---
+
+## Cursor Cloud specific instructions
+
+This is a single Next.js 16 (App Router, Turbopack) app at the repo root — no monorepo, no Docker, no test runner (Jest/Vitest). Node 22 + npm are preinstalled; the package manager is **npm** (`package-lock.json`). Dependencies are installed automatically by the startup update script (`npm install`).
+
+### Services
+- Only one service: the Next.js dev server (`npm run dev`, http://localhost:3000). Standard commands live in `package.json` (`dev`, `build`, `start`, `lint`, and the `check:*` contract scripts).
+
+### Running without secrets (important)
+- No API keys/DB are configured in the cloud VM by default. The app still runs because `SAAS_ENFORCEMENT` defaults to `off` (anonymous, uncharged). All pages (`/`, `/image-studio`, `/sign-in`, `/credits`) render and return 200.
+- Create a `.env.local` (gitignored) for a clean dev run. A generated `BETTER_AUTH_SECRET` silences a noisy Better Auth error; without it, build/dev still succeed but log `You are using the default secret`. Generate one with: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`.
+- What works WITHOUT external keys (client-side): style/parameter selection, the Logo Wizard, and the **Mockup configurator** (color/text/size edits + PNG/SVG/PDF export). A good no-key smoke test is exporting a customized mockup from the Mockups tab.
+- What REQUIRES secrets: actual AI image/prompt generation and the AI Helper need `GOOGLE_AI_API_KEY` (or `GEMINI_API_KEY`) and/or `OPENAI_API_KEY`. DB-backed history/favorites/auth/credits need `NEON_DATABASE_URL` (+ `DATABASE_URL` alias); apply migrations with `node scripts/run-sql.cjs scripts/<file>.sql` or `node run-migrations.js`. Stripe billing only matters when `SAAS_ENFORCEMENT=on`. See `.env.example` for the full annotated list.
+
+### Notes
+- `npm run lint` reports many `no-explicit-any` warnings but **0 errors** — that is the expected baseline.
+- `next.config.mjs` lists native `serverExternalPackages` (`sharp`, `onnxruntime-node`, `@neplex/vectorizer`); `npm install` builds these. If background-removal/vectorize routes throw native errors, rerun `npm install`.
