@@ -26,6 +26,19 @@ These MUST be set in Vercel → Settings → Environment Variables (for ALL envi
 | `REPLICATE_API_TOKEN` | Replicate API key (upscaling fallbacks) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob token (auto-provisioned on Vercel) |
 | `ADMIN_API_KEY` | Optional — gates `/api/logo-history/debug` (account merge); endpoint stays closed when unset |
+| `BETTER_AUTH_SECRET` | Auth signing secret (required for accounts/sign-in) |
+| `STRIPE_SECRET_KEY` | Stripe secret key (required to sell credits) |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for the `/api/stripe/webhook` endpoint |
+| `SAAS_ENFORCEMENT` | `off` (default) = free/anonymous as before; `on` = generation requires sign-in + credits |
+| `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` | Optional — enables the Google sign-in button |
+
+### SaaS layer (Phase 3)
+- **Auth**: Better Auth on Neon (`lib/auth.ts`, tables in `scripts/008_better_auth_tables.sql`). Sign-in page at `/sign-in`; account menu in the studio top bar.
+- **Credits**: `profiles` + append-only `credit_ledger` (`scripts/010_credits.sql`); ops in `lib/credits/`; costs in `lib/credits/cost-map.ts`; signup grant 30.
+- **Billing**: Stripe Checkout credit packs (`lib/billing/packs.ts` — edit prices there); idempotent webhook grants on `checkout.session.completed`; buy page at `/credits`.
+- **Gating**: `withCreditGuard` (`lib/api/guard.ts`) wraps the 7 generation/transform routes — reserve → refund on failure. Controlled by `SAAS_ENFORCEMENT` (default off = legacy behavior).
+- **Legacy data**: signed-in users claim their anonymous device data via the account menu (`/api/account/claim`, single-claim per legacy id).
+- **Migrations**: apply with `node scripts/run-sql.cjs scripts/<file>.sql` (reads `.env.local`). 008/009/010 are applied to the production Neon DB.
 
 ### Deployment Checklist
 1. ✅ Test locally with `npm run build`

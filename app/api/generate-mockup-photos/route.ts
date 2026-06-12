@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { withCreditGuard, flatCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { generateImageWithRetry } from "@/lib/gemini-client"
 import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
@@ -481,7 +482,7 @@ const PRODUCT_PROMPTS: Record<string, Record<string, string>> = {
   },
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
   if (rateLimited) return rateLimited
 
@@ -600,3 +601,5 @@ export async function GET() {
     })),
   })
 }
+
+export const POST = withCreditGuard('mockup_photo', flatCost('mockupPhoto'), handlePost)

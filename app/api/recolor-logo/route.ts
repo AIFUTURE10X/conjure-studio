@@ -6,6 +6,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
+import { withCreditGuard, flatCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { put } from "@vercel/blob"
 import sharp from "sharp"
@@ -37,7 +38,7 @@ function getClosestAspectRatio(width?: number, height?: number): RecolorAspectRa
   }).value
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
   if (rateLimited) return rateLimited
 
@@ -114,3 +115,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withCreditGuard('recolor', flatCost('recolor'), handlePost)

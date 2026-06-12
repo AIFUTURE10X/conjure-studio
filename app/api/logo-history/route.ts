@@ -3,6 +3,7 @@ import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
+import { resolveUserId } from '@/lib/api/identity'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getSQL() {
@@ -39,7 +40,7 @@ const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema }
 export async function GET(request: NextRequest) {
   const parsedQuery = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
   if (parsedQuery.response) return parsedQuery.response
-  const { userId } = parsedQuery.data
+  const userId = await resolveUserId(request, parsedQuery.data.userId)
 
   try {
     const sql = getSQL()
@@ -79,7 +80,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const parsedBody = await parseJson(request, postBodySchema)
   if (parsedBody.response) return parsedBody.response
-  const { userId, imageUrl, prompt, negativePrompt, presetId, seed, style, config, isFavorited, rating } = parsedBody.data
+  const { imageUrl, prompt, negativePrompt, presetId, seed, style, config, isFavorited, rating } = parsedBody.data
+  const userId = await resolveUserId(request, parsedBody.data.userId)
 
   try {
     console.log('[Logo History] POST request received')
@@ -178,7 +180,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const parsedBody = await parseJson(request, patchBodySchema)
   if (parsedBody.response) return parsedBody.response
-  const { id, userId, isFavorited, rating } = parsedBody.data
+  const { id, isFavorited, rating } = parsedBody.data
+  const userId = await resolveUserId(request, parsedBody.data.userId)
 
   try {
     const sql = getSQL()
@@ -211,7 +214,8 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const parsedQuery = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
   if (parsedQuery.response) return parsedQuery.response
-  const { id, userId } = parsedQuery.data
+  const { id } = parsedQuery.data
+  const userId = await resolveUserId(request, parsedQuery.data.userId)
 
   try {
     const sql = getSQL()

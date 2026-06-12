@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { withCreditGuard, flatCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { vectorizeLogo, VectorizationMode, removeBackgroundFromSvg } from "@/lib/vectorization"
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
@@ -75,3 +76,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withCreditGuard('vectorize', flatCost('vectorize'), handlePost)

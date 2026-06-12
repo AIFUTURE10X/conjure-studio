@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { withCreditGuard, imageFormCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { parseLogoGenerationRequest } from "./logo-request"
 import {
@@ -13,7 +14,7 @@ import { buildFreeFormLogoPrompt, buildLogoPrompt, buildReferenceLogoPrompt, typ
 export const runtime = "nodejs"
 export const maxDuration = 300
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
   if (rateLimited) return rateLimited
 
@@ -99,3 +100,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withCreditGuard('logo_generation', imageFormCost, handlePost)

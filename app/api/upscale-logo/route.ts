@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { withCreditGuard, flatCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import sharp from 'sharp'
 import { upscaleWithRealESRGAN, isReplicateAvailable } from "@/lib/replicate-upscaler"
@@ -16,7 +17,7 @@ const RESOLUTIONS = {
 type TargetResolution = keyof typeof RESOLUTIONS
 type UpscaleMethod = 'ai' | 'fast'
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
@@ -121,3 +122,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withCreditGuard('upscale', flatCost('upscale'), handlePost)

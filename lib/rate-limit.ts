@@ -3,9 +3,9 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
 /**
- * Per-IP rate limiting for the generation/transform routes — with no auth,
- * this is the only protection for the provider API keys on a public
- * deployment.
+ * Rate limiting for the generation/transform routes: per-user when signed
+ * in, per-IP for anonymous callers — the backstop protecting the provider
+ * API keys on a public deployment.
  *
  * Backend selection:
  * - When UPSTASH_REDIS_REST_URL/TOKEN are set (Vercel Marketplace Upstash),
@@ -40,6 +40,21 @@ function getClientIp(request: Request): string {
   return request.headers.get('x-real-ip') || 'unknown'
 }
 
+/**
+ * Limit key: the signed-in user id when a session exists (stable across IPs,
+ * fair behind shared NATs), otherwise the caller IP as before.
+ */
+async function getLimitKey(request: Request): Promise<string> {
+  try {
+    const { getSessionUser } = await import('@/lib/auth')
+    const user = await getSessionUser(request.headers)
+    if (user) return `user:${user.id}`
+  } catch {
+    // Auth unavailable — fall back to IP limiting.
+  }
+  return `ip:${getClientIp(request)}`
+}
+
 // ── Upstash backend ────────────────────────────────────────────────────────
 
 let redis: Redis | null | undefined
@@ -72,8 +87,8 @@ function getUpstashLimiter(policy: RateLimitPolicy): Ratelimit | null {
 
 const memoryWindows = new Map<string, number[]>()
 
-function memoryLimit(policy: RateLimitPolicy, ip: string): { success: boolean; retryAfterSeconds: number } {
-  const key = `${policy.id}:${ip}`
+function memoryLimit(policy: RateLimitPolicy, limitKey: string): { success: boolean; retryAfterSeconds: number } {
+  const key = `${policy.id}:${limitKey}`
   const now = Date.now()
   const windowMs = policy.windowSeconds * 1000
   const timestamps = (memoryWindows.get(key) || []).filter((t) => now - t < windowMs)
@@ -115,12 +130,12 @@ function tooManyRequests(retryAfterSeconds: number): NextResponse {
  * the rate limiter is unavailable.
  */
 export async function enforceRateLimit(request: Request, policy: RateLimitPolicy): Promise<NextResponse | null> {
-  const ip = getClientIp(request)
+  const key = await getLimitKey(request)
 
   try {
     const upstash = getUpstashLimiter(policy)
     if (upstash) {
-      const result = await upstash.limit(ip)
+      const result = await upstash.limit(key)
       if (!result.success) {
         const retryAfterSeconds = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000))
         return tooManyRequests(retryAfterSeconds)
@@ -128,7 +143,7 @@ export async function enforceRateLimit(request: Request, policy: RateLimitPolicy
       return null
     }
 
-    const result = memoryLimit(policy, ip)
+    const result = memoryLimit(policy, key)
     if (!result.success) {
       return tooManyRequests(result.retryAfterSeconds)
     }

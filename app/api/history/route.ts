@@ -3,6 +3,7 @@ import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
+import { resolveUserId } from '@/lib/api/identity'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getSQL() {
@@ -26,7 +27,7 @@ const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema }
 export async function GET(request: NextRequest) {
   const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
   if (parsed.response) return parsed.response
-  const { userId } = parsed.data
+  const userId = await resolveUserId(request, parsed.data.userId)
 
   try {
     const sql = getSQL()
@@ -60,7 +61,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const parsed = await parseJson(request, postBodySchema)
   if (parsed.response) return parsed.response
-  const { userId, prompt, aspectRatio, imageUrls } = parsed.data
+  const { prompt, aspectRatio, imageUrls } = parsed.data
+  const userId = await resolveUserId(request, parsed.data.userId)
 
   try {
     console.log('[v0] API: POST history request received')
@@ -128,7 +130,8 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
   if (parsed.response) return parsed.response
-  const { id, userId } = parsed.data
+  const { id } = parsed.data
+  const userId = await resolveUserId(request, parsed.data.userId)
 
   try {
     const sql = getSQL()

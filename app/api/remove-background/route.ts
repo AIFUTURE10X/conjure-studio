@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { withCreditGuard, flatCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { resolveUserId } from '@/lib/api/identity'
 import { put } from "@vercel/blob"
 import { neon } from "@neondatabase/serverless"
 import { removeBackground, type BackgroundRemovalMethod } from "@/lib/background-removal"
@@ -9,7 +11,7 @@ import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { removeBackgroundWithPixelcut } from "@/lib/pixelcut-bg-removal"
 import { removeBackgroundWithPhotoRoom } from "@/lib/photoroom-bg-removal"
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
@@ -19,8 +21,10 @@ export async function POST(request: NextRequest) {
     const bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'photoroom'
     const cloudApiKey = formData.get('cloudApiKey') as string | null
 
-    // Optional: metadata for saving to history (server-side save)
-    const userId = formData.get('userId') as string | null
+    // Optional: metadata for saving to history (server-side save). Session
+    // identity wins over the client-supplied id when signed in.
+    const clientUserId = formData.get('userId') as string | null
+    const userId = clientUserId ? await resolveUserId(request, clientUserId) : null
     const prompt = formData.get('prompt') as string | null
     const seed = formData.get('seed') as string | null
     const style = formData.get('style') as string | null
@@ -142,3 +146,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withCreditGuard('background_removal', flatCost('removeBackground'), handlePost)

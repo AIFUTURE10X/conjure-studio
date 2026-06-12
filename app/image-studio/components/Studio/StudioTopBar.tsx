@@ -14,6 +14,7 @@ import { Home, ImageIcon, Settings } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { HeaderContextButtons } from '../HeaderContextButtons'
 import { AccountManager } from '../AccountManager'
+import { AccountMenu } from './AccountMenu'
 import { SettingsPanel } from '../Settings'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import type { StudioMode } from '../../context/studio-types'
@@ -96,6 +97,7 @@ export function StudioTopBar() {
             <Settings className="w-4 h-4" />
           </button>
           <AccountManager />
+          <AccountMenu />
         </div>
       </div>
 

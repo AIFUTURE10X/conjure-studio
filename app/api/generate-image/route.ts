@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { withCreditGuard, imageFormCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { z } from "zod"
 import { generateImageWithRetry, type GenerationModel } from "@/lib/gemini-client"
@@ -54,7 +55,7 @@ function isOpenAIImageModel(model: AppGenerationModel): model is OpenAIImageMode
   return model === "gpt-image-2"
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
   if (rateLimited) return rateLimited
 
@@ -185,3 +186,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withCreditGuard('image_generation', imageFormCost, handlePost)
