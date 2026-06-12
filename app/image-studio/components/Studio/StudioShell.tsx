@@ -19,6 +19,7 @@ import {
 import { ImageLightbox } from '../ImageLightbox'
 import { FavoritesModal } from '../SimpleFavorites'
 import { ParameterHistoryPanel } from '../ParameterHistoryPanel'
+import { MockupPhotoGenerator } from '../Logo/MockupPreview/MockupPhotoGenerator'
 import { StudioTopBar } from './StudioTopBar'
 import { HelperPanel } from './HelperPanel'
 import { CanvasPanel } from './CanvasPanel'
@@ -33,6 +34,7 @@ export function StudioShell() {
   const {
     favorites, toggleFavorite, clearAll, state,
     handleRestoreParameters, closeLightbox, navigateLightbox, handleDownloadFromLightbox,
+    showPhotoGenerator, setShowPhotoGenerator,
   } = useStudioCore()
 
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'studio-layout' })
@@ -96,6 +98,10 @@ export function StudioShell() {
         onNavigate={navigateLightbox}
         onDownload={handleDownloadFromLightbox}
       />
+
+      {showPhotoGenerator && (
+        <MockupPhotoGenerator onClose={() => setShowPhotoGenerator(false)} />
+      )}
     </div>
   )
 }

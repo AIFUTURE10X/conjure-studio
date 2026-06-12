@@ -85,7 +85,7 @@ const checks = [
   },
   {
     name: 'AI helper has a separate logo suggestion apply callback',
-    pass: () => /onApplyLogoSuggestions/.test(read('app/image-studio/components/AIHelperSidebar.tsx')) &&
+    pass: () => /onApplyLogoSuggestions/.test(read('app/image-studio/components/Studio/HelperPanel.tsx')) &&
       /handleApplyLogoSuggestions/.test(read('app/image-studio/hooks/usePageState.ts')),
   },
   {
@@ -147,7 +147,7 @@ const checks = [
     pass: () => /model:\s*'gpt-image-2'/.test(read('lib/logo-generation-contract.ts')) &&
       /useState<LogoGenerationModel>\(DEFAULT_LOGO_GENERATION_SETTINGS\.model\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
       /setSelectedModel\(DEFAULT_LOGO_GENERATION_SETTINGS\.model\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
-      /selectedModel:\s*'gpt-image-2'/.test(read('app/image-studio/page.tsx')),
+      /value: 'gpt-image-2', label: 'ChatGPT Images 2\.0'/.test(read('app/image-studio/components/Studio/SettingsRail/LogoSettingsRail.tsx')),
   },
   {
     name: 'logo generation applies selected background removal by default',

@@ -26,7 +26,7 @@ export function LogoCanvas() {
   const {
     isGenerating, error, generatedLogo,
     clearLogo, downloadLogo, setLogo, addToHistory, generateLogo,
-    handleLogoGenerated, handlers,
+    handleLogoGenerated, recordLogoOutput, buildHistoryLogoOutputContext, handlers,
     handleToggleFavorite, isFavorite, isFavoriteToggling,
   } = useLogoGenerationEngine()
 
@@ -125,7 +125,7 @@ export function LogoCanvas() {
                 if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
                 if (item.config?.textMode) state.setTextMode(item.config.textMode)
                 if (item.presetId) state.setSelectedPresetId(item.presetId)
-                handleLogoGenerated(item.imageUrl)
+                recordLogoOutput(buildHistoryLogoOutputContext(item, 'history'))
                 toast.success('Image loaded! You can now preview on mockups.', { duration: 3000 })
               }}
               onSendToMockups={(item) => {
@@ -141,6 +141,7 @@ export function LogoCanvas() {
                 })
                 if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
                 if (item.config?.textMode) state.setTextMode(item.config.textMode)
+                recordLogoOutput(buildHistoryLogoOutputContext(item, 'mockup'))
                 state.setShowMockupPreview(true)
                 toast.success('Logo sent to mockups!')
               }}

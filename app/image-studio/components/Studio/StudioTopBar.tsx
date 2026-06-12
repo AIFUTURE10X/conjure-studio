@@ -8,10 +8,13 @@
  * Absorbs ImageStudioHeader's role for the v2 shell.
  */
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { Home } from 'lucide-react'
+import { Home, ImageIcon, Settings } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { HeaderContextButtons } from '../HeaderContextButtons'
 import { AccountManager } from '../AccountManager'
+import { SettingsPanel } from '../Settings'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import type { StudioMode } from '../../context/studio-types'
 
@@ -24,7 +27,12 @@ const MODE_OPTIONS: Array<{ mode: StudioMode; label: string }> = [
 
 export function StudioTopBar() {
   const { mode, setMode } = useStudioMode()
-  const { favorites, hasStoredParams, handleRestoreParameters, state } = useStudioCore()
+  const {
+    favorites, hasStoredParams, handleRestoreParameters, state, setShowPhotoGenerator,
+    settings, updateSetting, resetSettings, presets, handleLoadPreset,
+    deletePreset, updatePreset, clearAllPresets,
+  } = useStudioCore()
+  const [showSettings, setShowSettings] = useState(false)
 
   return (
     <header className="border-b border-zinc-800 px-4 py-2 bg-black/50 backdrop-blur-sm shrink-0 z-50">
@@ -70,9 +78,43 @@ export function StudioTopBar() {
               onShowFavorites={() => state.setShowFavorites(true)}
             />
           )}
+          {mode === 'logo' && (
+            <button
+              onClick={() => setShowPhotoGenerator(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors"
+              title="Generate Product Photos for Mockups"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-[#dbb56e]" />
+              <span className="hidden sm:inline">Product Photos</span>
+            </button>
+          )}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            title="Studio settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
           <AccountManager />
         </div>
       </div>
+
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-zinc-950 border-zinc-800 p-0">
+          <DialogTitle className="sr-only">Studio settings</DialogTitle>
+          <SettingsPanel
+            settings={settings}
+            onUpdateSetting={updateSetting}
+            onResetSettings={resetSettings}
+            onBack={() => setShowSettings(false)}
+            presets={presets}
+            onLoadPreset={(preset) => { handleLoadPreset(preset); setShowSettings(false) }}
+            onDeletePreset={deletePreset}
+            onUpdatePreset={updatePreset}
+            onClearAllPresets={clearAllPresets}
+          />
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }

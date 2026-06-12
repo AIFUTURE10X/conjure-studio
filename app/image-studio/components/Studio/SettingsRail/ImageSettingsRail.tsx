@@ -21,8 +21,10 @@ import { Separator } from '@/components/ui/separator'
 import { Upload } from 'lucide-react'
 import { SeedControlDropdown } from '../../SeedControlDropdown'
 import { ReferenceImageUpload } from '../../GeneratePanel/ReferenceImageUpload'
+import { PresetControls } from '../../GeneratePanel/PresetControls'
 import { CreativeDirectionPopover } from '../../Toolbar'
 import { SettingField } from './SettingField'
+import { normalizeCreativeDirection } from '../../../constants/creative-direction-options'
 import { useStudioCore, usePendingSuggestion } from '../../../context/useStudio'
 import { useImageGenerationEngine } from '../../../context/ImageGenerationProvider'
 import { ASPECT_RATIO_OPTIONS } from '../../../constants/toolbar-options'
@@ -47,7 +49,7 @@ const selectTriggerClass = 'w-full h-8 bg-zinc-900 border-zinc-700 text-xs text-
 const selectContentClass = 'bg-zinc-900 border-zinc-700 text-zinc-200'
 
 export function ImageSettingsRail() {
-  const { state } = useStudioCore()
+  const { state, presets, savePreset, handleLoadPreset } = useStudioCore()
   const { pendingSuggestion } = usePendingSuggestion()
   const { photoRoomBgRemovalEnabled, setPhotoRoomBgRemovalEnabled } = useImageGenerationEngine()
 
@@ -206,6 +208,26 @@ export function ImageSettingsRail() {
       </SettingField>
 
       <Separator className="bg-zinc-800" />
+
+      <SettingField label="Presets">
+        <PresetControls
+          mainPrompt={state.mainPrompt}
+          negativePrompt={state.negativePrompt}
+          aspectRatio={state.aspectRatio}
+          selectedStylePreset={state.selectedStylePreset}
+          selectedCameraAngle={state.selectedCameraAngle}
+          selectedCameraLens={state.selectedCameraLens}
+          styleStrength={state.styleStrength}
+          imageSize={state.imageSize}
+          selectedModel={state.selectedModel}
+          creativeDirection={normalizeCreativeDirection(state.creativeDirection)}
+          presets={presets}
+          onSavePreset={savePreset}
+          onLoadPreset={handleLoadPreset}
+          onSetMainPrompt={state.setMainPrompt}
+          onSetNegativePrompt={state.setNegativePrompt}
+        />
+      </SettingField>
 
       <Button
         onClick={() => state.setShowUploadSection(!state.showUploadSection)}

@@ -9,9 +9,13 @@
  * settings rail via the pending-suggestion context.
  */
 
-import { useEffect, useRef } from 'react'
-import { Sparkles, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { BookOpen, Sparkles, Trash2, Wrench } from 'lucide-react'
+import type { AIHelperActiveTask } from '../../hooks/useAIHelper'
 import { AIHelperChat } from '../AIHelper/AIHelperChat'
+import { ContextSnapshot } from '../AIHelper/ContextSnapshot'
+import { PromptSuggestionChips } from '../AIHelper/PromptSuggestionChips'
+import { PromptPreflightPanel } from '../AIHelper/PromptPreflightPanel'
 import { useAIHelperChatController } from '../AIHelper/useAIHelperChatController'
 import { useStudioCore, useStudioMode, usePendingSuggestion } from '../../context/useStudio'
 import { useStudioSnapshot } from '../../context/useStudioSnapshot'
@@ -58,7 +62,12 @@ export function HelperPanel() {
     },
   })
 
-  const { messages, mode, clearHistory } = controller
+  const {
+    messages, mode, clearHistory, setInput, runHelperPrompt, uploadedImages,
+    preferenceCount, preferenceMemory, activeDesignBrief, sharedProjectBrief,
+    activeTaskContext, forgetPreference,
+  } = controller
+  const [helperSection, setHelperSection] = useState<'chat' | 'tools' | 'context'>('chat')
 
   // Auto-preview: the newest assistant suggestion flows into the settings
   // rail as a pending patch (amber ring + diff chips). Logo suggestions get
@@ -131,14 +140,72 @@ export function HelperPanel() {
             {mode}
           </span>
         </div>
-        <button
-          onClick={() => void clearHistory()}
-          className="text-zinc-500 hover:text-zinc-200 transition-colors"
-          title="Clear chat history"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setHelperSection(helperSection === 'tools' ? 'chat' : 'tools')}
+            className={`p-1.5 rounded-md transition-colors ${
+              helperSection === 'tools' ? 'text-[#dbb56e] bg-[#c99850]/10' : 'text-zinc-500 hover:text-zinc-200'
+            }`}
+            title="Suggested prompts & preflight checks"
+          >
+            <Wrench className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setHelperSection(helperSection === 'context' ? 'chat' : 'context')}
+            className={`p-1.5 rounded-md transition-colors ${
+              helperSection === 'context' ? 'text-[#dbb56e] bg-[#c99850]/10' : 'text-zinc-500 hover:text-zinc-200'
+            }`}
+            title="Context & memory"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => void clearHistory()}
+            className="p-1.5 text-zinc-500 hover:text-zinc-200 transition-colors"
+            title="Clear chat history"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+
+      {helperSection === 'tools' && (
+        <div className="shrink-0 max-h-[45%] overflow-y-auto border-b border-zinc-800 bg-zinc-950/70">
+          <PromptSuggestionChips
+            mode={mode}
+            currentPromptSettings={currentPromptSettings}
+            uploadedImages={uploadedImages}
+            latestOutputs={latestOutputs}
+            onSelectPrompt={setInput}
+            onRunPrompt={(prompt) => void runHelperPrompt(prompt)}
+          />
+          <PromptPreflightPanel
+            mode={mode}
+            currentPromptSettings={currentPromptSettings}
+            uploadedImages={uploadedImages}
+            onAskHelper={setInput}
+            onRunFix={(prompt) => void runHelperPrompt(prompt)}
+          />
+        </div>
+      )}
+
+      {helperSection === 'context' && (
+        <div className="shrink-0 max-h-[45%] overflow-y-auto border-b border-zinc-800 bg-zinc-950/70">
+          <ContextSnapshot
+            mode={mode}
+            variant="drawer"
+            currentPromptSettings={currentPromptSettings}
+            uploadedImages={uploadedImages}
+            preferenceCount={preferenceCount}
+            preferenceMemory={preferenceMemory}
+            activeDesignBrief={activeDesignBrief}
+            sharedProjectBrief={sharedProjectBrief}
+            activeTaskContext={activeTaskContext as AIHelperActiveTask | undefined}
+            onForgetPreference={forgetPreference}
+            latestOutputs={latestOutputs}
+          />
+        </div>
+      )}
 
       <AIHelperChat controller={controller} className="flex min-h-0 flex-1 flex-col bg-zinc-950" />
     </div>

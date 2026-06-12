@@ -54,6 +54,8 @@ export interface LogoGenerationEngine {
   /** Apply a validated settings patch to the lifted logo state. */
   applyLogoSettingsPatch: (settings: LogoGeneratorSettingsPatch) => void
   handleLogoGenerated: (url: string) => void
+  /** Record a non-generated output (history restore, mockup send) as the latest logo output. */
+  recordLogoOutput: (output: LogoOutputContext) => void
   buildHistoryLogoOutputContext: (item: Parameters<typeof historyContextBuilder>[0], source: 'history' | 'mockup') => LogoOutputContext
   handlers: ReturnType<typeof useLogoPanelHandlers>
   handleToggleFavorite: () => void
@@ -123,6 +125,10 @@ export function LogoGenerationProvider({ children }: { children: ReactNode }) {
   const handleLogoGenerated = useCallback((url: string) => {
     setLatestLogoOutput(buildLogoOutputContext(url))
   }, [buildLogoOutputContext])
+
+  const recordLogoOutput = useCallback((output: LogoOutputContext) => {
+    setLatestLogoOutput(output)
+  }, [])
 
   const handlers = useLogoPanelHandlers({
     generatedLogo,
@@ -226,6 +232,7 @@ export function LogoGenerationProvider({ children }: { children: ReactNode }) {
     addToHistory,
     applyLogoSettingsPatch,
     handleLogoGenerated,
+    recordLogoOutput,
     buildHistoryLogoOutputContext: historyContextBuilder,
     handlers,
     handleToggleFavorite,
@@ -234,7 +241,7 @@ export function LogoGenerationProvider({ children }: { children: ReactNode }) {
   }), [
     isGenerating, error, generatedLogo, latestLogoOutput, handleGenerate, requestGenerate,
     generateLogo, clearLogo, downloadLogo, setLogo, addToHistory, applyLogoSettingsPatch,
-    handleLogoGenerated, handlers, handleToggleFavorite, isFavorite, isFavoriteToggling,
+    handleLogoGenerated, recordLogoOutput, handlers, handleToggleFavorite, isFavorite, isFavoriteToggling,
   ])
 
   return (

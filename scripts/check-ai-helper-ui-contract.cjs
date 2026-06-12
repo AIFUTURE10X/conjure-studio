@@ -5,15 +5,15 @@ const root = process.cwd()
 
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
 
-// The AI helper sidebar was decomposed into a composition shell
-// (AIHelperSidebar), the chat column (AIHelper/AIHelperChat), the chat
+// The AI helper lives in the studio workspace: the host panel
+// (Studio/HelperPanel), the chat column (AIHelper/AIHelperChat), the chat
 // controller hook (AIHelper/useAIHelperChatController), and pure command
-// utils. Checks that pinned AIHelperSidebar internals assert against the
-// combined bundle so every assertion keeps its full strength across the
-// split files (including the negative assertions, which must hold in all
-// of them).
+// utils. Checks that pinned the old AIHelperSidebar internals assert
+// against the combined bundle so every assertion keeps its full strength
+// across the split files (including the negative assertions, which must
+// hold in all of them).
 const readSidebarBundle = () => [
-  'app/image-studio/components/AIHelperSidebar.tsx',
+  'app/image-studio/components/Studio/HelperPanel.tsx',
   'app/image-studio/components/AIHelper/AIHelperChat.tsx',
   'app/image-studio/components/AIHelper/useAIHelperChatController.ts',
   'app/image-studio/utils/helper-commands.ts',
@@ -22,122 +22,104 @@ const readSidebarBundle = () => [
 
 const checks = [
   {
-    name: 'AI helper opens as a single full-canvas workspace',
+    name: 'AI helper lives in the studio workspace helper panel',
     pass: () => {
       const header = read('app/image-studio/components/AIHelper/AIHelperHeader.tsx')
-      const sidebar = readSidebarBundle()
-      return /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
-        /style=\{\{ width: AI_HELPER_PANEL_EXPANDED_WIDTH \}\}/.test(sidebar) &&
-        !/const isExpanded/.test(sidebar) &&
-        !/AI_HELPER_PANEL_WIDTH/.test(sidebar) &&
-        !/setIsExpanded/.test(sidebar) &&
+      const helperPanel = read('app/image-studio/components/Studio/HelperPanel.tsx')
+      const shell = read('app/image-studio/components/Studio/StudioShell.tsx')
+      return /useAIHelperChatController/.test(helperPanel) &&
+        /AIHelperChat controller=\{controller\}/.test(helperPanel) &&
+        /<HelperPanel \/>/.test(shell) &&
+        !/fixed right-0 top-0/.test(helperPanel) &&
+        !/AI_HELPER_PANEL_EXPANDED_WIDTH/.test(helperPanel) &&
+        !/setIsExpanded/.test(helperPanel) &&
         !/Maximize2/.test(header) &&
         !/Minimize2/.test(header)
     },
   },
   {
-    name: 'AI helper expanded mode uses the full canvas with organized settings and chat columns',
+    name: 'studio workspace splits helper canvas and settings rail into resizable panels',
     pass: () => {
-      const sidebar = readSidebarBundle()
-      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
-      return /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
-        /helperWorkspaceClass/.test(sidebar) &&
-        /halfCanvasWorkspaceStyle/.test(sidebar) &&
-        /helperWorkspaceStyle/.test(sidebar) &&
-        /helperSettingsRailClass/.test(sidebar) &&
-        /helperConversationClass/.test(sidebar) &&
-        /gridTemplateColumns: 'minmax\(0, 1fr\) minmax\(0, 1fr\)'/.test(sidebar) &&
-        /const contextVariant = 'workspace'/.test(sidebar) &&
-        /variant\?: 'drawer' \| 'workspace'/.test(snapshot) &&
-        /contextGroups/.test(snapshot) &&
-        /Core Settings/.test(snapshot) &&
-        /References/.test(snapshot) &&
-        /Memory/.test(snapshot)
+      const shell = read('app/image-studio/components/Studio/StudioShell.tsx')
+      return /ResizablePanelGroup/.test(shell) &&
+        /id="helper"/.test(shell) &&
+        /id="canvas"/.test(shell) &&
+        /id="settings-rail"/.test(shell) &&
+        /useDefaultLayout\(\{ id: 'studio-layout' \}\)/.test(shell) &&
+        /StudioMobileLayout/.test(shell)
     },
   },
   {
-    name: 'AI helper workspace settings rail is spacious and not cramped into tiny chips',
+    name: 'settings rail exposes image controls with suggestion diff fields',
     pass: () => {
-      const sidebar = readSidebarBundle()
-      const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
-      const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
-      return /gridTemplateColumns: 'minmax\(0, 1fr\) minmax\(0, 1fr\)'/.test(sidebar) &&
-        /helperWorkspaceStyle/.test(sidebar) &&
-        /ContextRow/.test(snapshot) &&
-        /contextRowGridClass/.test(snapshot) &&
-        /variant === 'workspace'/.test(snapshot) &&
-        /Settings overview/.test(snapshot) &&
-        /grid-cols-3/.test(snapshot) &&
-        /quickSettingsGridClass/.test(quickSettings) &&
-        /settingButtonClass/.test(quickSettings) &&
-        /grid-cols-3/.test(quickSettings) &&
-        /min-h-\[52px\]/.test(quickSettings)
+      const rail = read('app/image-studio/components/Studio/SettingsRail/ImageSettingsRail.tsx')
+      const field = read('app/image-studio/components/Studio/SettingsRail/SettingField.tsx')
+      const banner = read('app/image-studio/components/Studio/SettingsRail/SuggestionBanner.tsx')
+      return /AI Model/.test(rail) &&
+        /Image Size/.test(rail) &&
+        /Aspect Ratio/.test(rail) &&
+        /Camera Angle/.test(rail) &&
+        /Style Strength/.test(rail) &&
+        /PhotoRoom BG/.test(rail) &&
+        /Reference Image/.test(rail) &&
+        /suggestion=\{diff\(/.test(rail) &&
+        /line-through/.test(field) &&
+        /ring-1 ring-amber-500\/60/.test(field) &&
+        /suggested change/.test(banner) &&
+        /Apply & Generate|Apply &amp; Generate/.test(banner) &&
+        /Switch to Logo/.test(banner)
     },
   },
   {
-    name: 'AI helper settings rail has overview and quick settings tabs',
+    name: 'AI helper panel has tools and context sections',
     pass: () => {
-      const sidebar = readSidebarBundle()
-      return /AIHelperSettingsTab/.test(sidebar) &&
-        /helperSettingsTab/.test(sidebar) &&
-        /settingsTabButtonClass/.test(sidebar) &&
-        /Overview/.test(sidebar) &&
-        /References & Memory/.test(sidebar) &&
-        /Quick Settings/.test(sidebar) &&
-        /Resolution & Next/.test(sidebar) &&
-        /helperSettingsTab === 'overview'/.test(sidebar) &&
-        /helperSettingsTab === 'quick-settings'/.test(sidebar)
+      const helperPanel = read('app/image-studio/components/Studio/HelperPanel.tsx')
+      return /helperSection/.test(helperPanel) &&
+        /'tools'/.test(helperPanel) &&
+        /'context'/.test(helperPanel) &&
+        /PromptSuggestionChips/.test(helperPanel) &&
+        /PromptPreflightPanel/.test(helperPanel) &&
+        /ContextSnapshot/.test(helperPanel) &&
+        /variant="drawer"/.test(helperPanel)
     },
   },
   {
-    name: 'AI helper exposes grouped quick settings controls in the canvas rail',
+    name: 'AI helper runs direct settings commands from chat',
     pass: () => {
       const sidebar = readSidebarBundle()
-      const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
-      return /QuickSettingsPanel/.test(sidebar) &&
-        /handleQuickSettingClick/.test(sidebar) &&
+      return /handleQuickSettingClick/.test(sidebar) &&
         /runDirectSettingsDecisionCommand\(prompt\)/.test(sidebar) &&
-        /onRunSetting=\{handleQuickSettingClick\}/.test(sidebar) &&
-        !/onRunSetting=\{\(prompt\) => void runHelperPrompt\(prompt\)\}/.test(sidebar) &&
-        /Quick Settings/.test(quickSettings) &&
-        /settingsGroups/.test(quickSettings) &&
-        /Background \/ PNG/.test(quickSettings) &&
-        /Text Mode/.test(quickSettings) &&
-        /Model/.test(quickSettings) &&
-        /Resolution/.test(quickSettings) &&
-        /use photoroom/.test(quickSettings) &&
-        !/native transparent png/.test(quickSettings) &&
-        /normal logo with background/.test(quickSettings) &&
-        /use exact text overlay/.test(quickSettings) &&
-        /use chatgpt images 2.0/.test(quickSettings) &&
-        /use gemini 3.1 flash/.test(quickSettings) &&
-        /set 4k/.test(quickSettings)
+        /use photoroom/.test(sidebar) &&
+        /normal logo with background/.test(sidebar) &&
+        /use exact text overlay/.test(sidebar) &&
+        /use chatgpt images 2/.test(sidebar) &&
+        /use gemini 3.1 flash/.test(sidebar) &&
+        /set 4k/.test(sidebar) &&
+        !/bgRemovalMethod: 'smart'/.test(sidebar)
     },
   },
   {
-    name: 'AI helper exposes logo style quick settings and passes them to the logo generator',
+    name: 'AI helper exposes logo style settings and passes them to the logo generator',
     pass: () => {
       const sidebar = readSidebarBundle()
-      const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
+      const rail = read('app/image-studio/components/Studio/SettingsRail/LogoSettingsRail.tsx')
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
-      const page = read('app/image-studio/page.tsx')
+      const studioSnapshot = read('app/image-studio/context/useStudioSnapshot.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /logoType\?: string/.test(sidebar) &&
         /logoVisualStyle\?: string/.test(sidebar) &&
         /logoRenderTreatment\?: string/.test(sidebar) &&
         /logoTypographyDirection\?: string/.test(sidebar) &&
-        /Logo Type/.test(quickSettings) &&
-        /Logo Style/.test(quickSettings) &&
-        /Render Treatment/.test(quickSettings) &&
-        /Typography/.test(quickSettings) &&
-        /set logo style luxury/.test(quickSettings) &&
-        /set logo typography elegant serif/.test(quickSettings) &&
+        /Logo Type/.test(rail) &&
+        /Visual Style/.test(rail) &&
+        /Render Treatment/.test(rail) &&
+        /Typography/.test(rail) &&
         /settingsPatch\.logoType = logoType/.test(sidebar) &&
         /settingsPatch\.logoVisualStyle = logoVisualStyle/.test(sidebar) &&
         /settingsPatch\.logoRenderTreatment = logoRenderTreatment/.test(sidebar) &&
         /settingsPatch\.logoTypographyDirection = logoTypographyDirection/.test(sidebar) &&
         /logoStyleSummary/.test(snapshot) &&
-        /logoType: logoGeneratorContext\.logoType/.test(page) &&
+        /logoType: logo\.logoType/.test(studioSnapshot) &&
         /suggestions\.logoType/.test(route) &&
         /suggestions\.logoVisualStyle/.test(route) &&
         /suggestions\.logoRenderTreatment/.test(route) &&
@@ -246,15 +228,16 @@ const checks = [
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       const sidebar = readSidebarBundle()
-      const page = read('app/image-studio/page.tsx')
-      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
+      const helperPanel = read('app/image-studio/components/Studio/HelperPanel.tsx')
+      const imageEngine = read('app/image-studio/context/ImageGenerationProvider.tsx')
+      const logoEngine = read('app/image-studio/context/LogoGenerationProvider.tsx')
       return /apply_and_generate/.test(hook) &&
         /apply_and_generate/.test(route) &&
         /onGenerateFromAIHelper/.test(sidebar) &&
-        /handleAIGenerateRequest/.test(page) &&
-        /logoPanelRef/.test(page) &&
-        /forwardRef<LogoPanelRef/.test(logoPanel) &&
-        /triggerGenerate:\s*handleGenerate/.test(logoPanel)
+        /onGenerateFromAIHelper: \(generateMode, options\)/.test(helperPanel) &&
+        /requestGenerate = useCallback\(\(\) => setGenerateQueued\(true\), \[\]\)/.test(imageEngine) &&
+        /requestGenerate = useCallback\(\(\) => setGenerateQueued\(true\), \[\]\)/.test(logoEngine) &&
+        /logoEngine\.requestGenerate\(\)/.test(helperPanel)
     },
   },
   {
@@ -263,7 +246,7 @@ const checks = [
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       const sidebar = readSidebarBundle()
-      const page = read('app/image-studio/page.tsx')
+      const helperPanel = read('app/image-studio/components/Studio/HelperPanel.tsx')
       return /critique_last_output/.test(hook) &&
         /make_variation/.test(hook) &&
         /sendActionMessage/.test(hook) &&
@@ -271,27 +254,23 @@ const checks = [
         /latestOutputAnalysis/.test(route) &&
         /latestOutputs/.test(sidebar) &&
         /sendActionMessage\(action\.type/.test(sidebar) &&
-        /latestLogoOutput/.test(page)
+        /latestLogoOutput: logoEngine\.latestLogoOutput/.test(helperPanel)
     },
   },
   {
     name: 'AI helper receives restored logo history context for iteration',
     pass: () => {
-      const page = read('app/image-studio/page.tsx')
-      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
-      const logoPanelIndex = read('app/image-studio/components/LogoPanel/index.ts')
+      const logoEngine = read('app/image-studio/context/LogoGenerationProvider.tsx')
+      const logoCanvas = read('app/image-studio/components/Studio/LogoCanvas.tsx')
+      const studioSnapshot = read('app/image-studio/context/useStudioSnapshot.ts')
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const sidebar = readSidebarBundle()
-      return /export interface LogoOutputContext/.test(logoPanel) &&
-        /onLogoGenerated\?: \(output: LogoOutputContext\) => void/.test(logoPanel) &&
-        /buildHistoryLogoOutputContext/.test(logoPanel) &&
-        /onLogoGenerated\?\.\(buildHistoryLogoOutputContext\(item, 'history'\)\)/.test(logoPanel) &&
-        /onLogoGenerated\?\.\(buildHistoryLogoOutputContext\(item, 'mockup'\)\)/.test(logoPanel) &&
-        /onLogoGenerated=\{setLatestLogoOutput\}/.test(page) &&
-        /useState<LogoOutputContext \| null>/.test(page) &&
-        /source: latestLogoOutput\.source/.test(page) &&
-        /bgRemovalMethod: latestLogoOutput\.bgRemovalMethod/.test(page) &&
-        /export type \{ LogoGeneratorContext, LogoGeneratorSettingsPatch, LogoOutputContext, LogoPanelRef \}/.test(logoPanelIndex) &&
+      return /useState<LogoOutputContext \| null>/.test(logoEngine) &&
+        /buildHistoryLogoOutputContext/.test(logoEngine) &&
+        /recordLogoOutput\(buildHistoryLogoOutputContext\(item, 'history'\)\)/.test(logoCanvas) &&
+        /recordLogoOutput\(buildHistoryLogoOutputContext\(item, 'mockup'\)\)/.test(logoCanvas) &&
+        /source: latestLogoOutput\.source/.test(studioSnapshot) &&
+        /bgRemovalMethod: latestLogoOutput\.bgRemovalMethod/.test(studioSnapshot) &&
         /source\?: string/.test(hook) &&
         /\.\.\.latestOutput/.test(hook) &&
         /latestLogoOutput\?: \{[\s\S]*source\?: string[\s\S]*bgRemovalMethod\?: string/.test(sidebar)
@@ -334,7 +313,7 @@ const checks = [
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       const sidebar = readSidebarBundle()
-      const page = read('app/image-studio/page.tsx')
+      const helperPanel = read('app/image-studio/components/Studio/HelperPanel.tsx')
       return /restore_memory_prompt/.test(hook) &&
         /generate_variation_set/.test(hook) &&
         /getLastPersistentGeneration/.test(route) &&
@@ -343,7 +322,7 @@ const checks = [
         /onGenerateFromAIHelper\?: \(mode: AIHelperMode, options\?: \{ imageCount\?: number \}\)/.test(sidebar) &&
         /action\.type === 'restore_memory_prompt'/.test(sidebar) &&
         /action\.type === 'generate_variation_set'/.test(sidebar) &&
-        /options\?\.imageCount/.test(page)
+        /options\?\.imageCount/.test(helperPanel)
     },
   },
   {
@@ -495,8 +474,8 @@ const checks = [
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       const sidebar = readSidebarBundle()
       const card = read('app/image-studio/components/AIHelper/SuggestionCard.tsx')
-      const page = read('app/image-studio/page.tsx')
-      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
+      const logoEngine = read('app/image-studio/context/LogoGenerationProvider.tsx')
+      const helperPanel = read('app/image-studio/components/Studio/HelperPanel.tsx')
       return /textMode\?: string/.test(hook) &&
         /bgRemovalMethod\?: string/.test(hook) &&
         /selectedModel\?: string/.test(hook) &&
@@ -507,14 +486,11 @@ const checks = [
         /\.\.\.suggestions/.test(sidebar) &&
         /Text Mode:/.test(card) &&
         /BG Method:/.test(card) &&
-        /extractLogoSettingsPatch/.test(page) &&
-        /pendingLogoSettings/.test(page) &&
-        /onClearPendingSettings/.test(page) &&
-        /LogoGeneratorSettingsPatch/.test(logoPanel) &&
-        /pendingLogoSettings/.test(logoPanel) &&
-        /applyPendingLogoSettings/.test(logoPanel) &&
-        /setTextMode/.test(logoPanel) &&
-        /setBgRemovalMethod/.test(logoPanel)
+        /applyLogoSettingsPatch/.test(logoEngine) &&
+        /LogoGeneratorSettingsPatch/.test(logoEngine) &&
+        /state\.setTextMode\(settings\.textMode\)/.test(logoEngine) &&
+        /state\.setBgRemovalMethod\(settings\.bgRemovalMethod\)/.test(logoEngine) &&
+        /logoEngine\.applyLogoSettingsPatch\(suggestions\)/.test(helperPanel)
     },
   },
   {
@@ -865,17 +841,17 @@ const checks = [
   {
     name: 'AI helper receives and shows active generator operation context',
     pass: () => {
-      const page = read('app/image-studio/page.tsx')
+      const studioSnapshot = read('app/image-studio/context/useStudioSnapshot.ts')
       const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      return /selectedModel: state\.selectedModel/.test(page) &&
-        /imageSize: state\.imageSize/.test(page) &&
-        /currentAspectRatio: state\.aspectRatio/.test(page) &&
-        /logoAspectRatio: logoGeneratorContext\.aspectRatio/.test(page) &&
-        /imageCount: state\.imageCount/.test(page) &&
-        /activeTab: state\.activeTab/.test(page) &&
-        /hasReferenceImage: Boolean\(state\.referenceImage\)/.test(page) &&
+      return /selectedModel: state\.selectedModel/.test(studioSnapshot) &&
+        /imageSize: state\.imageSize/.test(studioSnapshot) &&
+        /currentAspectRatio: state\.aspectRatio/.test(studioSnapshot) &&
+        /logoAspectRatio: logo\.aspectRatio/.test(studioSnapshot) &&
+        /imageCount: state\.imageCount/.test(studioSnapshot) &&
+        /activeTab: state\.activeTab/.test(studioSnapshot) &&
+        /hasReferenceImage: Boolean\(state\.referenceImage\)/.test(studioSnapshot) &&
         /formatOperationalGeneratorContext/.test(route) &&
         /OPERATIONAL GENERATOR CONTEXT/.test(route) &&
         /selectedModel\?: string/.test(sidebar) &&
@@ -893,10 +869,10 @@ const checks = [
   {
     name: 'AI helper context snapshot shows logo generator reference images',
     pass: () => {
-      const page = read('app/image-studio/page.tsx')
+      const studioSnapshot = read('app/image-studio/context/useStudioSnapshot.ts')
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
-      return /logoHasReferenceImage: logoGeneratorContext\.hasReferenceImage/.test(page) &&
-        /logoReferenceMode: logoGeneratorContext\.referenceMode/.test(page) &&
+      return /logoHasReferenceImage: Boolean\(logo\.referenceImage\)/.test(studioSnapshot) &&
+        /logoReferenceMode: logo\.referenceMode/.test(studioSnapshot) &&
         /mode === 'logo' \? Boolean\(currentPromptSettings\.logoHasReferenceImage\)/.test(snapshot) &&
         /mode === 'logo' \? currentPromptSettings\.logoReferenceMode/.test(snapshot) &&
         /Generator ref:/.test(snapshot)
@@ -906,10 +882,9 @@ const checks = [
     name: 'AI helper receives and explains background removal and true PNG context',
     pass: () => {
       const state = read('app/image-studio/hooks/useImageStudioState.ts')
-      const generateTab = read('app/image-studio/components/PageTabs/GenerateTab.tsx')
-      const generatePanel = read('app/image-studio/components/GeneratePanel.tsx')
-      const page = read('app/image-studio/page.tsx')
-      const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
+      const imageRail = read('app/image-studio/components/Studio/SettingsRail/ImageSettingsRail.tsx')
+      const imageEngine = read('app/image-studio/context/ImageGenerationProvider.tsx')
+      const studioSnapshot = read('app/image-studio/context/useStudioSnapshot.ts')
       const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
@@ -917,18 +892,16 @@ const checks = [
         /setUseImageBgRemoval/.test(state) &&
         /usePhotoRoomBgRemoval/.test(state) &&
         /setUsePhotoRoomBgRemoval/.test(state) &&
-        /useImageBgRemoval=/.test(generateTab) &&
-        /onImageBgRemovalChange=/.test(generateTab) &&
-        /usePhotoRoomBgRemoval=/.test(generateTab) &&
-        /onPhotoRoomBgRemovalChange=/.test(generateTab) &&
-        /useImageBgRemoval\?: boolean/.test(generatePanel) &&
-        /onImageBgRemovalChange\?: \(enabled: boolean\) => void/.test(generatePanel) &&
-        /usePhotoRoomBgRemoval\?: boolean/.test(generatePanel) &&
-        /onPhotoRoomBgRemovalChange\?: \(enabled: boolean\) => void/.test(generatePanel) &&
-        /imageBgRemovalEnabled: state\.useImageBgRemoval/.test(page) &&
-        /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval \? 'photoroom' : 'none'/.test(page) &&
-        /logoGeneratorContext/.test(page) &&
-        /onLogoContextChange/.test(logoPanel) &&
+        /checked=\{photoRoomBgRemovalEnabled\}/.test(imageRail) &&
+        /setPhotoRoomBgRemovalEnabled\(e\.target\.checked\)/.test(imageRail) &&
+        /PhotoRoom BG/.test(imageRail) &&
+        /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval/.test(imageEngine) &&
+        /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(imageEngine) &&
+        /if \(!photoRoomBgRemovalEnabled\)/.test(imageEngine) &&
+        /imageBgRemovalEnabled: state\.useImageBgRemoval/.test(studioSnapshot) &&
+        /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval \? 'photoroom' : 'none'/.test(studioSnapshot) &&
+        /logoBgRemovalMethod: logo\.bgRemovalMethod/.test(studioSnapshot) &&
+        /logoBgRemovalEnabled: logo\.bgRemovalMethod !== 'none'/.test(studioSnapshot) &&
         /logoBgRemovalMethod\?: string/.test(sidebar) &&
         /imageBgRemovalMethod\?: string/.test(snapshot) &&
         /PhotoRoom BG/.test(snapshot) &&

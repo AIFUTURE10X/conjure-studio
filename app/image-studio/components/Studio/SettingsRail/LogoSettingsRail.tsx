@@ -9,6 +9,7 @@
  * SettingField wrappers surface pending AI-suggestion diffs per field.
  */
 
+import { useRef } from 'react'
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Upload, X } from 'lucide-react'
 import { SettingField } from './SettingField'
 import { useStudioLogoState, usePendingSuggestion } from '../../../context/useStudio'
 import {
@@ -48,6 +50,16 @@ const selectContentClass = 'bg-zinc-900 border-zinc-700 text-zinc-200'
 export function LogoSettingsRail() {
   const state = useStudioLogoState()
   const { pendingSuggestion } = usePendingSuggestion()
+  const referenceInputRef = useRef<HTMLInputElement>(null)
+
+  const handleReferenceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onloadend = () => state.setReferenceImage({ file, preview: reader.result as string })
+    reader.readAsDataURL(file)
+    event.target.value = ''
+  }
 
   const patch: LogoSettingsSuggestionPatch | null =
     pendingSuggestion?.patch.mode === 'logo' ? pendingSuggestion.patch.logo : null
@@ -212,6 +224,69 @@ export function LogoSettingsRail() {
             {state.seedLocked ? 'Locked' : 'Lock'}
           </button>
         </div>
+      </SettingField>
+
+      <Separator className="bg-zinc-800" />
+
+      <SettingField label="Reference Logo">
+        <input
+          ref={referenceInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleReferenceUpload}
+          className="hidden"
+        />
+        {state.referenceImage ? (
+          <div className="space-y-2">
+            <div className="relative rounded-md border border-zinc-700 bg-zinc-900 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={state.referenceImage.preview}
+                alt="Logo reference"
+                className="max-h-24 w-full object-contain"
+              />
+              <button
+                onClick={() => state.setReferenceImage(null)}
+                className="absolute top-1 right-1 rounded-full bg-zinc-950/80 p-1 text-zinc-400 hover:text-white"
+                title="Remove reference"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              {(['replicate', 'inspire'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => state.setReferenceMode(m)}
+                  className={`h-7 rounded-md text-[11px] font-medium capitalize transition-colors ${
+                    state.referenceMode === m
+                      ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
+                      : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-[11px] text-zinc-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={state.removeBackgroundOnly}
+                onChange={(e) => state.setRemoveBackgroundOnly(e.target.checked)}
+                className="h-3.5 w-3.5 accent-[#c99850]"
+              />
+              Remove background only (no regeneration)
+            </label>
+          </div>
+        ) : (
+          <button
+            onClick={() => referenceInputRef.current?.click()}
+            className="w-full flex items-center justify-center gap-2 h-9 rounded-md border border-dashed border-zinc-700 bg-zinc-900 text-xs text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Upload reference logo
+          </button>
+        )}
       </SettingField>
     </div>
   )
