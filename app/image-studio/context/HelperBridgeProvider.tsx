@@ -28,9 +28,17 @@ const HelperBridgeContext = createContext<HelperBridgeValue | null>(null)
 export function HelperBridgeProvider({ children }: { children: ReactNode }) {
   const runnerRef = useRef<HelperRunner | null>(null)
   const openRef = useRef<(() => void) | null>(null)
+  const pendingPromptRef = useRef<string | null>(null)
 
   const registerHelperRunner = useCallback((runner: HelperRunner | null) => {
     runnerRef.current = runner
+    // On mobile the helper mounts only after its sheet opens, so a prompt
+    // sent while it was closed waits here and is delivered on registration.
+    if (runner && pendingPromptRef.current) {
+      const pending = pendingPromptRef.current
+      pendingPromptRef.current = null
+      runner(pending)
+    }
   }, [])
 
   const registerOpenHelper = useCallback((open: (() => void) | null) => {
@@ -40,8 +48,12 @@ export function HelperBridgeProvider({ children }: { children: ReactNode }) {
   const improveWithHelper = useCallback((prompt: string) => {
     const text = prompt.trim()
     if (!text) return
+    if (runnerRef.current) {
+      runnerRef.current(text)
+    } else {
+      pendingPromptRef.current = text
+    }
     openRef.current?.()
-    runnerRef.current?.(text)
   }, [])
 
   const value = useMemo<HelperBridgeValue>(
