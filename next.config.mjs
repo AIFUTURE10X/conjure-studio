@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   devIndicators: false,
+  // Strip the [v0]/debug console noise from production bundles; errors and
+  // warnings stay for diagnosability.
+  compiler: {
+    removeConsole: { exclude: ['error', 'warn'] },
+  },
   images: {
     unoptimized: true,
     remotePatterns: [

@@ -137,14 +137,19 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         imageQuality,
       })
       if (imgs?.length) {
+        let historySaveFailed = false
         for (const img of imgs) {
           const m = await getImageMetadata(img.url)
-          await saveToHistory(finalPrompt, state.aspectRatio, [img.url], {
+          const saved = await saveToHistory(finalPrompt, state.aspectRatio, [img.url], {
             style: state.selectedStylePreset,
             dimensions: m.dimensions,
             fileSize: m.fileSize,
             creativeDirection: normalizedCreativeDirection,
           })
+          if (!saved) historySaveFailed = true
+        }
+        if (historySaveFailed) {
+          toast.error('Image generated, but saving to history failed')
         }
       }
     } catch (e) {
@@ -196,8 +201,10 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       const updatedImages = [...state.generatedImages]
       updatedImages[index] = { ...updatedImages[index], url: data.image }
       state.setGeneratedImages(updatedImages)
+      toast.success('Background removed')
     } catch (error) {
       console.error('[v0] Background removal error:', error)
+      toast.error('Background removal failed')
     }
   }, [state.generatedImages, state.setGeneratedImages, photoRoomBgRemovalEnabled])
 

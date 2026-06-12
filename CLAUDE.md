@@ -14,14 +14,18 @@ git push origin master:master
 ```
 
 ### Required Vercel Environment Variables
-These MUST be set in Vercel → Settings → Environment Variables (for ALL environments: Production, Preview, Development):
+These MUST be set in Vercel → Settings → Environment Variables (for ALL environments: Production, Preview, Development). The full annotated list lives in `.env.example`.
 
 | Variable | Description |
 |----------|-------------|
 | `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
+| `DATABASE_URL` | Same value — legacy alias used by image-analysis routes |
+| `GOOGLE_AI_API_KEY` | Google Gemini API key (generation + AI helper) |
+| `OPENAI_API_KEY` | OpenAI key (ChatGPT Images 2.0, logos, recolor) |
 | `PHOTOROOM_API_KEY` | PhotoRoom API key for default professional logo PNG background removal |
-| `REPLICATE_API_TOKEN` | Replicate API key |
-| `GOOGLE_AI_API_KEY` | Google Gemini API key |
+| `REPLICATE_API_TOKEN` | Replicate API key (upscaling fallbacks) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token (auto-provisioned on Vercel) |
+| `ADMIN_API_KEY` | Optional — gates `/api/logo-history/debug` (account merge); endpoint stays closed when unset |
 
 ### Deployment Checklist
 1. ✅ Test locally with `npm run build`

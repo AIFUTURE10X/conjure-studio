@@ -18,6 +18,7 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
 
 # API keys and secrets - NEVER commit these
 *KEYS*.txt
@@ -37,3 +38,8 @@ next-env.d.ts
 # Windows reserved filenames (prevent Turbopack crash)
 nul
 NUL
+
+# local agent tooling state
+.claude/claudex/
+.codex/
+.playwright-mcp/
