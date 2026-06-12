@@ -4,44 +4,41 @@
  * CanvasPanel
  *
  * Center workspace panel. Image mode: ResultsCanvas + PromptDock.
- * The remaining modes land here in later steps (logo, then
- * mockups/bg-remover mounted-hidden).
+ * Logo mode: LogoCanvas + PromptDock. Mockups and the background remover
+ * stay mounted-hidden so their state survives mode switches, matching the
+ * classic page's behavior.
  */
 
 import { Card } from '@/components/ui/card'
 import { ResultsCanvas } from './ResultsCanvas'
 import { LogoCanvas } from './LogoCanvas'
 import { PromptDock } from './PromptDock'
+import { ProductMockupsPanel } from '../Logo/MockupPreview/ProductMockupsPanel'
+import { BackgroundRemoverPanel } from '../BackgroundRemover'
 import { useStudioMode } from '../../context/useStudio'
-
-const PENDING_MODE_LABELS: Record<string, string> = {
-  mockups: 'Product mockups',
-  'bg-remover': 'Background remover',
-}
 
 export function CanvasPanel() {
   const { mode } = useStudioMode()
-
-  if (mode !== 'image' && mode !== 'logo') {
-    return (
-      <div className="h-full flex items-center justify-center p-8 bg-zinc-950">
-        <Card className="bg-zinc-900/90 border-zinc-800 px-8 py-6 max-w-md text-center">
-          <p className="text-sm text-zinc-300 font-medium mb-1">
-            {PENDING_MODE_LABELS[mode] || mode} joins the workspace soon
-          </p>
-          <p className="text-xs text-zinc-500 leading-5">
-            This mode is still served by the classic studio page while the
-            workspace migration is in progress.
-          </p>
-        </Card>
-      </div>
-    )
-  }
+  const isPromptMode = mode === 'image' || mode === 'logo'
 
   return (
     <div className="h-full flex flex-col bg-zinc-950">
-      {mode === 'image' ? <ResultsCanvas /> : <LogoCanvas />}
-      <PromptDock />
+      {mode === 'image' && <ResultsCanvas />}
+      {mode === 'logo' && <LogoCanvas />}
+
+      <Card
+        className={`flex-1 min-h-0 m-3 bg-zinc-900/90 border border-zinc-800 overflow-hidden ${
+          mode !== 'mockups' ? 'hidden' : ''
+        }`}
+      >
+        <ProductMockupsPanel />
+      </Card>
+
+      <div className={`flex-1 min-h-0 overflow-y-auto px-4 py-4 ${mode !== 'bg-remover' ? 'hidden' : ''}`}>
+        <BackgroundRemoverPanel />
+      </div>
+
+      {isPromptMode && <PromptDock />}
     </div>
   )
 }

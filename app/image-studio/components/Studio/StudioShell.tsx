@@ -23,9 +23,11 @@ import { StudioTopBar } from './StudioTopBar'
 import { HelperPanel } from './HelperPanel'
 import { CanvasPanel } from './CanvasPanel'
 import { SettingsRail } from './SettingsRail'
+import { StudioMobileLayout } from './StudioMobileLayout'
 import { useStudioCore } from '../../context/useStudio'
 import { ImageGenerationProvider } from '../../context/ImageGenerationProvider'
 import { LogoGenerationProvider } from '../../context/LogoGenerationProvider'
+import { useMediaQuery } from '../../hooks/useMediaQuery'
 
 export function StudioShell() {
   const {
@@ -34,31 +36,36 @@ export function StudioShell() {
   } = useStudioCore()
 
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'studio-layout' })
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
 
   return (
     <div className="h-screen flex flex-col bg-linear-to-br from-zinc-950 via-black to-zinc-950">
       <StudioTopBar />
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 flex flex-col">
         <ImageGenerationProvider>
         <LogoGenerationProvider>
-          <ResizablePanelGroup
-            orientation="horizontal"
-            defaultLayout={defaultLayout}
-            onLayoutChanged={onLayoutChanged}
-          >
-            <ResizablePanel id="helper" defaultSize={22} minSize={14} collapsible>
-              <HelperPanel />
-            </ResizablePanel>
-            <ResizableHandle withHandle className="bg-zinc-800" />
-            <ResizablePanel id="canvas" defaultSize={56} minSize={30}>
-              <CanvasPanel />
-            </ResizablePanel>
-            <ResizableHandle withHandle className="bg-zinc-800" />
-            <ResizablePanel id="settings-rail" defaultSize={22} minSize={14} collapsible>
-              <SettingsRail />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+          {isDesktop ? (
+            <ResizablePanelGroup
+              orientation="horizontal"
+              defaultLayout={defaultLayout}
+              onLayoutChanged={onLayoutChanged}
+            >
+              <ResizablePanel id="helper" defaultSize={22} minSize={14} collapsible>
+                <HelperPanel />
+              </ResizablePanel>
+              <ResizableHandle withHandle className="bg-zinc-800" />
+              <ResizablePanel id="canvas" defaultSize={56} minSize={30}>
+                <CanvasPanel />
+              </ResizablePanel>
+              <ResizableHandle withHandle className="bg-zinc-800" />
+              <ResizablePanel id="settings-rail" defaultSize={22} minSize={14} collapsible>
+                <SettingsRail />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <StudioMobileLayout />
+          )}
         </LogoGenerationProvider>
         </ImageGenerationProvider>
       </div>
