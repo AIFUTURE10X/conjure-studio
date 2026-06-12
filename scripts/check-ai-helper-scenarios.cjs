@@ -5,7 +5,12 @@ const root = process.cwd()
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
 
 const route = read('app/api/generate-prompt-suggestion/route.ts')
-const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+// The sidebar's chat logic lives in the chat controller hook since the
+// studio workspace decomposition; the scenario assertions check both files.
+const sidebar = [
+  'app/image-studio/components/AIHelperSidebar.tsx',
+  'app/image-studio/components/AIHelper/useAIHelperChatController.ts',
+].map(read).join('\n')
 const packageJson = read('package.json')
 
 const scenarios = [

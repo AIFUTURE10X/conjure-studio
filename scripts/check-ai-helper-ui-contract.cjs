@@ -5,12 +5,27 @@ const root = process.cwd()
 
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
 
+// The AI helper sidebar was decomposed into a composition shell
+// (AIHelperSidebar), the chat column (AIHelper/AIHelperChat), the chat
+// controller hook (AIHelper/useAIHelperChatController), and pure command
+// utils. Checks that pinned AIHelperSidebar internals assert against the
+// combined bundle so every assertion keeps its full strength across the
+// split files (including the negative assertions, which must hold in all
+// of them).
+const readSidebarBundle = () => [
+  'app/image-studio/components/AIHelperSidebar.tsx',
+  'app/image-studio/components/AIHelper/AIHelperChat.tsx',
+  'app/image-studio/components/AIHelper/useAIHelperChatController.ts',
+  'app/image-studio/utils/helper-commands.ts',
+  'app/image-studio/utils/helper-suggestion-patch.ts',
+].map(read).join('\n')
+
 const checks = [
   {
     name: 'AI helper opens as a single full-canvas workspace',
     pass: () => {
       const header = read('app/image-studio/components/AIHelper/AIHelperHeader.tsx')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
         /style=\{\{ width: AI_HELPER_PANEL_EXPANDED_WIDTH \}\}/.test(sidebar) &&
         !/const isExpanded/.test(sidebar) &&
@@ -23,7 +38,7 @@ const checks = [
   {
     name: 'AI helper expanded mode uses the full canvas with organized settings and chat columns',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       return /AI_HELPER_PANEL_EXPANDED_WIDTH\s*=\s*'100vw'/.test(sidebar) &&
         /helperWorkspaceClass/.test(sidebar) &&
@@ -43,7 +58,7 @@ const checks = [
   {
     name: 'AI helper workspace settings rail is spacious and not cramped into tiny chips',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
       return /gridTemplateColumns: 'minmax\(0, 1fr\) minmax\(0, 1fr\)'/.test(sidebar) &&
@@ -62,7 +77,7 @@ const checks = [
   {
     name: 'AI helper settings rail has overview and quick settings tabs',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /AIHelperSettingsTab/.test(sidebar) &&
         /helperSettingsTab/.test(sidebar) &&
         /settingsTabButtonClass/.test(sidebar) &&
@@ -77,7 +92,7 @@ const checks = [
   {
     name: 'AI helper exposes grouped quick settings controls in the canvas rail',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
       return /QuickSettingsPanel/.test(sidebar) &&
         /handleQuickSettingClick/.test(sidebar) &&
@@ -102,7 +117,7 @@ const checks = [
   {
     name: 'AI helper exposes logo style quick settings and passes them to the logo generator',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const quickSettings = read('app/image-studio/components/AIHelper/QuickSettingsPanel.tsx')
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const page = read('app/image-studio/page.tsx')
@@ -145,7 +160,7 @@ const checks = [
     name: 'AI helper header uses one full-canvas view without expand collapse controls',
     pass: () => {
       const header = read('app/image-studio/components/AIHelper/AIHelperHeader.tsx')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return !/isExpanded/.test(header) &&
         !/onToggleExpanded/.test(header) &&
         !/Maximize2/.test(header) &&
@@ -176,7 +191,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /export interface AIHelperAction/.test(hook) &&
         /actions\?: AIHelperAction\[\]/.test(hook) &&
         /AGENTIC AI HELPER CONTRACT/.test(route) &&
@@ -201,7 +216,7 @@ const checks = [
     name: 'AI helper sends current context and memory to logo mode',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /agentMemory/.test(hook) &&
         /buildAgentMemory/.test(hook) &&
@@ -230,7 +245,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const page = read('app/image-studio/page.tsx')
       const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
       return /apply_and_generate/.test(hook) &&
@@ -247,7 +262,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const page = read('app/image-studio/page.tsx')
       return /critique_last_output/.test(hook) &&
         /make_variation/.test(hook) &&
@@ -266,7 +281,7 @@ const checks = [
       const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
       const logoPanelIndex = read('app/image-studio/components/LogoPanel/index.ts')
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /export interface LogoOutputContext/.test(logoPanel) &&
         /onLogoGenerated\?: \(output: LogoOutputContext\) => void/.test(logoPanel) &&
         /buildHistoryLogoOutputContext/.test(logoPanel) &&
@@ -302,7 +317,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const actionBar = read('app/image-studio/components/AIHelper/SmartActionBar.tsx')
       return /compare_to_reference/.test(hook) &&
         /lastReferenceAnalysis/.test(hook) &&
@@ -318,7 +333,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const page = read('app/image-studio/page.tsx')
       return /restore_memory_prompt/.test(hook) &&
         /generate_variation_set/.test(hook) &&
@@ -349,7 +364,7 @@ const checks = [
   {
     name: 'AI helper shows a visible context snapshot for current prompt references and latest outputs',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       return /ContextSnapshot/.test(sidebar) &&
         /currentPromptSettings=/.test(sidebar) &&
@@ -365,7 +380,7 @@ const checks = [
   {
     name: 'AI helper offers context-aware suggested next prompts',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const chips = read('app/image-studio/components/AIHelper/PromptSuggestionChips.tsx')
       return /PromptSuggestionChips/.test(sidebar) &&
         /onSelectPrompt=\{setInput\}/.test(sidebar) &&
@@ -411,7 +426,7 @@ const checks = [
       const persistence = read('app/image-studio/hooks/useAIHelperPersistence.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /kind: 'suggestion' \| 'reference' \| 'preference'/.test(hook) &&
         /persistentPreferences/.test(hook) &&
         /rememberUserPreference/.test(hook) &&
@@ -428,7 +443,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /preferenceMemory/.test(hook) &&
         /forgetPreference/.test(hook) &&
         /filter\(\(snapshot\) => snapshot\.kind !== 'preference' \|\| snapshot\.timestamp !== timestamp\)/.test(hook) &&
@@ -442,7 +457,7 @@ const checks = [
   {
     name: 'AI helper runs prompt preflight checks before generation',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const preflight = read('app/image-studio/components/AIHelper/PromptPreflightPanel.tsx')
       return /PromptPreflightPanel/.test(sidebar) &&
         /onAskHelper=\{setInput\}/.test(sidebar) &&
@@ -478,7 +493,7 @@ const checks = [
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const card = read('app/image-studio/components/AIHelper/SuggestionCard.tsx')
       const page = read('app/image-studio/page.tsx')
       const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
@@ -532,7 +547,7 @@ const checks = [
   {
     name: 'AI helper suggested prompts and preflight fixes can run immediately',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const chips = read('app/image-studio/components/AIHelper/PromptSuggestionChips.tsx')
       const preflight = read('app/image-studio/components/AIHelper/PromptPreflightPanel.tsx')
       return /runHelperPrompt/.test(sidebar) &&
@@ -549,7 +564,7 @@ const checks = [
     name: 'AI helper requests can be stopped while loading',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const input = read('app/image-studio/components/AIHelper/ChatInput.tsx')
       return /AbortController/.test(hook) &&
         /abortControllerRef/.test(hook) &&
@@ -613,7 +628,7 @@ const checks = [
     name: 'AI helper can run direct apply and generate commands from chat',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /appendLocalMessage/.test(hook) &&
         /getLatestSuggestionMessage/.test(sidebar) &&
         /runDirectSuggestionCommand/.test(sidebar) &&
@@ -626,7 +641,7 @@ const checks = [
   {
     name: 'AI helper can clear chat and memory from a direct local command',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /runDirectClearMemoryCommand/.test(sidebar) &&
         /clearMemoryCommandTerms/.test(sidebar) &&
         /clear helper memory/.test(sidebar) &&
@@ -640,7 +655,7 @@ const checks = [
   {
     name: 'AI helper can change background removal settings from direct chat commands',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /runDirectBackgroundRemovalCommand/.test(sidebar) &&
         /backgroundRemovalCommandTerms/.test(sidebar) &&
         /use photoroom/.test(sidebar) &&
@@ -655,7 +670,7 @@ const checks = [
   {
     name: 'AI helper can change logo text mode model and resolution from direct chat commands',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /runDirectLogoSettingsCommand/.test(sidebar) &&
         /logoSettingsCommandTerms/.test(sidebar) &&
         /use exact text overlay/.test(sidebar) &&
@@ -677,7 +692,7 @@ const checks = [
   {
     name: 'AI helper can apply mixed settings decisions and optionally generate',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /buildDirectSettingsPatch/.test(sidebar) &&
         /applyDirectSettingsPatch/.test(sidebar) &&
         /settingsGenerateCommandTerms/.test(sidebar) &&
@@ -694,7 +709,7 @@ const checks = [
   {
     name: 'AI helper local commands explain preserve change and action like a planner',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /buildLocalActionSummary/.test(sidebar) &&
         /Preserving:/.test(sidebar) &&
         /Changing:/.test(sidebar) &&
@@ -711,7 +726,7 @@ const checks = [
   {
     name: 'AI helper can patch the latest suggestion from natural single-change follow-ups',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /runDirectSuggestionPatchCommand/.test(sidebar) &&
         /buildSuggestionPatchFromFollowUp/.test(sidebar) &&
         /appendPromptDirective/.test(sidebar) &&
@@ -733,7 +748,7 @@ const checks = [
   {
     name: 'AI helper can patch and generate the latest suggestion from one natural follow-up',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /patchGenerateCommandTerms/.test(sidebar) &&
         /make the background white and generate/.test(sidebar) &&
         /make it transparent and generate/.test(sidebar) &&
@@ -747,7 +762,7 @@ const checks = [
   {
     name: 'AI helper can patch named logo or image suggestions from any helper mode',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /const getLatestSuggestionMessage = \(targetMode\?: AIHelperMode\)/.test(sidebar) &&
         /const requestedPatchMode = detectRequestedHelperMode\(userInput\)/.test(sidebar) &&
         /const patchMode = requestedPatchMode \|\| mode/.test(sidebar) &&
@@ -762,7 +777,7 @@ const checks = [
   {
     name: 'AI helper can patch exact brand text from natural chat commands',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /extractRequestedBrandText/.test(sidebar) &&
         /brandTextPatchTerms/.test(sidebar) &&
         /make the logo say A86 Residence/.test(sidebar) &&
@@ -779,7 +794,7 @@ const checks = [
   {
     name: 'AI helper can patch complaint-style misses from the latest suggestion',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /complaintStylePatchTerms/.test(sidebar) &&
         /it gave me a blue background/.test(sidebar) &&
         /background is blue/.test(sidebar) &&
@@ -798,7 +813,7 @@ const checks = [
   {
     name: 'AI helper can run natural latest-output critique compare and variation commands from chat',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /runDirectLatestOutputCommand/.test(sidebar) &&
         /critiqueCommandTerms/.test(sidebar) &&
         /compareCommandTerms/.test(sidebar) &&
@@ -812,7 +827,7 @@ const checks = [
   {
     name: 'AI helper routes clear logo or image requests to the correct mode',
     pass: () => {
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /detectRequestedHelperMode/.test(sidebar) &&
         /logoRequestTerms/.test(sidebar) &&
         /imageRequestTerms/.test(sidebar) &&
@@ -825,7 +840,7 @@ const checks = [
     name: 'AI helper supports answer mode for clarifying follow-up questions',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const input = read('app/image-studio/components/AIHelper/ChatInput.tsx')
       return /displayMessage\?: string/.test(hook) &&
         /setPendingFollowUp/.test(sidebar) &&
@@ -851,7 +866,7 @@ const checks = [
     name: 'AI helper receives and shows active generator operation context',
     pass: () => {
       const page = read('app/image-studio/page.tsx')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /selectedModel: state\.selectedModel/.test(page) &&
@@ -895,7 +910,7 @@ const checks = [
       const generatePanel = read('app/image-studio/components/GeneratePanel.tsx')
       const page = read('app/image-studio/page.tsx')
       const logoPanel = read('app/image-studio/components/LogoPanel/LogoPanel.tsx')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /useImageBgRemoval/.test(state) &&
@@ -929,7 +944,7 @@ const checks = [
     name: 'AI helper carries a visible working design brief with each suggestion',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const card = read('app/image-studio/components/AIHelper/DesignBriefCard.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /designBrief\?: string/.test(hook) &&
@@ -948,7 +963,7 @@ const checks = [
     name: 'AI helper carries the active working brief forward across follow-up turns',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /activeDesignBrief\?: string/.test(hook) &&
@@ -966,7 +981,7 @@ const checks = [
     name: 'AI helper carries a shared project brief across image and logo modes',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /sharedProjectBrief\?: string/.test(hook) &&
@@ -988,7 +1003,7 @@ const checks = [
     name: 'AI helper tracks a live active task snapshot for natural follow-up edits',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const snapshot = read('app/image-studio/components/AIHelper/ContextSnapshot.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /export interface AIHelperActiveTask/.test(hook) &&
@@ -1011,7 +1026,7 @@ const checks = [
     name: 'AI helper supports a plan then execute flow with revise plan action',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const planCard = read('app/image-studio/components/AIHelper/ExecutionPlanCard.tsx')
       const actionBar = read('app/image-studio/components/AIHelper/SmartActionBar.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
@@ -1035,7 +1050,7 @@ const checks = [
     name: 'AI helper runs a planner policy and shows a prompt self-check audit',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const auditCard = read('app/image-studio/components/AIHelper/PromptQualityCard.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /plannerDecision\?: string/.test(hook) &&
@@ -1062,7 +1077,7 @@ const checks = [
     name: 'AI helper asks one clarifying question when essential prompt details are missing',
     pass: () => {
       const route = read('app/api/generate-prompt-suggestion/route.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       return /buildClarificationGate/.test(route) &&
         /CLARIFICATION GATE/.test(route) &&
         /missing essential information/.test(route) &&
@@ -1083,7 +1098,7 @@ const checks = [
     name: 'AI helper supports diagnostic-only chat without forcing generator changes',
     pass: () => {
       const hook = read('app/image-studio/hooks/useAIHelper.ts')
-      const sidebar = read('app/image-studio/components/AIHelperSidebar.tsx')
+      const sidebar = readSidebarBundle()
       const diagnosticCard = read('app/image-studio/components/AIHelper/DiagnosticCard.tsx')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /responseMode\?: 'suggestion' \| 'diagnostic'/.test(hook) &&
