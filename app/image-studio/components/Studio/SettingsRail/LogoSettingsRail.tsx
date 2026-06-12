@@ -10,16 +10,10 @@
  */
 
 import { useRef } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Upload, X } from 'lucide-react'
 import { SettingField } from './SettingField'
+import { ChipSelect, type ChipOption } from './ChipSelect'
 import { useStudioLogoState, usePendingSuggestion } from '../../../context/useStudio'
 import {
   LOGO_ASPECT_RATIOS,
@@ -44,8 +38,13 @@ const TEXT_MODE_OPTIONS = [
   { value: 'exact-text-overlay', label: 'Exact Text Overlay' },
 ] as const
 
-const selectTriggerClass = 'w-full h-8 bg-zinc-900 border-zinc-700 text-xs text-zinc-200'
-const selectContentClass = 'bg-zinc-900 border-zinc-700 text-zinc-200'
+// Chip option lists derived from the shared logo constants.
+const RESOLUTION_CHIPS: ChipOption[] = LOGO_RESOLUTIONS.map((r) => ({ value: r, label: r }))
+const LOGO_ASPECT_RATIO_CHIPS: ChipOption[] = LOGO_ASPECT_RATIOS.map((r) => ({ value: r, label: r }))
+const LOGO_TYPE_CHIPS: ChipOption[] = LOGO_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))
+const LOGO_VISUAL_STYLE_CHIPS: ChipOption[] = LOGO_VISUAL_STYLE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))
+const LOGO_RENDER_TREATMENT_CHIPS: ChipOption[] = LOGO_RENDER_TREATMENT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))
+const LOGO_TYPOGRAPHY_CHIPS: ChipOption[] = LOGO_TYPOGRAPHY_DIRECTION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))
 
 export function LogoSettingsRail() {
   const state = useStudioLogoState()
@@ -74,111 +73,55 @@ export function LogoSettingsRail() {
   return (
     <div className="p-4 space-y-4">
       <SettingField label="AI Model" suggestion={diff('selectedModel', state.selectedModel)}>
-        <Select value={state.selectedModel} onValueChange={(v) => state.setSelectedModel(v as typeof state.selectedModel)}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {LOGO_MODEL_OPTIONS.map((m) => (
-              <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ChipSelect
+          options={LOGO_MODEL_OPTIONS}
+          value={state.selectedModel}
+          onChange={(v) => state.setSelectedModel(v as typeof state.selectedModel)}
+        />
       </SettingField>
 
       <SettingField label="Resolution" suggestion={diff('resolution', state.resolution)}>
-        <div className="grid grid-cols-3 gap-1">
-          {LOGO_RESOLUTIONS.map((size) => (
-            <button
-              key={size}
-              onClick={() => state.setResolution(size)}
-              className={`h-8 rounded-md text-xs font-bold transition-colors ${
-                state.resolution === size
-                  ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
-              }`}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
+        <ChipSelect
+          options={RESOLUTION_CHIPS}
+          value={state.resolution}
+          onChange={(v) => state.setResolution(v as typeof state.resolution)}
+        />
       </SettingField>
 
       <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
-        <Select value={state.aspectRatio} onValueChange={(v) => state.setAspectRatio(v as typeof state.aspectRatio)}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {LOGO_ASPECT_RATIOS.map((ratio) => (
-              <SelectItem key={ratio} value={ratio} className="text-xs">{ratio}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ChipSelect
+          options={LOGO_ASPECT_RATIO_CHIPS}
+          value={state.aspectRatio}
+          onChange={(v) => state.setAspectRatio(v as typeof state.aspectRatio)}
+        />
       </SettingField>
 
       <SettingField label="Text Mode" suggestion={diff('textMode', state.textMode)}>
-        <div className="grid grid-cols-2 gap-1">
-          {TEXT_MODE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => state.setTextMode(option.value)}
-              className={`h-8 rounded-md text-xs font-medium transition-colors ${
-                state.textMode === option.value
-                  ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <ChipSelect
+          options={TEXT_MODE_OPTIONS}
+          value={state.textMode}
+          onChange={(v) => state.setTextMode(v as typeof state.textMode)}
+          columns={2}
+        />
       </SettingField>
 
       <Separator className="bg-zinc-800" />
 
-      {/* Logo-style dropdowns paired two-up to use the rail width better. */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-        <SettingField label="Logo Type" suggestion={diff('logoType', state.logoType)}>
-          <Select value={state.logoType} onValueChange={(v) => state.setLogoType(v as typeof state.logoType)}>
-            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              {LOGO_TYPE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
+      <SettingField label="Logo Type" suggestion={diff('logoType', state.logoType)}>
+        <ChipSelect options={LOGO_TYPE_CHIPS} value={state.logoType} onChange={(v) => state.setLogoType(v as typeof state.logoType)} />
+      </SettingField>
 
-        <SettingField label="Visual Style" suggestion={diff('logoVisualStyle', state.logoVisualStyle)}>
-          <Select value={state.logoVisualStyle} onValueChange={(v) => state.setLogoVisualStyle(v as typeof state.logoVisualStyle)}>
-            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              {LOGO_VISUAL_STYLE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
+      <SettingField label="Visual Style" suggestion={diff('logoVisualStyle', state.logoVisualStyle)}>
+        <ChipSelect options={LOGO_VISUAL_STYLE_CHIPS} value={state.logoVisualStyle} onChange={(v) => state.setLogoVisualStyle(v as typeof state.logoVisualStyle)} />
+      </SettingField>
 
-        <SettingField label="Render Treatment" suggestion={diff('logoRenderTreatment', state.logoRenderTreatment)}>
-          <Select value={state.logoRenderTreatment} onValueChange={(v) => state.setLogoRenderTreatment(v as typeof state.logoRenderTreatment)}>
-            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              {LOGO_RENDER_TREATMENT_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
+      <SettingField label="Render Treatment" suggestion={diff('logoRenderTreatment', state.logoRenderTreatment)}>
+        <ChipSelect options={LOGO_RENDER_TREATMENT_CHIPS} value={state.logoRenderTreatment} onChange={(v) => state.setLogoRenderTreatment(v as typeof state.logoRenderTreatment)} />
+      </SettingField>
 
-        <SettingField label="Typography" suggestion={diff('logoTypographyDirection', state.logoTypographyDirection)}>
-          <Select value={state.logoTypographyDirection} onValueChange={(v) => state.setLogoTypographyDirection(v as typeof state.logoTypographyDirection)}>
-            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              {LOGO_TYPOGRAPHY_DIRECTION_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
-      </div>
+      <SettingField label="Typography" suggestion={diff('logoTypographyDirection', state.logoTypographyDirection)}>
+        <ChipSelect options={LOGO_TYPOGRAPHY_CHIPS} value={state.logoTypographyDirection} onChange={(v) => state.setLogoTypographyDirection(v as typeof state.logoTypographyDirection)} />
+      </SettingField>
 
       <Separator className="bg-zinc-800" />
 

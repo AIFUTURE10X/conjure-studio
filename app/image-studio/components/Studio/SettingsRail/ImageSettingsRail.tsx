@@ -10,13 +10,6 @@
  */
 
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Upload } from 'lucide-react'
 import { SeedControlDropdown } from '../../SeedControlDropdown'
@@ -24,6 +17,7 @@ import { ReferenceImageUpload } from '../../GeneratePanel/ReferenceImageUpload'
 import { PresetControls } from '../../GeneratePanel/PresetControls'
 import { CreativeDirectionPopover } from '../../Toolbar'
 import { SettingField } from './SettingField'
+import { ChipSelect, type ChipOption } from './ChipSelect'
 import { normalizeCreativeDirection } from '../../../constants/creative-direction-options'
 import { useStudioCore, usePendingSuggestion } from '../../../context/useStudio'
 import { useImageGenerationEngine } from '../../../context/ImageGenerationProvider'
@@ -43,10 +37,12 @@ const MODEL_OPTIONS = [
 
 const IMAGE_SIZES = ['1K', '2K', '4K'] as const
 const STYLE_STRENGTHS = ['subtle', 'moderate', 'strong'] as const
-const NONE_VALUE = '__none__'
 
-const selectTriggerClass = 'w-full h-8 bg-zinc-900 border-zinc-700 text-xs text-zinc-200'
-const selectContentClass = 'bg-zinc-900 border-zinc-700 text-zinc-200'
+// Chip options derived from the shared constants.
+const ASPECT_RATIO_CHIPS: ChipOption[] = ASPECT_RATIO_OPTIONS.map((r) => ({ value: r.value, label: r.value }))
+const STYLE_CHIPS: ChipOption[] = stylePresets.map((s) => ({ value: s.value, label: s.label }))
+const CAMERA_ANGLE_CHIPS: ChipOption[] = [{ value: '', label: 'None' }, ...cameraAngleOptions.map((a) => ({ value: a, label: a }))]
+const CAMERA_LENS_CHIPS: ChipOption[] = [{ value: '', label: 'None' }, ...cameraLensOptions.map((l) => ({ value: l, label: l }))]
 
 export function ImageSettingsRail() {
   const { state, presets, savePreset, handleLoadPreset } = useStudioCore()
@@ -66,109 +62,45 @@ export function ImageSettingsRail() {
   return (
     <div className="p-4 space-y-4">
       <SettingField label="AI Model" suggestion={diff('selectedModel', state.selectedModel)}>
-        <Select value={state.selectedModel} onValueChange={(v) => state.setSelectedModel(v as any)}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {MODEL_OPTIONS.map((m) => (
-              <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ChipSelect
+          options={MODEL_OPTIONS}
+          value={state.selectedModel}
+          onChange={(v) => state.setSelectedModel(v as any)}
+        />
       </SettingField>
 
       <SettingField label="Image Size" suggestion={diff('resolution', state.imageSize)}>
-        <div className="grid grid-cols-3 gap-1">
-          {IMAGE_SIZES.map((size) => (
-            <button
-              key={size}
-              onClick={() => state.setImageSize(size)}
-              className={`h-8 rounded-md text-xs font-bold transition-colors ${
-                state.imageSize === size
-                  ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
-              }`}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
+        <ChipSelect
+          options={IMAGE_SIZES.map((s) => ({ value: s, label: s }))}
+          value={state.imageSize}
+          onChange={(v) => state.setImageSize(v as typeof state.imageSize)}
+        />
       </SettingField>
 
-      {/* Dropdowns paired two-up to use the rail width better. */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-        <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
-          <Select value={state.aspectRatio} onValueChange={state.setAspectRatio}>
-            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              {ASPECT_RATIO_OPTIONS.map((r) => (
-                <SelectItem key={r.value} value={r.value} className="text-xs">
-                  {r.label} — {r.description}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
+      <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
+        <ChipSelect options={ASPECT_RATIO_CHIPS} value={state.aspectRatio} onChange={state.setAspectRatio} />
+      </SettingField>
 
-        <SettingField label="Style" suggestion={diff('style', state.selectedStylePreset)}>
-          <Select value={state.selectedStylePreset} onValueChange={state.setSelectedStylePreset}>
-            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              {stylePresets.map((s) => (
-                <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
-
-        <SettingField label="Camera Angle" suggestion={diff('cameraAngle', state.selectedCameraAngle)}>
-          <Select
-            value={state.selectedCameraAngle || NONE_VALUE}
-            onValueChange={(v) => state.setSelectedCameraAngle(v === NONE_VALUE ? '' : v)}
-          >
-            <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="None" /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              <SelectItem value={NONE_VALUE} className="text-xs">None</SelectItem>
-              {cameraAngleOptions.map((angle) => (
-                <SelectItem key={angle} value={angle} className="text-xs">{angle}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
-
-        <SettingField label="Camera Lens" suggestion={diff('cameraLens', state.selectedCameraLens)}>
-          <Select
-            value={state.selectedCameraLens || NONE_VALUE}
-            onValueChange={(v) => state.setSelectedCameraLens(v === NONE_VALUE ? '' : v)}
-          >
-            <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="None" /></SelectTrigger>
-            <SelectContent className={selectContentClass}>
-              <SelectItem value={NONE_VALUE} className="text-xs">None</SelectItem>
-              {cameraLensOptions.map((lens) => (
-                <SelectItem key={lens} value={lens} className="text-xs">{lens}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingField>
-      </div>
+      <SettingField label="Style" suggestion={diff('style', state.selectedStylePreset)}>
+        <ChipSelect options={STYLE_CHIPS} value={state.selectedStylePreset} onChange={state.setSelectedStylePreset} />
+      </SettingField>
 
       <Separator className="bg-zinc-800" />
 
+      <SettingField label="Camera Angle" suggestion={diff('cameraAngle', state.selectedCameraAngle)}>
+        <ChipSelect options={CAMERA_ANGLE_CHIPS} value={state.selectedCameraAngle} onChange={state.setSelectedCameraAngle} />
+      </SettingField>
+
+      <SettingField label="Camera Lens" suggestion={diff('cameraLens', state.selectedCameraLens)}>
+        <ChipSelect options={CAMERA_LENS_CHIPS} value={state.selectedCameraLens} onChange={state.setSelectedCameraLens} />
+      </SettingField>
+
       <SettingField label="Style Strength" suggestion={diff('styleStrength', state.styleStrength)}>
-        <div className="grid grid-cols-3 gap-1">
-          {STYLE_STRENGTHS.map((strength) => (
-            <button
-              key={strength}
-              onClick={() => state.setStyleStrength(strength)}
-              className={`h-8 rounded-md text-xs font-medium capitalize transition-colors ${
-                state.styleStrength === strength
-                  ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
-              }`}
-            >
-              {strength}
-            </button>
-          ))}
-        </div>
+        <ChipSelect
+          options={STYLE_STRENGTHS.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
+          value={state.styleStrength}
+          onChange={(v) => state.setStyleStrength(v as typeof state.styleStrength)}
+        />
       </SettingField>
 
       <SettingField label="Creative Direction">
