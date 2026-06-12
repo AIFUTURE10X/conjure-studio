@@ -14,7 +14,8 @@ import { FavoritesModal } from './components/SimpleFavorites'
 import { ParameterHistoryPanel } from './components/ParameterHistoryPanel'
 import { SettingsPanel } from './components/Settings'
 import { GenerateTab } from './components/PageTabs'
-import { usePageState } from './hooks/usePageState'
+import { StudioProvider } from './context/StudioProvider'
+import { useStudioCore } from './context/useStudio'
 
 const DEFAULT_LOGO_GENERATOR_CONTEXT: LogoGeneratorContext = {
   bgRemovalMethod: 'photoroom',
@@ -61,6 +62,14 @@ function extractLogoSettingsPatch(suggestions: Record<string, unknown> | null | 
 }
 
 export default function ImageStudioPage() {
+  return (
+    <StudioProvider>
+      <ImageStudioPageContent />
+    </StudioProvider>
+  )
+}
+
+function ImageStudioPageContent() {
   const generatePanelRef = useRef<{ triggerGenerate: () => void; isGenerating: boolean }>(null)
   const logoPanelRef = useRef<LogoPanelRef>(null)
   const [latestLogoOutput, setLatestLogoOutput] = useState<LogoOutputContext | null>(null)
@@ -74,7 +83,7 @@ export default function ImageStudioPage() {
     navigateLightbox, handleDownloadFromLightbox, handleClearSubjectAnalysis, handleClearSceneAnalysis,
     handleClearStyleAnalysis, handleApplyAISuggestions, handleApplyLogoSuggestions, handleApplyLogoConfig, handleLoadPreset,
     saveParameters, showPhotoGenerator, setShowPhotoGenerator, stylePresets,
-  } = usePageState()
+  } = useStudioCore()
 
   const handleGenerate = () => {
     if (generatePanelRef.current?.triggerGenerate) {
