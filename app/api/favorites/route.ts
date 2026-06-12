@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless'
 import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { apiError, parseJson, parseParams } from '@/lib/api/http'
+import { numericIdSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getSQL() {
   const url = process.env.NEON_DATABASE_URL
@@ -8,15 +11,29 @@ function getSQL() {
   return neon(url)
 }
 
+const getQuerySchema = z.object({ userId: userIdSchema })
+
+const postBodySchema = z.object({
+  userId: userIdSchema,
+  imageUrl: urlOrDataUriSchema,
+  metadata: z.object({
+    ratio: z.string().max(20).optional().nullable(),
+    style: z.string().max(200).optional().nullable(),
+    dimensions: z.string().max(50).optional().nullable(),
+    fileSize: z.string().max(50).optional().nullable(),
+    params: z.unknown().optional(),
+  }).passthrough().optional().nullable(),
+})
+
+const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
+
 // GET /api/favorites?userId=xxx
 export async function GET(request: NextRequest) {
-  try {
-    const userId = request.nextUrl.searchParams.get('userId')
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
-    }
+  const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
+  if (parsed.response) return parsed.response
+  const { userId } = parsed.data
 
+  try {
     const sql = getSQL()
     console.log('[v0] API: Loading favorites for user:', userId)
 
@@ -45,27 +62,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ favorites })
   } catch (error) {
     console.error('[v0] API: Load failed:', error)
-    return NextResponse.json({ error: 'Failed to load favorites' }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to load favorites')
   }
 }
 
 // POST /api/favorites
 export async function POST(request: NextRequest) {
+  const parsed = await parseJson(request, postBodySchema)
+  if (parsed.response) return parsed.response
+  const { userId, imageUrl, metadata } = parsed.data
+
   try {
-    const body = await request.json()
-    const { userId, imageUrl, metadata } = body
-
-    console.log('[v0] API: POST request received')
-    console.log('[v0] API: userId:', userId)
-    console.log('[v0] API: imageUrl:', imageUrl)
-    console.log('[v0] API: metadata:', JSON.stringify(metadata))
-
-    if (!userId || !imageUrl) {
-      return NextResponse.json({ error: 'User ID and image URL required' }, { status: 400 })
-    }
-
     const sql = getSQL()
-    console.log('[v0] API: Adding favorite:', { userId, imageUrl })
+    console.log('[v0] API: Adding favorite for user:', userId)
 
     // Upload to Blob Storage first
     const tempId = `temp-${Date.now()}`
@@ -76,47 +85,37 @@ export async function POST(request: NextRequest) {
 
       // Handle data URIs directly (from batch generation)
       if (imageUrl.startsWith('data:')) {
-        console.log('[v0] API: Processing data URI...')
-        // Extract base64 data from data URI
         const base64Match = imageUrl.match(/^data:image\/\w+;base64,(.+)$/)
         if (!base64Match) {
           throw new Error('Invalid data URI format')
         }
         imageBuffer = Buffer.from(base64Match[1], 'base64')
-        console.log('[v0] API: Data URI decoded, size:', imageBuffer.length, 'bytes')
       } else {
-        // Fetch from URL
-        console.log('[v0] API: Fetching image from URL...')
         const response = await fetch(imageUrl)
         const arrayBuffer = await response.arrayBuffer()
         imageBuffer = Buffer.from(arrayBuffer)
-        console.log('[v0] API: Image fetched, size:', imageBuffer.length, 'bytes')
       }
-      
+
       const fileName = `favorites/${tempId}.png`
-      console.log('[v0] API: Uploading to Blob as:', fileName)
       const uploadResult = await put(fileName, imageBuffer, {
         access: 'public',
         contentType: 'image/png'
       })
-      
+
       blobUrl = uploadResult.url
       console.log('[v0] API: Image uploaded to Blob:', blobUrl)
     } catch (error) {
       console.error('[v0] API: Blob upload failed:', error)
-      return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 })
+      return apiError(500, 'blob_upload_failed', 'Failed to upload image')
     }
 
-    // Save to Neon
-    console.log('[v0] API: Inserting into Neon database...')
-    
     const result = await sql`
       INSERT INTO public.favorites (
-        user_id, image_url, blob_url, prompt, aspect_ratio, 
+        user_id, image_url, blob_url, prompt, aspect_ratio,
         style_preset, dimensions, file_size, parameters
       )
       VALUES (
-        ${userId}, ${blobUrl}, ${blobUrl}, ${metadata?.params?.mainPrompt || null},
+        ${userId}, ${blobUrl}, ${blobUrl}, ${metadata?.params && typeof metadata.params === 'object' ? (metadata.params as { mainPrompt?: string }).mainPrompt || null : null},
         ${metadata?.ratio || null}, ${metadata?.style || null}, ${metadata?.dimensions || null},
         ${metadata?.fileSize || null}, ${JSON.stringify(metadata?.params || null)}
       )
@@ -124,15 +123,13 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `
 
-    console.log('[v0] API: Insert result rows:', result.length)
-
     if (result.length === 0) {
       console.log('[v0] API: Favorite already exists, fetching existing')
       const existing = await sql`
-        SELECT * FROM public.favorites 
+        SELECT * FROM public.favorites
         WHERE user_id = ${userId} AND image_url = ${blobUrl}
       `
-      
+
       if (existing[0]) {
         const favorite = {
           id: existing[0].id.toString(),
@@ -141,13 +138,12 @@ export async function POST(request: NextRequest) {
           timestamp: new Date(existing[0].created_at).getTime(),
           metadata
         }
-        console.log('[v0] API: Returning existing favorite:', favorite.id)
         return NextResponse.json({ favorite })
       }
     }
 
     console.log('[v0] API: Saved to Neon with ID:', result[0].id)
-    
+
     const favorite = {
       id: result[0].id.toString(),
       url: blobUrl,
@@ -156,45 +152,30 @@ export async function POST(request: NextRequest) {
       metadata
     }
 
-    console.log('[v0] API: Returning new favorite:', favorite.id)
     return NextResponse.json({ favorite })
   } catch (error) {
     console.error('[v0] API: Save failed with error:', error)
-    console.error('[v0] API: Error message:', error instanceof Error ? error.message : String(error))
-    return NextResponse.json({ 
-      error: 'Failed to save favorite', 
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to save favorite')
   }
 }
 
 // DELETE /api/favorites?id=xxx&userId=xxx
 export async function DELETE(request: NextRequest) {
+  const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
+  if (parsed.response) return parsed.response
+  const { id, userId } = parsed.data
+
   try {
-    const id = request.nextUrl.searchParams.get('id')
-    const userId = request.nextUrl.searchParams.get('userId')
-
-    if (!id || !userId) {
-      return NextResponse.json({ error: 'ID and user ID required' }, { status: 400 })
-    }
-
-    const numId = Number.parseInt(id, 10)
-    if (!Number.isInteger(numId)) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
-    }
-
     const sql = getSQL()
-    console.log('[v0] API: Removing favorite:', numId)
+    console.log('[v0] API: Removing favorite:', id)
 
     await sql`
-      DELETE FROM public.favorites WHERE id = ${numId} AND user_id = ${userId}
+      DELETE FROM public.favorites WHERE id = ${id} AND user_id = ${userId}
     `
-
-    console.log('[v0] API: Removed from Neon')
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[v0] API: Delete failed:', error)
-    return NextResponse.json({ error: 'Failed to delete favorite' }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to delete favorite')
   }
 }

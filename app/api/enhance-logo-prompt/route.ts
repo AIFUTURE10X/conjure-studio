@@ -1,7 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { buildLogoPromptBlueprintInstructions } from "@/app/image-studio/constants/ai-logo-knowledge"
 import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
+import { parseJson } from "@/lib/api/http"
 
 interface EnhancedLogoPromptResponse {
   enhancedPrompt?: unknown
@@ -51,16 +53,14 @@ function cleanPlainTextPrompt(responseText: string): string {
     .trim()
 }
 
-export async function POST(request: Request) {
-  try {
-    const { prompt } = await request.json()
+const postBodySchema = z.object({ prompt: z.string().trim().min(1, 'Prompt is required').max(10_000) })
 
-    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Prompt is required" },
-        { status: 400 }
-      )
-    }
+export async function POST(request: Request) {
+  const parsed = await parseJson(request, postBodySchema)
+  if (parsed.response) return parsed.response
+  const { prompt } = parsed.data
+
+  try {
 
     console.log("[Enhance Logo Prompt] Input:", prompt.substring(0, 50))
 

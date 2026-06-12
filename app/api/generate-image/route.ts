@@ -1,74 +1,70 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { generateImageWithRetry, type ImageSize, type GenerationModel } from "@/lib/gemini-client"
-import { generateOpenAIImage, type OpenAIImageQuality } from "@/lib/openai-image-client"
+import { z } from "zod"
+import { generateImageWithRetry, type GenerationModel } from "@/lib/gemini-client"
+import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { upscaleBase64WithSharp } from "@/lib/sharp-upscaler"
+import { parseFormData, parseFormFields } from "@/lib/api/http"
+import { aspectRatioSchema, imageModelSchema, imageSizeSchema } from "@/lib/validation/common"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
 
-type AllowedRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "5:4" | "4:5"
 type OpenAIImageModel = "gpt-image-2"
 type AppGenerationModel = GenerationModel | OpenAIImageModel
 
-function normalizeAspectRatio(input: string): AllowedRatio {
-  const allowed = new Set<AllowedRatio>(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9", "5:4", "4:5"])
-  const trimmed = input.replace(/\s+/g, "") as AllowedRatio
-  if (!allowed.has(trimmed)) {
-    throw new Error(`Unsupported aspect ratio: ${input}`)
-  }
-  return trimmed
+// Old model names from saved presets migrate forward; unknown values fall
+// back to the default model (matching the old lenient normalizer).
+const MODEL_MIGRATIONS: Record<string, string> = {
+  'gemini-2.5-flash-preview-image': 'gemini-3.1-flash-image-preview',
+  'gemini-2.5-flash-image': 'gemini-3.1-flash-image-preview',
+  'gemini-2.0-flash-exp': 'gemini-3.1-flash-image-preview',
+  'gemini-3-pro-image': 'gemini-3-pro-image-preview',
+  'chatgpt-image-generator-2': 'gpt-image-2',
+  'chatgpt-image-latest': 'gpt-image-2',
 }
 
-function normalizeImageSize(input: string | null): ImageSize {
-  const allowed = new Set<ImageSize>(["1K", "2K", "4K"])
-  const normalized = (input?.toUpperCase() || "1K") as ImageSize
-  if (!allowed.has(normalized)) {
-    return "1K"
-  }
-  return normalized
-}
+const lenientModelSchema = z.preprocess((value) => {
+  if (typeof value !== 'string' || !value) return 'gemini-3.1-flash-image-preview'
+  const migrated = MODEL_MIGRATIONS[value] || value
+  return imageModelSchema.options.includes(migrated as never) ? migrated : 'gemini-3.1-flash-image-preview'
+}, imageModelSchema)
 
-function normalizeImageQuality(input: string | null): OpenAIImageQuality {
-  return input === "low" ? "low" : "auto"
-}
+const lenientImageSizeSchema = z.preprocess((value) => {
+  if (typeof value !== 'string' || !value) return '1K'
+  const upper = value.toUpperCase()
+  return imageSizeSchema.options.includes(upper as never) ? upper : '1K'
+}, imageSizeSchema)
 
-function normalizeModel(input: string | null): AppGenerationModel {
-  // Support old model names for backwards compatibility with saved presets
-  const migrations: Record<string, AppGenerationModel> = {
-    'gemini-2.5-flash-preview-image': 'gemini-3.1-flash-image-preview',
-    'gemini-2.5-flash-image': 'gemini-3.1-flash-image-preview',
-    'gemini-2.0-flash-exp': 'gemini-3.1-flash-image-preview',
-    'gemini-3-pro-image': 'gemini-3-pro-image-preview',
-    'chatgpt-image-generator-2': 'gpt-image-2',
-    'chatgpt-image-latest': 'gpt-image-2',
-  }
-  const migrated = input ? (migrations[input] || input) : null
-
-  const allowed: AppGenerationModel[] = ["gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", "gemini-2.5-flash-image", "gpt-image-2"]
-  if (migrated && allowed.includes(migrated as AppGenerationModel)) {
-    return migrated as AppGenerationModel
-  }
-  return "gemini-3.1-flash-image-preview"
-}
+const formSchema = z.object({
+  prompt: z.string().trim().min(1, 'Prompt is required').max(20_000),
+  count: z.coerce.number().int().min(1).max(4).default(1),
+  aspectRatio: z.preprocess(
+    (value) => (typeof value === 'string' && value ? value.replace(/\s+/g, '') : '1:1'),
+    aspectRatioSchema,
+  ),
+  referenceMode: z.enum(['inspire', 'replicate']).default('inspire'),
+  seed: z.coerce.number().int().optional(),
+  model: lenientModelSchema.default('gemini-3.1-flash-image-preview'),
+  imageSize: lenientImageSizeSchema.default('1K'),
+  imageQuality: z.enum(['low', 'auto']).default('auto'),
+})
 
 function isOpenAIImageModel(model: AppGenerationModel): model is OpenAIImageModel {
   return model === "gpt-image-2"
 }
 
 export async function POST(request: NextRequest) {
+  const parsedForm = await parseFormData(request)
+  if (parsedForm.response) return parsedForm.response
+  const formData = parsedForm.data
+
+  const parsedFields = parseFormFields(formData, formSchema)
+  if (parsedFields.response) return parsedFields.response
+  const { prompt, count, aspectRatio, referenceMode, seed, model, imageQuality } = parsedFields.data
+  const imageSize = model === "gemini-2.5-flash-image" ? "1K" : parsedFields.data.imageSize
+
   try {
-    const formData = await request.formData()
-    const prompt = formData.get('prompt') as string
-    const count = parseInt(formData.get('count') as string) || 1
-    const rawAspectRatio = (formData.get('aspectRatio') as string) || "1:1"
     const referenceImageFile = formData.get('referenceImage') as File | null
-    const referenceMode = (formData.get('referenceMode') as string) || 'inspire'
-    const seedParam = formData.get('seed') as string | null
-    const seed = seedParam ? parseInt(seedParam) : undefined
-    const model = normalizeModel(formData.get('model') as string | null)
-    const requestedImageSize = normalizeImageSize(formData.get('imageSize') as string | null)
-    const imageSize = model === "gemini-2.5-flash-image" ? "1K" : requestedImageSize
-    const imageQuality = normalizeImageQuality(formData.get('imageQuality') as string | null)
 
     // Convert File to base64 if present
     let referenceImage: string | undefined
@@ -79,9 +75,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0 SERVER] Generate request:", {
-      prompt: prompt?.substring(0, 100),
+      prompt: prompt.substring(0, 100),
       count,
-      aspectRatio: rawAspectRatio,
+      aspectRatio,
       model,
       imageSize,
       imageQuality,
@@ -89,12 +85,6 @@ export async function POST(request: NextRequest) {
       referenceMode,
       seed,
     })
-
-    if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
-    }
-
-    const aspectRatio = normalizeAspectRatio(rawAspectRatio)
 
     const tasks = Array.from({ length: count }, async (_, i) => {
       if (isOpenAIImageModel(model)) {

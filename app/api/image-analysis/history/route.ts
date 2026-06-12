@@ -1,11 +1,34 @@
 import { neon } from "@neondatabase/serverless"
 import { NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError, parseJson, parseParams } from "@/lib/api/http"
+import { numericIdSchema } from "@/lib/validation/common"
 
 function getSQL() {
   const url = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL
   if (!url) throw new Error("No database connection string configured")
   return neon(url)
 }
+
+const postBodySchema = z.object({
+  subjectImageUrl: z.string().max(5000).optional().nullable(),
+  sceneImageUrl: z.string().max(5000).optional().nullable(),
+  styleImageUrl: z.string().max(5000).optional().nullable(),
+  subjectAnalysis: z.string().max(20_000).optional().nullable(),
+  sceneAnalysis: z.string().max(20_000).optional().nullable(),
+  styleAnalysis: z.string().max(20_000).optional().nullable(),
+  main_prompt: z.string().min(1).max(10_000),
+  selected_style: z.string().max(200).optional().nullable(),
+  aspect_ratio: z.string().max(20).optional().nullable(),
+  generated_images: z.array(z.object({
+    image_url: z.string().max(5000),
+    width: z.number().int().optional().nullable(),
+    height: z.number().int().optional().nullable(),
+    file_size_mb: z.number().optional().nullable(),
+  })).max(10).optional().nullable(),
+}).passthrough()
+
+const deleteQuerySchema = z.object({ id: numericIdSchema })
 
 export async function GET() {
   try {
@@ -71,29 +94,22 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const parsed = await parseJson(request, postBodySchema)
+  if (parsed.response) return parsed.response
+  const {
+    subjectImageUrl,
+    sceneImageUrl,
+    styleImageUrl,
+    subjectAnalysis,
+    sceneAnalysis,
+    styleAnalysis,
+    main_prompt,
+    selected_style,
+    aspect_ratio,
+    generated_images,
+  } = parsed.data
+
   try {
-    const body = await request.json()
-    console.log("[v0 API] Received history save request:", JSON.stringify(body, null, 2))
-
-    const {
-      subjectImageUrl,
-      sceneImageUrl,
-      styleImageUrl,
-      subjectAnalysis,
-      sceneAnalysis,
-      styleAnalysis,
-      main_prompt,  // Changed from 'prompt' to 'main_prompt'
-      negative_prompt,  // Changed from 'negativePrompt' to 'negative_prompt'
-      aspect_ratio,  // Changed from 'aspectRatio' to 'aspect_ratio'
-      selected_style,  // Changed from 'stylePreset' to 'selected_style'
-      style_strength,  // Added
-      camera_angle,  // Changed from 'cameraAngle' to 'camera_angle'
-      camera_lens,  // Changed from 'cameraLens' to 'camera_lens'
-      prompt_mode,  // Changed from 'promptMode' to 'prompt_mode'
-      image_count,  // Changed from 'imageCount' to 'image_count'
-      generated_images,  // Changed from 'generatedImages' to 'generated_images'
-    } = body
-
     const sql = getSQL()
     const [analysis] = await sql`
       INSERT INTO image_analysis_history (
@@ -147,40 +163,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, analysisId: analysis.id })
   } catch (error) {
     console.error("[v0 API] Failed to save history:", error)
-    return NextResponse.json(
-      {
-        error: "Failed to save history",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
+    return apiError(500, 'internal_error', 'Failed to save history')
   }
 }
 
 export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get("id")
+  // A specific id is required — the legacy clear-all path deleted every
+  // user's rows from a shared, unscoped table and is intentionally gone.
+  const { searchParams } = new URL(request.url)
+  const parsed = parseParams(Object.fromEntries(searchParams), deleteQuerySchema)
+  if (parsed.response) return parsed.response
+  const { id } = parsed.data
 
+  try {
     const sql = getSQL()
-    if (id) {
-      // Delete single item
-      console.log("[v0 API] Deleting history item:", id)
-      await sql`DELETE FROM generated_images WHERE analysis_id = ${id}`
-      await sql`DELETE FROM image_analysis_history WHERE id = ${id}`
-      return NextResponse.json({ success: true })
-    } else {
-      // Clear all history
-      console.log("[v0 API] Clearing all history")
-      await sql`DELETE FROM generated_images`
-      await sql`DELETE FROM image_analysis_history`
-      return NextResponse.json({ success: true })
-    }
+    console.log("[v0 API] Deleting history item:", id)
+    await sql`DELETE FROM generated_images WHERE analysis_id = ${id}`
+    await sql`DELETE FROM image_analysis_history WHERE id = ${id}`
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[v0 API] Failed to delete history:", error)
-    return NextResponse.json(
-      { error: "Failed to delete history" },
-      { status: 500 }
-    )
+    return apiError(500, 'internal_error', 'Failed to delete history')
   }
 }

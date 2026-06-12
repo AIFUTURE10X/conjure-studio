@@ -1,5 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { apiError, parseJson } from '@/lib/api/http'
 
 function getSQL() {
   const url = process.env.NEON_DATABASE_URL
@@ -7,17 +9,20 @@ function getSQL() {
   return neon(url)
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json()
-    const { 
-      type, // 'generated' or 'analysis'
-      imageUrl,
-      prompt,
-      settings,
-      analysisResults
-    } = body
+const postBodySchema = z.object({
+  type: z.enum(['generated', 'analysis']),
+  imageUrl: z.string().max(5000),
+  prompt: z.string().max(10_000).optional().nullable(),
+  settings: z.unknown().optional(),
+  analysisResults: z.unknown().optional(),
+})
 
+export async function POST(req: NextRequest) {
+  const parsed = await parseJson(req, postBodySchema)
+  if (parsed.response) return parsed.response
+  const { type, imageUrl, prompt, settings, analysisResults } = parsed.data
+
+  try {
     const sql = getSQL()
     if (type === 'generated') {
       // Save generated image to database
@@ -52,9 +57,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to save to database:', error)
-    return NextResponse.json(
-      { error: 'Failed to save to database' },
-      { status: 500 }
-    )
+    return apiError(500, 'internal_error', 'Failed to save to database')
   }
 }

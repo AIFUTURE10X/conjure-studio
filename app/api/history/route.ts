@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless'
 import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { apiError, parseJson, parseParams } from '@/lib/api/http'
+import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getSQL() {
   const url = process.env.NEON_DATABASE_URL
@@ -8,15 +11,24 @@ function getSQL() {
   return neon(url)
 }
 
+const getQuerySchema = z.object({ userId: userIdSchema })
+
+const postBodySchema = z.object({
+  userId: userIdSchema,
+  prompt: promptSchema,
+  aspectRatio: z.string().max(20).optional().nullable(),
+  imageUrls: z.array(urlOrDataUriSchema).min(1).max(10),
+})
+
+const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
+
 // GET /api/history?userId=xxx
 export async function GET(request: NextRequest) {
-  try {
-    const userId = request.nextUrl.searchParams.get('userId')
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
-    }
+  const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
+  if (parsed.response) return parsed.response
+  const { userId } = parsed.data
 
+  try {
     const sql = getSQL()
     console.log('[v0] API: Loading history for user:', userId)
 
@@ -40,28 +52,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ history })
   } catch (error) {
     console.error('[v0] API: History load failed:', error)
-    return NextResponse.json({ error: 'Failed to load history' }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to load history')
   }
 }
 
 // POST /api/history
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { userId, prompt, aspectRatio, imageUrls } = body
+  const parsed = await parseJson(request, postBodySchema)
+  if (parsed.response) return parsed.response
+  const { userId, prompt, aspectRatio, imageUrls } = parsed.data
 
+  try {
     console.log('[v0] API: POST history request received')
     console.log('[v0] API: userId:', userId)
-    console.log('[v0] API: prompt:', prompt)
-    console.log('[v0] API: imageUrls count:', imageUrls?.length)
-
-    if (!userId || !prompt || !imageUrls || imageUrls.length === 0) {
-      return NextResponse.json({ error: 'User ID, prompt, and image URLs required' }, { status: 400 })
-    }
+    console.log('[v0] API: imageUrls count:', imageUrls.length)
 
     const sql = getSQL()
     const blobUrls: string[] = []
-    
+
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i]
       try {
@@ -69,44 +77,38 @@ export async function POST(request: NextRequest) {
         const response = await fetch(imageUrl)
         const blob = await response.blob()
         console.log(`[v0] API: Image ${i + 1} fetched, size:`, blob.size, 'bytes')
-        
+
         const fileName = `history/${userId}-${Date.now()}-${i}.png`
-        console.log(`[v0] API: Uploading image ${i + 1} to Blob as:`, fileName)
         const uploadResult = await put(fileName, blob, {
           access: 'public',
           contentType: 'image/png'
         })
-        
+
         blobUrls.push(uploadResult.url)
         console.log(`[v0] API: Image ${i + 1} uploaded to Blob:`, uploadResult.url)
       } catch (error) {
         console.error(`[v0] API: Blob upload failed for image ${i + 1}:`, error)
-        return NextResponse.json({ error: `Failed to upload image ${i + 1}` }, { status: 500 })
+        return apiError(500, 'blob_upload_failed', `Failed to upload image ${i + 1}`)
       }
     }
 
     console.log('[v0] API: All images processed, inserting into Neon database...')
-    console.log('[v0] API: BlobUrls to save:', blobUrls)
-    
-    const imageUrlsArray = `{${blobUrls.map(url => `"${url.replace(/"/g, '\\"')}"`).join(',')}}`
-    const blobUrlsArray = `{${blobUrls.map(url => `"${url.replace(/"/g, '\\"')}"`).join(',')}}`
-    
-    console.log('[v0] API: Array string format:', imageUrlsArray)
-    
+
+    // The neon driver serializes JS arrays to Postgres arrays — no
+    // hand-built '{...}' literals.
     const result = await sql`
       INSERT INTO public.generation_history (
         user_id, prompt, aspect_ratio, image_urls, blob_urls
       )
       VALUES (
-        ${userId}, ${prompt}, ${aspectRatio || null}, 
-        ${imageUrlsArray}::text[], ${blobUrlsArray}::text[]
+        ${userId}, ${prompt}, ${aspectRatio || null},
+        ${blobUrls}, ${blobUrls}
       )
       RETURNING *
     `
 
-    console.log('[v0] API: Insert result rows:', result.length)
     console.log('[v0] API: Saved to Neon with ID:', result[0].id)
-    
+
     const historyItem = {
       id: result[0].id.toString(),
       prompt: result[0].prompt,
@@ -115,45 +117,30 @@ export async function POST(request: NextRequest) {
       timestamp: new Date(result[0].created_at).getTime()
     }
 
-    console.log('[v0] API: Returning history item:', historyItem.id)
     return NextResponse.json({ historyItem })
   } catch (error) {
     console.error('[v0] API: History save failed with error:', error)
-    console.error('[v0] API: Error message:', error instanceof Error ? error.message : String(error))
-    return NextResponse.json({ 
-      error: 'Failed to save history', 
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to save history')
   }
 }
 
 // DELETE /api/history?id=xxx&userId=xxx
 export async function DELETE(request: NextRequest) {
+  const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
+  if (parsed.response) return parsed.response
+  const { id, userId } = parsed.data
+
   try {
-    const id = request.nextUrl.searchParams.get('id')
-    const userId = request.nextUrl.searchParams.get('userId')
-
-    if (!id || !userId) {
-      return NextResponse.json({ error: 'ID and user ID required' }, { status: 400 })
-    }
-
-    const numId = Number.parseInt(id, 10)
-    if (!Number.isInteger(numId)) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
-    }
-
     const sql = getSQL()
-    console.log('[v0] API: Removing history item:', numId)
+    console.log('[v0] API: Removing history item:', id)
 
     await sql`
-      DELETE FROM public.generation_history WHERE id = ${numId} AND user_id = ${userId}
+      DELETE FROM public.generation_history WHERE id = ${id} AND user_id = ${userId}
     `
-
-    console.log('[v0] API: Removed from Neon')
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[v0] API: Delete failed:', error)
-    return NextResponse.json({ error: 'Failed to delete history item' }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to delete history item')
   }
 }

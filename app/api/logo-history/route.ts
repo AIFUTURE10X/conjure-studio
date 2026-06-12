@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless'
 import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { apiError, parseJson, parseParams } from '@/lib/api/http'
+import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getSQL() {
   const url = process.env.NEON_DATABASE_URL
@@ -8,15 +11,37 @@ function getSQL() {
   return neon(url)
 }
 
+const getQuerySchema = z.object({ userId: userIdSchema })
+
+const postBodySchema = z.object({
+  userId: userIdSchema,
+  imageUrl: urlOrDataUriSchema,
+  prompt: promptSchema,
+  negativePrompt: z.string().max(10_000).optional().nullable(),
+  presetId: z.string().max(200).optional().nullable(),
+  seed: z.number().int().optional().nullable(),
+  style: z.string().max(500).optional().nullable(),
+  config: z.record(z.unknown()).optional().nullable(),
+  isFavorited: z.boolean().optional(),
+  rating: z.number().int().min(1).max(5).optional().nullable(),
+})
+
+const patchBodySchema = z.object({
+  id: numericIdSchema,
+  userId: userIdSchema,
+  isFavorited: z.boolean().optional(),
+  rating: z.number().int().min(1).max(5).optional().nullable(),
+})
+
+const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
+
 // GET /api/logo-history?userId=xxx
 export async function GET(request: NextRequest) {
+  const parsedQuery = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
+  if (parsedQuery.response) return parsedQuery.response
+  const { userId } = parsedQuery.data
+
   try {
-    const userId = request.nextUrl.searchParams.get('userId')
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
-    }
-
     const sql = getSQL()
     console.log('[Logo History] Loading history for user:', userId)
 
@@ -46,23 +71,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ history })
   } catch (error) {
     console.error('[Logo History] Load failed:', error)
-    return NextResponse.json({ error: 'Failed to load history' }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to load history')
   }
 }
 
 // POST /api/logo-history
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { userId, imageUrl, prompt, negativePrompt, presetId, seed, style, config, isFavorited, rating } = body
+  const parsedBody = await parseJson(request, postBodySchema)
+  if (parsedBody.response) return parsedBody.response
+  const { userId, imageUrl, prompt, negativePrompt, presetId, seed, style, config, isFavorited, rating } = parsedBody.data
 
+  try {
     console.log('[Logo History] POST request received')
     console.log('[Logo History] userId:', userId)
-    console.log('[Logo History] prompt:', prompt?.substring(0, 50))
-
-    if (!userId || !imageUrl || !prompt) {
-      return NextResponse.json({ error: 'User ID, image URL, and prompt required' }, { status: 400 })
-    }
+    console.log('[Logo History] prompt:', prompt.substring(0, 50))
 
     // Upload image to Vercel Blob for persistence
     let blobUrl = imageUrl
@@ -102,10 +124,7 @@ export async function POST(request: NextRequest) {
       console.error('[Logo History] Blob upload failed:', error)
       // If it's a data URL and upload failed, we can't save it (too large for database)
       if (imageUrl.startsWith('data:')) {
-        return NextResponse.json({
-          error: 'Failed to upload image to storage',
-          details: error instanceof Error ? error.message : 'Image could not be persisted'
-        }, { status: 500 })
+        return apiError(500, 'blob_upload_failed', 'Failed to upload image to storage')
       }
       // For regular URLs, continue with original URL as fallback
     }
@@ -151,36 +170,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ historyItem })
   } catch (error) {
     console.error('[Logo History] Save failed:', error)
-    return NextResponse.json({
-      error: 'Failed to save history',
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to save history')
   }
 }
 
 // PATCH /api/logo-history - Update favorite/rating
 export async function PATCH(request: NextRequest) {
+  const parsedBody = await parseJson(request, patchBodySchema)
+  if (parsedBody.response) return parsedBody.response
+  const { id, userId, isFavorited, rating } = parsedBody.data
+
   try {
-    const body = await request.json()
-    const { id, userId, isFavorited, rating } = body
-
-    if (!id || !userId) {
-      return NextResponse.json({ error: 'ID and user ID required' }, { status: 400 })
-    }
-
-    const numId = Number.parseInt(id, 10)
-    if (!Number.isInteger(numId)) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
-    }
-
     const sql = getSQL()
-    console.log('[Logo History] Updating item:', numId, { isFavorited, rating })
+    console.log('[Logo History] Updating item:', id, { isFavorited, rating })
 
     if (isFavorited !== undefined) {
       await sql`
         UPDATE public.logo_history
         SET is_favorited = ${isFavorited}
-        WHERE id = ${numId} AND user_id = ${userId}
+        WHERE id = ${id} AND user_id = ${userId}
       `
     }
 
@@ -188,37 +196,29 @@ export async function PATCH(request: NextRequest) {
       await sql`
         UPDATE public.logo_history
         SET rating = ${rating}
-        WHERE id = ${numId} AND user_id = ${userId}
+        WHERE id = ${id} AND user_id = ${userId}
       `
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[Logo History] Update failed:', error)
-    return NextResponse.json({ error: 'Failed to update history item' }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to update history item')
   }
 }
 
 // DELETE /api/logo-history?id=xxx&userId=xxx
 export async function DELETE(request: NextRequest) {
+  const parsedQuery = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
+  if (parsedQuery.response) return parsedQuery.response
+  const { id, userId } = parsedQuery.data
+
   try {
-    const id = request.nextUrl.searchParams.get('id')
-    const userId = request.nextUrl.searchParams.get('userId')
-
-    if (!id || !userId) {
-      return NextResponse.json({ error: 'ID and user ID required' }, { status: 400 })
-    }
-
-    const numId = Number.parseInt(id, 10)
-    if (!Number.isInteger(numId)) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
-    }
-
     const sql = getSQL()
-    console.log('[Logo History] Deleting item:', numId)
+    console.log('[Logo History] Deleting item:', id)
 
     await sql`
-      DELETE FROM public.logo_history WHERE id = ${numId} AND user_id = ${userId}
+      DELETE FROM public.logo_history WHERE id = ${id} AND user_id = ${userId}
     `
 
     console.log('[Logo History] Removed from Neon')
@@ -226,6 +226,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[Logo History] Delete failed:', error)
-    return NextResponse.json({ error: 'Failed to delete history item' }, { status: 500 })
+    return apiError(500, 'internal_error', 'Failed to delete history item')
   }
 }
