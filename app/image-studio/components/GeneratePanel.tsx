@@ -19,8 +19,8 @@ import { ReferenceImageUpload, type ReferenceImage } from './GeneratePanel/Refer
 import { PromptInputs } from './GeneratePanel/PromptInputs'
 import { PresetControls } from './GeneratePanel/PresetControls'
 import { downloadImageAsFile } from '../utils/export-utils'
+import { buildFinalImagePrompt } from '../utils/build-image-prompt'
 import {
-  buildCreativeDirectionPrompt,
   normalizeCreativeDirection,
   type CreativeDirectionState,
 } from '../constants/creative-direction-options'
@@ -152,14 +152,15 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       onParametersSave?.({ mainPrompt: finalPrompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, seed: activeSeed, creativeDirection: normalizedCreativeDirection })
       onSaveGenerateParams?.({ mainPrompt: finalPrompt, negativePrompt, aspectRatio, selectedStylePreset, selectedCameraAngle, selectedCameraLens, styleStrength, imageSize, selectedModel, generationMode, creativeDirection: normalizedCreativeDirection })
 
-      let prompt = finalPrompt
-      if (selectedStylePreset !== 'Realistic') prompt += `. Style: ${selectedStylePreset}`
-      if (selectedCameraAngle) prompt += `. Camera angle: ${selectedCameraAngle}`
-      if (selectedCameraLens) prompt += `. Camera lens: ${selectedCameraLens}`
-      prompt += `. ${{ subtle: 'subtle', moderate: 'moderate', strong: 'strong' }[styleStrength]} style influence`
-      const creativePrompt = buildCreativeDirectionPrompt(normalizedCreativeDirection)
-      if (creativePrompt) prompt += `. ${creativePrompt}`
-      if (negativePrompt.trim()) prompt += `\n\nIMPORTANT: Do NOT include: ${negativePrompt.trim()}`
+      const prompt = buildFinalImagePrompt({
+        basePrompt: finalPrompt,
+        selectedStylePreset,
+        selectedCameraAngle,
+        selectedCameraLens,
+        styleStrength,
+        creativeDirection: normalizedCreativeDirection,
+        negativePrompt,
+      })
 
       try {
         const imgs = await generateImages({ prompt, count: imageCount, aspectRatio, seed: activeSeed, referenceImage: referenceImage?.file, referenceMode: referenceImage?.mode, model: selectedModel, imageSize, imageQuality })

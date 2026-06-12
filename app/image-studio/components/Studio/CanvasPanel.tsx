@@ -3,14 +3,14 @@
 /**
  * CanvasPanel
  *
- * Center workspace panel. Image mode hosts the existing generate UI;
- * the remaining modes land here in later steps (logo, then
+ * Center workspace panel. Image mode: ResultsCanvas + PromptDock.
+ * The remaining modes land here in later steps (logo, then
  * mockups/bg-remover mounted-hidden).
  */
 
-import { useRef } from 'react'
 import { Card } from '@/components/ui/card'
-import { GenerateTab } from '../PageTabs'
+import { ResultsCanvas } from './ResultsCanvas'
+import { PromptDock } from './PromptDock'
 import { useStudioMode } from '../../context/useStudio'
 
 const PENDING_MODE_LABELS: Record<string, string> = {
@@ -21,11 +21,6 @@ const PENDING_MODE_LABELS: Record<string, string> = {
 
 export function CanvasPanel() {
   const { mode } = useStudioMode()
-  const generatePanelRef = useRef<{ triggerGenerate: () => void; isGenerating: boolean }>(null)
-
-  const handleGenerate = () => {
-    generatePanelRef.current?.triggerGenerate()
-  }
 
   if (mode !== 'image') {
     return (
@@ -44,14 +39,9 @@ export function CanvasPanel() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-zinc-950">
-      <div className="max-w-5xl mx-auto px-6 pt-3 pb-8">
-        <GenerateTab
-          generatePanelRef={generatePanelRef}
-          onGenerate={handleGenerate}
-          isGenerating={generatePanelRef.current?.isGenerating || false}
-        />
-      </div>
+    <div className="h-full flex flex-col bg-zinc-950">
+      <ResultsCanvas />
+      <PromptDock />
     </div>
   )
 }

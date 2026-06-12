@@ -11,7 +11,6 @@
  */
 
 import { useDefaultLayout } from 'react-resizable-panels'
-import { SlidersHorizontal } from 'lucide-react'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -23,24 +22,9 @@ import { ParameterHistoryPanel } from '../ParameterHistoryPanel'
 import { StudioTopBar } from './StudioTopBar'
 import { HelperPanel } from './HelperPanel'
 import { CanvasPanel } from './CanvasPanel'
+import { SettingsRail } from './SettingsRail'
 import { useStudioCore } from '../../context/useStudio'
-
-function SettingsRailPlaceholder() {
-  return (
-    <div className="h-full flex flex-col bg-zinc-950 border-l border-zinc-800">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
-        <SlidersHorizontal className="w-4 h-4 text-[#dbb56e]" />
-        <span className="text-sm font-medium text-zinc-200">Settings</span>
-      </div>
-      <div className="flex-1 flex items-center justify-center p-6">
-        <p className="text-xs text-zinc-500 text-center leading-5">
-          The shared settings rail lands here next, with live suggestion
-          previews from the AI helper.
-        </p>
-      </div>
-    </div>
-  )
-}
+import { ImageGenerationProvider } from '../../context/ImageGenerationProvider'
 
 export function StudioShell() {
   const {
@@ -55,23 +39,25 @@ export function StudioShell() {
       <StudioTopBar />
 
       <div className="flex-1 min-h-0">
-        <ResizablePanelGroup
-          orientation="horizontal"
-          defaultLayout={defaultLayout}
-          onLayoutChanged={onLayoutChanged}
-        >
-          <ResizablePanel id="helper" defaultSize={22} minSize={14} collapsible>
-            <HelperPanel />
-          </ResizablePanel>
-          <ResizableHandle withHandle className="bg-zinc-800" />
-          <ResizablePanel id="canvas" defaultSize={56} minSize={30}>
-            <CanvasPanel />
-          </ResizablePanel>
-          <ResizableHandle withHandle className="bg-zinc-800" />
-          <ResizablePanel id="settings-rail" defaultSize={22} minSize={14} collapsible>
-            <SettingsRailPlaceholder />
-          </ResizablePanel>
-        </ResizablePanelGroup>
+        <ImageGenerationProvider>
+          <ResizablePanelGroup
+            orientation="horizontal"
+            defaultLayout={defaultLayout}
+            onLayoutChanged={onLayoutChanged}
+          >
+            <ResizablePanel id="helper" defaultSize={22} minSize={14} collapsible>
+              <HelperPanel />
+            </ResizablePanel>
+            <ResizableHandle withHandle className="bg-zinc-800" />
+            <ResizablePanel id="canvas" defaultSize={56} minSize={30}>
+              <CanvasPanel />
+            </ResizablePanel>
+            <ResizableHandle withHandle className="bg-zinc-800" />
+            <ResizablePanel id="settings-rail" defaultSize={22} minSize={14} collapsible>
+              <SettingsRail />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ImageGenerationProvider>
       </div>
 
       {state.showFavorites && (

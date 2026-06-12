@@ -9,19 +9,21 @@
 import type { LogoGeneratorSettingsPatch } from '../components/LogoPanel'
 import type { StudioMode } from './studio-types'
 
-/** Image-mode settings the helper can propose (mirrors useAISuggestionsHandler inputs). */
+/**
+ * Image-mode settings the helper can propose. Field names mirror the
+ * AISuggestions shape consumed by useAISuggestionsHandler, so a patch can be
+ * passed to handleApplyAISuggestions as-is.
+ */
 export interface ImageSettingsPatch {
   prompt?: string
   negativePrompt?: string
-  stylePreset?: string
+  style?: string
   aspectRatio?: string
   cameraAngle?: string
   cameraLens?: string
-  styleStrength?: number
-  imageSize?: string
+  styleStrength?: string
+  resolution?: string
   selectedModel?: string
-  imageCount?: number
-  seed?: number | null
   bgRemovalMethod?: string
 }
 

@@ -1,6 +1,7 @@
 // History Service Layer - follows same pattern as dbService.ts for favorites
 
 import { getUserId } from '@/lib/user-id'
+import type { CreativeDirectionState } from '@/app/image-studio/constants/creative-direction-options'
 
 export interface HistoryItem {
   id: string
@@ -12,6 +13,7 @@ export interface HistoryItem {
     style?: string
     dimensions?: string
     fileSize?: string
+    creativeDirection?: CreativeDirectionState
   }
 }
 
