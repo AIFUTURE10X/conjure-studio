@@ -58,8 +58,10 @@ export async function GET() {
     })
 
   } catch (error) {
-    diagnostics.error = error instanceof Error ? error.message : 'Unknown error'
+    // Log the real error server-side only; connection failures can embed
+    // hostnames/credentials in their messages.
     console.error('[v0] API: Test connection failed:', error)
+    diagnostics.error = 'Connection test failed'
     return NextResponse.json(diagnostics, { status: 500 })
   }
 }

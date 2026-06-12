@@ -32,17 +32,18 @@ export async function GET() {
     await sql`DELETE FROM public.favorites WHERE user_id = 'test-user'`
     console.log('[v0] Test cleanup complete')
     
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: 'Neon connection working correctly',
-      connection: result[0]
+      serverTime: result[0]?.current_time ?? null
     })
-  } catch (error: any) {
+  } catch (error) {
+    // Log the real error server-side only; driver errors can embed
+    // hostnames/credentials and the pg version string aids fingerprinting.
     console.error('[v0] Neon test failed:', error)
-    return NextResponse.json({ 
-      error: error.message,
-      code: error.code,
-      details: error
+    return NextResponse.json({
+      error: 'Connection test failed',
+      code: 'connection_test_failed'
     }, { status: 500 })
   }
 }
