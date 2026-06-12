@@ -130,7 +130,7 @@ export function useLogoHistoryData({
       fetch('/api/logo-history', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, isFavorited: newFavorited })
+        body: JSON.stringify({ id, userId: getUserId(), isFavorited: newFavorited })
       }).catch(err => console.error('[Logo History] Failed to update favorite:', err))
 
       return { ...prev, items: updatedItems }
@@ -148,7 +148,7 @@ export function useLogoHistoryData({
       fetch('/api/logo-history', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, rating })
+        body: JSON.stringify({ id, userId: getUserId(), rating })
       }).catch(err => console.error('[Logo History] Failed to update rating:', err))
 
       return { ...prev, items: updatedItems }
@@ -171,7 +171,7 @@ export function useLogoHistoryData({
     setSelectedForComparison(prev => prev.filter(itemId => itemId !== id))
 
     try {
-      const response = await fetch(`/api/logo-history?id=${encodeURIComponent(id)}`, {
+      const response = await fetch(`/api/logo-history?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(getUserId())}`, {
         method: 'DELETE'
       })
 

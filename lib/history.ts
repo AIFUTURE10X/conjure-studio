@@ -197,7 +197,7 @@ export async function deleteHistoryItem(id: string): Promise<void> {
 
     // Also delete from Neon database
     try {
-      const response = await fetch(`/api/history?id=${encodeURIComponent(id)}`, {
+      const response = await fetch(`/api/history?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(getUserId())}`, {
         method: 'DELETE'
       })
 
@@ -229,7 +229,7 @@ export async function clearHistory(): Promise<void> {
     // Delete each item from Neon
     for (const item of history) {
       try {
-        await fetch(`/api/history?id=${encodeURIComponent(item.id)}`, {
+        await fetch(`/api/history?id=${encodeURIComponent(item.id)}&userId=${encodeURIComponent(getUserId())}`, {
           method: 'DELETE'
         })
       } catch (err) {

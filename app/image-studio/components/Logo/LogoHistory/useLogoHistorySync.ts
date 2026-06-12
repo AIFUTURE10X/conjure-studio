@@ -161,8 +161,9 @@ export function useLogoHistorySync({
     addDeletedIds(idsToDelete)
 
     try {
+      const userId = getUserId()
       const deletePromises = itemsToDelete.map(item =>
-        fetch(`/api/logo-history?id=${encodeURIComponent(item.id)}`, {
+        fetch(`/api/logo-history?id=${encodeURIComponent(item.id)}&userId=${encodeURIComponent(userId)}`, {
           method: 'DELETE'
         }).then(res => {
           if (!res.ok) throw new Error(`Failed to delete ${item.id}`)

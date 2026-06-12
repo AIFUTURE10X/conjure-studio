@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { LogoHistoryItem, LogoHistoryState } from './types'
-import { useLogoHistoryData, saveToLocal } from './useLogoHistoryData'
+import { useLogoHistoryData, saveToLocal, getUserId } from './useLogoHistoryData'
 import { useLogoHistorySync, addDeletedIds } from './useLogoHistorySync'
 
 // Re-export types for backwards compatibility
@@ -91,8 +91,9 @@ export function useLogoHistory() {
     setSelectedForComparison([])
 
     try {
+      const userId = getUserId()
       const deletePromises = idsToDelete.map(id =>
-        fetch(`/api/logo-history?id=${encodeURIComponent(id)}`, {
+        fetch(`/api/logo-history?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(userId)}`, {
           method: 'DELETE'
         }).then(res => {
           if (!res.ok) throw new Error(`Failed to delete ${id}`)

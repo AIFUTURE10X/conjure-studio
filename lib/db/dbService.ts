@@ -118,7 +118,7 @@ export async function removeFavorite(id: string): Promise<void> {
 
   // Remove from Neon via API
   try {
-    const response = await fetch(`/api/favorites?id=${encodeURIComponent(id)}`, {
+    const response = await fetch(`/api/favorites?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(getUserId())}`, {
       method: 'DELETE'
     })
 

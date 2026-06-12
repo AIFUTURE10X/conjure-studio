@@ -168,20 +168,26 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/favorites?id=xxx
+// DELETE /api/favorites?id=xxx&userId=xxx
 export async function DELETE(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get('id')
-    
-    if (!id) {
-      return NextResponse.json({ error: 'ID required' }, { status: 400 })
+    const userId = request.nextUrl.searchParams.get('userId')
+
+    if (!id || !userId) {
+      return NextResponse.json({ error: 'ID and user ID required' }, { status: 400 })
+    }
+
+    const numId = Number.parseInt(id, 10)
+    if (!Number.isInteger(numId)) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
 
     const sql = getSQL()
-    console.log('[v0] API: Removing favorite:', id)
+    console.log('[v0] API: Removing favorite:', numId)
 
     await sql`
-      DELETE FROM public.favorites WHERE id = ${parseInt(id)}
+      DELETE FROM public.favorites WHERE id = ${numId} AND user_id = ${userId}
     `
 
     console.log('[v0] API: Removed from Neon')

@@ -7,8 +7,23 @@ function getSQL() {
   return neon(url)
 }
 
-// GET /api/logo-history/debug - List all logos with user counts
-export async function GET() {
+// Admin-only endpoint: cross-user reads/writes below must never be publicly
+// reachable. Requires the x-admin-key header to match ADMIN_API_KEY; if the
+// env var is unset the endpoint is closed entirely. 404 (not 401) so the
+// endpoint's existence isn't advertised.
+function requireAdmin(request: NextRequest): NextResponse | null {
+  const adminKey = process.env.ADMIN_API_KEY
+  if (!adminKey || request.headers.get('x-admin-key') !== adminKey) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  return null
+}
+
+// GET /api/logo-history/debug - List all logos with user counts (admin only)
+export async function GET(request: NextRequest) {
+  const denied = requireAdmin(request)
+  if (denied) return denied
+
   try {
     const sql = getSQL()
     // Get count by user
@@ -52,8 +67,11 @@ export async function GET() {
   }
 }
 
-// POST /api/logo-history/debug - Merge all user IDs into one target user
+// POST /api/logo-history/debug - Merge all user IDs into one target user (admin only)
 export async function POST(request: NextRequest) {
+  const denied = requireAdmin(request)
+  if (denied) return denied
+
   try {
     const { targetUserId } = await request.json()
 

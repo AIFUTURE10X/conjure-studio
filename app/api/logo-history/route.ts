@@ -162,20 +162,25 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, isFavorited, rating } = body
+    const { id, userId, isFavorited, rating } = body
 
-    if (!id) {
-      return NextResponse.json({ error: 'ID required' }, { status: 400 })
+    if (!id || !userId) {
+      return NextResponse.json({ error: 'ID and user ID required' }, { status: 400 })
+    }
+
+    const numId = Number.parseInt(id, 10)
+    if (!Number.isInteger(numId)) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
 
     const sql = getSQL()
-    console.log('[Logo History] Updating item:', id, { isFavorited, rating })
+    console.log('[Logo History] Updating item:', numId, { isFavorited, rating })
 
     if (isFavorited !== undefined) {
       await sql`
         UPDATE public.logo_history
         SET is_favorited = ${isFavorited}
-        WHERE id = ${parseInt(id)}
+        WHERE id = ${numId} AND user_id = ${userId}
       `
     }
 
@@ -183,7 +188,7 @@ export async function PATCH(request: NextRequest) {
       await sql`
         UPDATE public.logo_history
         SET rating = ${rating}
-        WHERE id = ${parseInt(id)}
+        WHERE id = ${numId} AND user_id = ${userId}
       `
     }
 
@@ -194,20 +199,26 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// DELETE /api/logo-history?id=xxx
+// DELETE /api/logo-history?id=xxx&userId=xxx
 export async function DELETE(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get('id')
+    const userId = request.nextUrl.searchParams.get('userId')
 
-    if (!id) {
-      return NextResponse.json({ error: 'ID required' }, { status: 400 })
+    if (!id || !userId) {
+      return NextResponse.json({ error: 'ID and user ID required' }, { status: 400 })
+    }
+
+    const numId = Number.parseInt(id, 10)
+    if (!Number.isInteger(numId)) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
 
     const sql = getSQL()
-    console.log('[Logo History] Deleting item:', id)
+    console.log('[Logo History] Deleting item:', numId)
 
     await sql`
-      DELETE FROM public.logo_history WHERE id = ${parseInt(id)}
+      DELETE FROM public.logo_history WHERE id = ${numId} AND user_id = ${userId}
     `
 
     console.log('[Logo History] Removed from Neon')

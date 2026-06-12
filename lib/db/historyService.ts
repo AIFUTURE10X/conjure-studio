@@ -78,7 +78,7 @@ export async function deleteHistoryItem(id: string): Promise<boolean> {
   console.log('[v0] History Service: Deleting item:', id)
 
   try {
-    const response = await fetch(`/api/history?id=${encodeURIComponent(id)}`, {
+    const response = await fetch(`/api/history?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(getUserId())}`, {
       method: 'DELETE'
     })
 
