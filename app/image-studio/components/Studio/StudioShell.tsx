@@ -28,6 +28,7 @@ import { StudioMobileLayout } from './StudioMobileLayout'
 import { useStudioCore } from '../../context/useStudio'
 import { ImageGenerationProvider } from '../../context/ImageGenerationProvider'
 import { LogoGenerationProvider } from '../../context/LogoGenerationProvider'
+import { HelperBridgeProvider } from '../../context/HelperBridgeProvider'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 
 export function StudioShell() {
@@ -47,6 +48,7 @@ export function StudioShell() {
       <div className="flex-1 min-h-0 flex flex-col">
         <ImageGenerationProvider>
         <LogoGenerationProvider>
+        <HelperBridgeProvider>
           {isDesktop ? (
             <ResizablePanelGroup
               orientation="horizontal"
@@ -68,6 +70,7 @@ export function StudioShell() {
           ) : (
             <StudioMobileLayout />
           )}
+        </HelperBridgeProvider>
         </LogoGenerationProvider>
         </ImageGenerationProvider>
       </div>

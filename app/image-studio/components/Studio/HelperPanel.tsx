@@ -21,6 +21,7 @@ import { useStudioCore, useStudioMode, usePendingSuggestion } from '../../contex
 import { useStudioSnapshot } from '../../context/useStudioSnapshot'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
+import { useHelperBridge } from '../../context/HelperBridgeProvider'
 import type { ImageSettingsPatch, LogoSettingsSuggestionPatch } from '../../context/suggestion-patch'
 
 export function HelperPanel() {
@@ -66,6 +67,14 @@ export function HelperPanel() {
     activeTaskContext, forgetPreference,
   } = controller
   const [helperSection, setHelperSection] = useState<'chat' | 'tools' | 'context'>('chat')
+
+  // Expose the prompt runner so the PromptDock's "Improve with AI" button can
+  // hand the typed idea to the helper.
+  const { registerHelperRunner } = useHelperBridge()
+  useEffect(() => {
+    registerHelperRunner((prompt) => void runHelperPrompt(prompt))
+    return () => registerHelperRunner(null)
+  }, [registerHelperRunner, runHelperPrompt])
 
   // Auto-preview: the newest assistant suggestion flows into the settings
   // rail as a pending patch (amber ring + diff chips). Logo suggestions get

@@ -8,18 +8,27 @@
  * surfaces pending AI suggestions and opens the settings sheet.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Sparkles, SlidersHorizontal } from 'lucide-react'
 import { CanvasPanel } from './CanvasPanel'
 import { HelperPanel } from './HelperPanel'
 import { SettingsRail } from './SettingsRail'
 import { usePendingSuggestion } from '../../context/useStudio'
+import { useHelperBridge } from '../../context/HelperBridgeProvider'
 
 export function StudioMobileLayout() {
   const [helperOpen, setHelperOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { pendingSuggestion } = usePendingSuggestion()
+
+  // The PromptDock's "Improve with AI" button opens the helper sheet so the
+  // user sees the conversation on mobile.
+  const { registerOpenHelper } = useHelperBridge()
+  useEffect(() => {
+    registerOpenHelper(() => setHelperOpen(true))
+    return () => registerOpenHelper(null)
+  }, [registerOpenHelper])
 
   return (
     <div className="flex-1 min-h-0 flex flex-col relative">
