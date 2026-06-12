@@ -2,6 +2,10 @@
 
 /**
  * Generate tab content for Image Studio page
+ *
+ * Reads all settings/handlers from the studio context; the only props left
+ * are the generate trigger plumbing, which the generate controller replaces
+ * when the workspace shell lands.
  */
 
 import { RefObject } from 'react'
@@ -9,128 +13,53 @@ import { Card } from '@/components/ui/card'
 import { UploadPanel } from '../UploadPanel'
 import { ImageStudioToolbar } from '../ImageStudioToolbar'
 import { GeneratePanel } from '../GeneratePanel'
-import type { UploadedImage, AnalysisResult } from '../../types'
-import type { GeneratePreset, SavedGenerateParams } from '../../constants/settings-defaults'
-import type { CreativeDirectionState } from '../../constants/creative-direction-options'
+import { useStudioCore } from '../../context/useStudio'
 
 interface GenerateTabProps {
-  // Toolbar props
-  showUploadSection: boolean
-  onToggleUpload: () => void
-  analysisMode: 'fast' | 'quality'
-  onAnalysisModeChange: (mode: 'fast' | 'quality') => void
-  imageCount: number
-  onImageCountChange: (count: number) => void
-  aspectRatio: string
-  onAspectRatioChange: (ratio: string) => void
-  ratiosPopoverOpen: boolean
-  onRatiosPopoverOpenChange: (open: boolean) => void
-  selectedStylePreset: string
-  onStylePresetChange: (preset: string) => void
-  stylePopoverOpen: boolean
-  onStylePopoverOpenChange: (open: boolean) => void
-  stylePresets: Array<{ name: string; icon: any; description: string }>
-  creativeDirection: CreativeDirectionState
-  onCreativeDirectionChange: (creativeDirection: CreativeDirectionState) => void
+  generatePanelRef: RefObject<{ triggerGenerate: () => void; isGenerating: boolean } | null>
   onGenerate: () => void
   isGenerating: boolean
-  selectedCameraAngle: string
-  onCameraAngleChange: (angle: string) => void
-  selectedCameraLens: string
-  onCameraLensChange: (lens: string) => void
-  styleStrength: 'subtle' | 'moderate' | 'strong'
-  onStyleStrengthChange: (strength: 'subtle' | 'moderate' | 'strong') => void
-
-  // Upload panel props
-  uploadState: any
-  onResetAll: () => void
-
-  // Analyzing state
-  analyzing: boolean
-
-  // Generate panel props
-  generatePanelRef: RefObject<{ triggerGenerate: () => void; isGenerating: boolean } | null>
-  subjectImages: UploadedImage[]
-  analysisResults: { subjects: any[]; scene: any | null; style: any | null }
-  onClearSubjectAnalysis: () => void
-  onClearSceneAnalysis: () => void
-  onClearStyleAnalysis: () => void
-  negativePrompt: string
-  setNegativePrompt: (prompt: string) => void
-  referenceImage: any
-  setReferenceImage: (image: any) => void
-  mainPrompt: string
-  setMainPrompt: (prompt: string) => void
-  isFavorite: (url: string) => boolean
-  toggleFavorite: (url: string, metadata: any) => void
-  onParametersSave: (params: any) => void
-  generatedImages: Array<{ url: string; prompt?: string; timestamp?: number }>
-  setGeneratedImages: (images: Array<{ url: string; prompt?: string; timestamp?: number }>) => void
-  onOpenLightbox: (index: number) => void
-  seed: number | null
-  setSeed: (seed: number | null) => void
-  imageSize: '1K' | '2K' | '4K'
-  setImageSize: (size: '1K' | '2K' | '4K') => void
-  selectedModel: string
-  setSelectedModel: (model: any) => void
-  useImageBgRemoval: boolean
-  onImageBgRemovalChange: (enabled: boolean) => void
-  usePhotoRoomBgRemoval: boolean
-  onPhotoRoomBgRemovalChange: (enabled: boolean) => void
-  showAdvancedOptions: boolean
-  onSaveGenerateParams: (params: any) => void
-  presets: GeneratePreset[]
-  onSavePreset: (name: string, params: SavedGenerateParams) => void
-  onLoadPreset: (preset: GeneratePreset) => void
-  onRestoreParameters: (params: any) => void
 }
 
-export function GenerateTab(props: GenerateTabProps) {
+export function GenerateTab({ generatePanelRef, onGenerate, isGenerating }: GenerateTabProps) {
   const {
-    showUploadSection, onToggleUpload, analysisMode, onAnalysisModeChange, imageCount, onImageCountChange,
-    aspectRatio, onAspectRatioChange, ratiosPopoverOpen, onRatiosPopoverOpenChange, selectedStylePreset,
-    onStylePresetChange, stylePopoverOpen, onStylePopoverOpenChange, stylePresets, creativeDirection,
-    onCreativeDirectionChange, onGenerate, isGenerating,
-    selectedCameraAngle, onCameraAngleChange, selectedCameraLens, onCameraLensChange, styleStrength,
-    onStyleStrengthChange, uploadState, onResetAll, analyzing, generatePanelRef, subjectImages, analysisResults,
-    onClearSubjectAnalysis, onClearSceneAnalysis, onClearStyleAnalysis, negativePrompt, setNegativePrompt,
-    referenceImage, setReferenceImage, mainPrompt, setMainPrompt, isFavorite, toggleFavorite, onParametersSave,
-    generatedImages, setGeneratedImages, onOpenLightbox, seed, setSeed, imageSize, setImageSize, selectedModel,
-    setSelectedModel, useImageBgRemoval, onImageBgRemovalChange, usePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange, showAdvancedOptions, onSaveGenerateParams, presets, onSavePreset, onLoadPreset,
-    onRestoreParameters,
-  } = props
+    uploadState, analyzing, toggleFavorite, isFavorite, state, settings, saveGenerateParams,
+    presets, savePreset, handleRestoreParameters, handleResetAll, openLightbox,
+    handleClearSubjectAnalysis, handleClearSceneAnalysis, handleClearStyleAnalysis,
+    handleLoadPreset, saveParameters, stylePresets,
+  } = useStudioCore()
 
   return (
     <>
       <ImageStudioToolbar
-        showUploadSection={showUploadSection}
-        onToggleUpload={onToggleUpload}
-        analysisMode={analysisMode}
-        onAnalysisModeChange={onAnalysisModeChange}
-        imageCount={imageCount}
-        onImageCountChange={onImageCountChange}
-        aspectRatio={aspectRatio}
-        onAspectRatioChange={onAspectRatioChange}
-        ratiosPopoverOpen={ratiosPopoverOpen}
-        onRatiosPopoverOpenChange={onRatiosPopoverOpenChange}
-        selectedStylePreset={selectedStylePreset}
-        onStylePresetChange={onStylePresetChange}
-        stylePopoverOpen={stylePopoverOpen}
-        onStylePopoverOpenChange={onStylePopoverOpenChange}
+        showUploadSection={state.showUploadSection}
+        onToggleUpload={() => state.setShowUploadSection(!state.showUploadSection)}
+        analysisMode={state.analysisMode}
+        onAnalysisModeChange={state.setAnalysisMode}
+        imageCount={state.imageCount}
+        onImageCountChange={state.setImageCount}
+        aspectRatio={state.aspectRatio}
+        onAspectRatioChange={state.setAspectRatio}
+        ratiosPopoverOpen={state.ratiosPopoverOpen}
+        onRatiosPopoverOpenChange={state.setRatiosPopoverOpen}
+        selectedStylePreset={state.selectedStylePreset}
+        onStylePresetChange={state.setSelectedStylePreset}
+        stylePopoverOpen={state.stylePopoverOpen}
+        onStylePopoverOpenChange={state.setStylePopoverOpen}
         stylePresets={stylePresets}
-        creativeDirection={creativeDirection}
-        onCreativeDirectionChange={onCreativeDirectionChange}
+        creativeDirection={state.creativeDirection}
+        onCreativeDirectionChange={state.setCreativeDirection}
         onGenerate={onGenerate}
         isGenerating={isGenerating}
-        selectedCameraAngle={selectedCameraAngle}
-        onCameraAngleChange={onCameraAngleChange}
-        selectedCameraLens={selectedCameraLens}
-        onCameraLensChange={onCameraLensChange}
-        styleStrength={styleStrength}
-        onStyleStrengthChange={onStyleStrengthChange}
+        selectedCameraAngle={state.selectedCameraAngle}
+        onCameraAngleChange={state.setSelectedCameraAngle}
+        selectedCameraLens={state.selectedCameraLens}
+        onCameraLensChange={state.setSelectedCameraLens}
+        styleStrength={state.styleStrength}
+        onStyleStrengthChange={state.setStyleStrength}
       />
 
-      {showUploadSection && (
+      {state.showUploadSection && (
         <div className="mb-8">
           <UploadPanel
             subjectImages={uploadState.subjectImages}
@@ -146,7 +75,7 @@ export function GenerateTab(props: GenerateTabProps) {
             clearSceneImage={uploadState.clearSceneImage}
             clearStyleImage={uploadState.clearStyleImage}
             clearAllImages={uploadState.clearAllImages}
-            onClearAll={onResetAll}
+            onClearAll={handleResetAll}
           />
         </div>
       )}
@@ -163,53 +92,53 @@ export function GenerateTab(props: GenerateTabProps) {
       <div id="generate-section">
         <GeneratePanel
           ref={generatePanelRef}
-          subjectImages={subjectImages}
-          sceneAnalysis={analysisResults.scene}
-          styleAnalysis={analysisResults.style}
-          analysisResults={analysisResults}
-          onClearSubjectAnalysis={onClearSubjectAnalysis}
-          onClearSceneAnalysis={onClearSceneAnalysis}
-          onClearStyleAnalysis={onClearStyleAnalysis}
-          aspectRatio={aspectRatio}
-          setAspectRatio={onAspectRatioChange}
-          selectedStylePreset={selectedStylePreset}
-          setSelectedStylePreset={onStylePresetChange}
-          imageCount={imageCount}
-          setImageCount={onImageCountChange}
-          selectedCameraAngle={selectedCameraAngle}
-          selectedCameraLens={selectedCameraLens}
-          styleStrength={styleStrength}
-          negativePrompt={negativePrompt}
-          setNegativePrompt={setNegativePrompt}
-          referenceImage={referenceImage}
-          setReferenceImage={setReferenceImage}
-          mainPrompt={mainPrompt}
-          setMainPrompt={setMainPrompt}
+          subjectImages={uploadState.subjectImages}
+          sceneAnalysis={state.analysisResults.scene}
+          styleAnalysis={state.analysisResults.style}
+          analysisResults={state.analysisResults}
+          onClearSubjectAnalysis={handleClearSubjectAnalysis}
+          onClearSceneAnalysis={handleClearSceneAnalysis}
+          onClearStyleAnalysis={handleClearStyleAnalysis}
+          aspectRatio={state.aspectRatio}
+          setAspectRatio={state.setAspectRatio}
+          selectedStylePreset={state.selectedStylePreset}
+          setSelectedStylePreset={state.setSelectedStylePreset}
+          imageCount={state.imageCount}
+          setImageCount={state.setImageCount}
+          selectedCameraAngle={state.selectedCameraAngle}
+          selectedCameraLens={state.selectedCameraLens}
+          styleStrength={state.styleStrength}
+          negativePrompt={state.negativePrompt}
+          setNegativePrompt={state.setNegativePrompt}
+          referenceImage={state.referenceImage}
+          setReferenceImage={state.setReferenceImage}
+          mainPrompt={state.mainPrompt}
+          setMainPrompt={state.setMainPrompt}
           isFavorite={isFavorite}
           toggleFavorite={toggleFavorite}
-          onParametersSave={onParametersSave}
-          onClearPrompt={() => setMainPrompt('')}
-          onRestoreParameters={onRestoreParameters}
-          generatedImages={generatedImages}
-          imageSize={imageSize}
-          setImageSize={setImageSize}
-          selectedModel={selectedModel as any}
-          setSelectedModel={setSelectedModel}
-          useImageBgRemoval={useImageBgRemoval}
-          onImageBgRemovalChange={onImageBgRemovalChange}
-          usePhotoRoomBgRemoval={usePhotoRoomBgRemoval}
-          onPhotoRoomBgRemovalChange={onPhotoRoomBgRemovalChange}
-          generationMode={analysisMode}
-          creativeDirection={creativeDirection}
-          setGeneratedImages={setGeneratedImages}
-          onOpenLightbox={onOpenLightbox}
-          seed={seed}
-          setSeed={setSeed}
-          showAdvancedOptions={showAdvancedOptions}
-          onSaveGenerateParams={onSaveGenerateParams}
+          onParametersSave={(params) => saveParameters({ ...params, analysisMode: state.analysisMode, seed: state.seed, imageSize: state.imageSize, selectedModel: state.selectedModel })}
+          onClearPrompt={() => state.setMainPrompt('')}
+          onRestoreParameters={handleRestoreParameters}
+          generatedImages={state.generatedImages}
+          imageSize={state.imageSize}
+          setImageSize={state.setImageSize}
+          selectedModel={state.selectedModel as any}
+          setSelectedModel={state.setSelectedModel}
+          useImageBgRemoval={state.useImageBgRemoval}
+          onImageBgRemovalChange={state.setUseImageBgRemoval}
+          usePhotoRoomBgRemoval={state.usePhotoRoomBgRemoval}
+          onPhotoRoomBgRemovalChange={state.setUsePhotoRoomBgRemoval}
+          generationMode={state.analysisMode}
+          creativeDirection={state.creativeDirection}
+          setGeneratedImages={state.setGeneratedImages}
+          onOpenLightbox={openLightbox}
+          seed={state.seed}
+          setSeed={state.setSeed}
+          showAdvancedOptions={settings.features.showAdvancedOptions}
+          onSaveGenerateParams={saveGenerateParams}
           presets={presets}
-          onSavePreset={onSavePreset}
-          onLoadPreset={onLoadPreset}
+          onSavePreset={savePreset}
+          onLoadPreset={handleLoadPreset}
         />
       </div>
     </>

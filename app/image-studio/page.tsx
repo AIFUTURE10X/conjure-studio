@@ -77,12 +77,12 @@ function ImageStudioPageContent() {
   const [pendingLogoSettings, setPendingLogoSettings] = useState<LogoGeneratorSettingsPatch | null>(null)
 
   const {
-    uploadState, analyzing, favorites, toggleFavorite, isFavorite, clearAll, state, hasStoredParams,
-    settings, updateSetting, resetSettings, saveGenerateParams, presets, savePreset, deletePreset,
-    updatePreset, clearAllPresets, handleRestoreParameters, handleResetAll, openLightbox, closeLightbox,
-    navigateLightbox, handleDownloadFromLightbox, handleClearSubjectAnalysis, handleClearSceneAnalysis,
-    handleClearStyleAnalysis, handleApplyAISuggestions, handleApplyLogoSuggestions, handleApplyLogoConfig, handleLoadPreset,
-    saveParameters, showPhotoGenerator, setShowPhotoGenerator, stylePresets,
+    favorites, toggleFavorite, clearAll, state, hasStoredParams,
+    settings, updateSetting, resetSettings, presets, deletePreset,
+    updatePreset, clearAllPresets, handleRestoreParameters, closeLightbox,
+    navigateLightbox, handleDownloadFromLightbox,
+    handleApplyAISuggestions, handleApplyLogoSuggestions, handleApplyLogoConfig, handleLoadPreset,
+    showPhotoGenerator, setShowPhotoGenerator,
   } = useStudioCore()
 
   const handleGenerate = () => {
@@ -130,68 +130,9 @@ function ImageStudioPageContent() {
       <main className="max-w-7xl mx-auto px-6 pt-3 pb-2">
         {state.activeTab === 'generate' && (
           <GenerateTab
-            showUploadSection={state.showUploadSection}
-            onToggleUpload={() => state.setShowUploadSection(!state.showUploadSection)}
-            analysisMode={state.analysisMode}
-            onAnalysisModeChange={state.setAnalysisMode}
-            imageCount={state.imageCount}
-            onImageCountChange={state.setImageCount}
-            aspectRatio={state.aspectRatio}
-            onAspectRatioChange={state.setAspectRatio}
-            ratiosPopoverOpen={state.ratiosPopoverOpen}
-            onRatiosPopoverOpenChange={state.setRatiosPopoverOpen}
-            selectedStylePreset={state.selectedStylePreset}
-            onStylePresetChange={state.setSelectedStylePreset}
-            stylePopoverOpen={state.stylePopoverOpen}
-            onStylePopoverOpenChange={state.setStylePopoverOpen}
-            stylePresets={stylePresets}
-            creativeDirection={state.creativeDirection}
-            onCreativeDirectionChange={state.setCreativeDirection}
+            generatePanelRef={generatePanelRef}
             onGenerate={handleGenerate}
             isGenerating={generatePanelRef.current?.isGenerating || false}
-            selectedCameraAngle={state.selectedCameraAngle}
-            onCameraAngleChange={state.setSelectedCameraAngle}
-            selectedCameraLens={state.selectedCameraLens}
-            onCameraLensChange={state.setSelectedCameraLens}
-            styleStrength={state.styleStrength}
-            onStyleStrengthChange={state.setStyleStrength}
-            uploadState={uploadState}
-            onResetAll={handleResetAll}
-            analyzing={analyzing}
-            generatePanelRef={generatePanelRef}
-            subjectImages={uploadState.subjectImages}
-            analysisResults={state.analysisResults}
-            onClearSubjectAnalysis={handleClearSubjectAnalysis}
-            onClearSceneAnalysis={handleClearSceneAnalysis}
-            onClearStyleAnalysis={handleClearStyleAnalysis}
-            negativePrompt={state.negativePrompt}
-            setNegativePrompt={state.setNegativePrompt}
-            referenceImage={state.referenceImage}
-            setReferenceImage={state.setReferenceImage}
-            mainPrompt={state.mainPrompt}
-            setMainPrompt={state.setMainPrompt}
-            isFavorite={isFavorite}
-            toggleFavorite={toggleFavorite}
-            onParametersSave={(params) => saveParameters({ ...params, analysisMode: state.analysisMode, seed: state.seed, imageSize: state.imageSize, selectedModel: state.selectedModel })}
-            generatedImages={state.generatedImages}
-            setGeneratedImages={state.setGeneratedImages}
-            onOpenLightbox={openLightbox}
-            seed={state.seed}
-            setSeed={state.setSeed}
-            imageSize={state.imageSize}
-            setImageSize={state.setImageSize}
-            selectedModel={state.selectedModel}
-            setSelectedModel={state.setSelectedModel}
-            useImageBgRemoval={state.useImageBgRemoval}
-            onImageBgRemovalChange={state.setUseImageBgRemoval}
-            usePhotoRoomBgRemoval={state.usePhotoRoomBgRemoval}
-            onPhotoRoomBgRemovalChange={state.setUsePhotoRoomBgRemoval}
-            showAdvancedOptions={settings.features.showAdvancedOptions}
-            onSaveGenerateParams={saveGenerateParams}
-            presets={presets}
-            onSavePreset={savePreset}
-            onLoadPreset={handleLoadPreset}
-            onRestoreParameters={handleRestoreParameters}
           />
         )}
 
