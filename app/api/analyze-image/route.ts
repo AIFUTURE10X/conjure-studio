@@ -1,9 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { buildLogoAnalysisPrompt } from "@/app/image-studio/constants/ai-logo-knowledge"
 import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
+  if (rateLimited) return rateLimited
+
   try {
     console.log("[v0] =====  ANALYZE IMAGE API CALLED =====")
 

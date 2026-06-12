@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { z } from "zod"
 import { generateImageWithRetry, type GenerationModel } from "@/lib/gemini-client"
 import { generateOpenAIImage } from "@/lib/openai-image-client"
@@ -54,6 +55,9 @@ function isOpenAIImageModel(model: AppGenerationModel): model is OpenAIImageMode
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
+  if (rateLimited) return rateLimited
+
   const parsedForm = await parseFormData(request)
   if (parsedForm.response) return parsedForm.response
   const formData = parsedForm.data

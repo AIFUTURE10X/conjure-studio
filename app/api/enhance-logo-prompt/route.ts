@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { buildLogoPromptBlueprintInstructions } from "@/app/image-studio/constants/ai-logo-knowledge"
@@ -56,6 +57,9 @@ function cleanPlainTextPrompt(responseText: string): string {
 const postBodySchema = z.object({ prompt: z.string().trim().min(1, 'Prompt is required').max(10_000) })
 
 export async function POST(request: Request) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
+  if (rateLimited) return rateLimited
+
   const parsed = await parseJson(request, postBodySchema)
   if (parsed.response) return parsed.response
   const { prompt } = parsed.data

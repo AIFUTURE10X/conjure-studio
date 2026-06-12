@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { NextResponse } from "next/server"
 import { buildLogoSystemPrompt } from "@/app/image-studio/constants/ai-logo-knowledge"
 import {
@@ -1458,6 +1459,9 @@ function normalizeImagePromptSuggestions(rawSuggestions: unknown): ImagePromptSu
 }
 
 export async function POST(request: Request) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
+  if (rateLimited) return rateLimited
+
   try {
     const {
       message,

@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { vectorizeLogo, VectorizationMode, removeBackgroundFromSvg } from "@/lib/vectorization"
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
+  if (rateLimited) return rateLimited
+
   try {
     const formData = await request.formData()
 

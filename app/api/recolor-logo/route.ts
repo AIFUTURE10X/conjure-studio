@@ -6,6 +6,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { put } from "@vercel/blob"
 import sharp from "sharp"
 import { generateOpenAIImage } from "@/lib/openai-image-client"
@@ -37,6 +38,9 @@ function getClosestAspectRatio(width?: number, height?: number): RecolorAspectRa
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
+  if (rateLimited) return rateLimited
+
   try {
     const body = await request.json()
     const { imageUrl, colors, preserveMetallic = true } = body

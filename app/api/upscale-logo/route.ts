@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import sharp from 'sharp'
 import { upscaleWithRealESRGAN, isReplicateAvailable } from "@/lib/replicate-upscaler"
 import { upscaleBase64WithSharp } from "@/lib/sharp-upscaler"
@@ -16,6 +17,9 @@ type TargetResolution = keyof typeof RESOLUTIONS
 type UpscaleMethod = 'ai' | 'fast'
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
+  if (rateLimited) return rateLimited
+
   try {
     const formData = await request.formData()
     const imageBase64 = formData.get('imageBase64') as string | null

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { generateImageWithRetry } from "@/lib/gemini-client"
 import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { writeFile, mkdir, access } from 'fs/promises'
@@ -481,6 +482,9 @@ const PRODUCT_PROMPTS: Record<string, Record<string, string>> = {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
+  if (rateLimited) return rateLimited
+
   try {
     const body = await request.json()
     const { product, color, saveToFile = false, skipExisting = false } = body

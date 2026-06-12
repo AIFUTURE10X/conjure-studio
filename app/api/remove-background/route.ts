@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { put } from "@vercel/blob"
 import { neon } from "@neondatabase/serverless"
 import { removeBackground, type BackgroundRemovalMethod } from "@/lib/background-removal"
@@ -9,6 +10,9 @@ import { removeBackgroundWithPixelcut } from "@/lib/pixelcut-bg-removal"
 import { removeBackgroundWithPhotoRoom } from "@/lib/photoroom-bg-removal"
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
+  if (rateLimited) return rateLimited
+
   try {
     const formData = await request.formData()
     const imageFile = formData.get('image') as File | null

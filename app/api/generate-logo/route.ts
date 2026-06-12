@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { parseLogoGenerationRequest } from "./logo-request"
 import {
   generateLogoBaseImage,
@@ -13,6 +14,9 @@ export const runtime = "nodejs"
 export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceRateLimit(request, RATE_LIMITS.generation)
+  if (rateLimited) return rateLimited
+
   try {
     const formData = await request.formData()
     const logoRequest = await parseLogoGenerationRequest(formData)
