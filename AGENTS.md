@@ -189,6 +189,11 @@ This is a single Next.js 16 (App Router, Turbopack) app at the repo root — no 
 - What works WITHOUT external keys (client-side): style/parameter selection, the Logo Wizard, and the **Mockup configurator** (color/text/size edits + PNG/SVG/PDF export). A good no-key smoke test is exporting a customized mockup from the Mockups tab.
 - What REQUIRES secrets: actual AI image/prompt generation and the AI Helper need `GOOGLE_AI_API_KEY` (or `GEMINI_API_KEY`) and/or `OPENAI_API_KEY`. DB-backed history/favorites/auth/credits need `NEON_DATABASE_URL` (+ `DATABASE_URL` alias); apply migrations with `node scripts/run-sql.cjs scripts/<file>.sql` or `node run-migrations.js`. Stripe billing only matters when `SAAS_ENFORCEMENT=on`. See `.env.example` for the full annotated list.
 
+### AI generation (provider/model caveat)
+- The Image Studio defaults its AI Model dropdown to a **Gemini** image model, which only works if `GOOGLE_AI_API_KEY`/`GEMINI_API_KEY` has quota. Gemini free-tier keys can return `429 ... limit: 0` (no quota) — that is a billing/quota issue on the key, not a code/env problem.
+- To generate with OpenAI instead, select the **"ChatGPT Images 2.0"** model (`gpt-image-2`) in Settings; it uses `OPENAI_API_KEY`. The AI Helper / `generate-prompt-suggestion` route is **Gemini-only** (no OpenAI fallback).
+- DB-backed routes (`/api/favorites`, `/api/history`, `/api/logo-history`, auth, credits) throw `No database connection string configured` unless `NEON_DATABASE_URL` is a real Postgres connection string (`postgres://...`); these failures are non-fatal to the rest of the app.
+
 ### Notes
 - `npm run lint` reports many `no-explicit-any` warnings but **0 errors** — that is the expected baseline.
 - `next.config.mjs` lists native `serverExternalPackages` (`sharp`, `onnxruntime-node`, `@neplex/vectorizer`); `npm install` builds these. If background-removal/vectorize routes throw native errors, rerun `npm install`.
