@@ -46,9 +46,9 @@ export function ImageUploadZone({
 
   return (
     <section className="flex h-full flex-col rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <h3 className="text-base font-semibold text-white">{title}</h3>
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-white break-words">{title}</h3>
           <p className="text-sm text-zinc-500">{subtitle}</p>
         </div>
         {!image && (

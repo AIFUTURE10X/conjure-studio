@@ -110,7 +110,7 @@ export function UploadPanel({
         </button>
 
         {!isCollapsed && (
-          <div className="px-5 pb-5 space-y-4">
+          <div className="@container px-5 pb-5 space-y-4">
             <div className="flex flex-wrap gap-2">
               <ReferenceStatus
                 label="Subjects"
@@ -121,11 +121,14 @@ export function UploadPanel({
               <ReferenceStatus label="Style" value={styleImage ? 'Added' : 'Optional'} active={!!styleImage} />
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            {/* Container-query columns: respond to the canvas panel width, not
+                the viewport, so the cards stack (not cram) when side panels
+                are open. 1 col → @2xl 2 cols → @4xl 3-col template. */}
+            <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
               {/* Subject Images Section */}
               <section className="flex h-full flex-col rounded-xl border border-zinc-700/70 bg-zinc-900/60 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:flex-col 2xl:flex-row 2xl:items-start 2xl:justify-between mb-3">
-                  <div className="flex items-start gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div className="flex min-w-0 items-start gap-3">
                     <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#c99850]/25 bg-[#c99850]/10">
                       <Images className="h-4 w-4 text-[#dbb56e]" />
                     </div>

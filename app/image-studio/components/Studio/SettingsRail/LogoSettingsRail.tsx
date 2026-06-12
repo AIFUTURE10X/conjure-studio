@@ -133,49 +133,52 @@ export function LogoSettingsRail() {
 
       <Separator className="bg-zinc-800" />
 
-      <SettingField label="Logo Type" suggestion={diff('logoType', state.logoType)}>
-        <Select value={state.logoType} onValueChange={(v) => state.setLogoType(v as typeof state.logoType)}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {LOGO_TYPE_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
+      {/* Logo-style dropdowns paired two-up to use the rail width better. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+        <SettingField label="Logo Type" suggestion={diff('logoType', state.logoType)}>
+          <Select value={state.logoType} onValueChange={(v) => state.setLogoType(v as typeof state.logoType)}>
+            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              {LOGO_TYPE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
 
-      <SettingField label="Visual Style" suggestion={diff('logoVisualStyle', state.logoVisualStyle)}>
-        <Select value={state.logoVisualStyle} onValueChange={(v) => state.setLogoVisualStyle(v as typeof state.logoVisualStyle)}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {LOGO_VISUAL_STYLE_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
+        <SettingField label="Visual Style" suggestion={diff('logoVisualStyle', state.logoVisualStyle)}>
+          <Select value={state.logoVisualStyle} onValueChange={(v) => state.setLogoVisualStyle(v as typeof state.logoVisualStyle)}>
+            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              {LOGO_VISUAL_STYLE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
 
-      <SettingField label="Render Treatment" suggestion={diff('logoRenderTreatment', state.logoRenderTreatment)}>
-        <Select value={state.logoRenderTreatment} onValueChange={(v) => state.setLogoRenderTreatment(v as typeof state.logoRenderTreatment)}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {LOGO_RENDER_TREATMENT_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
+        <SettingField label="Render Treatment" suggestion={diff('logoRenderTreatment', state.logoRenderTreatment)}>
+          <Select value={state.logoRenderTreatment} onValueChange={(v) => state.setLogoRenderTreatment(v as typeof state.logoRenderTreatment)}>
+            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              {LOGO_RENDER_TREATMENT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
 
-      <SettingField label="Typography" suggestion={diff('logoTypographyDirection', state.logoTypographyDirection)}>
-        <Select value={state.logoTypographyDirection} onValueChange={(v) => state.setLogoTypographyDirection(v as typeof state.logoTypographyDirection)}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {LOGO_TYPOGRAPHY_DIRECTION_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
+        <SettingField label="Typography" suggestion={diff('logoTypographyDirection', state.logoTypographyDirection)}>
+          <Select value={state.logoTypographyDirection} onValueChange={(v) => state.setLogoTypographyDirection(v as typeof state.logoTypographyDirection)}>
+            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              {LOGO_TYPOGRAPHY_DIRECTION_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
+      </div>
 
       <Separator className="bg-zinc-800" />
 

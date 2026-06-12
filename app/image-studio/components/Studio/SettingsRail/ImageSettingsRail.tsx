@@ -94,61 +94,64 @@ export function ImageSettingsRail() {
         </div>
       </SettingField>
 
-      <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
-        <Select value={state.aspectRatio} onValueChange={state.setAspectRatio}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {ASPECT_RATIO_OPTIONS.map((r) => (
-              <SelectItem key={r.value} value={r.value} className="text-xs">
-                {r.label} — {r.description}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
+      {/* Dropdowns paired two-up to use the rail width better. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+        <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
+          <Select value={state.aspectRatio} onValueChange={state.setAspectRatio}>
+            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              {ASPECT_RATIO_OPTIONS.map((r) => (
+                <SelectItem key={r.value} value={r.value} className="text-xs">
+                  {r.label} — {r.description}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
 
-      <SettingField label="Style" suggestion={diff('style', state.selectedStylePreset)}>
-        <Select value={state.selectedStylePreset} onValueChange={state.setSelectedStylePreset}>
-          <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            {stylePresets.map((s) => (
-              <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
+        <SettingField label="Style" suggestion={diff('style', state.selectedStylePreset)}>
+          <Select value={state.selectedStylePreset} onValueChange={state.setSelectedStylePreset}>
+            <SelectTrigger className={selectTriggerClass}><SelectValue /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              {stylePresets.map((s) => (
+                <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
+
+        <SettingField label="Camera Angle" suggestion={diff('cameraAngle', state.selectedCameraAngle)}>
+          <Select
+            value={state.selectedCameraAngle || NONE_VALUE}
+            onValueChange={(v) => state.setSelectedCameraAngle(v === NONE_VALUE ? '' : v)}
+          >
+            <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="None" /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              <SelectItem value={NONE_VALUE} className="text-xs">None</SelectItem>
+              {cameraAngleOptions.map((angle) => (
+                <SelectItem key={angle} value={angle} className="text-xs">{angle}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
+
+        <SettingField label="Camera Lens" suggestion={diff('cameraLens', state.selectedCameraLens)}>
+          <Select
+            value={state.selectedCameraLens || NONE_VALUE}
+            onValueChange={(v) => state.setSelectedCameraLens(v === NONE_VALUE ? '' : v)}
+          >
+            <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="None" /></SelectTrigger>
+            <SelectContent className={selectContentClass}>
+              <SelectItem value={NONE_VALUE} className="text-xs">None</SelectItem>
+              {cameraLensOptions.map((lens) => (
+                <SelectItem key={lens} value={lens} className="text-xs">{lens}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingField>
+      </div>
 
       <Separator className="bg-zinc-800" />
-
-      <SettingField label="Camera Angle" suggestion={diff('cameraAngle', state.selectedCameraAngle)}>
-        <Select
-          value={state.selectedCameraAngle || NONE_VALUE}
-          onValueChange={(v) => state.setSelectedCameraAngle(v === NONE_VALUE ? '' : v)}
-        >
-          <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="None" /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            <SelectItem value={NONE_VALUE} className="text-xs">None</SelectItem>
-            {cameraAngleOptions.map((angle) => (
-              <SelectItem key={angle} value={angle} className="text-xs">{angle}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
-
-      <SettingField label="Camera Lens" suggestion={diff('cameraLens', state.selectedCameraLens)}>
-        <Select
-          value={state.selectedCameraLens || NONE_VALUE}
-          onValueChange={(v) => state.setSelectedCameraLens(v === NONE_VALUE ? '' : v)}
-        >
-          <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="None" /></SelectTrigger>
-          <SelectContent className={selectContentClass}>
-            <SelectItem value={NONE_VALUE} className="text-xs">None</SelectItem>
-            {cameraLensOptions.map((lens) => (
-              <SelectItem key={lens} value={lens} className="text-xs">{lens}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingField>
 
       <SettingField label="Style Strength" suggestion={diff('styleStrength', state.styleStrength)}>
         <div className="grid grid-cols-3 gap-1">
