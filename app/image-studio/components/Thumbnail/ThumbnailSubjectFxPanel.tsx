@@ -8,13 +8,14 @@
  * signature thumbnail move that makes a face leap off the background.
  */
 
+import { Loader2, Sparkles } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { AdjustControls, RangeRow, SelectRow, SwatchRow, ToggleRow } from './ThumbnailControls'
 import { BLEND_MODES, DEFAULT_ADJUST, DEFAULT_SUBJECT_FX, SUBJECT_FRAMES } from './thumbnail-constants'
-import { railLabel } from './thumbnail-ui'
+import { railButton, railLabel } from './thumbnail-ui'
 
 export function ThumbnailSubjectFxPanel() {
-  const { config, patchSubject, patchSubjectFx, patchSubjectAdjust } = useThumbnail()
+  const { config, patchSubject, patchSubjectFx, patchSubjectAdjust, enhanceImage, isEnhancing } = useThumbnail()
   const subject = config.subject
   if (!subject) return null
 
@@ -25,6 +26,11 @@ export function ThumbnailSubjectFxPanel() {
   return (
     <div className="space-y-2.5">
       <h4 className={railLabel}>Subject pop FX</h4>
+
+      <button onClick={() => enhanceImage('subject')} disabled={isEnhancing} className={`${railButton} w-full`} title="AI upscale / sharpen the cutout">
+        {isEnhancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+        Enhance photo
+      </button>
 
       <div className="grid grid-cols-3 gap-1.5">
         {SUBJECT_FRAMES.map((f) => (

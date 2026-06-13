@@ -7,7 +7,7 @@
  * "darken & blur" preset — the #1 legibility trick for headlines over a photo.
  */
 
-import { Moon } from 'lucide-react'
+import { Expand, Loader2, Moon, Sparkles } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { AdjustControls, RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
 import { DEFAULT_ADJUST } from './thumbnail-constants'
@@ -16,7 +16,8 @@ import { railButton, railLabel } from './thumbnail-ui'
 const DEFAULT_DUOTONE = { shadow: '#1e1b4b', highlight: '#fbbf24' }
 
 export function ThumbnailBackgroundFxPanel() {
-  const { config, setBackground, patchBackgroundAdjust } = useThumbnail()
+  const { config, setBackground, patchBackgroundAdjust, expandBackground, enhanceImage, isExpanding, isEnhancing } =
+    useThumbnail()
   const { background } = config
   if (background.kind !== 'image' || !background.imageUrl) return null
 
@@ -32,6 +33,17 @@ export function ThumbnailBackgroundFxPanel() {
   return (
     <div className="space-y-2">
       <h4 className={railLabel}>Background adjust</h4>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        <button onClick={expandBackground} disabled={isExpanding} className={railButton} title="AI outpaint to a full 16:9 frame">
+          {isExpanding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Expand className="h-3.5 w-3.5" />}
+          Expand 16:9
+        </button>
+        <button onClick={() => enhanceImage('background')} disabled={isEnhancing} className={railButton} title="AI upscale / sharpen">
+          {isEnhancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          Enhance
+        </button>
+      </div>
 
       <button onClick={darkenAndBlur} className={`${railButton} w-full`}>
         <Moon className="h-3.5 w-3.5" /> Darken &amp; blur (for text)

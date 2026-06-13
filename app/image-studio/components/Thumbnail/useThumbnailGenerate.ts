@@ -25,6 +25,8 @@ export function useThumbnailGenerate({ setConfig, configRef }: Deps) {
   const [isGeneratingBg, setIsGeneratingBg] = useState(false)
   const [isCuttingOut, setIsCuttingOut] = useState(false)
   const [isRecoloring, setIsRecoloring] = useState(false)
+  const [isExpanding, setIsExpanding] = useState(false)
+  const [isEnhancing, setIsEnhancing] = useState(false)
   const [bgVariations, setBgVariations] = useState<string[]>([])
 
   const chooseBackground = useCallback(
@@ -133,11 +135,90 @@ export function useThumbnailGenerate({ setConfig, configRef }: Deps) {
     [setConfig, configRef],
   )
 
+  // AI Expand: outpaint the background image to a full 16:9 frame (reuses the
+  // image engine as instruction-guided image-to-image).
+  const expandBackground = useCallback(async () => {
+    const bg = configRef.current.background
+    if (bg.kind !== 'image' || !bg.imageUrl) {
+      toast.error('Add a background image first')
+      return
+    }
+    setIsExpanding(true)
+    try {
+      const blob = await (await fetch(bg.imageUrl)).blob()
+      const form = new FormData()
+      form.append(
+        'prompt',
+        'Extend this image to fill a 16:9 widescreen frame. Keep the existing subject and content centered and unchanged; seamlessly continue the scene into the new left and right areas. No text, no letters, no watermark.',
+      )
+      form.append('aspectRatio', '16:9')
+      form.append('count', '1')
+      form.append('model', 'gemini-3.1-flash-image-preview')
+      form.append('imageSize', '2K')
+      form.append('referenceImage', blob, 'background.png')
+      form.append('referenceMode', 'inspire')
+      const res = await fetch('/api/generate-image', { method: 'POST', body: form })
+      const data = (await res.json()) as { images?: string[]; error?: string }
+      if (!res.ok || !data.images?.[0]) throw new Error(data.error || 'Expand failed')
+      const url = data.images[0]
+      setBgVariations([])
+      setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: url } }))
+      toast.success('Expanded to 16:9')
+    } catch (err) {
+      console.error('[Thumbnail] expand failed:', err)
+      toast.error('Expand failed — try again')
+    } finally {
+      setIsExpanding(false)
+    }
+  }, [setConfig, configRef])
+
+  // AI Enhance: upscale the subject or background image for crispness.
+  const enhanceImage = useCallback(
+    async (target: 'subject' | 'background') => {
+      const c = configRef.current
+      const url = target === 'subject' ? c.subject?.url : c.background.kind === 'image' ? c.background.imageUrl : undefined
+      if (!url) {
+        toast.error('Nothing to enhance')
+        return
+      }
+      setIsEnhancing(true)
+      try {
+        const dataUrl = await toDataUrl(url)
+        const form = new FormData()
+        form.append('imageBase64', dataUrl)
+        form.append('targetResolution', '2K')
+        form.append('method', 'ai')
+        const res = await fetch('/api/upscale-logo', { method: 'POST', body: form })
+        const data = (await res.json()) as { image?: string; error?: string; message?: string }
+        if (!res.ok || !data.image) throw new Error(data.error || 'Enhance failed')
+        if (data.message) {
+          toast.info(data.message)
+          return
+        }
+        const image = data.image
+        if (target === 'subject') {
+          setConfig((cc) => (cc.subject ? { ...cc, subject: { ...cc.subject, url: image } } : cc))
+        } else {
+          setConfig((cc) => ({ ...cc, background: { ...cc.background, imageUrl: image } }))
+        }
+        toast.success('Enhanced')
+      } catch (err) {
+        console.error('[Thumbnail] enhance failed:', err)
+        toast.error('Enhance failed — try again')
+      } finally {
+        setIsEnhancing(false)
+      }
+    },
+    [setConfig, configRef],
+  )
+
   return {
     bgVariations,
     isGeneratingBg,
     isCuttingOut,
     isRecoloring,
+    isExpanding,
+    isEnhancing,
     chooseBackground,
     clearBackground,
     clearVariations,
@@ -145,5 +226,7 @@ export function useThumbnailGenerate({ setConfig, configRef }: Deps) {
     generateBackgroundVariations,
     removeSubjectBackground,
     recolorBackground,
+    expandBackground,
+    enhanceImage,
   }
 }

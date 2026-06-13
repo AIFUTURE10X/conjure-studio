@@ -76,6 +76,10 @@ interface ThumbnailContextValue {
   isGeneratingBg: boolean
   recolorBackground: (colorNames: string[]) => Promise<void>
   isRecoloring: boolean
+  expandBackground: () => Promise<void>
+  enhanceImage: (target: 'subject' | 'background') => Promise<void>
+  isExpanding: boolean
+  isEnhancing: boolean
   stageRef: RefObject<HTMLDivElement | null>
   isExporting: boolean
   exportImage: (format: ThumbnailFormat) => Promise<void>
@@ -241,6 +245,10 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         isGeneratingBg: generate.isGeneratingBg,
         recolorBackground: generate.recolorBackground,
         isRecoloring: generate.isRecoloring,
+        expandBackground: generate.expandBackground,
+        enhanceImage: generate.enhanceImage,
+        isExpanding: generate.isExpanding,
+        isEnhancing: generate.isEnhancing,
         stageRef,
         isExporting: exporter.isExporting,
         exportImage: exporter.exportImage,
