@@ -112,6 +112,29 @@ export const DEFAULT_CONFIG: ThumbnailConfig = {
   stickers: [],
 }
 
+/**
+ * An empty starting point for "Clear all" — a plain solid canvas with no
+ * headline text, subject, or stickers (and no template selected). The empty
+ * headline text means the headline layer renders nothing, so the stage reads
+ * as a truly blank screen until the user adds content.
+ */
+export const BLANK_CONFIG: ThumbnailConfig = {
+  templateId: '',
+  background: { kind: 'solid', color: '#18181b', gradient: ['#000000', '#000000'] },
+  subject: null,
+  headline: {
+    text: '',
+    preset: 'pop',
+    color: '#ffffff',
+    x: 50,
+    y: 50,
+    size: 17,
+    rotation: 0,
+    uppercase: true,
+  },
+  stickers: [],
+}
+
 export interface ThumbnailTemplate {
   id: string
   label: string

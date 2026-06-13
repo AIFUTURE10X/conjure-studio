@@ -21,8 +21,8 @@ import {
   type RefObject,
 } from 'react'
 import {
+  BLANK_CONFIG,
   DEFAULT_ADJUST,
-  DEFAULT_CONFIG,
   DEFAULT_SUBJECT_FX,
   THUMBNAIL_TEMPLATES,
   THUMB_STORAGE_KEY,
@@ -186,7 +186,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(() => {
     generate.clearVariations()
     setSelectedStickerId(null)
-    setConfig(DEFAULT_CONFIG)
+    setConfig(BLANK_CONFIG)
   }, [generate])
 
   const addSticker = useCallback((sticker: ThumbnailSticker) => {
