@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { X, Download, Eye, EyeOff } from 'lucide-react'
 import { transparencyGridStyle } from '../../constants/logo-constants'
 import { downloadImageAsFile } from '../../utils/export-utils'
+import { useImageZoom } from '../../hooks/useImageZoom'
+import { ZoomControls } from '../ZoomControls'
 
 // Background options for lightbox
 export type LightboxBackground = 'transparent' | 'white' | 'black' | 'gradient'
@@ -27,6 +29,15 @@ export function LogoLightbox({
 }: LogoLightboxProps) {
   const [background, setBackground] = useState<LightboxBackground>(initialBackground)
   const [showOriginal, setShowOriginal] = useState(false)
+  const {
+    containerRef,
+    onMouseDown,
+    onDoubleClick,
+    transform,
+    transition,
+    cursor,
+    controls,
+  } = useImageZoom({ isActive: isOpen, resetKey: showOriginal })
 
   // Check if we have an original (before BG removal) version
   const hasOriginal = !!originalUrl
@@ -80,8 +91,9 @@ export function LogoLightbox({
 
       {/* Main Content */}
       <div className="flex flex-col items-center gap-6 max-w-[95vw] max-h-[95vh]">
-        {/* Logo Display - Large */}
+        {/* Logo Display - Large (zoomable / pannable) */}
         <div
+          ref={containerRef}
           className="relative rounded-2xl overflow-hidden border border-zinc-700/50 p-4"
           style={{
             ...(background === 'transparent' ? transparencyGridStyle : {}),
@@ -94,8 +106,18 @@ export function LogoLightbox({
           <img
             src={showOriginal && hasOriginal ? originalUrl : logoUrl}
             alt="Generated logo full size"
-            className="max-w-full max-h-[80vh] object-contain"
-            style={{ minWidth: '600px', minHeight: '500px', ...logoFilter }}
+            className="max-w-full max-h-[80vh] object-contain select-none"
+            draggable={false}
+            onMouseDown={onMouseDown}
+            onDoubleClick={onDoubleClick}
+            style={{
+              minWidth: '600px',
+              minHeight: '500px',
+              ...logoFilter,
+              transform,
+              transition,
+              cursor,
+            }}
           />
         </div>
 
@@ -125,6 +147,9 @@ export function LogoLightbox({
             title="Gradient"
           />
         </div>
+
+        {/* Zoom Controls */}
+        <ZoomControls state={controls} />
 
         {/* Controls */}
         <div className="flex items-center gap-4 bg-zinc-800/60 rounded-full px-4 py-2">
@@ -167,7 +192,7 @@ export function LogoLightbox({
         </div>
 
         {/* Hint */}
-        <p className="text-xs text-zinc-500">Click outside or press Esc to close</p>
+        <p className="text-xs text-zinc-500">Scroll or +/- to zoom · drag to pan · Esc to close</p>
       </div>
     </div>
   )
