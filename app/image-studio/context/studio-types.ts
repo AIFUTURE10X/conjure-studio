@@ -9,14 +9,14 @@
 
 export type StudioMode = 'image' | 'logo' | 'mockups' | 'bg-remover' | 'thumbnail'
 
-export type LegacyTab = 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings'
+export type LegacyTab = 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail'
 
 export const TAB_FOR_MODE: Record<StudioMode, LegacyTab> = {
   image: 'generate',
   logo: 'logo',
   mockups: 'mockups',
   'bg-remover': 'bg-remover',
-  thumbnail: 'generate',
+  thumbnail: 'thumbnail',
 }
 
 export const MODE_FOR_TAB: Record<LegacyTab, StudioMode> = {
@@ -25,4 +25,5 @@ export const MODE_FOR_TAB: Record<LegacyTab, StudioMode> = {
   mockups: 'mockups',
   'bg-remover': 'bg-remover',
   settings: 'image',
+  thumbnail: 'thumbnail',
 }

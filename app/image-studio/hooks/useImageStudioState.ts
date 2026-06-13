@@ -9,7 +9,7 @@ import {
   type CreativeDirectionState,
 } from '../constants/creative-direction-options'
 
-type ActiveTab = 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings'
+type ActiveTab = 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail'
 
 // Read defaultTab from localStorage settings (called in useEffect to avoid hydration mismatch)
 function getStoredDefaultTab(): ActiveTab | null {
@@ -56,8 +56,8 @@ export interface ImageStudioState {
   setShowAIHelper: (show: boolean) => void
   showUploadSection: boolean
   setShowUploadSection: (show: boolean) => void
-  activeTab: 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings'
-  setActiveTab: (tab: 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings') => void
+  activeTab: ActiveTab
+  setActiveTab: (tab: ActiveTab) => void
   pendingLogoConfig: Partial<DotMatrixConfig> | null
   setPendingLogoConfig: (config: Partial<DotMatrixConfig> | null) => void
 
