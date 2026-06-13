@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { HeaderContextButtons } from '../HeaderContextButtons'
 import { AccountManager } from '../AccountManager'
 import { AccountMenu } from './AccountMenu'
+import { UiZoomControl } from './UiZoomControl'
 import { SettingsPanel } from '../Settings'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import type { StudioMode } from '../../context/studio-types'
@@ -89,6 +90,7 @@ export function StudioTopBar() {
               <span className="hidden sm:inline">Product Photos</span>
             </button>
           )}
+          <UiZoomControl />
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
