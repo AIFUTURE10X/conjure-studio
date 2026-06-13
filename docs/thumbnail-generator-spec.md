@@ -319,3 +319,13 @@ except the pure data/types `thumbnail-constants.ts` (allowed).
 embedding; the AI **Erase/Edit** brush-mask flow end-to-end; subject
 outline/glow at various sizes; duotone color mapping.
 
+**E2E smoke harness (2026-06-13):** added Playwright tests (`e2e/thumbnail.spec.ts`,
+`playwright.config.ts`, CI in `.github/workflows/e2e.yml`) that drive Thumbnail
+mode in headless Chromium — stage render, Manual headline/template/background
+edits, the AI title→concepts and generate-background flows (API routes mocked,
+so no keys), and PNG export. Run with `npm run test:e2e:install` then
+`npm run test:e2e`. These cover wiring/behaviour but **not** visual fidelity or
+real model output — the items above still need a manual pass on a Vercel
+preview. Note: a locked-down sandbox can't run them (next/font + the Chromium
+download need outbound network); CI and local dev can.
+

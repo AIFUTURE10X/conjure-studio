@@ -94,6 +94,7 @@ export function HeadlineLayer({ drag }: { drag: StageDrag }) {
   const selected = selectedStickerId === HEADLINE_SELECTION_ID
   return (
     <div
+      data-testid="thumbnail-headline"
       onPointerDown={(e) => {
         setSelectedStickerId(HEADLINE_SELECTION_ID)
         drag.startDrag(e, { x: headline.x, y: headline.y }, (x, y) => setHeadline({ x, y }))
