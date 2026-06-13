@@ -206,3 +206,27 @@ side-by-side preview, "thumbnail pack" (generate 3 variants at once).
 3. Should "Save as template" be per-user brand kits (needs the brand-color +
    logo profile)?
 4. Concepts: one combined AI call (concept + text) or two steps?
+
+---
+
+## 12. Backlog / next to-dos (live)
+
+Running list of follow-ups. Checked = shipped.
+
+**From the AI-panel screenshot (2026-06-13):**
+- [x] Put the **Style** selector and the **Image generator** (model + size) in
+  their own labelled containers.
+- [x] Add a **4K** quality option (alongside 1K / 2K).
+
+**Next up (not yet built):**
+- [ ] Apply the selected **model + 4K** to the AI "3 concepts" image step too
+  (concepts currently reuse the panel model/size — verify 4K cost/latency).
+- [ ] Save finished thumbnails to **history** (reuse the studio history tables)
+  so users can reopen past thumbnails.
+- [ ] **Brand kit / channel logo** watermark layer (pull from Logo mode).
+- [ ] **Recolor / upscale** buttons on the final composite.
+- [ ] **A/B compare** two thumbnails side by side.
+- [ ] **JPG export + ≤2 MB** clamp (YouTube upload cap).
+- [ ] More **templates** + a sticker/emoji search.
+- [ ] Subject **resize handles** on-canvas (currently slider-only).
+

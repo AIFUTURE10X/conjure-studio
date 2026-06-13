@@ -150,7 +150,7 @@ export const THUMBNAIL_MODELS: ThumbnailModelOption[] = [
   { id: 'gpt-image-2', label: 'GPT', full: 'ChatGPT Images 2.0' },
 ]
 
-export const THUMBNAIL_SIZES = ['1K', '2K'] as const
+export const THUMBNAIL_SIZES = ['1K', '2K', '4K'] as const
 export type ThumbnailSize = (typeof THUMBNAIL_SIZES)[number]
 
 /** An AI-proposed thumbnail concept (from /api/generate-thumbnail-concepts). */

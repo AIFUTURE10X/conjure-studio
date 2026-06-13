@@ -123,26 +123,36 @@ export function ThumbnailAiPanel() {
         </div>
       )}
 
-      {/* 2) Or generate a background directly */}
-      <div className="grid grid-cols-3 gap-1.5 border-t border-[#c99850]/20 pt-2">
-        {THUMBNAIL_AI_STYLES.map((s) => (
-          <button key={s.id} onClick={() => setStyleId(s.id)} className={`${chip} ${styleId === s.id ? chipOn : chipOff}`}>
-            {s.label}
-          </button>
-        ))}
-      </div>
+      {/* 2) Or generate a background directly — style + generator each own a box */}
+      <div className="space-y-2 border-t border-[#c99850]/20 pt-2">
+        <div className="space-y-1.5 rounded-md border border-zinc-700/60 bg-zinc-900/40 p-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Style</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {THUMBNAIL_AI_STYLES.map((s) => (
+              <button key={s.id} onClick={() => setStyleId(s.id)} className={`${chip} ${styleId === s.id ? chipOn : chipOff}`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="flex gap-1.5">
-        {THUMBNAIL_MODELS.map((m) => (
-          <button key={m.id} onClick={() => setModel(m.id)} title={m.full} className={`${chip} flex-1 ${model === m.id ? chipOn : chipOff}`}>
-            {m.label}
-          </button>
-        ))}
-        {THUMBNAIL_SIZES.map((s) => (
-          <button key={s} onClick={() => setSize(s)} title={`${s} resolution`} className={`${chip} ${size === s ? chipOn : chipOff}`}>
-            {s}
-          </button>
-        ))}
+        <div className="space-y-1.5 rounded-md border border-zinc-700/60 bg-zinc-900/40 p-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Image generator</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {THUMBNAIL_MODELS.map((m) => (
+              <button key={m.id} onClick={() => setModel(m.id)} title={m.full} className={`${chip} ${model === m.id ? chipOn : chipOff}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {THUMBNAIL_SIZES.map((s) => (
+              <button key={s} onClick={() => setSize(s)} title={`${s} resolution`} className={`${chip} ${size === s ? chipOn : chipOff}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-1.5">
