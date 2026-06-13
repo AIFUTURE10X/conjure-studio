@@ -118,3 +118,32 @@ export function backgroundCss(bg: ThumbnailBackground): string {
   if (bg.kind === 'gradient') return `linear-gradient(135deg, ${bg.gradient[0]} 0%, ${bg.gradient[1]} 100%)`
   return bg.color // image handled by an <img> layer; this is the fallback fill
 }
+
+/* ----------------------------- AI generation ----------------------------- */
+
+export interface ThumbnailAiStyle {
+  id: string
+  label: string
+  prompt: string
+}
+
+export const THUMBNAIL_AI_STYLES: ThumbnailAiStyle[] = [
+  { id: 'photo', label: 'Real Photo', prompt: 'photorealistic, dramatic studio lighting, sharp focus, shallow depth of field' },
+  { id: '3d', label: '3D', prompt: 'glossy 3D render, vibrant, Pixar-like, soft global illumination' },
+  { id: 'cinematic', label: 'Cinematic', prompt: 'cinematic film still, moody volumetric lighting, teal-and-orange color grade' },
+  { id: 'comic', label: 'Comic', prompt: 'bold comic-book illustration, thick outlines, halftone shading, dynamic energy' },
+  { id: 'vibrant', label: 'Vibrant', prompt: 'explosive vibrant gradient, neon accents, energetic abstract shapes' },
+  { id: 'gaming', label: 'Gaming', prompt: 'epic gaming key art, intense action, glowing magical effects, high energy' },
+]
+
+/** Build a thumbnail-optimised image prompt — high impact, no baked-in text. */
+export function buildThumbnailBgPrompt(idea: string, stylePrompt: string): string {
+  const concept = idea.trim() || 'an eye-catching, attention-grabbing scene'
+  return [
+    `YouTube thumbnail background image. Concept: ${concept}.`,
+    `Style: ${stylePrompt}.`,
+    'Bold, high-contrast, vivid saturated colors, strong single focal point, professional and attention-grabbing.',
+    'Leave clear negative space for a headline and a person.',
+    'Absolutely no text, no words, no letters, no captions, no logos, no watermark.',
+  ].join(' ')
+}

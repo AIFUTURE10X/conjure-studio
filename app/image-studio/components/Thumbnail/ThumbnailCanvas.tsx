@@ -23,7 +23,8 @@ export function ThumbnailCanvas() {
         <ThumbnailStage />
 
         <p className="text-center text-[11px] text-zinc-600">
-          MVP — AI title→concepts, background generation, and graphics are the next step.
+          Use <span className="text-[#dbb56e]">AI Generate</span> in the rail to create a background, add your
+          photo + headline, then export.
         </p>
       </div>
     </div>

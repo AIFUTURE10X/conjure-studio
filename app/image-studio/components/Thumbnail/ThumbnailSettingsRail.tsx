@@ -11,6 +11,7 @@
 import { type ReactNode } from 'react'
 import { Download, FlipHorizontal2, Loader2, RotateCcw, Scissors, Trash2, Upload } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
+import { ThumbnailAiPanel } from './ThumbnailAiPanel'
 import {
   TEXT_PRESETS,
   THUMBNAIL_TEMPLATES,
@@ -67,6 +68,8 @@ export function ThumbnailSettingsRail() {
 
   return (
     <div className="space-y-5 p-4">
+      <ThumbnailAiPanel />
+
       <Section title="Template">
         <div className="grid grid-cols-2 gap-1.5">
           {THUMBNAIL_TEMPLATES.map((t) => (

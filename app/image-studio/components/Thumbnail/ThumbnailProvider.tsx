@@ -26,6 +26,7 @@ import {
   THUMB_HEIGHT,
   THUMB_STORAGE_KEY,
   THUMB_WIDTH,
+  buildThumbnailBgPrompt,
   type ThumbnailBackground,
   type ThumbnailConfig,
   type ThumbnailHeadline,
@@ -42,6 +43,8 @@ interface ThumbnailContextValue {
   reset: () => void
   removeSubjectBackground: () => Promise<void>
   isCuttingOut: boolean
+  generateBackground: (idea: string, stylePrompt: string) => Promise<void>
+  isGeneratingBg: boolean
   stageRef: RefObject<HTMLDivElement | null>
   isExporting: boolean
   exportPng: () => Promise<void>
@@ -88,6 +91,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<ThumbnailConfig>(() => loadConfig())
   const [isExporting, setIsExporting] = useState(false)
   const [isCuttingOut, setIsCuttingOut] = useState(false)
+  const [isGeneratingBg, setIsGeneratingBg] = useState(false)
   const stageRef = useRef<HTMLDivElement | null>(null)
 
   // Mirror config so async handlers read the latest value without re-binding.
@@ -96,13 +100,17 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     configRef.current = config
   }, [config])
 
-  // Persist config.
+  // Persist config — debounced so dragging (and large data-URL backgrounds)
+  // don't thrash localStorage on every update.
   useEffect(() => {
-    try {
-      window.localStorage.setItem(THUMB_STORAGE_KEY, JSON.stringify(config))
-    } catch {
-      // ignore storage failures
-    }
+    const id = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(THUMB_STORAGE_KEY, JSON.stringify(config))
+      } catch {
+        // ignore storage failures (quota, private mode, etc.)
+      }
+    }, 400)
+    return () => window.clearTimeout(id)
   }, [config])
 
   const setBackground = useCallback((patch: Partial<ThumbnailBackground>) => {
@@ -157,6 +165,29 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const generateBackground = useCallback(async (idea: string, stylePrompt: string) => {
+    setIsGeneratingBg(true)
+    try {
+      const form = new FormData()
+      form.append('prompt', buildThumbnailBgPrompt(idea, stylePrompt))
+      form.append('aspectRatio', '16:9')
+      form.append('count', '1')
+      form.append('model', 'gemini-3.1-flash-image-preview')
+      form.append('imageSize', '1K')
+      const res = await fetch('/api/generate-image', { method: 'POST', body: form })
+      const data = (await res.json()) as { images?: string[]; error?: string }
+      const url = data.images?.[0]
+      if (!res.ok || !url) throw new Error(data.error || 'No image returned')
+      setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: url } }))
+      toast.success('AI background generated')
+    } catch (err) {
+      console.error('[Thumbnail] background generation failed:', err)
+      toast.error('Background generation failed — try again')
+    } finally {
+      setIsGeneratingBg(false)
+    }
+  }, [])
+
   const exportPng = useCallback(async () => {
     const node = stageRef.current
     if (!node) return
@@ -200,6 +231,8 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         reset,
         removeSubjectBackground,
         isCuttingOut,
+        generateBackground,
+        isGeneratingBg,
         stageRef,
         isExporting,
         exportPng,
