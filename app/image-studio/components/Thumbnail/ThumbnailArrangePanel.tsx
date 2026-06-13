@@ -9,6 +9,7 @@
  */
 
 import { useThumbnail } from './ThumbnailProvider'
+import { ToggleRow } from './ThumbnailControls'
 import { HEADLINE_SELECTION_ID, SUBJECT_SELECTION_ID } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
 
@@ -20,12 +21,20 @@ function selectionLabel(id: string | null): string {
 }
 
 export function ThumbnailArrangePanel() {
-  const { selectedStickerId, alignSelected } = useThumbnail()
+  const { config, selectedStickerId, alignSelected, setSubjectOnTop } = useThumbnail()
   const label = selectionLabel(selectedStickerId)
 
   return (
     <div className="space-y-2">
       <h4 className={railLabel}>Arrange</h4>
+
+      {config.subject && (
+        <ToggleRow
+          label="Subject above headline"
+          active={!!config.subjectOnTop}
+          onToggle={() => setSubjectOnTop(!config.subjectOnTop)}
+        />
+      )}
       {label ? (
         <>
           <p className="text-[10px] text-zinc-500">

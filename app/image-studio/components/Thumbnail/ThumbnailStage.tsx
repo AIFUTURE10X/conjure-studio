@@ -14,8 +14,9 @@ import { useThumbnail } from './ThumbnailProvider'
 import { useStageDrag } from './useThumbnailDrag'
 import { HeadlineLayer, StickerLayer, SubjectLayer } from './ThumbnailLayers'
 import { THUMB_WIDTH, THUMB_HEIGHT, backgroundCss } from './thumbnail-constants'
-import { backgroundImageFilter } from './thumbnail-fx'
+import { backgroundLayerFilter } from './thumbnail-fx'
 import { thumbnailFontVars } from './thumbnail-fonts'
+import { ThumbnailDuotoneFilter } from './ThumbnailDuotoneFilter'
 
 export function ThumbnailStage() {
   const { config, stageRef, setSelectedStickerId, selectedStickerId, nudgeSelected } = useThumbnail()
@@ -71,13 +72,16 @@ export function ThumbnailStage() {
           className={`relative overflow-hidden ${thumbnailFontVars}`}
           style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT, background: backgroundCss(background) }}
         >
+          {/* Duotone filter def — kept inside the captured node so it exports */}
+          {background.duotone && <ThumbnailDuotoneFilter duotone={background.duotone} />}
+
           {/* Background image layer */}
           {background.kind === 'image' && background.imageUrl && (
             <img
               src={background.imageUrl}
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
-              style={{ filter: backgroundImageFilter(background) }}
+              style={{ filter: backgroundLayerFilter(background) }}
               draggable={false}
             />
           )}
@@ -90,9 +94,17 @@ export function ThumbnailStage() {
             />
           ) : null}
 
-          {subject && <SubjectLayer subject={subject} drag={drag} />}
-
-          <HeadlineLayer drag={drag} />
+          {config.subjectOnTop ? (
+            <>
+              <HeadlineLayer drag={drag} />
+              {subject && <SubjectLayer subject={subject} drag={drag} />}
+            </>
+          ) : (
+            <>
+              {subject && <SubjectLayer subject={subject} drag={drag} />}
+              <HeadlineLayer drag={drag} />
+            </>
+          )}
 
           {stickers.map((sticker) => (
             <StickerLayer key={sticker.id} sticker={sticker} drag={drag} />

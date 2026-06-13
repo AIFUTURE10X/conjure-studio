@@ -9,9 +9,11 @@
 
 import { Moon } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
-import { AdjustControls, RangeRow } from './ThumbnailControls'
+import { AdjustControls, RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
 import { DEFAULT_ADJUST } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
+
+const DEFAULT_DUOTONE = { shadow: '#1e1b4b', highlight: '#fbbf24' }
 
 export function ThumbnailBackgroundFxPanel() {
   const { config, setBackground, patchBackgroundAdjust } = useThumbnail()
@@ -20,6 +22,7 @@ export function ThumbnailBackgroundFxPanel() {
 
   const adjust = { ...DEFAULT_ADJUST, ...background.adjust }
   const scrim = background.scrim ?? 0
+  const duotone = background.duotone ?? null
 
   const darkenAndBlur = () => {
     setBackground({ scrim: 45 })
@@ -36,6 +39,18 @@ export function ThumbnailBackgroundFxPanel() {
 
       <RangeRow label="Darken" value={scrim} min={0} max={80} suffix="%" onChange={(v) => setBackground({ scrim: v })} />
       <AdjustControls adjust={adjust} onChange={patchBackgroundAdjust} />
+
+      <ToggleRow
+        label="Duotone"
+        active={!!duotone}
+        onToggle={() => setBackground({ duotone: duotone ? null : DEFAULT_DUOTONE })}
+      />
+      {duotone && (
+        <div className="space-y-1.5 rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
+          <SwatchRow label="Shadow" value={duotone.shadow} onChange={(v) => setBackground({ duotone: { ...duotone, shadow: v } })} />
+          <SwatchRow label="Highlight" value={duotone.highlight} onChange={(v) => setBackground({ duotone: { ...duotone, highlight: v } })} />
+        </div>
+      )}
     </div>
   )
 }

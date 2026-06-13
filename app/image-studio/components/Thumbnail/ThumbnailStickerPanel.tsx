@@ -11,7 +11,8 @@
 import { useMemo, useState } from 'react'
 import { Search, Trash2 } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
-import { STICKER_EMOJI_ITEMS, STICKER_SHAPES, createSticker } from './thumbnail-constants'
+import { SelectRow } from './ThumbnailControls'
+import { BLEND_MODES, STICKER_EMOJI_ITEMS, STICKER_SHAPES, createSticker } from './thumbnail-constants'
 
 export function ThumbnailStickerPanel() {
   const { config, selectedStickerId, addSticker, patchSticker, removeSticker, reorderSticker } = useThumbnail()
@@ -114,6 +115,12 @@ export function ThumbnailStickerPanel() {
               Bring forward
             </button>
           </div>
+          <SelectRow
+            label="Blend"
+            value={selected.blend ?? 'normal'}
+            options={BLEND_MODES}
+            onChange={(v) => patchSticker(selected.id, { blend: v })}
+          />
           {selected.type !== 'emoji' && selected.type !== 'image' && (
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-zinc-500">Color</span>

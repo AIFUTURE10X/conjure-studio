@@ -12,6 +12,13 @@ export const THUMB_STORAGE_KEY = 'thumbnail-config-v1'
 
 export type BackgroundKind = 'solid' | 'gradient' | 'image'
 export type TextPresetId = 'pop' | 'outline' | 'shadow' | 'block'
+export type SubjectFrame = 'none' | 'circle' | 'rounded'
+
+/** Two-color duotone applied to the background image. */
+export interface ThumbnailDuotone {
+  shadow: string
+  highlight: string
+}
 
 export interface ThumbnailBackground {
   kind: BackgroundKind
@@ -22,6 +29,8 @@ export interface ThumbnailBackground {
   adjust?: ImageAdjust
   /** Darken overlay opacity 0–80 (% black scrim) for legibility behind text. */
   scrim?: number
+  /** Two-color duotone (black→shadow, white→highlight) when set. */
+  duotone?: ThumbnailDuotone | null
 }
 
 export interface ThumbnailSubject {
@@ -36,6 +45,10 @@ export interface ThumbnailSubject {
   adjust?: ImageAdjust
   /** Pop effects — drop shadow / outline / glow on the cutout. */
   fx?: SubjectFx
+  /** CSS mix-blend-mode against the background. */
+  blend?: string
+  /** Shape-crop frame. */
+  frame?: SubjectFrame
 }
 
 export interface ThumbnailHighlight {
@@ -71,6 +84,8 @@ export interface ThumbnailConfig {
   subject: ThumbnailSubject | null
   headline: ThumbnailHeadline
   stickers: ThumbnailSticker[]
+  /** Render the subject above the headline when true. */
+  subjectOnTop?: boolean
 }
 
 export const TEXT_PRESETS: { id: TextPresetId; label: string }[] = [
@@ -272,6 +287,7 @@ export interface ThumbnailSticker {
   size: number // % of stage height
   rotation: number
   color: string // shapes only
+  blend?: string // CSS mix-blend-mode
 }
 
 export interface StickerEmoji {
@@ -393,6 +409,60 @@ export const THUMBNAIL_BRAND_COLORS: { name: string; hex: string }[] = [
   { name: 'Pink', hex: '#db2777' },
   { name: 'Green', hex: '#16a34a' },
 ]
+
+/* --------------------------- Blend / frames ------------------------------ */
+
+export const BLEND_MODES: { id: string; label: string }[] = [
+  { id: 'normal', label: 'Normal' },
+  { id: 'multiply', label: 'Multiply' },
+  { id: 'screen', label: 'Screen' },
+  { id: 'overlay', label: 'Overlay' },
+  { id: 'soft-light', label: 'Soft light' },
+  { id: 'lighten', label: 'Lighten' },
+  { id: 'darken', label: 'Darken' },
+  { id: 'color-dodge', label: 'Dodge' },
+]
+
+export const SUBJECT_FRAMES: { id: SubjectFrame; label: string }[] = [
+  { id: 'none', label: 'None' },
+  { id: 'circle', label: 'Circle' },
+  { id: 'rounded', label: 'Rounded' },
+]
+
+/* ------------------------------ Styles / shuffle ------------------------- */
+
+export interface ThumbnailStyle {
+  id: string
+  label: string
+  gradient: [string, string]
+  color: string
+  preset: TextPresetId
+  font: string
+}
+
+export const THUMBNAIL_STYLES: ThumbnailStyle[] = [
+  { id: 'punch', label: 'Punch', gradient: ['#7c3aed', '#db2777'], color: '#ffe14d', preset: 'pop', font: 'anton' },
+  { id: 'cinematic', label: 'Cinematic', gradient: ['#0ea5e9', '#1e3a8a'], color: '#ffffff', preset: 'outline', font: 'oswald' },
+  { id: 'gaming', label: 'Gaming', gradient: ['#b91c1c', '#111827'], color: '#ffe14d', preset: 'pop', font: 'bangers' },
+  { id: 'clean', label: 'Clean', gradient: ['#111827', '#0a0a0a'], color: '#ffffff', preset: 'shadow', font: 'montserrat' },
+  { id: 'sunset', label: 'Sunset', gradient: ['#f59e0b', '#b91c1c'], color: '#ffffff', preset: 'block', font: 'archivo' },
+  { id: 'mint', label: 'Mint', gradient: ['#059669', '#064e3b'], color: '#ffffff', preset: 'pop', font: 'bebas' },
+]
+
+/** Pools the Shuffle button samples for fresh look variations. */
+export const SHUFFLE_GRADIENTS: [string, string][] = [
+  ['#7c3aed', '#db2777'],
+  ['#0ea5e9', '#1e3a8a'],
+  ['#b91c1c', '#111827'],
+  ['#f59e0b', '#b91c1c'],
+  ['#059669', '#064e3b'],
+  ['#312e81', '#0a0a0a'],
+  ['#ea580c', '#7c2d12'],
+  ['#0d9488', '#155e75'],
+]
+export const SHUFFLE_HEADLINE_COLORS = ['#ffe14d', '#ffffff', '#ff3b30', '#22d3ee', '#a3e635', '#f472b6']
+export const SHUFFLE_FONTS = ['anton', 'bebas', 'oswald', 'montserrat', 'archivo', 'bangers']
+export const SHUFFLE_PRESETS: TextPresetId[] = ['pop', 'outline', 'shadow', 'block']
 
 /* -------------------------------- History -------------------------------- */
 

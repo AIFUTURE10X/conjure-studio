@@ -9,6 +9,7 @@
  * sentinel id), so only one layer shows handles at a time.
  */
 
+import { type CSSProperties } from 'react'
 import { useThumbnail } from './ThumbnailProvider'
 import { useStageDrag } from './useThumbnailDrag'
 import { StickerShape, headlineStyle } from './thumbnail-stage-utils'
@@ -26,6 +27,33 @@ type StageDrag = ReturnType<typeof useStageDrag>
 const HANDLE =
   'absolute h-5 w-5 rounded-full border-2 border-[#c99850] bg-zinc-900 shadow-lg'
 
+const blendOf = (value: string | undefined): CSSProperties['mixBlendMode'] =>
+  value && value !== 'normal' ? (value as CSSProperties['mixBlendMode']) : undefined
+
+function SubjectMedia({ subject }: { subject: ThumbnailSubject }) {
+  const frame = subject.frame ?? 'none'
+  const base: CSSProperties = {
+    transform: `scaleX(${subject.flip ? -1 : 1})`,
+    filter: subjectImageFilter(subject),
+    mixBlendMode: blendOf(subject.blend),
+  }
+  if (frame === 'circle') {
+    return (
+      <div className="w-full" style={{ ...base, aspectRatio: '1 / 1', borderRadius: '50%', overflow: 'hidden' }}>
+        <img src={subject.url} alt="Thumbnail subject" draggable={false} className="h-full w-full object-cover" />
+      </div>
+    )
+  }
+  if (frame === 'rounded') {
+    return (
+      <div className="w-full" style={{ ...base, borderRadius: '5%', overflow: 'hidden' }}>
+        <img src={subject.url} alt="Thumbnail subject" draggable={false} className="block w-full" />
+      </div>
+    )
+  }
+  return <img src={subject.url} alt="Thumbnail subject" draggable={false} className="block w-full" style={base} />
+}
+
 export function SubjectLayer({ subject, drag }: { subject: ThumbnailSubject; drag: StageDrag }) {
   const { selectedStickerId, setSelectedStickerId, patchSubject } = useThumbnail()
   const selected = selectedStickerId === SUBJECT_SELECTION_ID
@@ -38,13 +66,7 @@ export function SubjectLayer({ subject, drag }: { subject: ThumbnailSubject; dra
       className={`absolute select-none ${drag.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{ left: `${subject.x}%`, top: `${subject.y}%`, width: `${subject.scale}%`, transform: 'translate(-50%, -50%)' }}
     >
-      <img
-        src={subject.url}
-        alt="Thumbnail subject"
-        draggable={false}
-        className="block w-full"
-        style={{ transform: `scaleX(${subject.flip ? -1 : 1})`, filter: subjectImageFilter(subject) }}
-      />
+      <SubjectMedia subject={subject} />
       {selected && (
         <>
           <div
@@ -99,6 +121,7 @@ export function StickerLayer({ sticker, drag }: { sticker: ThumbnailSticker; dra
   const { selectedStickerId, setSelectedStickerId, patchSticker, removeSticker } = useThumbnail()
   const px = (sticker.size / 100) * THUMB_HEIGHT
   const selected = sticker.id === selectedStickerId
+  const blend = blendOf(sticker.blend)
   return (
     <div
       onPointerDown={(e) => {
@@ -114,16 +137,16 @@ export function StickerLayer({ sticker, drag }: { sticker: ThumbnailSticker; dra
       }}
     >
       {sticker.type === 'emoji' ? (
-        <span style={{ fontSize: px, lineHeight: 1 }}>{sticker.content}</span>
+        <span style={{ fontSize: px, lineHeight: 1, mixBlendMode: blend }}>{sticker.content}</span>
       ) : sticker.type === 'image' ? (
         <img
           src={sticker.content}
           alt="Logo"
           draggable={false}
-          style={{ width: px, height: 'auto', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))' }}
+          style={{ width: px, height: 'auto', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))', mixBlendMode: blend }}
         />
       ) : (
-        <div style={{ width: px, height: px }}>
+        <div style={{ width: px, height: px, mixBlendMode: blend }}>
           <StickerShape sticker={sticker} />
         </div>
       )}

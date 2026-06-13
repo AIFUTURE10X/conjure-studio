@@ -20,6 +20,7 @@ import { ThumbnailBackgroundFxPanel } from './ThumbnailBackgroundFxPanel'
 import { ThumbnailSubjectFxPanel } from './ThumbnailSubjectFxPanel'
 import { ThumbnailHeadlineFxPanel } from './ThumbnailHeadlineFxPanel'
 import { ThumbnailArrangePanel } from './ThumbnailArrangePanel'
+import { ThumbnailStylesPanel } from './ThumbnailStylesPanel'
 import { TEXT_PRESETS, THUMBNAIL_TEMPLATES, type BackgroundKind } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
 
@@ -81,6 +82,8 @@ export function ThumbnailManualPanel() {
           ))}
         </div>
       </Section>
+
+      <ThumbnailStylesPanel />
 
       <Section title="Background">
         <div className="grid grid-cols-3 gap-1.5">

@@ -9,21 +9,37 @@
  */
 
 import { useThumbnail } from './ThumbnailProvider'
-import { AdjustControls, RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
-import { DEFAULT_ADJUST, DEFAULT_SUBJECT_FX } from './thumbnail-constants'
+import { AdjustControls, RangeRow, SelectRow, SwatchRow, ToggleRow } from './ThumbnailControls'
+import { BLEND_MODES, DEFAULT_ADJUST, DEFAULT_SUBJECT_FX, SUBJECT_FRAMES } from './thumbnail-constants'
 import { railLabel } from './thumbnail-ui'
 
 export function ThumbnailSubjectFxPanel() {
-  const { config, patchSubjectFx, patchSubjectAdjust } = useThumbnail()
+  const { config, patchSubject, patchSubjectFx, patchSubjectAdjust } = useThumbnail()
   const subject = config.subject
   if (!subject) return null
 
   const fx = { ...DEFAULT_SUBJECT_FX, ...subject.fx }
   const adjust = { ...DEFAULT_ADJUST, ...subject.adjust }
+  const frame = subject.frame ?? 'none'
 
   return (
     <div className="space-y-2.5">
       <h4 className={railLabel}>Subject pop FX</h4>
+
+      <div className="grid grid-cols-3 gap-1.5">
+        {SUBJECT_FRAMES.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => patchSubject({ frame: f.id })}
+            className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors ${
+              frame === f.id ? 'border-[#c99850] bg-[#c99850]/10 text-[#dbb56e]' : 'border-zinc-700 bg-zinc-800/70 text-zinc-300 hover:bg-zinc-700'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+      <SelectRow label="Blend" value={subject.blend ?? 'normal'} options={BLEND_MODES} onChange={(v) => patchSubject({ blend: v })} />
 
       <div className="space-y-1.5">
         <ToggleRow label="Drop shadow" active={fx.shadow} onToggle={() => patchSubjectFx({ shadow: !fx.shadow })} />

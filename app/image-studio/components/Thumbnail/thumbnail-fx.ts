@@ -64,3 +64,22 @@ export function subjectImageFilter(subject: ThumbnailSubject): string {
 export function backgroundImageFilter(bg: ThumbnailBackground): string {
   return adjustToFilter(bg.adjust ?? DEFAULT_ADJUST) || 'none'
 }
+
+/** Background filter incl. the duotone SVG filter (def rendered inside the stage). */
+export function backgroundLayerFilter(bg: ThumbnailBackground): string {
+  const filter = [bg.duotone ? 'url(#thumb-duotone)' : '', adjustToFilter(bg.adjust ?? DEFAULT_ADJUST)]
+    .filter(Boolean)
+    .join(' ')
+  return filter || 'none'
+}
+
+/** Normalize a hex color to 0–1 RGB channels (for SVG feComponentTransfer). */
+export function hexToUnit(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  return {
+    r: (parseInt(full.slice(0, 2), 16) || 0) / 255,
+    g: (parseInt(full.slice(2, 4), 16) || 0) / 255,
+    b: (parseInt(full.slice(4, 6), 16) || 0) / 255,
+  }
+}

@@ -94,6 +94,35 @@ export function ToggleRow({
   )
 }
 
+export function SelectRow({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: { id: string; label: string }[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-[11px] text-zinc-500">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-200 focus:border-[#c99850]/60 focus:outline-none"
+      >
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function AdjustControls({
   adjust,
   onChange,
