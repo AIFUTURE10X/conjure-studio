@@ -9,7 +9,7 @@
  */
 
 import { type ReactNode } from 'react'
-import { Download, FlipHorizontal2, Loader2, Scissors, Trash2, Upload } from 'lucide-react'
+import { Download, FlipHorizontal2, Loader2, Pencil, Scissors, Trash2, Upload } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { ThumbnailAiPanel } from './ThumbnailAiPanel'
 import { ThumbnailStickerPanel } from './ThumbnailStickerPanel'
@@ -76,6 +76,11 @@ export function ThumbnailSettingsRail() {
   return (
     <div className="space-y-5 p-4">
       <ThumbnailAiPanel />
+
+      <div className="flex items-center gap-2 border-t border-zinc-800 pt-4">
+        <Pencil className="h-3.5 w-3.5 text-[#dbb56e]" />
+        <h3 className="text-xs font-semibold text-zinc-200">Manual editor</h3>
+      </div>
 
       <Section title="Template">
         <div className="grid grid-cols-2 gap-1.5">

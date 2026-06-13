@@ -218,6 +218,16 @@ Running list of follow-ups. Checked = shipped.
   their own labelled containers.
 - [x] Add a **4K** quality option (alongside 1K / 2K).
 
+**Settings panel — split AI vs Manual (requested 2026-06-13):**
+- [x] First cut: a "Manual editor" header now divides the AI tools (top) from
+  the manual controls (`ThumbnailSettingsRail.tsx` → renders `ThumbnailAiPanel`
+  then Template / Background / Subject / Headline / Stickers / Export).
+- [ ] **Fuller version (next chat):** make them two distinct *features* — e.g.
+  an **AI | Manual toggle/tabs** at the top of the rail that swaps between the
+  AI panel and the manual controls, so each is its own self-contained section
+  (collapsible or tabbed). Files: `ThumbnailSettingsRail.tsx`,
+  `ThumbnailAiPanel.tsx`, and the manual sections in the same rail.
+
 **Next up (not yet built):**
 - [ ] Apply the selected **model + 4K** to the AI "3 concepts" image step too
   (concepts currently reuse the panel model/size — verify 4K cost/latency).
