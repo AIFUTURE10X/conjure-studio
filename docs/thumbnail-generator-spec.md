@@ -222,11 +222,13 @@ Running list of follow-ups. Checked = shipped.
 - [x] First cut: a "Manual editor" header now divides the AI tools (top) from
   the manual controls (`ThumbnailSettingsRail.tsx` → renders `ThumbnailAiPanel`
   then Template / Background / Subject / Headline / Stickers / Export).
-- [ ] **Fuller version (next chat):** make them two distinct *features* — e.g.
-  an **AI | Manual toggle/tabs** at the top of the rail that swaps between the
-  AI panel and the manual controls, so each is its own self-contained section
-  (collapsible or tabbed). Files: `ThumbnailSettingsRail.tsx`,
-  `ThumbnailAiPanel.tsx`, and the manual sections in the same rail.
+- [x] **Fuller version:** AI and Manual are now two distinct *features* behind an
+  **AI | Manual** tab switcher at the top of the rail. `ThumbnailSettingsRail.tsx`
+  is a thin shell (tabs + state) that swaps between `ThumbnailAiPanel` and the new
+  `ThumbnailManualPanel.tsx` (extracted Template / Background / Subject / Headline /
+  Stickers / Export). Both panels stay mounted (the inactive one is `hidden`) so a
+  typed video title or fetched AI concepts survive switching tabs; shared canvas
+  state lives in `ThumbnailProvider`, so edits from either tab compose together.
 
 **Next up (not yet built):**
 - [ ] Apply the selected **model + 4K** to the AI "3 concepts" image step too
