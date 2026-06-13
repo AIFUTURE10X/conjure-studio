@@ -264,11 +264,43 @@ Running list of follow-ups. Checked = shipped.
 layer components (`ThumbnailLayers.tsx`). Every file is under the 300-line rule
 except the pure data/types `thumbnail-constants.ts` (allowed).
 
+**Canva-inspired batch (researched Canva's editor; 2026-06-13):**
+- [x] **Subject pop FX** — drop shadow (color/offset/direction/blur/opacity),
+  outline/stroke (color/thickness), and colored glow on the cutout. CSS
+  drop-shadow stacks (`thumbnail-fx.ts` → `subjectImageFilter`),
+  `ThumbnailSubjectFxPanel`. Default reproduces the old soft shadow.
+- [x] **Photo adjustments + bg darken/blur** — brightness/contrast/saturation/
+  blur on subject & background (`adjustToFilter`), plus a background **darken
+  scrim** and one-click "Darken & blur (for text)". `ThumbnailControls`,
+  `ThumbnailBackgroundFxPanel`.
+- [x] **Headline text effects + fonts** — curated **font picker** (8 display
+  fonts self-hosted via `next/font/google` in `thumbnail-fonts.ts`, applied as
+  CSS vars on the captured node + `document.fonts.ready` before export),
+  **gradient fill**, and a **highlight box** (color/roundness/opacity, Canva's
+  "Background" effect). `ThumbnailHeadlineFxPanel`, `headlineStyle`. (Curved text
+  deferred — SVG-textPath export complexity.)
+- [x] **Editor UX** — drag **snapping** to center/thirds/edges with on-canvas
+  guides (`useStageDrag`, Ctrl bypasses), **arrow-key nudge** of the selected
+  layer, an **Arrange/align** panel, **sticker z-order** (send back / bring
+  forward), the **headline is now selectable** (sentinel id), and a **small-size
+  preview** modal (168/320/360 px — a gap Canva doesn't fill).
+  `ThumbnailArrangePanel`, `ThumbnailPreviewModal`.
+
 **Next up (not yet built):**
 - [ ] Persist large saves reliably (upload bg/subject to Blob at save time and
   store hosted URLs in the config snapshot, so 4K-background thumbnails always
   save).
-- [ ] Brand-color **lock** across a series; channel branding profiles.
-- [ ] "Thumbnail pack" — generate 3 full variants at once.
-- [ ] Reference-thumbnail **analysis** (`/api/analyze-image`) to match a look.
+- [ ] **Bigger AI lifts** (Canva "Magic"): Magic Expand / outpaint to 16:9,
+  Magic Eraser (object removal), Magic Edit (generative replace), enhance the
+  source photo — all new Gemini image-edit routes.
+- [ ] **Duotone**, blend modes, and **Styles + Shuffle** (one-click palette/font
+  restyle → instant A/B variants).
+- [ ] Cross-type **layer reordering** (subject vs headline z-order); frames
+  (shape-masked subject crop).
+- [ ] Brand-color **lock** across a series; "thumbnail pack" (3 variants at once);
+  reference-thumbnail **analysis** (`/api/analyze-image`).
+
+**Verify next session (couldn't browser-test here):** custom-font **export**
+embedding (next/font self-hosted should inline cleanly in html-to-image), and the
+subject outline/glow look at various sizes.
 

@@ -16,6 +16,10 @@ import { ThumbnailStickerPanel } from './ThumbnailStickerPanel'
 import { ThumbnailLogoPanel } from './ThumbnailLogoPanel'
 import { ThumbnailExportPanel } from './ThumbnailExportPanel'
 import { ThumbnailHistoryStrip } from './ThumbnailHistoryStrip'
+import { ThumbnailBackgroundFxPanel } from './ThumbnailBackgroundFxPanel'
+import { ThumbnailSubjectFxPanel } from './ThumbnailSubjectFxPanel'
+import { ThumbnailHeadlineFxPanel } from './ThumbnailHeadlineFxPanel'
+import { ThumbnailArrangePanel } from './ThumbnailArrangePanel'
 import { TEXT_PRESETS, THUMBNAIL_TEMPLATES, type BackgroundKind } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
 
@@ -122,6 +126,7 @@ export function ThumbnailManualPanel() {
             <Upload className="h-3.5 w-3.5" /> {background.imageUrl ? 'Replace image' : 'Upload image'}
           </button>
         )}
+        <ThumbnailBackgroundFxPanel />
       </Section>
 
       <Section title="Subject / Face">
@@ -165,6 +170,8 @@ export function ThumbnailManualPanel() {
           </div>
         )}
       </Section>
+
+      <ThumbnailSubjectFxPanel />
 
       <Section title="Headline">
         <textarea
@@ -222,9 +229,12 @@ export function ThumbnailManualPanel() {
             className="w-full accent-[#c99850]"
           />
         </label>
+        <ThumbnailHeadlineFxPanel />
       </Section>
 
       <ThumbnailStickerPanel />
+
+      <ThumbnailArrangePanel />
 
       <ThumbnailLogoPanel />
 

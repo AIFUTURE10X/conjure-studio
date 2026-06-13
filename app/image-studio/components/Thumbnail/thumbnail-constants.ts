@@ -18,6 +18,10 @@ export interface ThumbnailBackground {
   color: string
   gradient: [string, string]
   imageUrl?: string
+  /** Photo adjustments applied to an image background. */
+  adjust?: ImageAdjust
+  /** Darken overlay opacity 0–80 (% black scrim) for legibility behind text. */
+  scrim?: number
 }
 
 export interface ThumbnailSubject {
@@ -28,6 +32,18 @@ export interface ThumbnailSubject {
   /** Width as a percentage of stage width. */
   scale: number
   flip: boolean
+  /** Photo adjustments (brightness/contrast/etc.). */
+  adjust?: ImageAdjust
+  /** Pop effects — drop shadow / outline / glow on the cutout. */
+  fx?: SubjectFx
+}
+
+export interface ThumbnailHighlight {
+  color: string
+  /** 0–100 (square → pill). */
+  roundness: number
+  /** 0–100 box opacity. */
+  opacity: number
 }
 
 export interface ThumbnailHeadline {
@@ -41,6 +57,12 @@ export interface ThumbnailHeadline {
   size: number
   rotation: number
   uppercase: boolean
+  /** Font id from THUMBNAIL_FONTS (defaults to 'geist'). */
+  font?: string
+  /** Gradient text fill (two colors) when set. */
+  gradient?: [string, string] | null
+  /** Colored highlight box behind the text (Canva "Background" effect). */
+  highlight?: ThumbnailHighlight | null
 }
 
 export interface ThumbnailConfig {
@@ -148,6 +170,52 @@ export function backgroundCss(bg: ThumbnailBackground): string {
   if (bg.kind === 'gradient') return `linear-gradient(135deg, ${bg.gradient[0]} 0%, ${bg.gradient[1]} 100%)`
   return bg.color // image handled by an <img> layer; this is the fallback fill
 }
+
+/* ----------------------- Photo adjustments & pop FX ---------------------- */
+
+/** Client-side photo adjustments, applied as a CSS filter (Canva "Adjust"). */
+export interface ImageAdjust {
+  brightness: number // % (100 = normal)
+  contrast: number // %
+  saturation: number // %
+  blur: number // px
+}
+
+export const DEFAULT_ADJUST: ImageAdjust = { brightness: 100, contrast: 100, saturation: 100, blur: 0 }
+
+/** Pop effects on a cut-out subject (Canva "Shadows": drop / outline / glow). */
+export interface SubjectFx {
+  shadow: boolean
+  shadowColor: string
+  shadowOpacity: number // 0–100
+  shadowBlur: number // px
+  shadowOffset: number // px
+  shadowAngle: number // deg (direction)
+  outline: boolean
+  outlineColor: string
+  outlineWidth: number // px
+  glow: boolean
+  glowColor: string
+  glowSize: number // px
+}
+
+/** Default reproduces the original soft drop shadow, so existing thumbnails are unchanged. */
+export const DEFAULT_SUBJECT_FX: SubjectFx = {
+  shadow: true,
+  shadowColor: '#000000',
+  shadowOpacity: 45,
+  shadowBlur: 24,
+  shadowOffset: 12,
+  shadowAngle: 90,
+  outline: false,
+  outlineColor: '#ffffff',
+  outlineWidth: 6,
+  glow: false,
+  glowColor: '#ffe14d',
+  glowSize: 16,
+}
+
+// CSS filter helpers live in ./thumbnail-fx (logic, not data).
 
 /* ----------------------------- AI generation ----------------------------- */
 
@@ -258,9 +326,10 @@ export const STICKER_EMOJI_ITEMS: StickerEmoji[] = [
 /** Back-compat: plain list of emoji characters. */
 export const STICKER_EMOJIS = STICKER_EMOJI_ITEMS.map((e) => e.char)
 
-/** Sentinel selection id for the subject, so it shares the single-selection
+/** Sentinel selection ids so the subject and headline share the single-selection
  *  state with stickers (only one layer shows handles at a time). */
 export const SUBJECT_SELECTION_ID = '__thumbnail_subject__'
+export const HEADLINE_SELECTION_ID = '__thumbnail_headline__'
 
 export const STICKER_SHAPES: { type: StickerType; label: string }[] = [
   { type: 'arrow', label: 'Arrow' },

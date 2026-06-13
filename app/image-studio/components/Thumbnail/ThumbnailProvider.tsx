@@ -21,10 +21,16 @@ import {
   type RefObject,
 } from 'react'
 import {
+  DEFAULT_ADJUST,
   DEFAULT_CONFIG,
+  DEFAULT_SUBJECT_FX,
+  HEADLINE_SELECTION_ID,
+  SUBJECT_SELECTION_ID,
   THUMBNAIL_TEMPLATES,
   THUMB_STORAGE_KEY,
   createSticker,
+  type ImageAdjust,
+  type SubjectFx,
   type ThumbnailBackground,
   type ThumbnailConfig,
   type ThumbnailFormat,
@@ -44,6 +50,9 @@ interface ThumbnailContextValue {
   setBackground: (patch: Partial<ThumbnailBackground>) => void
   setSubject: (subject: ThumbnailSubject | null) => void
   patchSubject: (patch: Partial<ThumbnailSubject>) => void
+  patchSubjectFx: (patch: Partial<SubjectFx>) => void
+  patchSubjectAdjust: (patch: Partial<ImageAdjust>) => void
+  patchBackgroundAdjust: (patch: Partial<ImageAdjust>) => void
   setHeadline: (patch: Partial<ThumbnailHeadline>) => void
   applyTemplate: (id: string) => void
   applyConfig: (config: ThumbnailConfig) => void
@@ -55,6 +64,9 @@ interface ThumbnailContextValue {
   addImageSticker: (url: string) => void
   patchSticker: (id: string, patch: Partial<ThumbnailSticker>) => void
   removeSticker: (id: string) => void
+  reorderSticker: (id: string, dir: 'forward' | 'back') => void
+  nudgeSelected: (dx: number, dy: number) => void
+  alignSelected: (x: number | null, y: number | null) => void
   removeSubjectBackground: () => Promise<void>
   isCuttingOut: boolean
   generateBackground: (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => Promise<void>
@@ -69,11 +81,14 @@ interface ThumbnailContextValue {
   exportImage: (format: ThumbnailFormat) => Promise<void>
   upscaleExport: (target: UpscaleTarget) => Promise<void>
   isUpscaling: boolean
+  capturePreview: () => Promise<string | null>
   history: ThumbnailHistoryItem[]
   isSavingHistory: boolean
   saveThumbnail: () => Promise<void>
   deleteThumbnail: (id: string) => Promise<void>
 }
+
+const clampPct = (n: number) => Math.min(100, Math.max(0, n))
 
 const ThumbnailContext = createContext<ThumbnailContextValue | null>(null)
 
@@ -88,11 +103,16 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
 
-  // Mirror config so async handlers read the latest value without re-binding.
+  // Mirror config + selection so async/keyboard handlers read the latest values.
   const configRef = useRef(config)
   useEffect(() => {
     configRef.current = config
   }, [config])
+
+  const selectedRef = useRef(selectedStickerId)
+  useEffect(() => {
+    selectedRef.current = selectedStickerId
+  }, [selectedStickerId])
 
   // Persist config — debounced so dragging (and large data-URL backgrounds)
   // don't thrash localStorage on every update.
@@ -121,6 +141,22 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
 
   const patchSubject = useCallback((patch: Partial<ThumbnailSubject>) => {
     setConfig((c) => (c.subject ? { ...c, subject: { ...c.subject, ...patch } } : c))
+  }, [])
+
+  const patchSubjectFx = useCallback((patch: Partial<SubjectFx>) => {
+    setConfig((c) =>
+      c.subject ? { ...c, subject: { ...c.subject, fx: { ...DEFAULT_SUBJECT_FX, ...c.subject.fx, ...patch } } } : c,
+    )
+  }, [])
+
+  const patchSubjectAdjust = useCallback((patch: Partial<ImageAdjust>) => {
+    setConfig((c) =>
+      c.subject ? { ...c, subject: { ...c.subject, adjust: { ...DEFAULT_ADJUST, ...c.subject.adjust, ...patch } } } : c,
+    )
+  }, [])
+
+  const patchBackgroundAdjust = useCallback((patch: Partial<ImageAdjust>) => {
+    setConfig((c) => ({ ...c, background: { ...c.background, adjust: { ...DEFAULT_ADJUST, ...c.background.adjust, ...patch } } }))
   }, [])
 
   const setHeadline = useCallback((patch: Partial<ThumbnailHeadline>) => {
@@ -171,6 +207,47 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     setSelectedStickerId((cur) => (cur === id ? null : cur))
   }, [])
 
+  const reorderSticker = useCallback((id: string, dir: 'forward' | 'back') => {
+    setConfig((c) => {
+      const i = c.stickers.findIndex((s) => s.id === id)
+      if (i < 0) return c
+      const j = dir === 'forward' ? Math.min(c.stickers.length - 1, i + 1) : Math.max(0, i - 1)
+      if (i === j) return c
+      const arr = [...c.stickers]
+      const [moved] = arr.splice(i, 1)
+      arr.splice(j, 0, moved)
+      return { ...c, stickers: arr }
+    })
+  }, [])
+
+  // Move whichever layer is selected (subject / headline / sticker).
+  const patchSelectedPos = useCallback(
+    (mapX: (x: number) => number, mapY: (y: number) => number) => {
+      const id = selectedRef.current
+      if (!id) return
+      setConfig((c) => {
+        if (id === SUBJECT_SELECTION_ID) {
+          return c.subject ? { ...c, subject: { ...c.subject, x: clampPct(mapX(c.subject.x)), y: clampPct(mapY(c.subject.y)) } } : c
+        }
+        if (id === HEADLINE_SELECTION_ID) {
+          return { ...c, headline: { ...c.headline, x: clampPct(mapX(c.headline.x)), y: clampPct(mapY(c.headline.y)) } }
+        }
+        return { ...c, stickers: c.stickers.map((s) => (s.id === id ? { ...s, x: clampPct(mapX(s.x)), y: clampPct(mapY(s.y)) } : s)) }
+      })
+    },
+    [],
+  )
+
+  const nudgeSelected = useCallback(
+    (dx: number, dy: number) => patchSelectedPos((x) => x + dx, (y) => y + dy),
+    [patchSelectedPos],
+  )
+
+  const alignSelected = useCallback(
+    (x: number | null, y: number | null) => patchSelectedPos((cur) => x ?? cur, (cur) => y ?? cur),
+    [patchSelectedPos],
+  )
+
   return (
     <ThumbnailContext.Provider
       value={{
@@ -178,6 +255,9 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         setBackground,
         setSubject,
         patchSubject,
+        patchSubjectFx,
+        patchSubjectAdjust,
+        patchBackgroundAdjust,
         setHeadline,
         applyTemplate,
         applyConfig,
@@ -189,6 +269,9 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         addImageSticker,
         patchSticker,
         removeSticker,
+        reorderSticker,
+        nudgeSelected,
+        alignSelected,
         removeSubjectBackground: generate.removeSubjectBackground,
         isCuttingOut: generate.isCuttingOut,
         generateBackground: generate.generateBackground,
@@ -203,6 +286,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         exportImage: exporter.exportImage,
         upscaleExport: exporter.upscaleExport,
         isUpscaling: exporter.isUpscaling,
+        capturePreview: exporter.capturePreview,
         history: historyApi.history,
         isSavingHistory: historyApi.isSavingHistory,
         saveThumbnail: historyApi.saveThumbnail,

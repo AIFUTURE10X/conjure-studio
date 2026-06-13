@@ -14,7 +14,7 @@ import { useThumbnail } from './ThumbnailProvider'
 import { STICKER_EMOJI_ITEMS, STICKER_SHAPES, createSticker } from './thumbnail-constants'
 
 export function ThumbnailStickerPanel() {
-  const { config, selectedStickerId, addSticker, patchSticker, removeSticker } = useThumbnail()
+  const { config, selectedStickerId, addSticker, patchSticker, removeSticker, reorderSticker } = useThumbnail()
   const selected = config.stickers.find((s) => s.id === selectedStickerId) ?? null
   const [query, setQuery] = useState('')
 
@@ -100,6 +100,20 @@ export function ThumbnailStickerPanel() {
               className="w-full accent-[#c99850]"
             />
           </label>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => reorderSticker(selected.id, 'back')}
+              className="rounded-md border border-zinc-700 bg-zinc-800/70 px-2 py-1 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-700"
+            >
+              Send back
+            </button>
+            <button
+              onClick={() => reorderSticker(selected.id, 'forward')}
+              className="rounded-md border border-zinc-700 bg-zinc-800/70 px-2 py-1 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-700"
+            >
+              Bring forward
+            </button>
+          </div>
           {selected.type !== 'emoji' && selected.type !== 'image' && (
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-zinc-500">Color</span>

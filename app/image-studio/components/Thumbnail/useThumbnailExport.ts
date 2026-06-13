@@ -76,5 +76,18 @@ export function useThumbnailExport(stageRef: RefObject<HTMLDivElement | null>) {
     [stageRef],
   )
 
-  return { isExporting, exportImage, isUpscaling, upscaleExport }
+  /** Render the current composite to a PNG data URL (for the small-size preview). */
+  const capturePreview = useCallback(async (): Promise<string | null> => {
+    const node = stageRef.current
+    if (!node) return null
+    try {
+      const canvas = await captureStageCanvas(node)
+      return canvasToPngDataUrl(canvas)
+    } catch (err) {
+      console.error('[Thumbnail] preview capture failed:', err)
+      return null
+    }
+  }, [stageRef])
+
+  return { isExporting, exportImage, isUpscaling, upscaleExport, capturePreview }
 }

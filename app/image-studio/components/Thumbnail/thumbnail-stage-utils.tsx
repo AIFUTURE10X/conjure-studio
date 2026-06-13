@@ -7,6 +7,8 @@
 
 import { type CSSProperties } from 'react'
 import { THUMB_HEIGHT, type ThumbnailHeadline, type ThumbnailSticker } from './thumbnail-constants'
+import { hexToRgba } from './thumbnail-fx'
+import { fontFamilyFor } from './thumbnail-fonts'
 
 export function StickerShape({ sticker }: { sticker: ThumbnailSticker }) {
   const shadow = { filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.45))' } as const
@@ -34,25 +36,53 @@ export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
     color: headline.color,
     textTransform: headline.uppercase ? 'uppercase' : 'none',
     letterSpacing: '-0.01em',
-    fontFamily: "'Geist', system-ui, sans-serif",
+    fontFamily: fontFamilyFor(headline.font),
   }
+
+  let style: CSSProperties
   if (headline.preset === 'pop') {
-    return { ...base, WebkitTextStroke: `${stroke}px #000`, textShadow: `${fontPx * 0.05}px ${fontPx * 0.05}px 0 #000` }
+    style = { ...base, WebkitTextStroke: `${stroke}px #000`, textShadow: `${fontPx * 0.05}px ${fontPx * 0.05}px 0 #000` }
+  } else if (headline.preset === 'outline') {
+    style = { ...base, WebkitTextStroke: `${stroke * 1.3}px #000` }
+  } else if (headline.preset === 'shadow') {
+    style = { ...base, textShadow: `0 ${fontPx * 0.04}px ${fontPx * 0.08}px rgba(0,0,0,0.75)` }
+  } else {
+    // block
+    style = {
+      ...base,
+      backgroundColor: '#000',
+      padding: `${fontPx * 0.08}px ${fontPx * 0.18}px`,
+      borderRadius: fontPx * 0.08,
+      boxDecorationBreak: 'clone',
+      WebkitBoxDecorationBreak: 'clone',
+    }
   }
-  if (headline.preset === 'outline') {
-    return { ...base, WebkitTextStroke: `${stroke * 1.3}px #000` }
+
+  // Gradient text fill — skipped when a highlight box is active (both use `background`).
+  if (headline.gradient && !headline.highlight) {
+    style = {
+      ...style,
+      backgroundImage: `linear-gradient(135deg, ${headline.gradient[0]}, ${headline.gradient[1]})`,
+      WebkitBackgroundClip: 'text',
+      backgroundClip: 'text',
+      color: 'transparent',
+    }
   }
-  if (headline.preset === 'shadow') {
-    return { ...base, textShadow: `0 ${fontPx * 0.04}px ${fontPx * 0.08}px rgba(0,0,0,0.75)` }
+
+  // Colored highlight box (Canva "Background" effect) — wins over the block preset.
+  if (headline.highlight) {
+    const h = headline.highlight
+    style = {
+      ...style,
+      color: headline.color,
+      backgroundImage: undefined,
+      backgroundColor: hexToRgba(h.color, h.opacity / 100),
+      padding: `${fontPx * 0.08}px ${fontPx * 0.2}px`,
+      borderRadius: (h.roundness / 100) * fontPx * 0.5,
+      boxDecorationBreak: 'clone',
+      WebkitBoxDecorationBreak: 'clone',
+    }
   }
-  // block
-  return {
-    ...base,
-    color: headline.color,
-    backgroundColor: '#000',
-    padding: `${fontPx * 0.08}px ${fontPx * 0.18}px`,
-    borderRadius: fontPx * 0.08,
-    boxDecorationBreak: 'clone',
-    WebkitBoxDecorationBreak: 'clone',
-  }
+
+  return style
 }

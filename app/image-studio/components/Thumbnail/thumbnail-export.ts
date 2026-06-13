@@ -10,6 +10,14 @@ const EXPORT_FILTER = (el: HTMLElement) => !(el instanceof Element && el.hasAttr
 
 /** Render the live stage DOM to an exact 1280×720 canvas (WYSIWYG). */
 export async function captureStageCanvas(node: HTMLElement): Promise<HTMLCanvasElement> {
+  // Make sure custom headline fonts are loaded so they embed in the export.
+  if (typeof document !== 'undefined' && document.fonts?.ready) {
+    try {
+      await document.fonts.ready
+    } catch {
+      // non-fatal — fall back to whatever is loaded
+    }
+  }
   const { toCanvas } = await import('html-to-image')
   return toCanvas(node, {
     width: THUMB_WIDTH,

@@ -8,8 +8,9 @@
  */
 
 import { useState } from 'react'
-import { Download, Loader2, Maximize2, Save, Trash2 } from 'lucide-react'
+import { Download, Loader2, Maximize2, Save, Smartphone, Trash2 } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
+import { ThumbnailPreviewModal } from './ThumbnailPreviewModal'
 import { UPSCALE_TARGETS, type ThumbnailFormat } from './thumbnail-constants'
 import { goldButton, railButton, railLabel } from './thumbnail-ui'
 
@@ -26,13 +27,26 @@ export function ThumbnailExportPanel() {
     isUpscaling,
     saveThumbnail,
     isSavingHistory,
+    capturePreview,
     reset,
   } = useThumbnail()
   const [format, setFormat] = useState<ThumbnailFormat>('png')
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
 
   const handleClearAll = () => {
     if (window.confirm('Clear this thumbnail and start over? This removes the background, photo, and headline.')) {
       reset()
+    }
+  }
+
+  const handlePreview = async () => {
+    setIsPreviewing(true)
+    try {
+      const src = await capturePreview()
+      if (src) setPreviewSrc(src)
+    } finally {
+      setIsPreviewing(false)
     }
   }
 
@@ -72,6 +86,11 @@ export function ThumbnailExportPanel() {
         ))}
       </div>
 
+      <button onClick={handlePreview} disabled={isPreviewing} className={`${railButton} w-full`}>
+        {isPreviewing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Smartphone className="h-3.5 w-3.5" />}
+        Preview at small sizes
+      </button>
+
       <button onClick={saveThumbnail} disabled={isSavingHistory} className={`${railButton} w-full`}>
         {isSavingHistory ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
         Save to history
@@ -80,6 +99,8 @@ export function ThumbnailExportPanel() {
       <button onClick={handleClearAll} className={`${railButton} w-full hover:border-red-500/60 hover:text-red-300`}>
         <Trash2 className="h-3.5 w-3.5" /> Clear all
       </button>
+
+      {previewSrc && <ThumbnailPreviewModal src={previewSrc} onClose={() => setPreviewSrc(null)} />}
     </div>
   )
 }

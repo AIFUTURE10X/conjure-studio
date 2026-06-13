@@ -13,11 +13,13 @@ import { useThumbnail } from './ThumbnailProvider'
 import { useStageDrag } from './useThumbnailDrag'
 import { StickerShape, headlineStyle } from './thumbnail-stage-utils'
 import {
+  HEADLINE_SELECTION_ID,
   SUBJECT_SELECTION_ID,
   THUMB_HEIGHT,
   type ThumbnailSticker,
   type ThumbnailSubject,
 } from './thumbnail-constants'
+import { subjectImageFilter } from './thumbnail-fx'
 
 type StageDrag = ReturnType<typeof useStageDrag>
 
@@ -41,7 +43,7 @@ export function SubjectLayer({ subject, drag }: { subject: ThumbnailSubject; dra
         alt="Thumbnail subject"
         draggable={false}
         className="block w-full"
-        style={{ transform: `scaleX(${subject.flip ? -1 : 1})`, filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.45))' }}
+        style={{ transform: `scaleX(${subject.flip ? -1 : 1})`, filter: subjectImageFilter(subject) }}
       />
       {selected && (
         <>
@@ -64,12 +66,16 @@ export function SubjectLayer({ subject, drag }: { subject: ThumbnailSubject; dra
 }
 
 export function HeadlineLayer({ drag }: { drag: StageDrag }) {
-  const { config, setHeadline } = useThumbnail()
+  const { config, setHeadline, selectedStickerId, setSelectedStickerId } = useThumbnail()
   const { headline } = config
   if (!headline.text) return null
+  const selected = selectedStickerId === HEADLINE_SELECTION_ID
   return (
     <div
-      onPointerDown={(e) => drag.startDrag(e, { x: headline.x, y: headline.y }, (x, y) => setHeadline({ x, y }))}
+      onPointerDown={(e) => {
+        setSelectedStickerId(HEADLINE_SELECTION_ID)
+        drag.startDrag(e, { x: headline.x, y: headline.y }, (x, y) => setHeadline({ x, y }))
+      }}
       className={`absolute max-w-[60%] select-none text-center ${drag.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{
         left: `${headline.x}%`,
@@ -79,6 +85,12 @@ export function HeadlineLayer({ drag }: { drag: StageDrag }) {
       }}
     >
       {headline.text}
+      {selected && (
+        <div
+          data-export-ignore
+          className="pointer-events-none absolute -inset-2 rounded-md border-2 border-dashed border-[#c99850]"
+        />
+      )}
     </div>
   )
 }
