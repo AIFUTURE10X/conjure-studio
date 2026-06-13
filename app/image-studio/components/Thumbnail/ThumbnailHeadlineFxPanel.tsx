@@ -10,8 +10,7 @@
 
 import { useThumbnail } from './ThumbnailProvider'
 import { RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
-import { THUMBNAIL_FONTS } from './thumbnail-fonts'
-import { railLabel } from './thumbnail-ui'
+import { ThumbnailFontPicker } from './ThumbnailFontPicker'
 
 const DEFAULT_GRADIENT: [string, string] = ['#ffe14d', '#ff5e5e']
 const DEFAULT_HIGHLIGHT = { color: '#ff3b30', roundness: 20, opacity: 100 }
@@ -19,29 +18,12 @@ const DEFAULT_HIGHLIGHT = { color: '#ff3b30', roundness: 20, opacity: 100 }
 export function ThumbnailHeadlineFxPanel() {
   const { config, setHeadline } = useThumbnail()
   const { headline } = config
-  const fontId = headline.font ?? 'geist'
   const gradient = headline.gradient ?? null
   const highlight = headline.highlight ?? null
 
   return (
     <div className="space-y-2.5">
-      <div className="space-y-1.5">
-        <span className={railLabel}>Font</span>
-        <div className="grid grid-cols-3 gap-1.5">
-          {THUMBNAIL_FONTS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setHeadline({ font: f.id })}
-              style={{ fontFamily: f.family }}
-              className={`truncate rounded-md border px-1.5 py-1.5 text-sm transition-colors ${
-                fontId === f.id ? 'border-[#c99850] bg-[#c99850]/10 text-[#dbb56e]' : 'border-zinc-700 bg-zinc-800/70 text-zinc-200 hover:bg-zinc-700'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ThumbnailFontPicker />
 
       <div className="space-y-1.5">
         <ToggleRow

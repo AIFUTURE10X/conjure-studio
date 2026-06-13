@@ -35,7 +35,7 @@ export function ThumbnailExportPanel() {
   const [isPreviewing, setIsPreviewing] = useState(false)
 
   const handleClearAll = () => {
-    if (window.confirm('Clear this thumbnail and start over? This removes the background, photo, and headline.')) {
+    if (window.confirm('Clear all and start from a blank canvas? This removes the background, photo, headline, and stickers.')) {
       reset()
     }
   }
