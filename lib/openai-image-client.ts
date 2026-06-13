@@ -76,6 +76,7 @@ export async function generateOpenAIImage({
   imageQuality,
   outputBackground,
   referenceImageFile,
+  maskImageFile,
 }: {
   prompt: string
   aspectRatio: AllowedRatio
@@ -83,6 +84,8 @@ export async function generateOpenAIImage({
   imageQuality: OpenAIImageQuality
   outputBackground?: OpenAIImageBackground
   referenceImageFile?: File | null
+  /** PNG mask for inpainting — fully transparent areas mark what to edit. */
+  maskImageFile?: File | null
 }) {
   const size = getOpenAIImageSize(aspectRatio, imageSize)
   const apiKey = getOpenAIKey()
@@ -97,6 +100,9 @@ export async function generateOpenAIImage({
     formData.append("output_format", "png")
     if (background) formData.append("background", background)
     formData.append("image[]", referenceImageFile, referenceImageFile.name || "reference.png")
+    if (maskImageFile && maskImageFile.size > 0) {
+      formData.append("mask", maskImageFile, maskImageFile.name || "mask.png")
+    }
 
     const response = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",

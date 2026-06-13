@@ -286,21 +286,36 @@ except the pure data/types `thumbnail-constants.ts` (allowed).
   preview** modal (168/320/360 px — a gap Canva doesn't fill).
   `ThumbnailArrangePanel`, `ThumbnailPreviewModal`.
 
+**Canva batch 2 — client-side + AI (2026-06-13):**
+- [x] **Styles + Shuffle** — one-click palette/font/text presets + a Shuffle
+  randomizer for instant variants (`ThumbnailStylesPanel`, pairs with A/B).
+- [x] **Blend modes** on subject + stickers (`mix-blend-mode`, `BLEND_MODES`).
+- [x] **Frames** — circle / rounded shape-crop of the subject (`SubjectMedia`).
+- [x] **Duotone** — two-color background map via an inline SVG filter rendered
+  inside the captured stage so it exports (`ThumbnailDuotoneFilter`).
+- [x] **Subject ↔ headline z-order** toggle (`config.subjectOnTop`).
+- [x] **AI Expand** — outpaint the background to 16:9 via the existing
+  `/api/generate-image` image-to-image path (reference image + expand prompt).
+- [x] **AI Enhance** — upscale the subject/background in place via
+  `/api/upscale-logo`.
+- [x] **AI Erase / Edit** — brush-mask inpaint: new `/api/thumbnail-edit` route
+  (gpt-image-2 `/images/edits` + a PNG mask, `maskImageFile` added to the OpenAI
+  client; cost key `thumbnailEdit`); `ThumbnailEditModal` paints the mask at
+  native resolution. ⚠️ **UNTESTED in-browser** — verify on a preview before
+  relying on it (mask semantics / model behavior may need tuning).
+- Refactor: arrange/selection actions extracted to `useThumbnailArrange`.
+
 **Next up (not yet built):**
 - [ ] Persist large saves reliably (upload bg/subject to Blob at save time and
   store hosted URLs in the config snapshot, so 4K-background thumbnails always
   save).
-- [ ] **Bigger AI lifts** (Canva "Magic"): Magic Expand / outpaint to 16:9,
-  Magic Eraser (object removal), Magic Edit (generative replace), enhance the
-  source photo — all new Gemini image-edit routes.
-- [ ] **Duotone**, blend modes, and **Styles + Shuffle** (one-click palette/font
-  restyle → instant A/B variants).
-- [ ] Cross-type **layer reordering** (subject vs headline z-order); frames
-  (shape-masked subject crop).
 - [ ] Brand-color **lock** across a series; "thumbnail pack" (3 variants at once);
   reference-thumbnail **analysis** (`/api/analyze-image`).
+- [ ] Polish the AI edit: better mask UX (zoom/undo), transparent-aware editing
+  for cutout subjects, and a true mask-based outpaint (pad + margin mask) for
+  Expand.
 
 **Verify next session (couldn't browser-test here):** custom-font **export**
-embedding (next/font self-hosted should inline cleanly in html-to-image), and the
-subject outline/glow look at various sizes.
+embedding; the AI **Erase/Edit** brush-mask flow end-to-end; subject
+outline/glow at various sizes; duotone color mapping.
 

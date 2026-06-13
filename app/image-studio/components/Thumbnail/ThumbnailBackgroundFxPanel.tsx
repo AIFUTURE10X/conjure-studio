@@ -7,9 +7,11 @@
  * "darken & blur" preset — the #1 legibility trick for headlines over a photo.
  */
 
-import { Expand, Loader2, Moon, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { Expand, Loader2, Moon, Sparkles, Wand2 } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { AdjustControls, RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
+import { ThumbnailEditModal } from './ThumbnailEditModal'
 import { DEFAULT_ADJUST } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
 
@@ -19,6 +21,7 @@ export function ThumbnailBackgroundFxPanel() {
   const { config, setBackground, patchBackgroundAdjust, expandBackground, enhanceImage, isExpanding, isEnhancing } =
     useThumbnail()
   const { background } = config
+  const [editing, setEditing] = useState(false)
   if (background.kind !== 'image' || !background.imageUrl) return null
 
   const adjust = { ...DEFAULT_ADJUST, ...background.adjust }
@@ -34,16 +37,27 @@ export function ThumbnailBackgroundFxPanel() {
     <div className="space-y-2">
       <h4 className={railLabel}>Background adjust</h4>
 
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         <button onClick={expandBackground} disabled={isExpanding} className={railButton} title="AI outpaint to a full 16:9 frame">
           {isExpanding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Expand className="h-3.5 w-3.5" />}
-          Expand 16:9
+          Expand
         </button>
         <button onClick={() => enhanceImage('background')} disabled={isEnhancing} className={railButton} title="AI upscale / sharpen">
           {isEnhancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           Enhance
         </button>
+        <button onClick={() => setEditing(true)} className={railButton} title="AI erase / replace (brush)">
+          <Wand2 className="h-3.5 w-3.5" /> Edit
+        </button>
       </div>
+
+      {editing && background.imageUrl && (
+        <ThumbnailEditModal
+          imageUrl={background.imageUrl}
+          onApply={(url) => setBackground({ imageUrl: url })}
+          onClose={() => setEditing(false)}
+        />
+      )}
 
       <button onClick={darkenAndBlur} className={`${railButton} w-full`}>
         <Moon className="h-3.5 w-3.5" /> Darken &amp; blur (for text)
