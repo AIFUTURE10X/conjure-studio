@@ -3,10 +3,11 @@
 /**
  * ThumbnailProvider
  *
- * Isolated state for the Thumbnail mode (config + layer actions + export),
- * shared between the center canvas and the settings rail. Kept separate from
- * StudioProvider so the new mode can't affect the existing modes. Config is
- * persisted to localStorage.
+ * Isolated state for the Thumbnail mode (config + layer actions + export +
+ * history), shared between the center canvas and the settings rail. Kept
+ * separate from StudioProvider so the new mode can't affect the existing modes.
+ * Config is persisted to localStorage; heavy AI/export/history logic lives in
+ * dedicated hooks (useThumbnailGenerate / useThumbnailExport / useThumbnailHistory).
  */
 
 import {
@@ -19,20 +20,24 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import { toast } from 'sonner'
 import {
   DEFAULT_CONFIG,
   THUMBNAIL_TEMPLATES,
-  THUMB_HEIGHT,
   THUMB_STORAGE_KEY,
-  THUMB_WIDTH,
+  createSticker,
   type ThumbnailBackground,
   type ThumbnailConfig,
+  type ThumbnailFormat,
   type ThumbnailHeadline,
+  type ThumbnailHistoryItem,
   type ThumbnailSticker,
   type ThumbnailSubject,
+  type UpscaleTarget,
 } from './thumbnail-constants'
-import { loadThumbnailConfig, postGenerateImage, toDataUrl } from './thumbnail-utils'
+import { loadThumbnailConfig } from './thumbnail-utils'
+import { useThumbnailGenerate } from './useThumbnailGenerate'
+import { useThumbnailExport } from './useThumbnailExport'
+import { useThumbnailHistory } from './useThumbnailHistory'
 
 interface ThumbnailContextValue {
   config: ThumbnailConfig
@@ -41,11 +46,13 @@ interface ThumbnailContextValue {
   patchSubject: (patch: Partial<ThumbnailSubject>) => void
   setHeadline: (patch: Partial<ThumbnailHeadline>) => void
   applyTemplate: (id: string) => void
+  applyConfig: (config: ThumbnailConfig) => void
   reset: () => void
   clearBackground: () => void
   selectedStickerId: string | null
   setSelectedStickerId: (id: string | null) => void
   addSticker: (sticker: ThumbnailSticker) => void
+  addImageSticker: (url: string) => void
   patchSticker: (id: string, patch: Partial<ThumbnailSticker>) => void
   removeSticker: (id: string) => void
   removeSubjectBackground: () => Promise<void>
@@ -55,9 +62,17 @@ interface ThumbnailContextValue {
   bgVariations: string[]
   chooseBackground: (url: string) => void
   isGeneratingBg: boolean
+  recolorBackground: (colorNames: string[]) => Promise<void>
+  isRecoloring: boolean
   stageRef: RefObject<HTMLDivElement | null>
   isExporting: boolean
-  exportPng: () => Promise<void>
+  exportImage: (format: ThumbnailFormat) => Promise<void>
+  upscaleExport: (target: UpscaleTarget) => Promise<void>
+  isUpscaling: boolean
+  history: ThumbnailHistoryItem[]
+  isSavingHistory: boolean
+  saveThumbnail: () => Promise<void>
+  deleteThumbnail: (id: string) => Promise<void>
 }
 
 const ThumbnailContext = createContext<ThumbnailContextValue | null>(null)
@@ -70,10 +85,6 @@ export function useThumbnail() {
 
 export function ThumbnailProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<ThumbnailConfig>(() => loadThumbnailConfig())
-  const [isExporting, setIsExporting] = useState(false)
-  const [isCuttingOut, setIsCuttingOut] = useState(false)
-  const [isGeneratingBg, setIsGeneratingBg] = useState(false)
-  const [bgVariations, setBgVariations] = useState<string[]>([])
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
 
@@ -95,6 +106,10 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     }, 400)
     return () => window.clearTimeout(id)
   }, [config])
+
+  const generate = useThumbnailGenerate({ setConfig, configRef })
+  const exporter = useThumbnailExport(stageRef)
+  const historyApi = useThumbnailHistory(stageRef, configRef)
 
   const setBackground = useCallback((patch: Partial<ThumbnailBackground>) => {
     setConfig((c) => ({ ...c, background: { ...c.background, ...patch } }))
@@ -124,13 +139,25 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
+  const applyConfig = useCallback((next: ThumbnailConfig) => {
+    setSelectedStickerId(null)
+    generate.clearVariations()
+    setConfig(next)
+  }, [generate])
+
   const reset = useCallback(() => {
-    setBgVariations([])
+    generate.clearVariations()
     setSelectedStickerId(null)
     setConfig(DEFAULT_CONFIG)
-  }, [])
+  }, [generate])
 
   const addSticker = useCallback((sticker: ThumbnailSticker) => {
+    setConfig((c) => ({ ...c, stickers: [...c.stickers, sticker] }))
+    setSelectedStickerId(sticker.id)
+  }, [])
+
+  const addImageSticker = useCallback((url: string) => {
+    const sticker = createSticker('image', url, { x: 86, y: 86, size: 14 })
     setConfig((c) => ({ ...c, stickers: [...c.stickers, sticker] }))
     setSelectedStickerId(sticker.id)
   }, [])
@@ -144,107 +171,6 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     setSelectedStickerId((cur) => (cur === id ? null : cur))
   }, [])
 
-  const clearBackground = useCallback(() => {
-    setBgVariations([])
-    setConfig((c) => ({
-      ...c,
-      background: { ...c.background, kind: 'gradient', imageUrl: undefined },
-    }))
-  }, [])
-
-  const chooseBackground = useCallback((url: string) => {
-    setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: url } }))
-  }, [])
-
-  const removeSubjectBackground = useCallback(async () => {
-    const current = configRef.current.subject
-    if (!current) return
-    setIsCuttingOut(true)
-    try {
-      const blob = await (await fetch(current.url)).blob()
-      const form = new FormData()
-      form.append('image', blob, 'subject.png')
-      const res = await fetch('/api/remove-background', { method: 'POST', body: form })
-      const data = (await res.json()) as { image?: string; error?: string }
-      if (!res.ok || !data.image) throw new Error(data.error || 'Background removal failed')
-      const dataUrl = await toDataUrl(data.image)
-      setConfig((c) => (c.subject ? { ...c, subject: { ...c.subject, url: dataUrl } } : c))
-      toast.success('Background removed')
-    } catch (err) {
-      console.error('[Thumbnail] cutout failed:', err)
-      toast.error('Could not remove the background')
-    } finally {
-      setIsCuttingOut(false)
-    }
-  }, [])
-
-  const generateBackground = useCallback(
-    async (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => {
-      setIsGeneratingBg(true)
-      try {
-        const images = await postGenerateImage(idea, stylePrompt, options, 1)
-        setBgVariations([])
-        setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: images[0] } }))
-        toast.success('AI background generated')
-      } catch (err) {
-        console.error('[Thumbnail] background generation failed:', err)
-        toast.error('Background generation failed — try again')
-      } finally {
-        setIsGeneratingBg(false)
-      }
-    },
-    [],
-  )
-
-  const generateBackgroundVariations = useCallback(
-    async (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => {
-      setIsGeneratingBg(true)
-      try {
-        const images = await postGenerateImage(idea, stylePrompt, options, 3)
-        setBgVariations(images)
-        setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: images[0] } }))
-        toast.success(`Generated ${images.length} option${images.length > 1 ? 's' : ''}`)
-      } catch (err) {
-        console.error('[Thumbnail] variations failed:', err)
-        toast.error('Generation failed — try again')
-      } finally {
-        setIsGeneratingBg(false)
-      }
-    },
-    [],
-  )
-
-  const exportPng = useCallback(async () => {
-    const node = stageRef.current
-    if (!node) return
-    setIsExporting(true)
-    try {
-      const { toBlob } = await import('html-to-image')
-      const blob = await toBlob(node, {
-        width: THUMB_WIDTH,
-        height: THUMB_HEIGHT,
-        canvasWidth: THUMB_WIDTH,
-        canvasHeight: THUMB_HEIGHT,
-        pixelRatio: 1,
-        cacheBust: true,
-        filter: (el) => !(el instanceof Element && el.hasAttribute('data-export-ignore')),
-      })
-      if (!blob) throw new Error('Empty export')
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = 'youtube-thumbnail.png'
-      link.click()
-      URL.revokeObjectURL(url)
-      toast.success('Thumbnail exported (1280×720)')
-    } catch (err) {
-      console.error('[Thumbnail] export failed:', err)
-      toast.error('Export failed')
-    } finally {
-      setIsExporting(false)
-    }
-  }, [])
-
   return (
     <ThumbnailContext.Provider
       value={{
@@ -254,23 +180,33 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         patchSubject,
         setHeadline,
         applyTemplate,
+        applyConfig,
         reset,
-        clearBackground,
+        clearBackground: generate.clearBackground,
         selectedStickerId,
         setSelectedStickerId,
         addSticker,
+        addImageSticker,
         patchSticker,
         removeSticker,
-        removeSubjectBackground,
-        isCuttingOut,
-        generateBackground,
-        generateBackgroundVariations,
-        bgVariations,
-        chooseBackground,
-        isGeneratingBg,
+        removeSubjectBackground: generate.removeSubjectBackground,
+        isCuttingOut: generate.isCuttingOut,
+        generateBackground: generate.generateBackground,
+        generateBackgroundVariations: generate.generateBackgroundVariations,
+        bgVariations: generate.bgVariations,
+        chooseBackground: generate.chooseBackground,
+        isGeneratingBg: generate.isGeneratingBg,
+        recolorBackground: generate.recolorBackground,
+        isRecoloring: generate.isRecoloring,
         stageRef,
-        isExporting,
-        exportPng,
+        isExporting: exporter.isExporting,
+        exportImage: exporter.exportImage,
+        upscaleExport: exporter.upscaleExport,
+        isUpscaling: exporter.isUpscaling,
+        history: historyApi.history,
+        isSavingHistory: historyApi.isSavingHistory,
+        saveThumbnail: historyApi.saveThumbnail,
+        deleteThumbnail: historyApi.deleteThumbnail,
       }}
     >
       {children}

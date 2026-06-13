@@ -113,6 +113,34 @@ export const THUMBNAIL_TEMPLATES: ThumbnailTemplate[] = [
     subject: { x: 50, y: 55, scale: 60 },
     background: { kind: 'image', color: '#000000', gradient: ['#000000', '#000000'] },
   },
+  {
+    id: 'top-list',
+    label: 'Top 10 / List',
+    headline: { x: 27, y: 32, size: 26, preset: 'block', color: '#ffe14d' },
+    subject: { x: 80, y: 62, scale: 40 },
+    background: { kind: 'gradient', color: '#0b1220', gradient: ['#0ea5e9', '#0b3b82'] },
+  },
+  {
+    id: 'versus',
+    label: 'VS / Versus',
+    headline: { x: 50, y: 50, size: 30, preset: 'outline', color: '#ff3b30' },
+    subject: { x: 78, y: 60, scale: 44 },
+    background: { kind: 'gradient', color: '#120505', gradient: ['#b91c1c', '#111827'] },
+  },
+  {
+    id: 'podcast',
+    label: 'Podcast · Centered',
+    headline: { x: 50, y: 18, size: 13, preset: 'shadow', color: '#ffffff' },
+    subject: { x: 50, y: 60, scale: 62 },
+    background: { kind: 'gradient', color: '#0a0a0a', gradient: ['#312e81', '#0a0a0a'] },
+  },
+  {
+    id: 'lower-third',
+    label: 'Lower third',
+    headline: { x: 50, y: 84, size: 13, preset: 'block', color: '#ffffff' },
+    subject: { x: 72, y: 50, scale: 56 },
+    background: { kind: 'gradient', color: '#0b1220', gradient: ['#059669', '#064e3b'] },
+  },
 ]
 
 export function backgroundCss(bg: ThumbnailBackground): string {
@@ -165,12 +193,12 @@ export interface ThumbnailConcept {
 
 /* ------------------------------- Stickers -------------------------------- */
 
-export type StickerType = 'emoji' | 'arrow' | 'circle'
+export type StickerType = 'emoji' | 'arrow' | 'circle' | 'image'
 
 export interface ThumbnailSticker {
   id: string
   type: StickerType
-  content: string // emoji char (for 'emoji'); empty for shapes
+  content: string // emoji char (for 'emoji'); image URL (for 'image'); empty for shapes
   x: number // center %
   y: number
   size: number // % of stage height
@@ -178,25 +206,83 @@ export interface ThumbnailSticker {
   color: string // shapes only
 }
 
-export const STICKER_EMOJIS = [
-  '🔥', '😱', '👉', '❌', '✅', '💰', '🎯', '👀', '⭐', '💯', '⚡', '❤️', '😂', '🤯', '🚀', '👑',
+export interface StickerEmoji {
+  char: string
+  /** Space-separated search terms. */
+  keywords: string
+}
+
+export const STICKER_EMOJI_ITEMS: StickerEmoji[] = [
+  { char: '🔥', keywords: 'fire hot lit trending' },
+  { char: '😱', keywords: 'shock scared scream omg surprise' },
+  { char: '👉', keywords: 'point right arrow this' },
+  { char: '❌', keywords: 'no wrong cross error stop' },
+  { char: '✅', keywords: 'yes check correct done right' },
+  { char: '💰', keywords: 'money cash rich profit bag' },
+  { char: '🎯', keywords: 'target goal aim focus bullseye' },
+  { char: '👀', keywords: 'eyes look watch see' },
+  { char: '⭐', keywords: 'star rating favorite best' },
+  { char: '💯', keywords: 'hundred perfect score 100' },
+  { char: '⚡', keywords: 'lightning fast power energy bolt' },
+  { char: '❤️', keywords: 'heart love like red' },
+  { char: '😂', keywords: 'laugh funny lol joke cry' },
+  { char: '🤯', keywords: 'mind blown shock wow explode' },
+  { char: '🚀', keywords: 'rocket launch grow boost fast' },
+  { char: '👑', keywords: 'crown king queen best royal' },
+  { char: '😡', keywords: 'angry mad rage furious' },
+  { char: '😎', keywords: 'cool sunglasses confident' },
+  { char: '🤔', keywords: 'think hmm question wonder' },
+  { char: '😭', keywords: 'cry sad tears sob' },
+  { char: '🤬', keywords: 'angry swear rage mad' },
+  { char: '💪', keywords: 'strong muscle gym power flex' },
+  { char: '🧠', keywords: 'brain smart mind think' },
+  { char: '💡', keywords: 'idea tip light bulb smart' },
+  { char: '⏰', keywords: 'time clock alarm urgent fast' },
+  { char: '📈', keywords: 'chart up growth profit stocks' },
+  { char: '📉', keywords: 'chart down loss crash drop' },
+  { char: '🏆', keywords: 'trophy win winner award best' },
+  { char: '🎉', keywords: 'party celebrate confetti win' },
+  { char: '😍', keywords: 'love heart eyes amazing wow' },
+  { char: '🙏', keywords: 'pray please thanks hope' },
+  { char: '👍', keywords: 'thumbs up like good yes' },
+  { char: '👎', keywords: 'thumbs down dislike bad no' },
+  { char: '🤑', keywords: 'money face rich greedy cash' },
+  { char: '😴', keywords: 'sleep tired boring bed' },
+  { char: '🥵', keywords: 'hot heat sweat fire' },
+  { char: '🤖', keywords: 'robot ai tech bot' },
+  { char: '🎮', keywords: 'game gaming controller play' },
+  { char: '🍔', keywords: 'food burger eat fast' },
+  { char: '🚨', keywords: 'alert siren warning emergency breaking' },
 ]
+
+/** Back-compat: plain list of emoji characters. */
+export const STICKER_EMOJIS = STICKER_EMOJI_ITEMS.map((e) => e.char)
+
+/** Sentinel selection id for the subject, so it shares the single-selection
+ *  state with stickers (only one layer shows handles at a time). */
+export const SUBJECT_SELECTION_ID = '__thumbnail_subject__'
 
 export const STICKER_SHAPES: { type: StickerType; label: string }[] = [
   { type: 'arrow', label: 'Arrow' },
   { type: 'circle', label: 'Circle' },
 ]
 
-export function createSticker(type: StickerType, content = ''): ThumbnailSticker {
+export function createSticker(
+  type: StickerType,
+  content = '',
+  overrides: Partial<Pick<ThumbnailSticker, 'x' | 'y' | 'size'>> = {},
+): ThumbnailSticker {
+  const size = type === 'emoji' ? 14 : type === 'image' ? 16 : 20
   return {
     id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `s_${Date.now()}_${Math.random()}`,
     type,
     content,
     x: 50,
     y: 50,
-    size: type === 'emoji' ? 14 : 20,
+    size,
     rotation: 0,
     color: '#ff3b30',
+    ...overrides,
   }
 }
 
@@ -211,3 +297,44 @@ export function buildThumbnailBgPrompt(idea: string, stylePrompt: string): strin
     'Absolutely no text, no words, no letters, no captions, no logos, no watermark.',
   ].join(' ')
 }
+
+/* -------------------------------- Export --------------------------------- */
+
+export type ThumbnailFormat = 'png' | 'jpg'
+
+/** YouTube rejects thumbnails over 2 MB. */
+export const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024
+
+export const UPSCALE_TARGETS = ['2K', '4K'] as const
+export type UpscaleTarget = (typeof UPSCALE_TARGETS)[number]
+
+/* ------------------------------ Brand colors ----------------------------- */
+
+/** Named brand colors for the background recolor step (the recolor engine
+ *  takes color *names*, not hex). Hex is shown in the swatch only. */
+export const THUMBNAIL_BRAND_COLORS: { name: string; hex: string }[] = [
+  { name: 'Gold', hex: '#dbb56e' },
+  { name: 'Navy', hex: '#1e3a8a' },
+  { name: 'Black', hex: '#0a0a0a' },
+  { name: 'White', hex: '#f5f5f5' },
+  { name: 'Red', hex: '#dc2626' },
+  { name: 'Teal', hex: '#0d9488' },
+  { name: 'Purple', hex: '#7c3aed' },
+  { name: 'Orange', hex: '#ea580c' },
+  { name: 'Pink', hex: '#db2777' },
+  { name: 'Green', hex: '#16a34a' },
+]
+
+/* -------------------------------- History -------------------------------- */
+
+/** A saved thumbnail (reuses the studio's logo_history table, style='thumbnail'). */
+export interface ThumbnailHistoryItem {
+  id: string
+  imageUrl: string
+  prompt: string
+  timestamp: number
+  /** Full editable config snapshot, when present, so the thumbnail can reopen. */
+  config?: ThumbnailConfig
+}
+
+export const THUMBNAIL_HISTORY_STYLE = 'thumbnail'

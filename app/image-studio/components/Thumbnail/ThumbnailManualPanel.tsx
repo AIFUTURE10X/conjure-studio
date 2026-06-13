@@ -5,15 +5,19 @@
  *
  * The "Manual" half of the Thumbnail rail: template picker, background source,
  * subject (upload + one-click cutout reusing /api/remove-background), headline
- * text styling, stickers, and 1280×720 PNG export. Paired with ThumbnailAiPanel
- * behind the rail's AI | Manual tabs.
+ * text styling, stickers, logo/watermark, export, and saved-thumbnail history.
+ * Paired with ThumbnailAiPanel behind the rail's AI | Manual tabs.
  */
 
 import { type ReactNode } from 'react'
-import { Download, FlipHorizontal2, Loader2, Scissors, Trash2, Upload } from 'lucide-react'
+import { FlipHorizontal2, Loader2, Scissors, Trash2, Upload } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { ThumbnailStickerPanel } from './ThumbnailStickerPanel'
+import { ThumbnailLogoPanel } from './ThumbnailLogoPanel'
+import { ThumbnailExportPanel } from './ThumbnailExportPanel'
+import { ThumbnailHistoryStrip } from './ThumbnailHistoryStrip'
 import { TEXT_PRESETS, THUMBNAIL_TEMPLATES, type BackgroundKind } from './thumbnail-constants'
+import { railButton, railLabel } from './thumbnail-ui'
 
 function pickImage(onPicked: (dataUrl: string) => void) {
   const input = document.createElement('input')
@@ -32,14 +36,11 @@ function pickImage(onPicked: (dataUrl: string) => void) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{title}</h4>
+      <h4 className={railLabel}>{title}</h4>
       {children}
     </div>
   )
 }
-
-const railButton =
-  'flex items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800/70 px-2 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-white disabled:opacity-50'
 
 const BG_KINDS: { id: BackgroundKind; label: string }[] = [
   { id: 'gradient', label: 'Gradient' },
@@ -55,18 +56,10 @@ export function ThumbnailManualPanel() {
     patchSubject,
     setHeadline,
     applyTemplate,
-    reset,
     removeSubjectBackground,
     isCuttingOut,
-    isExporting,
-    exportPng,
   } = useThumbnail()
 
-  const handleClearAll = () => {
-    if (window.confirm('Clear this thumbnail and start over? This removes the background, photo, and headline.')) {
-      reset()
-    }
-  }
   const { background, subject, headline } = config
 
   return (
@@ -233,22 +226,11 @@ export function ThumbnailManualPanel() {
 
       <ThumbnailStickerPanel />
 
-      <div className="space-y-2 border-t border-zinc-800 pt-4">
-        <button
-          onClick={exportPng}
-          disabled={isExporting}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-linear-to-r from-[#c99850] to-[#dbb56e] px-3 py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Export PNG (1280×720)
-        </button>
-        <button
-          onClick={handleClearAll}
-          className={`${railButton} w-full hover:border-red-500/60 hover:text-red-300`}
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Clear all
-        </button>
-      </div>
+      <ThumbnailLogoPanel />
+
+      <ThumbnailExportPanel />
+
+      <ThumbnailHistoryStrip />
     </div>
   )
 }

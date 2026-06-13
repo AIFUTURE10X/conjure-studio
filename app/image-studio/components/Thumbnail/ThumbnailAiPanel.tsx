@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Lightbulb, Loader2, Sparkles, Trash2, Type } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
+import { ThumbnailRecolor } from './ThumbnailRecolor'
 import {
   THUMBNAIL_AI_STYLES,
   THUMBNAIL_MODELS,
@@ -102,6 +103,10 @@ export function ThumbnailAiPanel() {
         {loadingConcepts ? 'Thinking…' : 'Get 3 thumbnail ideas'}
       </button>
 
+      <p className="text-[10px] leading-snug text-zinc-500">
+        Picking an idea builds its background with the model &amp; size selected below.
+      </p>
+
       {concepts.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -191,6 +196,8 @@ export function ThumbnailAiPanel() {
           ))}
         </div>
       )}
+
+      <ThumbnailRecolor />
 
       <div className="flex gap-1.5">
         <button

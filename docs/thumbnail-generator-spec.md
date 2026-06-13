@@ -230,15 +230,45 @@ Running list of follow-ups. Checked = shipped.
   typed video title or fetched AI concepts survive switching tabs; shared canvas
   state lives in `ThumbnailProvider`, so edits from either tab compose together.
 
+**Shipped (batch, 2026-06-13):**
+- [x] **Model + size on the "3 concepts" step.** Picking a concept already
+  generates its background with the panel-selected model + size (incl. 4K);
+  added a hint in `ThumbnailAiPanel` to make that explicit.
+- [x] **History save + reopen.** `useThumbnailHistory` saves the composite PNG +
+  full editable config to the shared `logo_history` table (`style='thumbnail'`,
+  no migration needed); `ThumbnailHistoryStrip` lists them — click to reopen &
+  edit (`applyConfig`), hover to delete. Large 4K-background saves can exceed the
+  request limit and fail gracefully with a toast (acceptable MVP).
+- [x] **Brand kit / channel-logo watermark.** `ThumbnailLogoPanel` — upload a
+  logo or pull a recent one from Logo mode (`/api/logo-history`); added as a
+  draggable **image sticker** layer (new `type:'image'`), inlined as a data URL
+  so it never taints the export canvas.
+- [x] **Recolor / upscale.** Export panel does an AI **upscale** of the composite
+  to 2K/4K (`/api/upscale-logo`) and downloads it; `ThumbnailRecolor` snaps the
+  **background** to brand colors (`/api/recolor-logo`) while the headline stays an
+  editable overlay (recolor on the full composite would destroy the text, so it
+  targets the background only).
+- [x] **A/B compare.** Select two saved thumbnails in the strip → `Compare A/B`
+  opens `ThumbnailCompareModal` (side-by-side 16:9).
+- [x] **JPG export + ≤2 MB clamp.** Export format toggle (PNG / JPG); JPG lowers
+  quality until it fits YouTube's 2 MB cap (`canvasToJpegBlob`).
+- [x] **More templates + emoji search.** 8 templates now (added Top-10/List, VS,
+  Podcast, Lower-third); the sticker picker has a keyworded search over ~40
+  emojis.
+- [x] **On-canvas subject resize.** Selecting the subject shows a bounding box +
+  corner handle; dragging it resizes (`useStageDrag` gained a resize mode).
+
+**Architecture note:** provider stayed lean by extracting logic into hooks
+(`useThumbnailGenerate` / `useThumbnailExport` / `useThumbnailHistory`) + utils
+(`thumbnail-export.ts`, `thumbnail-stage-utils.tsx`, `thumbnail-ui.ts`) and
+layer components (`ThumbnailLayers.tsx`). Every file is under the 300-line rule
+except the pure data/types `thumbnail-constants.ts` (allowed).
+
 **Next up (not yet built):**
-- [ ] Apply the selected **model + 4K** to the AI "3 concepts" image step too
-  (concepts currently reuse the panel model/size — verify 4K cost/latency).
-- [ ] Save finished thumbnails to **history** (reuse the studio history tables)
-  so users can reopen past thumbnails.
-- [ ] **Brand kit / channel logo** watermark layer (pull from Logo mode).
-- [ ] **Recolor / upscale** buttons on the final composite.
-- [ ] **A/B compare** two thumbnails side by side.
-- [ ] **JPG export + ≤2 MB** clamp (YouTube upload cap).
-- [ ] More **templates** + a sticker/emoji search.
-- [ ] Subject **resize handles** on-canvas (currently slider-only).
+- [ ] Persist large saves reliably (upload bg/subject to Blob at save time and
+  store hosted URLs in the config snapshot, so 4K-background thumbnails always
+  save).
+- [ ] Brand-color **lock** across a series; channel branding profiles.
+- [ ] "Thumbnail pack" — generate 3 full variants at once.
+- [ ] Reference-thumbnail **analysis** (`/api/analyze-image`) to match a look.
 
