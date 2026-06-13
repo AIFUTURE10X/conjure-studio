@@ -48,6 +48,7 @@ export interface ThumbnailConfig {
   background: ThumbnailBackground
   subject: ThumbnailSubject | null
   headline: ThumbnailHeadline
+  stickers: ThumbnailSticker[]
 }
 
 export const TEXT_PRESETS: { id: TextPresetId; label: string }[] = [
@@ -71,6 +72,7 @@ export const DEFAULT_CONFIG: ThumbnailConfig = {
     rotation: 0,
     uppercase: true,
   },
+  stickers: [],
 }
 
 export interface ThumbnailTemplate {
@@ -159,6 +161,43 @@ export interface ThumbnailConcept {
   templateId: string
   styleId: string
   backgroundPrompt: string
+}
+
+/* ------------------------------- Stickers -------------------------------- */
+
+export type StickerType = 'emoji' | 'arrow' | 'circle'
+
+export interface ThumbnailSticker {
+  id: string
+  type: StickerType
+  content: string // emoji char (for 'emoji'); empty for shapes
+  x: number // center %
+  y: number
+  size: number // % of stage height
+  rotation: number
+  color: string // shapes only
+}
+
+export const STICKER_EMOJIS = [
+  '🔥', '😱', '👉', '❌', '✅', '💰', '🎯', '👀', '⭐', '💯', '⚡', '❤️', '😂', '🤯', '🚀', '👑',
+]
+
+export const STICKER_SHAPES: { type: StickerType; label: string }[] = [
+  { type: 'arrow', label: 'Arrow' },
+  { type: 'circle', label: 'Circle' },
+]
+
+export function createSticker(type: StickerType, content = ''): ThumbnailSticker {
+  return {
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `s_${Date.now()}_${Math.random()}`,
+    type,
+    content,
+    x: 50,
+    y: 50,
+    size: type === 'emoji' ? 14 : 20,
+    rotation: 0,
+    color: '#ff3b30',
+  }
 }
 
 /** Build a thumbnail-optimised image prompt — high impact, no baked-in text. */

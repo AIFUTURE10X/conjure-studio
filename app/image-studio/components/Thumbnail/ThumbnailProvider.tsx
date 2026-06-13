@@ -29,6 +29,7 @@ import {
   type ThumbnailBackground,
   type ThumbnailConfig,
   type ThumbnailHeadline,
+  type ThumbnailSticker,
   type ThumbnailSubject,
 } from './thumbnail-constants'
 import { loadThumbnailConfig, postGenerateImage, toDataUrl } from './thumbnail-utils'
@@ -42,6 +43,11 @@ interface ThumbnailContextValue {
   applyTemplate: (id: string) => void
   reset: () => void
   clearBackground: () => void
+  selectedStickerId: string | null
+  setSelectedStickerId: (id: string | null) => void
+  addSticker: (sticker: ThumbnailSticker) => void
+  patchSticker: (id: string, patch: Partial<ThumbnailSticker>) => void
+  removeSticker: (id: string) => void
   removeSubjectBackground: () => Promise<void>
   isCuttingOut: boolean
   generateBackground: (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => Promise<void>
@@ -68,6 +74,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
   const [isCuttingOut, setIsCuttingOut] = useState(false)
   const [isGeneratingBg, setIsGeneratingBg] = useState(false)
   const [bgVariations, setBgVariations] = useState<string[]>([])
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
 
   // Mirror config so async handlers read the latest value without re-binding.
@@ -119,7 +126,22 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => {
     setBgVariations([])
+    setSelectedStickerId(null)
     setConfig(DEFAULT_CONFIG)
+  }, [])
+
+  const addSticker = useCallback((sticker: ThumbnailSticker) => {
+    setConfig((c) => ({ ...c, stickers: [...c.stickers, sticker] }))
+    setSelectedStickerId(sticker.id)
+  }, [])
+
+  const patchSticker = useCallback((id: string, patch: Partial<ThumbnailSticker>) => {
+    setConfig((c) => ({ ...c, stickers: c.stickers.map((s) => (s.id === id ? { ...s, ...patch } : s)) }))
+  }, [])
+
+  const removeSticker = useCallback((id: string) => {
+    setConfig((c) => ({ ...c, stickers: c.stickers.filter((s) => s.id !== id) }))
+    setSelectedStickerId((cur) => (cur === id ? null : cur))
   }, [])
 
   const clearBackground = useCallback(() => {
@@ -234,6 +256,11 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         applyTemplate,
         reset,
         clearBackground,
+        selectedStickerId,
+        setSelectedStickerId,
+        addSticker,
+        patchSticker,
+        removeSticker,
         removeSubjectBackground,
         isCuttingOut,
         generateBackground,

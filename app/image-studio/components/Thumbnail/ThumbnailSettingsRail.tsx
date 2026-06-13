@@ -12,6 +12,7 @@ import { type ReactNode } from 'react'
 import { Download, FlipHorizontal2, Loader2, Scissors, Trash2, Upload } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { ThumbnailAiPanel } from './ThumbnailAiPanel'
+import { ThumbnailStickerPanel } from './ThumbnailStickerPanel'
 import {
   TEXT_PRESETS,
   THUMBNAIL_TEMPLATES,
@@ -235,6 +236,8 @@ export function ThumbnailSettingsRail() {
           />
         </label>
       </Section>
+
+      <ThumbnailStickerPanel />
 
       <div className="space-y-2 border-t border-zinc-800 pt-4">
         <button

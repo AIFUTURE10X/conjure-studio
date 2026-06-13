@@ -22,6 +22,7 @@ export function loadThumbnailConfig(): ThumbnailConfig {
       background: { ...DEFAULT_CONFIG.background, ...parsed.background },
       headline: { ...DEFAULT_CONFIG.headline, ...parsed.headline },
       subject: parsed.subject ?? null,
+      stickers: Array.isArray(parsed.stickers) ? parsed.stickers : [],
     }
   } catch {
     return DEFAULT_CONFIG
