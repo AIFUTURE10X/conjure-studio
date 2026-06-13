@@ -119,6 +119,19 @@ test('AI: Generate background adds an image layer to the stage', async ({ page }
   await expect(page.getByTestId('thumbnail-stage').locator('img')).toBeVisible()
 })
 
+test('Manual: font picker opens a grid and selects a font', async ({ page }) => {
+  await openManualTab(page)
+  const trigger = page.getByRole('button', { name: 'Font' })
+  await expect(trigger).toContainText('Geist')
+
+  await trigger.click()
+  // Grid options (incl. the newly added Google fonts) appear in the popover.
+  await page.getByRole('button', { name: 'Manrope', exact: true }).click()
+
+  // The trigger reflects the picked font and the popover closes.
+  await expect(trigger).toContainText('Manrope')
+})
+
 test('Manual: Clear all wipes the canvas to a blank screen', async ({ page }) => {
   await openManualTab(page)
   // The default config renders a headline; confirm it's there to start.
