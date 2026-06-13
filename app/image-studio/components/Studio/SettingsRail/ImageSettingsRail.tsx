@@ -40,7 +40,12 @@ const STYLE_STRENGTHS = ['subtle', 'moderate', 'strong'] as const
 
 // Chip options derived from the shared constants.
 const ASPECT_RATIO_CHIPS: ChipOption[] = ASPECT_RATIO_OPTIONS.map((r) => ({ value: r.value, label: r.value }))
-const STYLE_CHIPS: ChipOption[] = stylePresets.map((s) => ({ value: s.value, label: s.label }))
+const STYLE_CHIPS: ChipOption[] = stylePresets.map((s) => ({
+  value: s.value,
+  label: s.label,
+  thumbnail: s.thumbnail,
+  description: s.description,
+}))
 const CAMERA_ANGLE_CHIPS: ChipOption[] = [{ value: '', label: 'None' }, ...cameraAngleOptions.map((a) => ({ value: a, label: a }))]
 const CAMERA_LENS_CHIPS: ChipOption[] = [{ value: '', label: 'None' }, ...cameraLensOptions.map((l) => ({ value: l, label: l }))]
 
