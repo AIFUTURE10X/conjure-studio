@@ -151,6 +151,16 @@ export const THUMBNAIL_MODELS: ThumbnailModelOption[] = [
 export const THUMBNAIL_SIZES = ['1K', '2K'] as const
 export type ThumbnailSize = (typeof THUMBNAIL_SIZES)[number]
 
+/** An AI-proposed thumbnail concept (from /api/generate-thumbnail-concepts). */
+export interface ThumbnailConcept {
+  summary: string
+  headline: string
+  color: string
+  templateId: string
+  styleId: string
+  backgroundPrompt: string
+}
+
 /** Build a thumbnail-optimised image prompt — high impact, no baked-in text. */
 export function buildThumbnailBgPrompt(idea: string, stylePrompt: string): string {
   const concept = idea.trim() || 'an eye-catching, attention-grabbing scene'
