@@ -1,0 +1,128 @@
+import { test, expect, type Page } from '@playwright/test'
+
+/**
+ * Thumbnail generator smoke tests.
+ *
+ * These drive the real UI in Chromium. The AI endpoints (concepts, image
+ * generation) are mocked with `page.route`, so the suite is deterministic and
+ * needs no API keys — it verifies the *wiring and client-side behaviour*
+ * (mode routing, AI | Manual tabs, canvas edits, AI flows, export), not the
+ * quality of real model output.
+ */
+
+const STUDIO_URL = '/image-studio'
+
+// A valid 1×1 PNG, used as a stand-in for an AI-generated background.
+const FAKE_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
+
+// Mirrors the ThumbnailConcept shape the rail consumes (templateId / styleId
+// must be real ids so applyConcept doesn't no-op).
+const MOCK_CONCEPTS = [
+  {
+    templateId: 'reaction',
+    styleId: 'gaming',
+    headline: 'MIND BLOWN',
+    color: '#ffe14d',
+    backgroundPrompt: 'an excited gamer reacting',
+    summary: 'Reaction face with a punchy two-word hook',
+  },
+  {
+    templateId: 'top-list',
+    styleId: '3d',
+    headline: 'TOP 10 PCS',
+    color: '#ffffff',
+    backgroundPrompt: 'glossy 3d pc parts',
+    summary: 'Numbered list layout',
+  },
+  {
+    templateId: 'lower-third',
+    styleId: 'cinematic',
+    headline: 'I WAS WRONG',
+    color: '#ff3b30',
+    backgroundPrompt: 'cinematic dramatic portrait',
+    summary: 'Lower-third caption over a full-bleed scene',
+  },
+]
+
+async function openThumbnailMode(page: Page) {
+  await page.goto(STUDIO_URL)
+  await page.getByRole('button', { name: 'Thumbnail', exact: true }).click()
+  await expect(page.getByTestId('thumbnail-stage')).toBeVisible()
+}
+
+async function openManualTab(page: Page) {
+  await page.getByRole('button', { name: 'Manual', exact: true }).click()
+}
+
+test.beforeEach(async ({ page }) => {
+  await openThumbnailMode(page)
+})
+
+test('renders the 1280×720 stage with the default headline', async ({ page }) => {
+  await expect(page.getByRole('heading', { name: 'YouTube Thumbnail' })).toBeVisible()
+  await expect(page.getByTestId('thumbnail-stage')).toBeVisible()
+  await expect(page.getByTestId('thumbnail-headline')).toContainText('YOUR TITLE HERE')
+})
+
+test('Manual: typing a headline updates the canvas live', async ({ page }) => {
+  await openManualTab(page)
+  await page.getByPlaceholder('Your title here').fill('Test Headline 123')
+  await expect(page.getByTestId('thumbnail-headline')).toContainText('Test Headline 123')
+})
+
+test('Manual: selecting a template marks it active', async ({ page }) => {
+  await openManualTab(page)
+  const template = page.getByRole('button', { name: 'Reaction face', exact: true })
+  await template.click()
+  // Active template buttons get the gold accent border class.
+  await expect(template).toHaveClass(/border-\[#c99850\]/)
+})
+
+test('Manual: a solid background reveals a colour picker', async ({ page }) => {
+  await openManualTab(page)
+  await page.getByRole('button', { name: 'Solid', exact: true }).click()
+  await expect(page.getByLabel('Background color')).toBeVisible()
+})
+
+test('AI: title → 3 concepts renders cards and applying one builds it', async ({ page }) => {
+  await page.route('**/api/generate-thumbnail-concepts', (route) =>
+    route.fulfill({ json: { concepts: MOCK_CONCEPTS } }),
+  )
+  await page.route('**/api/generate-image', (route) =>
+    route.fulfill({ json: { images: [FAKE_PNG] } }),
+  )
+
+  await page.getByRole('button', { name: 'AI', exact: true }).click()
+  await page
+    .getByPlaceholder(/Paste your video title/)
+    .fill('How I built a gaming PC in 10 minutes')
+  await page.getByRole('button', { name: 'Get 3 thumbnail ideas' }).click()
+
+  await expect(page.getByText('Click a concept to build it')).toBeVisible()
+
+  // Picking a concept applies its headline and generates the background.
+  await page.getByRole('button', { name: /MIND BLOWN/ }).click()
+  await expect(page.getByTestId('thumbnail-headline')).toContainText('MIND BLOWN')
+  await expect(page.getByTestId('thumbnail-stage').locator('img')).toBeVisible()
+})
+
+test('AI: Generate background adds an image layer to the stage', async ({ page }) => {
+  await page.route('**/api/generate-image', (route) =>
+    route.fulfill({ json: { images: [FAKE_PNG] } }),
+  )
+
+  await page.getByRole('button', { name: 'AI', exact: true }).click()
+  await page.getByPlaceholder(/Paste your video title/).fill('Epic mountain sunrise, dramatic')
+  await page.getByRole('button', { name: 'Generate background' }).click()
+
+  await expect(page.getByTestId('thumbnail-stage').locator('img')).toBeVisible()
+})
+
+test('Manual: Export PNG downloads a 1280×720 file', async ({ page }) => {
+  await openManualTab(page)
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: /Export PNG/ }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe('youtube-thumbnail.png')
+})

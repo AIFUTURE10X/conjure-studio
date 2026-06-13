@@ -68,6 +68,7 @@ export function ThumbnailStage() {
       <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `scale(${scale})` }}>
         <div
           ref={stageRef}
+          data-testid="thumbnail-stage"
           onPointerDown={() => setSelectedStickerId(null)}
           className={`relative overflow-hidden ${thumbnailFontVars}`}
           style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT, background: backgroundCss(background) }}
