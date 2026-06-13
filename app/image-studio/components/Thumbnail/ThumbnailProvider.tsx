@@ -26,12 +26,12 @@ import {
   THUMB_HEIGHT,
   THUMB_STORAGE_KEY,
   THUMB_WIDTH,
-  buildThumbnailBgPrompt,
   type ThumbnailBackground,
   type ThumbnailConfig,
   type ThumbnailHeadline,
   type ThumbnailSubject,
 } from './thumbnail-constants'
+import { loadThumbnailConfig, postGenerateImage, toDataUrl } from './thumbnail-utils'
 
 interface ThumbnailContextValue {
   config: ThumbnailConfig
@@ -45,6 +45,9 @@ interface ThumbnailContextValue {
   removeSubjectBackground: () => Promise<void>
   isCuttingOut: boolean
   generateBackground: (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => Promise<void>
+  generateBackgroundVariations: (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => Promise<void>
+  bgVariations: string[]
+  chooseBackground: (url: string) => void
   isGeneratingBg: boolean
   stageRef: RefObject<HTMLDivElement | null>
   isExporting: boolean
@@ -59,40 +62,12 @@ export function useThumbnail() {
   return ctx
 }
 
-function loadConfig(): ThumbnailConfig {
-  if (typeof window === 'undefined') return DEFAULT_CONFIG
-  try {
-    const raw = window.localStorage.getItem(THUMB_STORAGE_KEY)
-    if (!raw) return DEFAULT_CONFIG
-    const parsed = JSON.parse(raw) as Partial<ThumbnailConfig>
-    return {
-      ...DEFAULT_CONFIG,
-      ...parsed,
-      background: { ...DEFAULT_CONFIG.background, ...parsed.background },
-      headline: { ...DEFAULT_CONFIG.headline, ...parsed.headline },
-      subject: parsed.subject ?? null,
-    }
-  } catch {
-    return DEFAULT_CONFIG
-  }
-}
-
-async function toDataUrl(url: string): Promise<string> {
-  if (url.startsWith('data:')) return url
-  const blob = await (await fetch(url)).blob()
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('read failed'))
-    reader.readAsDataURL(blob)
-  })
-}
-
 export function ThumbnailProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<ThumbnailConfig>(() => loadConfig())
+  const [config, setConfig] = useState<ThumbnailConfig>(() => loadThumbnailConfig())
   const [isExporting, setIsExporting] = useState(false)
   const [isCuttingOut, setIsCuttingOut] = useState(false)
   const [isGeneratingBg, setIsGeneratingBg] = useState(false)
+  const [bgVariations, setBgVariations] = useState<string[]>([])
   const stageRef = useRef<HTMLDivElement | null>(null)
 
   // Mirror config so async handlers read the latest value without re-binding.
@@ -142,13 +117,21 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
-  const reset = useCallback(() => setConfig(DEFAULT_CONFIG), [])
+  const reset = useCallback(() => {
+    setBgVariations([])
+    setConfig(DEFAULT_CONFIG)
+  }, [])
 
   const clearBackground = useCallback(() => {
+    setBgVariations([])
     setConfig((c) => ({
       ...c,
       background: { ...c.background, kind: 'gradient', imageUrl: undefined },
     }))
+  }, [])
+
+  const chooseBackground = useCallback((url: string) => {
+    setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: url } }))
   }, [])
 
   const removeSubjectBackground = useCallback(async () => {
@@ -175,27 +158,39 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
 
   const generateBackground = useCallback(
     async (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => {
-    setIsGeneratingBg(true)
-    try {
-      const form = new FormData()
-      form.append('prompt', buildThumbnailBgPrompt(idea, stylePrompt))
-      form.append('aspectRatio', '16:9')
-      form.append('count', '1')
-      form.append('model', options?.model || 'gemini-3.1-flash-image-preview')
-      form.append('imageSize', options?.imageSize || '1K')
-      const res = await fetch('/api/generate-image', { method: 'POST', body: form })
-      const data = (await res.json()) as { images?: string[]; error?: string }
-      const url = data.images?.[0]
-      if (!res.ok || !url) throw new Error(data.error || 'No image returned')
-      setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: url } }))
-      toast.success('AI background generated')
-    } catch (err) {
-      console.error('[Thumbnail] background generation failed:', err)
-      toast.error('Background generation failed — try again')
-    } finally {
-      setIsGeneratingBg(false)
-    }
-  }, [])
+      setIsGeneratingBg(true)
+      try {
+        const images = await postGenerateImage(idea, stylePrompt, options, 1)
+        setBgVariations([])
+        setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: images[0] } }))
+        toast.success('AI background generated')
+      } catch (err) {
+        console.error('[Thumbnail] background generation failed:', err)
+        toast.error('Background generation failed — try again')
+      } finally {
+        setIsGeneratingBg(false)
+      }
+    },
+    [],
+  )
+
+  const generateBackgroundVariations = useCallback(
+    async (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => {
+      setIsGeneratingBg(true)
+      try {
+        const images = await postGenerateImage(idea, stylePrompt, options, 3)
+        setBgVariations(images)
+        setConfig((c) => ({ ...c, background: { ...c.background, kind: 'image', imageUrl: images[0] } }))
+        toast.success(`Generated ${images.length} option${images.length > 1 ? 's' : ''}`)
+      } catch (err) {
+        console.error('[Thumbnail] variations failed:', err)
+        toast.error('Generation failed — try again')
+      } finally {
+        setIsGeneratingBg(false)
+      }
+    },
+    [],
+  )
 
   const exportPng = useCallback(async () => {
     const node = stageRef.current
@@ -242,6 +237,9 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         removeSubjectBackground,
         isCuttingOut,
         generateBackground,
+        generateBackgroundVariations,
+        bgVariations,
+        chooseBackground,
         isGeneratingBg,
         stageRef,
         isExporting,

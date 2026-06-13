@@ -26,7 +26,17 @@ const chipOn = 'border-[#c99850] bg-[#c99850]/15 text-[#dbb56e]'
 const chipOff = 'border-zinc-700 bg-zinc-800/70 text-zinc-300 hover:bg-zinc-700'
 
 export function ThumbnailAiPanel() {
-  const { config, generateBackground, isGeneratingBg, clearBackground, setHeadline, applyTemplate } = useThumbnail()
+  const {
+    config,
+    generateBackground,
+    generateBackgroundVariations,
+    bgVariations,
+    chooseBackground,
+    isGeneratingBg,
+    clearBackground,
+    setHeadline,
+    applyTemplate,
+  } = useThumbnail()
   const [idea, setIdea] = useState('')
   const [styleId, setStyleId] = useState(THUMBNAIL_AI_STYLES[0].id)
   const [model, setModel] = useState(THUMBNAIL_MODELS[0].id)
@@ -135,14 +145,42 @@ export function ThumbnailAiPanel() {
         ))}
       </div>
 
-      <button
-        onClick={() => generateBackground(idea, aiStyle.prompt, { model, imageSize: size })}
-        disabled={isGeneratingBg}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-linear-to-r from-purple-500 to-pink-500 px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-      >
-        {isGeneratingBg ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-        {isGeneratingBg ? 'Generating…' : hasAiBackground ? 'Regenerate background' : 'Generate background'}
-      </button>
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => generateBackground(idea, aiStyle.prompt, { model, imageSize: size })}
+          disabled={isGeneratingBg}
+          className="flex flex-1 items-center justify-center gap-2 rounded-md bg-linear-to-r from-purple-500 to-pink-500 px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {isGeneratingBg ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {isGeneratingBg ? 'Generating…' : hasAiBackground ? 'Regenerate' : 'Generate background'}
+        </button>
+        <button
+          onClick={() => generateBackgroundVariations(idea, aiStyle.prompt, { model, imageSize: size })}
+          disabled={isGeneratingBg}
+          title="Generate 3 options to choose from"
+          className="shrink-0 rounded-md border border-purple-400/50 bg-purple-500/10 px-3 py-2 text-xs font-semibold text-purple-200 transition-colors hover:bg-purple-500/20 disabled:opacity-50"
+        >
+          ×3
+        </button>
+      </div>
+
+      {bgVariations.length > 1 && (
+        <div className="grid grid-cols-3 gap-1.5">
+          {bgVariations.map((url, i) => (
+            <button
+              key={i}
+              onClick={() => chooseBackground(url)}
+              title={`Option ${i + 1}`}
+              className={`overflow-hidden rounded-md border transition-colors ${
+                config.background.imageUrl === url ? 'border-[#c99850]' : 'border-zinc-700 hover:border-zinc-500'
+              }`}
+              style={{ aspectRatio: '16 / 9' }}
+            >
+              <img src={url} alt={`Option ${i + 1}`} className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-1.5">
         <button
