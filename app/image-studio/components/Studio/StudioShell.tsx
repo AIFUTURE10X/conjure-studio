@@ -42,7 +42,17 @@ export function StudioShell() {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
 
   return (
-    <div className="h-screen flex flex-col bg-linear-to-br from-zinc-950 via-black to-zinc-950">
+    <div
+      className="flex flex-col bg-linear-to-br from-zinc-950 via-black to-zinc-950"
+      style={{
+        // Compensate for the interface-zoom scale (set on <html>) so the
+        // fixed shell always fills the window — no gap below / right when
+        // zoomed out, no overflow when zoomed in. Falls back to a normal
+        // full-window shell when no zoom is set.
+        width: 'calc(100vw / var(--ui-zoom, 1))',
+        height: 'calc(100dvh / var(--ui-zoom, 1))',
+      }}
+    >
       <StudioTopBar />
 
       <div className="flex-1 min-h-0 flex flex-col">

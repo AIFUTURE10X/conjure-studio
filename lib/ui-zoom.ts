@@ -17,8 +17,17 @@ export const clampUiZoom = (zoom: number): number =>
 
 export function applyUiZoom(zoom: number): void {
   if (typeof document === 'undefined') return
-  // `zoom: 1` is the default; clearing keeps the inline style tidy.
-  document.documentElement.style.zoom = zoom === 1 ? '' : String(zoom)
+  const root = document.documentElement
+  if (zoom === 1) {
+    // `zoom: 1` is the default; clearing keeps the inline style tidy.
+    root.style.zoom = ''
+    root.style.removeProperty('--ui-zoom')
+  } else {
+    root.style.zoom = String(zoom)
+    // Mirrored as a CSS var so fixed full-window layouts can size themselves
+    // to `100vw / zoom` × `100dvh / zoom` and still fill the window.
+    root.style.setProperty('--ui-zoom', String(zoom))
+  }
 }
 
 export function readStoredUiZoom(): number {

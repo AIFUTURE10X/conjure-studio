@@ -32,12 +32,14 @@ export function UiZoomControl() {
     storeUiZoom(zoom)
   }, [zoom])
 
-  const zoomIn = useCallback(() => setZoom((z) => clampUiZoom(z + UI_ZOOM_STEP)), [])
-  const zoomOut = useCallback(() => setZoom((z) => clampUiZoom(z - UI_ZOOM_STEP)), [])
+  const zoomBy = useCallback((delta: number) => setZoom((z) => clampUiZoom(z + delta)), [])
+  const zoomIn = useCallback(() => zoomBy(UI_ZOOM_STEP), [zoomBy])
+  const zoomOut = useCallback(() => zoomBy(-UI_ZOOM_STEP), [zoomBy])
   const resetZoom = useCallback(() => setZoom(1), [])
 
-  // In the installed app the browser's Ctrl +/- shortcuts are unavailable, so
-  // wire them to the in-app zoom. Skipped in a normal tab (native zoom wins).
+  // In the installed app the browser's own zoom (Ctrl +/- and Ctrl + wheel)
+  // is unavailable, so wire those gestures to the in-app zoom. Skipped in a
+  // normal browser tab, where native zoom already works.
   useEffect(() => {
     if (!isStandaloneDisplay()) return
 
@@ -45,19 +47,28 @@ export function UiZoomControl() {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
       if (e.key === '=' || e.key === '+') {
         e.preventDefault()
-        zoomIn()
+        zoomBy(UI_ZOOM_STEP)
       } else if (e.key === '-' || e.key === '_') {
         e.preventDefault()
-        zoomOut()
+        zoomBy(-UI_ZOOM_STEP)
       } else if (e.key === '0') {
         e.preventDefault()
         resetZoom()
       }
     }
+    const handleWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      e.preventDefault()
+      zoomBy(e.deltaY < 0 ? UI_ZOOM_STEP : -UI_ZOOM_STEP)
+    }
 
     window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [zoomIn, zoomOut, resetZoom])
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      window.removeEventListener('wheel', handleWheel)
+    }
+  }, [zoomBy, resetZoom])
 
   return (
     <div className="hidden lg:flex items-center gap-0.5 p-1 bg-zinc-900 rounded-lg border border-zinc-800">
@@ -73,7 +84,7 @@ export function UiZoomControl() {
 
       <button
         onClick={resetZoom}
-        title="Reset interface zoom (Ctrl 0)"
+        title="Reset interface zoom (Ctrl 0 · Ctrl + scroll to zoom)"
         aria-label="Reset interface zoom"
         className="min-w-[44px] px-1 text-center text-xs font-medium text-zinc-300 hover:text-white transition-colors"
       >

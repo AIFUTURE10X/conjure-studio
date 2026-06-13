@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 // Apply the saved interface zoom before first paint so it stays consistent
 // across pages and reloads (especially in the installed standalone app, which
 // hides the browser's own zoom controls). See lib/ui-zoom.ts.
-const ZOOM_INIT_SCRIPT = `(function(){try{var z=localStorage.getItem('ui-zoom');if(z){var n=parseFloat(z);if(n>0&&n!==1){document.documentElement.style.zoom=String(n);}}}catch(e){}})();`
+const ZOOM_INIT_SCRIPT = `(function(){try{var z=localStorage.getItem('ui-zoom');if(z){var n=parseFloat(z);if(n>0&&n!==1){var r=document.documentElement;r.style.zoom=String(n);r.style.setProperty('--ui-zoom',String(n));}}}catch(e){}})();`
 
 export default function RootLayout({
   children,
