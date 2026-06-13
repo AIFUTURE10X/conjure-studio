@@ -9,7 +9,7 @@
  */
 
 import { type ReactNode } from 'react'
-import { Download, FlipHorizontal2, Loader2, RotateCcw, Scissors, Trash2, Upload } from 'lucide-react'
+import { Download, FlipHorizontal2, Loader2, Scissors, Trash2, Upload } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { ThumbnailAiPanel } from './ThumbnailAiPanel'
 import {
@@ -64,6 +64,12 @@ export function ThumbnailSettingsRail() {
     isExporting,
     exportPng,
   } = useThumbnail()
+
+  const handleClearAll = () => {
+    if (window.confirm('Clear this thumbnail and start over? This removes the background, photo, and headline.')) {
+      reset()
+    }
+  }
   const { background, subject, headline } = config
 
   return (
@@ -239,8 +245,11 @@ export function ThumbnailSettingsRail() {
           {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Export PNG (1280×720)
         </button>
-        <button onClick={reset} className={`${railButton} w-full`}>
-          <RotateCcw className="h-3.5 w-3.5" /> Reset
+        <button
+          onClick={handleClearAll}
+          className={`${railButton} w-full hover:border-red-500/60 hover:text-red-300`}
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Clear all
         </button>
       </div>
     </div>

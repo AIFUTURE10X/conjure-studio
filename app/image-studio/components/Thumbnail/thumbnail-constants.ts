@@ -136,6 +136,21 @@ export const THUMBNAIL_AI_STYLES: ThumbnailAiStyle[] = [
   { id: 'gaming', label: 'Gaming', prompt: 'epic gaming key art, intense action, glowing magical effects, high energy' },
 ]
 
+export interface ThumbnailModelOption {
+  id: string
+  label: string
+  full: string
+}
+
+export const THUMBNAIL_MODELS: ThumbnailModelOption[] = [
+  { id: 'gemini-3.1-flash-image-preview', label: 'Flash', full: 'Gemini 3.1 Flash — fastest' },
+  { id: 'gemini-3-pro-image-preview', label: 'Pro', full: 'Gemini 3 Pro — higher quality' },
+  { id: 'gpt-image-2', label: 'GPT', full: 'ChatGPT Images 2.0' },
+]
+
+export const THUMBNAIL_SIZES = ['1K', '2K'] as const
+export type ThumbnailSize = (typeof THUMBNAIL_SIZES)[number]
+
 /** Build a thumbnail-optimised image prompt — high impact, no baked-in text. */
 export function buildThumbnailBgPrompt(idea: string, stylePrompt: string): string {
   const concept = idea.trim() || 'an eye-catching, attention-grabbing scene'

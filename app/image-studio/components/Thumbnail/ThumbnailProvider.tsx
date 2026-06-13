@@ -41,9 +41,10 @@ interface ThumbnailContextValue {
   setHeadline: (patch: Partial<ThumbnailHeadline>) => void
   applyTemplate: (id: string) => void
   reset: () => void
+  clearBackground: () => void
   removeSubjectBackground: () => Promise<void>
   isCuttingOut: boolean
-  generateBackground: (idea: string, stylePrompt: string) => Promise<void>
+  generateBackground: (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => Promise<void>
   isGeneratingBg: boolean
   stageRef: RefObject<HTMLDivElement | null>
   isExporting: boolean
@@ -143,6 +144,13 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => setConfig(DEFAULT_CONFIG), [])
 
+  const clearBackground = useCallback(() => {
+    setConfig((c) => ({
+      ...c,
+      background: { ...c.background, kind: 'gradient', imageUrl: undefined },
+    }))
+  }, [])
+
   const removeSubjectBackground = useCallback(async () => {
     const current = configRef.current.subject
     if (!current) return
@@ -165,15 +173,16 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const generateBackground = useCallback(async (idea: string, stylePrompt: string) => {
+  const generateBackground = useCallback(
+    async (idea: string, stylePrompt: string, options?: { model?: string; imageSize?: string }) => {
     setIsGeneratingBg(true)
     try {
       const form = new FormData()
       form.append('prompt', buildThumbnailBgPrompt(idea, stylePrompt))
       form.append('aspectRatio', '16:9')
       form.append('count', '1')
-      form.append('model', 'gemini-3.1-flash-image-preview')
-      form.append('imageSize', '1K')
+      form.append('model', options?.model || 'gemini-3.1-flash-image-preview')
+      form.append('imageSize', options?.imageSize || '1K')
       const res = await fetch('/api/generate-image', { method: 'POST', body: form })
       const data = (await res.json()) as { images?: string[]; error?: string }
       const url = data.images?.[0]
@@ -229,6 +238,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         setHeadline,
         applyTemplate,
         reset,
+        clearBackground,
         removeSubjectBackground,
         isCuttingOut,
         generateBackground,
