@@ -23,6 +23,7 @@ import type { StudioMode } from '../../context/studio-types'
 const MODE_OPTIONS: Array<{ mode: StudioMode; label: string }> = [
   { mode: 'image', label: 'Image' },
   { mode: 'logo', label: 'Logo' },
+  { mode: 'thumbnail', label: 'Thumbnail' },
   { mode: 'mockups', label: 'Mockups' },
   { mode: 'bg-remover', label: 'BG Remover' },
 ]

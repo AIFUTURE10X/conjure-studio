@@ -29,6 +29,7 @@ import { useStudioCore } from '../../context/useStudio'
 import { ImageGenerationProvider } from '../../context/ImageGenerationProvider'
 import { LogoGenerationProvider } from '../../context/LogoGenerationProvider'
 import { HelperBridgeProvider } from '../../context/HelperBridgeProvider'
+import { ThumbnailProvider } from '../Thumbnail'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 
 export function StudioShell() {
@@ -59,6 +60,7 @@ export function StudioShell() {
         <ImageGenerationProvider>
         <LogoGenerationProvider>
         <HelperBridgeProvider>
+        <ThumbnailProvider>
           {isDesktop ? (
             <ResizablePanelGroup
               orientation="horizontal"
@@ -80,6 +82,7 @@ export function StudioShell() {
           ) : (
             <StudioMobileLayout />
           )}
+        </ThumbnailProvider>
         </HelperBridgeProvider>
         </LogoGenerationProvider>
         </ImageGenerationProvider>

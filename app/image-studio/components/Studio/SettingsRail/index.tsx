@@ -15,6 +15,7 @@ import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { SuggestionBanner } from './SuggestionBanner'
 import { ImageSettingsRail } from './ImageSettingsRail'
 import { LogoSettingsRail } from './LogoSettingsRail'
+import { ThumbnailSettingsRail } from '../../Thumbnail'
 import { useStudioMode } from '../../../context/useStudio'
 
 export { SettingField } from './SettingField'
@@ -63,7 +64,8 @@ export function SettingsRail() {
         <ScrollArea className="flex-1 min-h-0">
           {mode === 'image' && <ImageSettingsRail />}
           {mode === 'logo' && <LogoSettingsRail />}
-          {mode !== 'image' && mode !== 'logo' && (
+          {mode === 'thumbnail' && <ThumbnailSettingsRail />}
+          {mode !== 'image' && mode !== 'logo' && mode !== 'thumbnail' && (
             <div className="p-6">
               <p className="text-xs text-zinc-500 text-center leading-5">
                 Settings for this mode join the rail when it enters the
