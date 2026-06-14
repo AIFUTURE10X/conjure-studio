@@ -1,4 +1,4 @@
-# v0 Prompts Genie - Project Notes
+# Conjure Studio - Project Notes
 
 ## 🚀 Deployment Workflow
 

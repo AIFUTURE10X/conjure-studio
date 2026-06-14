@@ -12,7 +12,7 @@ export default function LandingPage() {
       <header className="border-b border-zinc-800 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <Image src="/logo.png" alt="PromptsGenie Logo" width={300} height={80} className="h-16 w-auto" />
+            <Image src="/logo.png" alt="Conjure Studio Logo" width={300} height={80} className="h-16 w-auto" />
             <p className="text-xs text-zinc-400 font-medium">AI-Powered Creative Tools</p>
           </div>
 
@@ -52,7 +52,7 @@ export default function LandingPage() {
               background: "linear-gradient(135deg, #c99850 0%, #dbb56e 25%, #f4d698 50%, #dbb56e 75%, #c99850 100%)",
             }}
           >
-            Get PromptsGenie Pro
+            Get Conjure Studio
           </Button>
         </div>
       </header>
@@ -66,7 +66,7 @@ export default function LandingPage() {
               background: "linear-gradient(135deg, #c99850 0%, #dbb56e 25%, #f4d698 50%, #dbb56e 75%, #c99850 100%)",
             }}
           >
-            <span className="text-sm font-medium text-black">PromptsGenie Pro</span>
+            <span className="text-sm font-medium text-black">Conjure Studio</span>
           </div>
 
           <h2 className="text-6xl font-bold mb-6 text-balance">
@@ -179,7 +179,7 @@ export default function LandingPage() {
             <Sparkles className="w-12 h-12 mx-auto mb-6" style={{ color: "#c99850" }} />
             <h3 className="text-4xl font-bold mb-4">Ready to supercharge your creative workflow?</h3>
             <p className="text-xl text-zinc-400 mb-8">
-              Join thousands of designers and creators using PromptsGenie Pro
+              Join thousands of designers and creators using Conjure Studio
             </p>
             <Link href="/image-studio">
               <Button
@@ -201,11 +201,8 @@ export default function LandingPage() {
       <footer className="border-t border-zinc-800 px-6 py-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold mb-1">
-              <span className="text-white">Prompts</span>
-              <span style={{ color: "#c99850" }}>Genie</span>
-            </h1>
-            <p className="text-xs text-zinc-500">© 2025 PromptsGenie. All rights reserved.</p>
+            <h1 className="text-xl font-bold mb-1">Conjure Studio</h1>
+            <p className="text-xs text-zinc-500">© 2025 Conjure Studio. All rights reserved.</p>
           </div>
           <div className="flex gap-6 text-sm text-zinc-400">
             <a href="#" className="hover:text-white transition-colors">

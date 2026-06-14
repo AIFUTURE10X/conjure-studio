@@ -1,6 +1,6 @@
-# V0 Prompts Genie
+# Conjure Studio
 
-AI-powered image analysis and prompt generation suite for creating stunning visuals with AI image generators.
+AI-powered image generation, logo design, mockups, and background removal suite for creating stunning visuals.
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
