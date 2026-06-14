@@ -56,7 +56,7 @@ export function ImageLightbox({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[90vw]! max-h-[90vh]! w-[90vw] h-[90vh] p-0 bg-black border-zinc-800 overflow-hidden">
-        <div className="relative w-full h-full flex flex-col">
+        <div className="absolute inset-0 flex flex-col">
           {/* Close button */}
           <button
             onClick={onClose}
