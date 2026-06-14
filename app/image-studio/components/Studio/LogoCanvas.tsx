@@ -18,13 +18,34 @@ import { LogoPanelModals } from '../LogoPanel/LogoPanelModals'
 import { LogoActionButtons } from '../Logo/LogoActionButtons'
 import { LogoPreviewPanel, type LogoFilterStyle } from '../Logo/LogoPreviewPanel'
 import { LogoHistoryPanel } from '../Logo/LogoHistory'
+import { ConjureBrandPresets } from '../Logo/ConjureBrandPresets'
+import type { ConjureBrandPreset } from '../../constants/conjure-brand-presets'
 import { useStudioCore, useStudioLogoState, useStudioMode } from '../../context/useStudio'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
 
 export function LogoCanvas() {
   const state = useStudioLogoState()
   const { state: coreState } = useStudioCore()
-  const { promptCollapsed } = useStudioMode()
+  const { promptCollapsed, setPromptCollapsed } = useStudioMode()
+
+  // Apply a one-click brand preset: write the prompt to both stores (dock +
+  // generator), set every chip, and reveal the dock so the prompt is editable.
+  const applyBrandPreset = (preset: ConjureBrandPreset) => {
+    coreState.setMainPrompt(preset.prompt)
+    state.setPrompt(preset.prompt)
+    coreState.setNegativePrompt(preset.negativePrompt)
+    state.setNegativePrompt(preset.negativePrompt)
+    state.setLogoType(preset.logoType)
+    state.setLogoVisualStyle(preset.visualStyle)
+    state.setLogoRenderTreatment(preset.renderTreatment)
+    state.setLogoTypographyDirection(preset.typography)
+    state.setTextMode(preset.textMode)
+    state.setAspectRatio(preset.aspectRatio)
+    state.setResolution(preset.resolution)
+    state.setBgRemovalMethod(preset.bgRemovalMethod)
+    setPromptCollapsed(false)
+    toast.success(`"${preset.name}" applied — tweak the prompt or hit Generate.`)
+  }
 
   // History restores write the prompt to both stores so the shared
   // PromptDock reflects it and a follow-up generate uses it.
@@ -74,6 +95,10 @@ export function LogoCanvas() {
                 state.setShowUnifiedConfigurator(true)
               }}
             />
+
+            {!state.removeBackgroundOnly && (
+              <ConjureBrandPresets onApply={applyBrandPreset} disabled={isGenerating} />
+            )}
 
             {generatedLogo && (
               <LogoActionButtons
