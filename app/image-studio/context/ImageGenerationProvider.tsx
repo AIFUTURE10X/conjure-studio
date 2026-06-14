@@ -20,6 +20,8 @@ import { buildFinalImagePrompt } from '../utils/build-image-prompt'
 import { normalizeCreativeDirection } from '../constants/creative-direction-options'
 import { useStudioCore } from './useStudio'
 
+export type ImageBgRemovalMethod = 'none' | 'photoroom' | 'fal'
+
 export interface ImageMetadata {
   dimensions: string
   fileSize: string
@@ -38,6 +40,8 @@ export interface ImageGenerationEngine {
   getImageMetadata: (url: string) => Promise<ImageMetadata>
   photoRoomBgRemovalEnabled: boolean
   setPhotoRoomBgRemovalEnabled: (enabled: boolean) => void
+  imageBgRemovalMethod: ImageBgRemovalMethod
+  setImageBgRemovalMethod: (method: ImageBgRemovalMethod) => void
 }
 
 const ImageGenerationContext = createContext<ImageGenerationEngine | null>(null)
@@ -79,6 +83,14 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     state.setUseImageBgRemoval(enabled)
     state.setUsePhotoRoomBgRemoval(enabled)
   }, [state.setUseImageBgRemoval, state.setUsePhotoRoomBgRemoval])
+
+  // Background-removal engine for the post-generation "Remove BG" action.
+  // fal · BiRefNet is the default; kept in sync with the legacy on/off flags.
+  const [imageBgRemovalMethod, setImageBgRemovalMethodState] = useState<ImageBgRemovalMethod>('fal')
+  const setImageBgRemovalMethod = useCallback((method: ImageBgRemovalMethod) => {
+    setImageBgRemovalMethodState(method)
+    setPhotoRoomBgRemovalEnabled(method !== 'none')
+  }, [setPhotoRoomBgRemovalEnabled])
 
   const generateNow = useCallback(async () => {
     const finalPrompt = state.mainPrompt.trim() || combinedPrompt.trim() || 'a beautiful scene'
@@ -184,8 +196,8 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
   const removeBackground = useCallback(async (index: number) => {
     const img = state.generatedImages[index]
     if (!img?.url) return
-    if (!photoRoomBgRemovalEnabled) {
-      toast.info('PhotoRoom BG is turned off')
+    if (imageBgRemovalMethod === 'none') {
+      toast.info('Background removal is off')
       return
     }
     try {
@@ -194,7 +206,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       const file = new File([blob], 'image.png', { type: 'image/png' })
       const formData = new FormData()
       formData.append('image', file)
-      formData.append('bgRemovalMethod', 'photoroom')
+      formData.append('bgRemovalMethod', imageBgRemovalMethod)
       const result = await fetch('/api/remove-background', { method: 'POST', body: formData })
       const data = await result.json()
       if (!data.success || !data.image) throw new Error(data.error || 'Failed to remove background')
@@ -206,7 +218,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       console.error('[v0] Background removal error:', error)
       toast.error('Background removal failed')
     }
-  }, [state.generatedImages, state.setGeneratedImages, photoRoomBgRemovalEnabled])
+  }, [state.generatedImages, state.setGeneratedImages, imageBgRemovalMethod])
 
   const upscaleToFourK = useCallback(async (index: number) => {
     const original = state.generatedImages[index]
@@ -236,9 +248,12 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     getImageMetadata,
     photoRoomBgRemovalEnabled,
     setPhotoRoomBgRemovalEnabled,
+    imageBgRemovalMethod,
+    setImageBgRemovalMethod,
   }), [
     isGenerating, error, generateNow, requestGenerate, clearImages, downloadImage,
     removeBackground, upscaleToFourK, photoRoomBgRemovalEnabled, setPhotoRoomBgRemovalEnabled,
+    imageBgRemovalMethod, setImageBgRemovalMethod,
   ])
 
   return (

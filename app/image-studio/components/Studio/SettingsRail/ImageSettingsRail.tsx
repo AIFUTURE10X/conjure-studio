@@ -36,6 +36,12 @@ const MODEL_OPTIONS = [
 const IMAGE_SIZES = ['1K', '2K', '4K'] as const
 const STYLE_STRENGTHS = ['subtle', 'moderate', 'strong'] as const
 
+const BG_REMOVAL_CHIPS: ChipOption[] = [
+  { value: 'fal', label: 'fal · BiRefNet' },
+  { value: 'photoroom', label: 'PhotoRoom' },
+  { value: 'none', label: 'Off' },
+]
+
 // Chip options derived from the shared constants.
 const ASPECT_RATIO_CHIPS: ChipOption[] = ASPECT_RATIO_OPTIONS.map((r) => ({ value: r.value, label: r.value }))
 const STYLE_CHIPS: ChipOption[] = stylePresets.map((s) => ({
@@ -50,7 +56,7 @@ const CAMERA_LENS_CHIPS: ChipOption[] = [{ value: '', label: 'None' }, ...camera
 export function ImageSettingsRail() {
   const { state, presets, savePreset, handleLoadPreset } = useStudioCore()
   const { pendingSuggestion } = usePendingSuggestion()
-  const { photoRoomBgRemovalEnabled, setPhotoRoomBgRemovalEnabled } = useImageGenerationEngine()
+  const { imageBgRemovalMethod, setImageBgRemovalMethod } = useImageGenerationEngine()
 
   const patch: ImageSettingsPatch | null =
     pendingSuggestion?.patch.mode === 'image' ? pendingSuggestion.patch.image : null
@@ -119,23 +125,15 @@ export function ImageSettingsRail() {
         <SeedControlDropdown seed={state.seed} onSeedChange={state.setSeed} />
       </SettingField>
 
-      <SettingField label="Background Removal" suggestion={diff('bgRemovalMethod', photoRoomBgRemovalEnabled ? 'photoroom' : 'none')}>
-        <label
-          className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors cursor-pointer ${
-            photoRoomBgRemovalEnabled
-              ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]'
-              : 'border-zinc-700 bg-zinc-900 text-zinc-300'
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={photoRoomBgRemovalEnabled}
-            onChange={(e) => setPhotoRoomBgRemovalEnabled(e.target.checked)}
-            aria-label="Turn PhotoRoom background removal on or off"
-            className="h-3.5 w-3.5 accent-[#c99850]"
-          />
-          PhotoRoom BG
-        </label>
+      <SettingField label="Background Removal" suggestion={diff('bgRemovalMethod', imageBgRemovalMethod)}>
+        <ChipSelect
+          options={BG_REMOVAL_CHIPS}
+          value={imageBgRemovalMethod}
+          onChange={(v) => setImageBgRemovalMethod(v as typeof imageBgRemovalMethod)}
+        />
+        <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
+          fal · BiRefNet (default) — pay-as-you-go, top-tier edges. Applied when you use Remove BG on a result.
+        </p>
       </SettingField>
 
       <SettingField label="Reference Image">
