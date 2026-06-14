@@ -86,6 +86,8 @@ export interface ThumbnailTextBlock {
   highlight?: ThumbnailHighlight | null
   /** Outline thickness 0–100 (50 ≈ the original auto weight). */
   strokeWidth?: number
+  /** Outline (text-stroke) color for the pop/outline presets (default black). */
+  strokeColor?: string
   /** Letter spacing in 0.01em units (-1 ≈ the original -0.01em). */
   letterSpacing?: number
   /** Wrap width as a percentage of the stage (default 60). Wider = fewer lines. */

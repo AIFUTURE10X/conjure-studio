@@ -62,11 +62,12 @@ export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
     fontFamily: fontFamilyFor(headline.font),
   }
 
+  const strokeColor = headline.strokeColor ?? '#000'
   let style: CSSProperties
   if (headline.preset === 'pop') {
-    style = { ...base, WebkitTextStroke: `${stroke}px #000`, textShadow: `${fontPx * 0.05}px ${fontPx * 0.05}px 0 #000` }
+    style = { ...base, WebkitTextStroke: `${stroke}px ${strokeColor}`, textShadow: `${fontPx * 0.05}px ${fontPx * 0.05}px 0 #000` }
   } else if (headline.preset === 'outline') {
-    style = { ...base, WebkitTextStroke: `${stroke * 1.3}px #000` }
+    style = { ...base, WebkitTextStroke: `${stroke * 1.3}px ${strokeColor}` }
   } else if (headline.preset === 'shadow') {
     style = { ...base, textShadow: `0 ${fontPx * 0.04}px ${fontPx * 0.08}px rgba(0,0,0,0.75)` }
   } else {
@@ -81,32 +82,43 @@ export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
     }
   }
 
-  // Gradient text fill — skipped when a highlight box is active (both use `background`).
-  if (headline.gradient && !headline.highlight) {
+  const grad = headline.gradient
+  const hl = headline.highlight
+  const gradientCss = grad ? `linear-gradient(135deg, ${grad[0]}, ${grad[1]})` : null
+
+  if (hl) {
+    // Colored highlight box (Canva "Background" effect). 50 ≈ the original
+    // padding; higher = bigger box. Width = horizontal, height = vertical.
+    const padX = (hl.width ?? 50) / 50
+    const padY = (hl.height ?? 50) / 50
+    const boxColor = hexToRgba(hl.color, hl.opacity / 100)
+    const box: CSSProperties = {
+      padding: `${fontPx * 0.08 * padY}px ${fontPx * 0.2 * padX}px`,
+      borderRadius: (hl.roundness / 100) * fontPx * 0.5,
+      boxDecorationBreak: 'clone',
+      WebkitBoxDecorationBreak: 'clone',
+    }
+    if (gradientCss) {
+      // Gradient-filled text ON the box: two background layers — the gradient
+      // clipped to the glyphs, the box color clipped to its border-box.
+      const clip = { WebkitBackgroundClip: 'text, border-box', backgroundClip: 'text, border-box' } as unknown as CSSProperties
+      style = {
+        ...style,
+        ...box,
+        backgroundImage: `${gradientCss}, linear-gradient(0deg, ${boxColor}, ${boxColor})`,
+        color: 'transparent',
+        ...clip,
+      }
+    } else {
+      style = { ...style, ...box, color: headline.color, backgroundImage: undefined, backgroundColor: boxColor }
+    }
+  } else if (gradientCss) {
     style = {
       ...style,
-      backgroundImage: `linear-gradient(135deg, ${headline.gradient[0]}, ${headline.gradient[1]})`,
+      backgroundImage: gradientCss,
       WebkitBackgroundClip: 'text',
       backgroundClip: 'text',
       color: 'transparent',
-    }
-  }
-
-  // Colored highlight box (Canva "Background" effect) — wins over the block preset.
-  if (headline.highlight) {
-    const h = headline.highlight
-    // 50 ≈ the original padding; higher = bigger box. Width = horizontal, height = vertical.
-    const padX = (h.width ?? 50) / 50
-    const padY = (h.height ?? 50) / 50
-    style = {
-      ...style,
-      color: headline.color,
-      backgroundImage: undefined,
-      backgroundColor: hexToRgba(h.color, h.opacity / 100),
-      padding: `${fontPx * 0.08 * padY}px ${fontPx * 0.2 * padX}px`,
-      borderRadius: (h.roundness / 100) * fontPx * 0.5,
-      boxDecorationBreak: 'clone',
-      WebkitBoxDecorationBreak: 'clone',
     }
   }
 

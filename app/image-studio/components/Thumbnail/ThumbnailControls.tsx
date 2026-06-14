@@ -5,7 +5,47 @@
  * plus the shared photo-adjustment block, used across the FX panels.
  */
 
+import { useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronLeft } from 'lucide-react'
 import { type ImageAdjust } from './thumbnail-constants'
+
+/** A collapsible group — used to tuck away advanced controls (Adjust, Fill…). */
+export function Disclosure({
+  label,
+  defaultOpen = false,
+  children,
+}: {
+  label: string
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="space-y-1.5">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between rounded-md border border-zinc-700 bg-zinc-800/70 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 transition-colors hover:bg-zinc-700"
+      >
+        <span>{label}</span>
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="space-y-1.5">{children}</div>}
+    </div>
+  )
+}
+
+/** A "‹ Title" header for a contextual object view — click to deselect/back. */
+export function BackHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <button
+      onClick={onBack}
+      className="-ml-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 transition-colors hover:text-zinc-200"
+    >
+      <ChevronLeft className="h-4 w-4" />
+      {title}
+    </button>
+  )
+}
 
 export function RangeRow({
   label,

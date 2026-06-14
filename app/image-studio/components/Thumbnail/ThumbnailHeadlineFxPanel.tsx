@@ -10,33 +10,19 @@
 
 import { useThumbnail } from './ThumbnailProvider'
 import { RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
-import { ThumbnailFontPicker } from './ThumbnailFontPicker'
 
 const DEFAULT_GRADIENT: [string, string] = ['#ffe14d', '#ff5e5e']
 const DEFAULT_HIGHLIGHT = { color: '#ff3b30', roundness: 20, opacity: 100, width: 50, height: 50 }
 
+/** Gradient text fill + colored highlight box — the "Fill & Highlight" group. */
 export function ThumbnailHeadlineFxPanel() {
   const { activeHeadline, setHeadline } = useThumbnail()
   const headline = activeHeadline
   const gradient = headline.gradient ?? null
   const highlight = headline.highlight ?? null
-  const hasOutline = headline.preset === 'pop' || headline.preset === 'outline'
 
   return (
-    <div className="space-y-2.5">
-      <ThumbnailFontPicker />
-
-      {hasOutline && (
-        <RangeRow
-          label="Outline weight"
-          value={headline.strokeWidth ?? 50}
-          min={0}
-          max={100}
-          suffix="%"
-          onChange={(v) => setHeadline({ strokeWidth: v })}
-        />
-      )}
-
+    <div className="space-y-1.5">
       <div className="space-y-1.5">
         <ToggleRow
           label="Gradient fill"

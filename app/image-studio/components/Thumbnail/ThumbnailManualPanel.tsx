@@ -3,182 +3,46 @@
 /**
  * ThumbnailManualPanel
  *
- * The "Manual" half of the Thumbnail rail: template picker, background source,
- * subject (upload + one-click cutout reusing /api/remove-background), text
- * blocks (one or more draggable headlines), stickers, logo/watermark, export,
- * and saved-thumbnail history. Paired with ThumbnailAiPanel behind the rail's
- * AI | Manual tabs.
+ * The contextual settings rail. It shows controls for whatever is selected on
+ * the canvas: a Scene/Design overview when nothing is selected, or a focused
+ * editor for the selected text block / subject / sticker. Export stays pinned at
+ * the bottom so it's always reachable.
  */
 
-import { type ReactNode } from 'react'
-import { FlipHorizontal2, Loader2, Scissors, Trash2, Upload } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
-import { ThumbnailStickerPanel } from './ThumbnailStickerPanel'
-import { ThumbnailLogoPanel } from './ThumbnailLogoPanel'
-import { ThumbnailExportPanel } from './ThumbnailExportPanel'
-import { ThumbnailHistoryStrip } from './ThumbnailHistoryStrip'
-import { ThumbnailBackgroundFxPanel } from './ThumbnailBackgroundFxPanel'
-import { ThumbnailSubjectFxPanel } from './ThumbnailSubjectFxPanel'
-import { ThumbnailArrangePanel } from './ThumbnailArrangePanel'
-import { ThumbnailStylesPanel } from './ThumbnailStylesPanel'
-import { ThumbnailTemplatePicker } from './ThumbnailTemplatePicker'
+import { ThumbnailSceneView } from './ThumbnailSceneView'
 import { ThumbnailTextSection } from './ThumbnailTextSection'
-import { RangeRow } from './ThumbnailControls'
-import { type BackgroundKind } from './thumbnail-constants'
-import { railButton, railLabel } from './thumbnail-ui'
+import { ThumbnailSubjectView } from './ThumbnailSubjectView'
+import { ThumbnailStickerControls } from './ThumbnailStickerControls'
+import { ThumbnailExportPanel } from './ThumbnailExportPanel'
+import { SUBJECT_SELECTION_ID, type ThumbnailConfig } from './thumbnail-constants'
 
-function pickImage(onPicked: (dataUrl: string) => void) {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.onchange = () => {
-    const file = input.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => onPicked(reader.result as string)
-    reader.readAsDataURL(file)
-  }
-  input.click()
+type SelectionKind = 'scene' | 'text' | 'subject' | 'sticker'
+
+function selectionKind(id: string | null, config: ThumbnailConfig): SelectionKind {
+  if (!id) return 'scene'
+  if (id === SUBJECT_SELECTION_ID) return 'subject'
+  if (config.headlines.some((h) => h.id === id)) return 'text'
+  if (config.stickers.some((s) => s.id === id)) return 'sticker'
+  return 'scene'
 }
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <h4 className={railLabel}>{title}</h4>
-      {children}
-    </div>
-  )
-}
-
-const BG_KINDS: { id: BackgroundKind; label: string }[] = [
-  { id: 'gradient', label: 'Gradient' },
-  { id: 'solid', label: 'Solid' },
-  { id: 'image', label: 'Image' },
-]
 
 export function ThumbnailManualPanel() {
-  const { config, setBackground, setSubject, patchSubject, removeSubjectBackground, isCuttingOut } = useThumbnail()
-
-  const { background, subject } = config
+  const { config, selectedStickerId } = useThumbnail()
+  const kind = selectionKind(selectedStickerId, config)
 
   return (
     <div className="space-y-5">
-      <ThumbnailTemplatePicker />
-
-      <ThumbnailStylesPanel />
-
-      <Section title="Background">
-        <div className="grid grid-cols-3 gap-1.5">
-          {BG_KINDS.map((k) => (
-            <button
-              key={k.id}
-              onClick={() => setBackground({ kind: k.id })}
-              className={`${railButton} ${background.kind === k.id ? 'border-[#c99850] text-[#dbb56e]' : ''}`}
-            >
-              {k.label}
-            </button>
-          ))}
-        </div>
-        {background.kind === 'solid' && (
-          <input
-            type="color"
-            value={background.color}
-            onChange={(e) => setBackground({ color: e.target.value })}
-            className="h-8 w-full cursor-pointer rounded-md border border-zinc-700 bg-zinc-900"
-            aria-label="Background color"
-          />
-        )}
-        {background.kind === 'gradient' && (
-          <div className="space-y-1.5">
-            <div className="flex gap-1.5">
-              {[0, 1].map((i) => (
-                <input
-                  key={i}
-                  type="color"
-                  value={background.gradient[i]}
-                  onChange={(e) => {
-                    const next: [string, string] = [...background.gradient]
-                    next[i] = e.target.value
-                    setBackground({ gradient: next })
-                  }}
-                  className="h-8 flex-1 cursor-pointer rounded-md border border-zinc-700 bg-zinc-900"
-                  aria-label={`Gradient color ${i + 1}`}
-                />
-              ))}
-            </div>
-            <RangeRow
-              label="Gradient angle"
-              value={background.gradientAngle ?? 135}
-              min={0}
-              max={360}
-              suffix="°"
-              onChange={(v) => setBackground({ gradientAngle: v })}
-            />
-          </div>
-        )}
-        {background.kind === 'image' && (
-          <button onClick={() => pickImage((url) => setBackground({ imageUrl: url }))} className={`${railButton} w-full`}>
-            <Upload className="h-3.5 w-3.5" /> {background.imageUrl ? 'Replace image' : 'Upload image'}
-          </button>
-        )}
-        <ThumbnailBackgroundFxPanel />
-      </Section>
-
-      <Section title="Subject / Face">
-        {!subject ? (
-          <button
-            onClick={() => pickImage((url) => setSubject({ url, x: 76, y: 58, scale: 46, flip: false }))}
-            className={`${railButton} w-full`}
-          >
-            <Upload className="h-3.5 w-3.5" /> Upload photo
-          </button>
-        ) : (
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-1.5">
-              <button onClick={removeSubjectBackground} disabled={isCuttingOut} className={railButton}>
-                {isCuttingOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5" />}
-                Cut out
-              </button>
-              <button onClick={() => patchSubject({ flip: !subject.flip })} className={railButton}>
-                <FlipHorizontal2 className="h-3.5 w-3.5" /> Flip
-              </button>
-            </div>
-            <label className="block text-[11px] text-zinc-500">
-              Size
-              <input
-                type="range"
-                min={15}
-                max={90}
-                value={subject.scale}
-                onChange={(e) => patchSubject({ scale: Number(e.target.value) })}
-                className="w-full accent-[#c99850]"
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button onClick={() => pickImage((url) => setSubject({ ...subject, url }))} className={railButton}>
-                <Upload className="h-3.5 w-3.5" /> Replace
-              </button>
-              <button onClick={() => setSubject(null)} className={`${railButton} hover:border-red-500/60 hover:text-red-300`}>
-                <Trash2 className="h-3.5 w-3.5" /> Remove
-              </button>
-            </div>
-          </div>
-        )}
-      </Section>
-
-      <ThumbnailSubjectFxPanel />
-
-      <ThumbnailTextSection />
-
-      <ThumbnailStickerPanel />
-
-      <ThumbnailArrangePanel />
-
-      <ThumbnailLogoPanel />
-
+      {kind === 'text' ? (
+        <ThumbnailTextSection />
+      ) : kind === 'subject' ? (
+        <ThumbnailSubjectView />
+      ) : kind === 'sticker' ? (
+        <ThumbnailStickerControls />
+      ) : (
+        <ThumbnailSceneView />
+      )}
       <ThumbnailExportPanel />
-
-      <ThumbnailHistoryStrip />
     </div>
   )
 }

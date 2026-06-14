@@ -55,6 +55,12 @@ async function openManualTab(page: Page) {
   await page.getByRole('button', { name: 'Manual', exact: true }).click()
 }
 
+// The rail is contextual: the text editor only appears once a text block is
+// selected. Clicking the headline on the canvas selects it and opens the editor.
+async function selectHeadline(page: Page) {
+  await page.getByTestId('thumbnail-headline').first().click()
+}
+
 test.beforeEach(async ({ page }) => {
   await openThumbnailMode(page)
 })
@@ -67,16 +73,17 @@ test('renders the 1280×720 stage with the default headline', async ({ page }) =
 
 test('Manual: typing a headline updates the canvas live', async ({ page }) => {
   await openManualTab(page)
+  await selectHeadline(page)
   await page.getByPlaceholder('Your title here').fill('Test Headline 123')
   await expect(page.getByTestId('thumbnail-headline')).toContainText('Test Headline 123')
 })
 
 test('Manual: selecting a template marks it active', async ({ page }) => {
   await openManualTab(page)
-  const template = page.getByRole('button', { name: 'Reaction face', exact: true })
-  await template.click()
-  // Active template buttons get the gold accent border class.
-  await expect(template).toHaveClass(/border-\[#c99850\]/)
+  // Template is a dropdown — open it, pick an option, then the trigger reflects it.
+  await page.getByRole('button', { name: 'Template' }).click()
+  await page.getByRole('button', { name: 'Reaction face', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Template' })).toContainText('Reaction face')
 })
 
 test('Manual: a solid background reveals a colour picker', async ({ page }) => {
@@ -121,6 +128,7 @@ test('AI: Generate background adds an image layer to the stage', async ({ page }
 
 test('Manual: font picker opens a grid and selects a font', async ({ page }) => {
   await openManualTab(page)
+  await selectHeadline(page)
   const trigger = page.getByRole('button', { name: 'Font' })
   await expect(trigger).toContainText('Geist')
 
@@ -137,12 +145,14 @@ test('Manual: Clear all wipes the canvas to a blank screen', async ({ page }) =>
   // The default config renders a headline; confirm it's there to start.
   await expect(page.getByTestId('thumbnail-headline')).toBeVisible()
 
-  // "Clear all" asks for confirmation via window.confirm — accept it.
+  // "Clear all" (pinned in Export) asks for confirmation via window.confirm — accept it.
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Clear all' }).click()
 
   // Blank canvas: the headline layer renders nothing once the text is empty.
   await expect(page.getByTestId('thumbnail-headline')).toHaveCount(0)
+  // Open the now-empty text block from the Scene view and confirm the field cleared.
+  await page.getByRole('button', { name: 'Empty text' }).click()
   await expect(page.getByPlaceholder('Your title here')).toHaveValue('')
   // Stage itself still renders (it's just empty now).
   await expect(page.getByTestId('thumbnail-stage')).toBeVisible()

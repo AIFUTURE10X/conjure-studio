@@ -3,28 +3,34 @@
 /**
  * ThumbnailTextSection
  *
- * The "Text" block of the Manual rail: a list of text blocks (select / delete),
- * an "Add text block" button, and the editor (text, effect preset, color,
- * uppercase, size, tilt, letter spacing, font & FX) bound to the active block.
+ * The contextual editor for the selected text block. Primary controls stay
+ * visible (content, color/case, font, effect, size); the fine knobs live under
+ * "Adjust" and "Fill & Highlight" disclosures. A block switcher lets you hop
+ * between blocks; Back deselects to the Scene view.
  */
 
 import { Plus, Trash2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useThumbnail } from './ThumbnailProvider'
-import { RangeRow, ToggleRow } from './ThumbnailControls'
+import { BackHeader, Disclosure, RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
+import { ThumbnailFontPicker } from './ThumbnailFontPicker'
 import { ThumbnailHeadlineFxPanel } from './ThumbnailHeadlineFxPanel'
+import { ThumbnailArrangePanel } from './ThumbnailArrangePanel'
 import { TEXT_PRESETS } from './thumbnail-constants'
-import { railButton, railLabel } from './thumbnail-ui'
+import { railButton } from './thumbnail-ui'
 
 export function ThumbnailTextSection() {
   const { config, setHeadline, activeHeadline, addTextBlock, removeTextBlock, setSelectedStickerId } = useThumbnail()
   const { headlines } = config
   const headline = activeHeadline
+  const hasOutline = headline.preset === 'pop' || headline.preset === 'outline'
+  const fixedLayout = headline.noWrap || (headline.lines ?? 0) >= 2
 
   return (
-    <div className="space-y-2">
-      <h4 className={railLabel}>Text</h4>
+    <div className="space-y-3">
+      <BackHeader title="Text" onBack={() => setSelectedStickerId(null)} />
 
+      {/* Block switcher */}
       <div className="space-y-1">
         {headlines.map((b) => {
           const active = b.id === headline.id
@@ -50,11 +56,10 @@ export function ThumbnailTextSection() {
             </div>
           )
         })}
+        <button onClick={addTextBlock} className={`${railButton} w-full`}>
+          <Plus className="h-3.5 w-3.5" /> Add text block
+        </button>
       </div>
-
-      <button onClick={addTextBlock} className={`${railButton} w-full`}>
-        <Plus className="h-3.5 w-3.5" /> Add text block
-      </button>
 
       <textarea
         value={headline.text}
@@ -63,6 +68,25 @@ export function ThumbnailTextSection() {
         placeholder="Your title here (Enter for a new line)"
         className="w-full resize-none rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none"
       />
+
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={headline.color}
+          onChange={(e) => setHeadline({ color: e.target.value })}
+          className="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-zinc-700 bg-zinc-900"
+          aria-label="Headline color"
+        />
+        <button
+          onClick={() => setHeadline({ uppercase: !headline.uppercase })}
+          className={`${railButton} flex-1 ${headline.uppercase ? 'border-[#c99850] text-[#dbb56e]' : ''}`}
+        >
+          UPPERCASE
+        </button>
+      </div>
+
+      <ThumbnailFontPicker />
+
       <div className="grid grid-cols-4 gap-1.5">
         {TEXT_PRESETS.map((p) => (
           <Tooltip key={p.id}>
@@ -80,21 +104,25 @@ export function ThumbnailTextSection() {
           </Tooltip>
         ))}
       </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={headline.color}
-          onChange={(e) => setHeadline({ color: e.target.value })}
-          className="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-zinc-700 bg-zinc-900"
-          aria-label="Headline color"
-        />
-        <button
-          onClick={() => setHeadline({ uppercase: !headline.uppercase })}
-          className={`${railButton} flex-1 ${headline.uppercase ? 'border-[#c99850] text-[#dbb56e]' : ''}`}
-        >
-          UPPERCASE
-        </button>
-      </div>
+
+      {hasOutline && (
+        <>
+          <RangeRow
+            label="Outline weight"
+            value={headline.strokeWidth ?? 50}
+            min={0}
+            max={100}
+            suffix="%"
+            onChange={(v) => setHeadline({ strokeWidth: v })}
+          />
+          <SwatchRow
+            label="Outline color"
+            value={headline.strokeColor ?? '#000000'}
+            onChange={(v) => setHeadline({ strokeColor: v })}
+          />
+        </>
+      )}
+
       <label className="block text-[11px] text-zinc-500">
         Size
         <input
@@ -106,57 +134,49 @@ export function ThumbnailTextSection() {
           className="w-full accent-[#c99850]"
         />
       </label>
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <ToggleRow
-            label="Keep on one line"
-            active={!!headline.noWrap}
-            onToggle={() => setHeadline({ noWrap: !headline.noWrap })}
-          />
+
+      <Disclosure label="Adjust">
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <ToggleRow
+              label="Keep on one line"
+              active={!!headline.noWrap}
+              onToggle={() => setHeadline({ noWrap: !headline.noWrap })}
+            />
+          </div>
+          <label className="flex shrink-0 items-center gap-1 text-[11px] text-zinc-500">
+            Lines
+            <input
+              type="number"
+              min={2}
+              max={6}
+              value={headline.lines ?? ''}
+              placeholder="auto"
+              disabled={!!headline.noWrap}
+              onChange={(e) => setHeadline({ lines: e.target.value ? Number(e.target.value) : undefined })}
+              className="w-14 rounded-md border border-zinc-700 bg-zinc-900 px-1.5 py-1.5 text-center text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none disabled:opacity-40"
+            />
+          </label>
         </div>
-        <label className="flex shrink-0 items-center gap-1 text-[11px] text-zinc-500">
-          Lines
-          <input
-            type="number"
-            min={2}
-            max={6}
-            value={headline.lines ?? ''}
-            placeholder="auto"
-            disabled={!!headline.noWrap}
-            onChange={(e) => setHeadline({ lines: e.target.value ? Number(e.target.value) : undefined })}
-            className="w-14 rounded-md border border-zinc-700 bg-zinc-900 px-1.5 py-1.5 text-center text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none disabled:opacity-40"
+        {!fixedLayout && (
+          <RangeRow
+            label="Width"
+            value={headline.width ?? 60}
+            min={20}
+            max={100}
+            suffix="%"
+            onChange={(v) => setHeadline({ width: v })}
           />
-        </label>
-      </div>
-      {!headline.noWrap && (headline.lines ?? 0) < 2 && (
-        <RangeRow
-          label="Width"
-          value={headline.width ?? 60}
-          min={20}
-          max={100}
-          suffix="%"
-          onChange={(v) => setHeadline({ width: v })}
-        />
-      )}
-      <label className="block text-[11px] text-zinc-500">
-        Tilt
-        <input
-          type="range"
-          min={-15}
-          max={15}
-          value={headline.rotation}
-          onChange={(e) => setHeadline({ rotation: Number(e.target.value) })}
-          className="w-full accent-[#c99850]"
-        />
-      </label>
-      <RangeRow
-        label="Letter spacing"
-        value={headline.letterSpacing ?? -1}
-        min={-5}
-        max={40}
-        onChange={(v) => setHeadline({ letterSpacing: v })}
-      />
-      <ThumbnailHeadlineFxPanel />
+        )}
+        <RangeRow label="Tilt" value={headline.rotation} min={-15} max={15} suffix="°" onChange={(v) => setHeadline({ rotation: v })} />
+        <RangeRow label="Letter spacing" value={headline.letterSpacing ?? -1} min={-5} max={40} onChange={(v) => setHeadline({ letterSpacing: v })} />
+      </Disclosure>
+
+      <Disclosure label="Fill & Highlight">
+        <ThumbnailHeadlineFxPanel />
+      </Disclosure>
+
+      <ThumbnailArrangePanel />
     </div>
   )
 }
