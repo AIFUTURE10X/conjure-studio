@@ -36,6 +36,12 @@ const TEXT_MODE_OPTIONS = [
   { value: 'exact-text-overlay', label: 'Exact Text Overlay' },
 ] as const
 
+const BG_REMOVAL_CHIPS: ChipOption[] = [
+  { value: 'fal', label: 'fal · BiRefNet' },
+  { value: 'photoroom', label: 'PhotoRoom' },
+  { value: 'none', label: 'Off' },
+]
+
 // Chip option lists derived from the shared logo constants.
 const RESOLUTION_CHIPS: ChipOption[] = LOGO_RESOLUTIONS.map((r) => ({ value: r, label: r }))
 const LOGO_ASPECT_RATIO_CHIPS: ChipOption[] = LOGO_ASPECT_RATIOS.map((r) => ({ value: r, label: r }))
@@ -124,24 +130,13 @@ export function LogoSettingsRail() {
       <Separator className="bg-zinc-800" />
 
       <SettingField label="Background Removal" suggestion={diff('bgRemovalMethod', state.bgRemovalMethod)}>
-        <label
-          className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors cursor-pointer ${
-            state.bgRemovalMethod !== 'none'
-              ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]'
-              : 'border-zinc-700 bg-zinc-900 text-zinc-300'
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={state.bgRemovalMethod !== 'none'}
-            onChange={(e) => state.setBgRemovalMethod(e.target.checked ? 'photoroom' : 'none')}
-            aria-label="Turn logo background removal on or off"
-            className="h-3.5 w-3.5 accent-[#c99850]"
-          />
-          PhotoRoom BG
-        </label>
+        <ChipSelect
+          options={BG_REMOVAL_CHIPS}
+          value={state.bgRemovalMethod}
+          onChange={(v) => state.setBgRemovalMethod(v as typeof state.bgRemovalMethod)}
+        />
         <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
-          Off keeps the generated logo background intact.
+          fal · BiRefNet (default) — pay-as-you-go, top-tier edges. Off keeps the generated background.
         </p>
       </SettingField>
 

@@ -36,6 +36,7 @@ export const LOGO_BACKGROUND_REMOVAL_METHODS = [
   'photoroom',
   '851-labs',
   'pixelcut',
+  'fal',
 ] as const
 
 export type LogoAspectRatio = typeof LOGO_ASPECT_RATIOS[number]
@@ -90,7 +91,7 @@ export const DEFAULT_LOGO_GENERATION_SETTINGS = {
   resolution: '1K',
   model: 'gpt-image-2',
   textMode: 'ai-text',
-  bgRemovalMethod: 'photoroom',
+  bgRemovalMethod: 'fal',
 } satisfies {
   aspectRatio: LogoAspectRatio
   resolution: LogoResolution

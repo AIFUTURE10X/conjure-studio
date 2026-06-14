@@ -6,6 +6,7 @@ import { isPhotoRoomBgRemovalAvailable, removeBackgroundWithPhotoRoom } from '@/
 import { removeBackgroundWithPixelcut } from '@/lib/pixelcut-bg-removal'
 import { removeBackgroundWithReplicate } from '@/lib/replicate-bg-removal'
 import { removeBackgroundSmart } from '@/lib/smart-bg-removal'
+import { removeBackgroundWithFal, isFalBgRemovalAvailable } from '@/lib/fal-bg-removal'
 import { upscaleBase64WithSharp } from '@/lib/sharp-upscaler'
 import sharp from 'sharp'
 import type { ParsedLogoGenerationRequest } from './logo-request'
@@ -31,6 +32,7 @@ export function shouldUseFreeFormPrompt(request: ParsedLogoGenerationRequest): b
     request.bgRemovalMethod === 'pixelcut' ||
     request.bgRemovalMethod === 'replicate' ||
     request.bgRemovalMethod === '851-labs' ||
+    (request.bgRemovalMethod === 'fal' && isFalBgRemovalAvailable()) ||
     (request.bgRemovalMethod === 'photoroom' && (!!request.cloudApiKey || isPhotoRoomBgRemovalAvailable())) ||
     ((request.bgRemovalMethod === 'pixian' || request.bgRemovalMethod === 'cloud') && !!request.cloudApiKey)
 
@@ -127,6 +129,19 @@ export async function removeLogoBackgroundIfNeeded(
 
   if (request.bgRemovalMethod === '851-labs') {
     return result(await removeBackgroundWithReplicate(imageBase64, '851-labs'))
+  }
+
+  if (request.bgRemovalMethod === 'fal') {
+    if (isFalBgRemovalAvailable()) {
+      return result(await removeBackgroundWithFal(imageBase64, { isLogoContext: true }))
+    }
+    // FAL_KEY missing: fall back so generation still yields a clean PNG.
+    if (request.cloudApiKey || isPhotoRoomBgRemovalAvailable()) {
+      console.warn('[Logo API] FAL_KEY not set — falling back to PhotoRoom for BG removal')
+      return result(await removeBackgroundWithPhotoRoom(imageBase64, request.cloudApiKey || undefined, request.resolution !== '1K'), 'photoroom')
+    }
+    console.warn('[Logo API] FAL_KEY not set and no PhotoRoom key — falling back to smart removal')
+    return result(await removeBackgroundSmart(imageBase64, { tolerance: 25, edgeSmoothing: false }), 'smart')
   }
 
   if (request.bgRemovalMethod === 'photoroom') {
