@@ -103,7 +103,7 @@ export function TextBlockLayer({ block, drag }: { block: ThumbnailTextBlock; dra
       style={{
         left: `${block.x}%`,
         top: `${block.y}%`,
-        maxWidth: `${block.width ?? 60}%`,
+        maxWidth: block.noWrap ? 'none' : `${block.width ?? 60}%`,
         transform: `translate(-50%, -50%) rotate(${block.rotation}deg)`,
         ...headlineStyle(block),
       }}

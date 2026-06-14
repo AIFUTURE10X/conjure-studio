@@ -37,8 +37,12 @@ export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
     color: headline.color,
     textTransform: headline.uppercase ? 'uppercase' : 'none',
     letterSpacing: `${(headline.letterSpacing ?? -1) / 100}em`,
-    // Honor manual line breaks (Enter in the text box) while still auto-wrapping.
-    whiteSpace: 'pre-line',
+    // noWrap keeps everything on one line; otherwise honor manual line breaks
+    // (Enter in the text box) while still auto-wrapping at the wrap width.
+    whiteSpace: headline.noWrap ? 'nowrap' : 'pre-line',
+    // content-box so the wrap width (maxWidth) constrains the text, while the
+    // highlight/block padding extends the box outward (lets Width actually grow it).
+    boxSizing: 'content-box',
     fontFamily: fontFamilyFor(headline.font),
   }
 
@@ -75,13 +79,15 @@ export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
   // Colored highlight box (Canva "Background" effect) — wins over the block preset.
   if (headline.highlight) {
     const h = headline.highlight
-    const pad = (h.size ?? 50) / 50 // 50 ≈ the original padding; higher = bigger box
+    // 50 ≈ the original padding; higher = bigger box. Width = horizontal, height = vertical.
+    const padX = (h.width ?? 50) / 50
+    const padY = (h.height ?? 50) / 50
     style = {
       ...style,
       color: headline.color,
       backgroundImage: undefined,
       backgroundColor: hexToRgba(h.color, h.opacity / 100),
-      padding: `${fontPx * 0.08 * pad}px ${fontPx * 0.2 * pad}px`,
+      padding: `${fontPx * 0.08 * padY}px ${fontPx * 0.2 * padX}px`,
       borderRadius: (h.roundness / 100) * fontPx * 0.5,
       boxDecorationBreak: 'clone',
       WebkitBoxDecorationBreak: 'clone',

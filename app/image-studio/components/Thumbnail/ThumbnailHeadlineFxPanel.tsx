@@ -13,7 +13,7 @@ import { RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
 import { ThumbnailFontPicker } from './ThumbnailFontPicker'
 
 const DEFAULT_GRADIENT: [string, string] = ['#ffe14d', '#ff5e5e']
-const DEFAULT_HIGHLIGHT = { color: '#ff3b30', roundness: 20, opacity: 100, size: 50 }
+const DEFAULT_HIGHLIGHT = { color: '#ff3b30', roundness: 20, opacity: 100, width: 50, height: 50 }
 
 export function ThumbnailHeadlineFxPanel() {
   const { activeHeadline, setHeadline } = useThumbnail()
@@ -72,7 +72,10 @@ export function ThumbnailHeadlineFxPanel() {
         {highlight && (
           <div className="space-y-1.5 rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
             <SwatchRow label="Color" value={highlight.color} onChange={(v) => setHeadline({ highlight: { ...highlight, color: v } })} />
-            <RangeRow label="Box size" value={highlight.size ?? 50} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, size: v } })} />
+            <div className="grid grid-cols-2 gap-2">
+              <RangeRow label="Width" value={highlight.width ?? 50} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, width: v } })} />
+              <RangeRow label="Height" value={highlight.height ?? 50} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, height: v } })} />
+            </div>
             <RangeRow label="Roundness" value={highlight.roundness} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, roundness: v } })} />
             <RangeRow label="Opacity" value={highlight.opacity} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, opacity: v } })} />
           </div>

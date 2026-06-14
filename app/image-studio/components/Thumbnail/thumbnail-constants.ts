@@ -59,8 +59,10 @@ export interface ThumbnailHighlight {
   roundness: number
   /** 0–100 box opacity. */
   opacity: number
-  /** Box padding around the text, 0–100 (50 ≈ the original size). */
-  size?: number
+  /** Horizontal box padding, 0–100 (50 ≈ the original size). */
+  width?: number
+  /** Vertical box padding, 0–100 (50 ≈ the original size). */
+  height?: number
 }
 
 export interface ThumbnailTextBlock {
@@ -88,6 +90,8 @@ export interface ThumbnailTextBlock {
   letterSpacing?: number
   /** Wrap width as a percentage of the stage (default 60). Wider = fewer lines. */
   width?: number
+  /** Keep the text on a single line — the box grows instead of wrapping. */
+  noWrap?: boolean
 }
 
 /** Back-compat alias — the single "headline" is now one of several text blocks. */

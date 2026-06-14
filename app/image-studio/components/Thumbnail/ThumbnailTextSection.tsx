@@ -11,7 +11,7 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useThumbnail } from './ThumbnailProvider'
-import { RangeRow } from './ThumbnailControls'
+import { RangeRow, ToggleRow } from './ThumbnailControls'
 import { ThumbnailHeadlineFxPanel } from './ThumbnailHeadlineFxPanel'
 import { TEXT_PRESETS } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
@@ -106,14 +106,21 @@ export function ThumbnailTextSection() {
           className="w-full accent-[#c99850]"
         />
       </label>
-      <RangeRow
-        label="Width"
-        value={headline.width ?? 60}
-        min={20}
-        max={100}
-        suffix="%"
-        onChange={(v) => setHeadline({ width: v })}
+      <ToggleRow
+        label="Keep on one line"
+        active={!!headline.noWrap}
+        onToggle={() => setHeadline({ noWrap: !headline.noWrap })}
       />
+      {!headline.noWrap && (
+        <RangeRow
+          label="Width"
+          value={headline.width ?? 60}
+          min={20}
+          max={100}
+          suffix="%"
+          onChange={(v) => setHeadline({ width: v })}
+        />
+      )}
       <label className="block text-[11px] text-zinc-500">
         Tilt
         <input
