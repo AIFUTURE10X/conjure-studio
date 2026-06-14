@@ -29,7 +29,9 @@ const ASPECT_RATIOS = ["1:1", "4:3", "3:2", "16:9", "3:4", "9:16"]
 const RESOLUTIONS = ["1K", "2K", "4K"]
 
 function resolveModel(tier: unknown): string {
-  if (tier === "hq") return process.env.OPENAI_TEXT_MODEL_HQ || "gpt-5.4"
+  // Defaults verified against the account's model list. Override per-tier via
+  // env without a code change (e.g. set HQ to gpt-5.5-pro for max reasoning).
+  if (tier === "hq") return process.env.OPENAI_TEXT_MODEL_HQ || "gpt-5.5"
   return process.env.OPENAI_TEXT_MODEL_FAST || process.env.OPENAI_TEXT_MODEL || "gpt-5.4-mini"
 }
 
