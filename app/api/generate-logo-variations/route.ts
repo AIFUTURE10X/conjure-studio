@@ -31,8 +31,9 @@ const RESOLUTIONS = ["1K", "2K", "4K"]
 function resolveModel(tier: unknown): string {
   // Defaults verified against the account's model list. Override per-tier via
   // env without a code change (e.g. set HQ to gpt-5.5-pro for max reasoning).
-  if (tier === "hq") return process.env.OPENAI_TEXT_MODEL_HQ || "gpt-5.5"
-  return process.env.OPENAI_TEXT_MODEL_FAST || process.env.OPENAI_TEXT_MODEL || "gpt-5.4-mini"
+  // .trim() guards against stray spaces in env values (e.g. "gpt-5.4 ").
+  if (tier === "hq") return (process.env.OPENAI_TEXT_MODEL_HQ || "gpt-5.5").trim()
+  return (process.env.OPENAI_TEXT_MODEL_FAST || process.env.OPENAI_TEXT_MODEL || "gpt-5.4-mini").trim()
 }
 
 const pick = (value: unknown, allowed: string[]): string | undefined =>

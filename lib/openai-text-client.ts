@@ -60,7 +60,9 @@ function getOpenAITextApiKey(): string {
 }
 
 function getOpenAITextModel(model?: string): string {
-  return model || process.env.OPENAI_TEXT_MODEL || DEFAULT_TEXT_MODEL
+  // Trim so a stray space in an env var (e.g. "gpt-5.4 ") doesn't produce an
+  // "model does not exist" error from OpenAI.
+  return (model || process.env.OPENAI_TEXT_MODEL || DEFAULT_TEXT_MODEL).trim()
 }
 
 function parseOpenAIError(status: number, body: string): OpenAIServiceError {
