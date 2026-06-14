@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Download, Eye, EyeOff } from 'lucide-react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { transparencyGridStyle } from '../../constants/logo-constants'
 import { downloadImageAsFile } from '../../utils/export-utils'
 import { useImageZoom } from '../../hooks/useImageZoom'
@@ -52,20 +53,6 @@ export function LogoLightbox({
     if (isOpen) setShowOriginal(false)
   }, [isOpen])
 
-  // Handle Esc key to close
-  useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
-
-  if (!isOpen) return null
-
   const handleDownload = async () => {
     try {
       // Use utility function - see EXPORT_FIX_REFERENCE.md for why this pattern is needed
@@ -75,125 +62,111 @@ export function LogoLightbox({
     }
   }
 
+  // Selected background, applied to the full image area (mirrors ImageLightbox layout)
+  const backgroundStyle: React.CSSProperties =
+    background === 'transparent'
+      ? transparencyGridStyle
+      : background === 'white'
+        ? { backgroundColor: '#ffffff' }
+        : background === 'black'
+          ? { backgroundColor: '#000000' }
+          : { background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }
+
   return (
-    <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-black/95 backdrop-blur-md"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      {/* Close Button */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-10 p-3 rounded-full bg-zinc-800/80 text-white hover:bg-red-500/80 transition-colors"
-        title="Close (Esc)"
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-[90vw]! max-h-[90vh]! w-[90vw] h-[90vh] p-0 bg-black border-zinc-800 overflow-hidden"
       >
-        <X className="w-6 h-6" />
-      </button>
-
-      {/* Main Content */}
-      <div className="flex flex-col items-center gap-6 max-w-[95vw] max-h-[95vh]">
-        {/* Logo Display - Large (zoomable / pannable) */}
-        <div
-          ref={containerRef}
-          className="relative rounded-2xl overflow-hidden border border-zinc-700/50 p-4"
-          style={{
-            ...(background === 'transparent' ? transparencyGridStyle : {}),
-            backgroundColor: background === 'white' ? '#ffffff' : background === 'black' ? '#000000' : undefined,
-            background: background === 'gradient' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : undefined,
-            maxWidth: '94vw',
-            maxHeight: '90vh',
-          }}
-        >
-          <img
-            src={showOriginal && hasOriginal ? originalUrl : logoUrl}
-            alt="Generated logo full size"
-            className="max-w-full max-h-[85vh] object-contain select-none"
-            draggable={false}
-            onMouseDown={onMouseDown}
-            onDoubleClick={onDoubleClick}
-            style={{
-              minWidth: '820px',
-              minHeight: '560px',
-              ...logoFilter,
-              transform,
-              transition,
-              cursor,
-            }}
-          />
-        </div>
-
-        {/* Background Toggle Buttons */}
-        <div className="flex items-center gap-2 bg-zinc-800/60 rounded-full px-3 py-1.5">
-          <span className="text-xs text-zinc-400 mr-1">Background:</span>
-          <button
-            onClick={() => setBackground('transparent')}
-            className={`w-8 h-8 rounded-full border-2 transition-all ${background === 'transparent' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
-            style={transparencyGridStyle}
-            title="Transparent"
-          />
-          <button
-            onClick={() => setBackground('white')}
-            className={`w-8 h-8 rounded-full border-2 bg-white transition-all ${background === 'white' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
-            title="White"
-          />
-          <button
-            onClick={() => setBackground('black')}
-            className={`w-8 h-8 rounded-full border-2 bg-black transition-all ${background === 'black' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
-            title="Black"
-          />
-          <button
-            onClick={() => setBackground('gradient')}
-            className={`w-8 h-8 rounded-full border-2 transition-all ${background === 'gradient' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
-            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-            title="Gradient"
-          />
-        </div>
-
-        {/* Zoom Controls */}
-        <ZoomControls state={controls} />
-
-        {/* Controls */}
-        <div className="flex items-center gap-4 bg-zinc-800/60 rounded-full px-4 py-2">
+        <div className="relative w-full h-full flex flex-col">
+          {/* Close button */}
           <button
             onClick={onClose}
-            className="p-2 rounded-full bg-zinc-700 text-zinc-400 hover:text-white hover:bg-red-500/80 transition-colors"
-            title="Close"
+            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            aria-label="Close lightbox"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
 
-          <div className="w-px h-6 bg-zinc-600" />
+          {/* Zoomable / pannable image area */}
+          <div
+            ref={containerRef}
+            className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-16 pt-12 rounded-t-lg"
+            style={backgroundStyle}
+          >
+            <img
+              src={showOriginal && hasOriginal ? originalUrl : logoUrl}
+              alt="Generated logo full size"
+              className="max-w-full max-h-full object-contain select-none"
+              draggable={false}
+              onMouseDown={onMouseDown}
+              onDoubleClick={onDoubleClick}
+              style={{ ...logoFilter, transform, transition, cursor }}
+            />
+          </div>
 
-          {/* Before/After Toggle - only shows if BG was removed */}
-          {hasOriginal && (
-            <>
+          {/* Bottom bar: background swatches + zoom/before-after/download + hint */}
+          <div className="shrink-0 flex flex-col items-center gap-3 px-4 pb-4 pt-3 bg-black">
+            {/* Background Toggle Buttons */}
+            <div className="flex items-center gap-2 bg-zinc-800/60 rounded-full px-3 py-1.5">
+              <span className="text-xs text-zinc-400 mr-1">Background:</span>
               <button
-                onClick={() => setShowOriginal(!showOriginal)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  showOriginal
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                }`}
-                title={showOriginal ? 'Showing original (before BG removal)' : 'Showing processed (after BG removal)'}
+                onClick={() => setBackground('transparent')}
+                className={`w-8 h-8 rounded-full border-2 transition-all ${background === 'transparent' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
+                style={transparencyGridStyle}
+                title="Transparent"
+              />
+              <button
+                onClick={() => setBackground('white')}
+                className={`w-8 h-8 rounded-full border-2 bg-white transition-all ${background === 'white' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
+                title="White"
+              />
+              <button
+                onClick={() => setBackground('black')}
+                className={`w-8 h-8 rounded-full border-2 bg-black transition-all ${background === 'black' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
+                title="Black"
+              />
+              <button
+                onClick={() => setBackground('gradient')}
+                className={`w-8 h-8 rounded-full border-2 transition-all ${background === 'gradient' ? 'border-purple-500 scale-110' : 'border-zinc-600 hover:border-zinc-400'}`}
+                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                title="Gradient"
+              />
+            </div>
+
+            {/* Zoom controls + Before/After toggle + Download */}
+            <div className="flex items-center gap-3">
+              <ZoomControls state={controls} />
+
+              {hasOriginal && (
+                <button
+                  onClick={() => setShowOriginal(!showOriginal)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    showOriginal
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  }`}
+                  title={showOriginal ? 'Showing original (before BG removal)' : 'Showing processed (after BG removal)'}
+                >
+                  {showOriginal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showOriginal ? 'Before' : 'After'}
+                </button>
+              )}
+
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-purple-500 to-pink-500 text-white font-medium hover:opacity-90 transition-opacity"
               >
-                {showOriginal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                {showOriginal ? 'Before' : 'After'}
+                <Download className="w-4 h-4" />
+                Download Logo
               </button>
-              <div className="w-px h-6 bg-zinc-600" />
-            </>
-          )}
+            </div>
 
-          <button
-            onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-purple-500 to-pink-500 text-white font-medium hover:opacity-90 transition-opacity"
-          >
-            <Download className="w-4 h-4" />
-            Download Logo
-          </button>
+            {/* Hint */}
+            <p className="text-xs text-zinc-500">Scroll or +/- to zoom · drag to pan · Esc to close</p>
+          </div>
         </div>
-
-        {/* Hint */}
-        <p className="text-xs text-zinc-500">Scroll or +/- to zoom · drag to pan · Esc to close</p>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
