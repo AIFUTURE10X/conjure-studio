@@ -107,17 +107,25 @@ async function handlePost(request: NextRequest) {
 
     console.log("[Remove BG API] Background removed successfully")
 
-    // Upload to Vercel Blob instead of returning huge data URI
+    // Upload to Vercel Blob. If Blob isn't configured (missing
+    // BLOB_READ_WRITE_TOKEN), fall back to a base64 data URL so the tool still
+    // works instead of hard-failing — same resilience pattern as logo-history.
     const buffer = Buffer.from(transparentBase64, 'base64')
     const filename = `logos/rb-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
 
-    console.log("[Remove BG API] Uploading to Vercel Blob...")
-    const blobResult = await put(filename, buffer, {
-      access: 'public',
-      contentType: 'image/png'
-    })
-
-    console.log("[Remove BG API] Uploaded to Blob:", blobResult.url)
+    let imageUrl: string
+    try {
+      console.log("[Remove BG API] Uploading to Vercel Blob...")
+      const blobResult = await put(filename, buffer, {
+        access: 'public',
+        contentType: 'image/png'
+      })
+      imageUrl = blobResult.url
+      console.log("[Remove BG API] Uploaded to Blob:", imageUrl)
+    } catch (blobErr) {
+      console.error("[Remove BG API] Blob upload failed, returning data URL:", blobErr)
+      imageUrl = `data:image/png;base64,${transparentBase64}`
+    }
 
     // Server-side history save (if metadata provided)
     let historyId: number | null = null
@@ -133,7 +141,7 @@ async function handlePost(request: NextRequest) {
 
         const result = await sql`
           INSERT INTO logo_history (user_id, image_url, prompt, seed, style, config, is_favorited)
-          VALUES (${userId}, ${blobResult.url}, ${prompt}, ${seed ? parseInt(seed) : null}, ${style}, ${config}::jsonb, false)
+          VALUES (${userId}, ${imageUrl}, ${prompt}, ${seed ? parseInt(seed) : null}, ${style}, ${config}::jsonb, false)
           RETURNING id
         `
         historyId = result[0]?.id
@@ -146,7 +154,7 @@ async function handlePost(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      image: blobResult.url,  // Return URL instead of data URI
+      image: imageUrl,  // Blob URL, or a base64 data URL if Blob is unconfigured
       bgRemovalMethod,
       historyId,  // Return the history ID if saved
     })
