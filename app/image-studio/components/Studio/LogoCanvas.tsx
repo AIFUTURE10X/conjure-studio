@@ -19,6 +19,7 @@ import { LogoActionButtons } from '../Logo/LogoActionButtons'
 import { LogoPreviewPanel, type LogoFilterStyle } from '../Logo/LogoPreviewPanel'
 import { LogoHistoryPanel } from '../Logo/LogoHistory'
 import { ConjureBrandPresets } from '../Logo/ConjureBrandPresets'
+import { LogoVariationsGenerator } from '../Logo/LogoVariations'
 import type { ConjureBrandPreset } from '../../constants/conjure-brand-presets'
 import { useStudioCore, useStudioLogoState, useStudioMode } from '../../context/useStudio'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
@@ -61,8 +62,14 @@ export function LogoCanvas() {
     isGenerating, error, generatedLogo,
     clearLogo, downloadLogo, setLogo, addToHistory, generateLogo,
     handleLogoGenerated, recordLogoOutput, buildHistoryLogoOutputContext, handlers,
-    handleToggleFavorite, isFavorite, isFavoriteToggling,
+    handleToggleFavorite, isFavorite, isFavoriteToggling, applyLogoSettingsPatch,
   } = useLogoGenerationEngine()
+
+  // Apply an AI-generated variation patch, then reveal the dock to edit it.
+  const applyVariationPatch = (patch: Parameters<typeof applyLogoSettingsPatch>[0]) => {
+    applyLogoSettingsPatch(patch)
+    setPromptCollapsed(false)
+  }
 
   const [logoFilter, setLogoFilter] = useState<LogoFilterStyle>({})
 
@@ -98,6 +105,14 @@ export function LogoCanvas() {
 
             {!state.removeBackgroundOnly && (
               <ConjureBrandPresets onApply={applyBrandPreset} disabled={isGenerating} />
+            )}
+
+            {!state.removeBackgroundOnly && (
+              <LogoVariationsGenerator
+                onApply={applyVariationPatch}
+                defaultBrief={coreState.mainPrompt}
+                disabled={isGenerating}
+              />
             )}
 
             {generatedLogo && (
