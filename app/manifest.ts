@@ -7,8 +7,8 @@ import type { MetadataRoute } from 'next'
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'PromptsGenie — AI Creative Studio',
-    short_name: 'PromptsGenie',
+    name: 'Conjure Studio — AI Creative Tools',
+    short_name: 'Conjure',
     description:
       'AI-powered image generation, logo design, mockups, and background removal.',
     start_url: '/image-studio',

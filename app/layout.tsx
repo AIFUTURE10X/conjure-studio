@@ -8,8 +8,8 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "PromptsGenie - Image Analyzer",
-  description: "AI-Powered Creative Tools for Image Analysis",
+  title: "Conjure Studio - AI Creative Tools",
+  description: "AI-Powered image generation, logo design, mockups, and background removal.",
   generator: "v0.app",
 }
 
