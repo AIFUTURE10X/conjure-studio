@@ -25,6 +25,7 @@ interface RawHistoryItem {
   prompt: string
   style?: string
   config?: { thumbnailConfig?: ThumbnailConfig } | null
+  isFavorited?: boolean
   timestamp: number
 }
 
@@ -42,6 +43,7 @@ async function fetchThumbnailHistory(): Promise<ThumbnailHistoryItem[]> {
       prompt: i.prompt,
       timestamp: i.timestamp,
       config: i.config?.thumbnailConfig,
+      isFavorited: i.isFavorited ?? false,
     }))
 }
 
@@ -99,7 +101,7 @@ export function useThumbnailHistory(
       if (!res.ok || !data.historyItem) throw new Error(data.error || 'Save failed')
       const saved = data.historyItem
       setHistory((cur) => [
-        { id: saved.id, imageUrl: saved.imageUrl, prompt: saved.prompt, timestamp: saved.timestamp, config },
+        { id: saved.id, imageUrl: saved.imageUrl, prompt: saved.prompt, timestamp: saved.timestamp, config, isFavorited: false },
         ...cur,
       ])
       toast.success('Saved to history')
@@ -124,5 +126,25 @@ export function useThumbnailHistory(
     }
   }, [])
 
-  return { history, isSavingHistory, saveThumbnail, deleteThumbnail, refreshHistory }
+  const toggleFavorite = useCallback(async (id: string) => {
+    let next = false
+    setHistory((cur) =>
+      cur.map((i) => {
+        if (i.id !== id) return i
+        next = !i.isFavorited
+        return { ...i, isFavorited: next }
+      }),
+    )
+    try {
+      await fetch('/api/logo-history', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, userId: getUserId(), isFavorited: next }),
+      })
+    } catch (err) {
+      console.error('[Thumbnail] favorite toggle failed:', err)
+    }
+  }, [])
+
+  return { history, isSavingHistory, saveThumbnail, deleteThumbnail, toggleFavorite, refreshHistory }
 }

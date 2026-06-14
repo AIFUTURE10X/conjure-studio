@@ -98,6 +98,7 @@ interface ThumbnailContextValue {
   isSavingHistory: boolean
   saveThumbnail: () => Promise<void>
   deleteThumbnail: (id: string) => Promise<void>
+  toggleFavorite: (id: string) => Promise<void>
 }
 
 const ThumbnailContext = createContext<ThumbnailContextValue | null>(null)
@@ -296,6 +297,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         isSavingHistory: historyApi.isSavingHistory,
         saveThumbnail: historyApi.saveThumbnail,
         deleteThumbnail: historyApi.deleteThumbnail,
+        toggleFavorite: historyApi.toggleFavorite,
       }}
     >
       {children}

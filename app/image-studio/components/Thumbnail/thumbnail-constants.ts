@@ -92,6 +92,8 @@ export interface ThumbnailTextBlock {
   width?: number
   /** Keep the text on a single line — the box grows instead of wrapping. */
   noWrap?: boolean
+  /** Force the words to spread evenly across this many lines (2+). Empty = auto. */
+  lines?: number
 }
 
 /** Back-compat alias — the single "headline" is now one of several text blocks. */
@@ -539,6 +541,8 @@ export interface ThumbnailHistoryItem {
   timestamp: number
   /** Full editable config snapshot, when present, so the thumbnail can reopen. */
   config?: ThumbnailConfig
+  /** Whether the user starred this thumbnail. */
+  isFavorited?: boolean
 }
 
 export const THUMBNAIL_HISTORY_STYLE = 'thumbnail'

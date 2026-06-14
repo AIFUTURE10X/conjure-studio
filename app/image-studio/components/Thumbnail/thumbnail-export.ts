@@ -8,6 +8,34 @@ import { MAX_THUMBNAIL_BYTES, THUMB_HEIGHT, THUMB_WIDTH } from './thumbnail-cons
 /** Exclude on-canvas chrome (selection boxes, handles, safe-zone) from exports. */
 const EXPORT_FILTER = (el: HTMLElement) => !(el instanceof Element && el.hasAttribute('data-export-ignore'))
 
+/**
+ * Temporarily detach cross-origin stylesheets (e.g. the Google Fonts sheet the
+ * logo feature loads) so html-to-image doesn't throw a SecurityError while
+ * trying to read their `cssRules` to inline web fonts. The thumbnail's own fonts
+ * are self-hosted (same-origin) and stay readable/embedded. Returns a restore fn.
+ */
+function detachCrossOriginSheets(): () => void {
+  if (typeof document === 'undefined') return () => {}
+  const detached: { node: Node; parent: Node; next: Node | null }[] = []
+  for (const sheet of Array.from(document.styleSheets)) {
+    let crossOrigin = false
+    try {
+      // Accessing cssRules throws for cross-origin sheets without CORS headers.
+      void sheet.cssRules
+    } catch {
+      crossOrigin = true
+    }
+    const node = sheet.ownerNode
+    if (crossOrigin && node && node.parentNode) {
+      detached.push({ node, parent: node.parentNode, next: node.nextSibling })
+      node.parentNode.removeChild(node)
+    }
+  }
+  return () => {
+    for (const { node, parent, next } of detached) parent.insertBefore(node, next)
+  }
+}
+
 /** Render the live stage DOM to an exact 1280×720 canvas (WYSIWYG). */
 export async function captureStageCanvas(node: HTMLElement): Promise<HTMLCanvasElement> {
   // Make sure custom headline fonts are loaded so they embed in the export.
@@ -19,15 +47,20 @@ export async function captureStageCanvas(node: HTMLElement): Promise<HTMLCanvasE
     }
   }
   const { toCanvas } = await import('html-to-image')
-  return toCanvas(node, {
-    width: THUMB_WIDTH,
-    height: THUMB_HEIGHT,
-    canvasWidth: THUMB_WIDTH,
-    canvasHeight: THUMB_HEIGHT,
-    pixelRatio: 1,
-    cacheBust: true,
-    filter: EXPORT_FILTER,
-  })
+  const restoreSheets = detachCrossOriginSheets()
+  try {
+    return await toCanvas(node, {
+      width: THUMB_WIDTH,
+      height: THUMB_HEIGHT,
+      canvasWidth: THUMB_WIDTH,
+      canvasHeight: THUMB_HEIGHT,
+      pixelRatio: 1,
+      cacheBust: true,
+      filter: EXPORT_FILTER,
+    })
+  } finally {
+    restoreSheets()
+  }
 }
 
 export function canvasToPngDataUrl(canvas: HTMLCanvasElement): string {

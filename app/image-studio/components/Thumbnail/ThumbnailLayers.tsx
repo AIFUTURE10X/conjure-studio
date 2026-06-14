@@ -12,7 +12,7 @@
 import { type CSSProperties } from 'react'
 import { useThumbnail } from './ThumbnailProvider'
 import { useStageDrag } from './useThumbnailDrag'
-import { StickerShape, headlineStyle } from './thumbnail-stage-utils'
+import { StickerShape, headlineStyle, textBlockContent } from './thumbnail-stage-utils'
 import {
   SUBJECT_SELECTION_ID,
   THUMB_HEIGHT,
@@ -92,6 +92,8 @@ export function TextBlockLayer({ block, drag }: { block: ThumbnailTextBlock; dra
   if (!block.text) return null
   const selected = selectedStickerId === block.id
   const canDelete = config.headlines.length > 1
+  // noWrap or an explicit line count manages wrapping itself, so drop the cap.
+  const fixedLayout = block.noWrap || (block.lines ?? 0) >= 2
   return (
     <div
       data-testid="thumbnail-headline"
@@ -103,12 +105,12 @@ export function TextBlockLayer({ block, drag }: { block: ThumbnailTextBlock; dra
       style={{
         left: `${block.x}%`,
         top: `${block.y}%`,
-        maxWidth: block.noWrap ? 'none' : `${block.width ?? 60}%`,
+        maxWidth: fixedLayout ? 'none' : `${block.width ?? 60}%`,
         transform: `translate(-50%, -50%) rotate(${block.rotation}deg)`,
         ...headlineStyle(block),
       }}
     >
-      {block.text}
+      {textBlockContent(block)}
       {selected && (
         <>
           <div

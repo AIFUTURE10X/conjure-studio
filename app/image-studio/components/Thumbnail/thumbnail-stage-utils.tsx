@@ -26,6 +26,22 @@ export function StickerShape({ sticker }: { sticker: ThumbnailSticker }) {
   )
 }
 
+/**
+ * The text to render for a block. When `lines` is set (2+), the words are
+ * spread as evenly as possible across that many lines; otherwise the raw text
+ * (with any manual line breaks) is returned untouched.
+ */
+export function textBlockContent(block: ThumbnailHeadline): string {
+  const n = block.lines
+  if (!n || n < 2 || block.noWrap) return block.text
+  const words = block.text.split(/\s+/).filter(Boolean)
+  if (words.length <= 1) return block.text
+  const count = Math.min(n, words.length)
+  const groups: string[][] = Array.from({ length: count }, () => [])
+  words.forEach((w, i) => groups[Math.floor((i * count) / words.length)].push(w))
+  return groups.map((g) => g.join(' ')).join('\n')
+}
+
 export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
   const fontPx = (headline.size / 100) * THUMB_HEIGHT
   // strokeWidth 0–100 scales the auto weight (50 ≈ the original fontPx * 0.07).

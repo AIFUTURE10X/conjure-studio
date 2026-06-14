@@ -88,8 +88,10 @@ export async function POST(request: NextRequest) {
     console.log('[Logo History] userId:', userId)
     console.log('[Logo History] prompt:', prompt.substring(0, 50))
 
-    // Upload image to Vercel Blob for persistence
-    let blobUrl = imageUrl
+    // Upload image to Vercel Blob for persistence. When Blob isn't configured
+    // (e.g. local dev without BLOB_READ_WRITE_TOKEN) we fall back to storing the
+    // image/data URL directly in the DB so history still works.
+    let blobUrl: string | null = null
     try {
       let imageBuffer: Buffer
 
@@ -123,19 +125,16 @@ export async function POST(request: NextRequest) {
       blobUrl = uploadResult.url
       console.log('[Logo History] Uploaded to Blob:', blobUrl)
     } catch (error) {
-      console.error('[Logo History] Blob upload failed:', error)
-      // If it's a data URL and upload failed, we can't save it (too large for database)
-      if (imageUrl.startsWith('data:')) {
-        return apiError(500, 'blob_upload_failed', 'Failed to upload image to storage')
-      }
-      // For regular URLs, continue with original URL as fallback
+      console.error('[Logo History] Blob upload failed, storing image directly:', error)
+      // Fall through — we store the full image/data URL in the DB below.
     }
 
     const sql = getSQL()
     console.log('[Logo History] Inserting into Neon database...')
 
-    // Truncate original imageUrl for database (data URLs are huge, just store a reference)
-    const truncatedImageUrl = imageUrl.startsWith('data:')
+    // When Blob succeeded, store a tiny placeholder for the (huge) data URL and
+    // rely on blob_url. When it failed, keep the full value so the image survives.
+    const storedImageUrl = blobUrl && imageUrl.startsWith('data:')
       ? imageUrl.substring(0, 50) + '...[base64]'
       : imageUrl
 
@@ -147,7 +146,7 @@ export async function POST(request: NextRequest) {
         user_id, image_url, blob_url, prompt, negative_prompt, preset_id, seed, style, config, is_favorited, rating
       )
       VALUES (
-        ${userId}, ${truncatedImageUrl}, ${blobUrl}, ${prompt}, ${negativePrompt || null},
+        ${userId}, ${storedImageUrl}, ${blobUrl}, ${prompt}, ${negativePrompt || null},
         ${presetId || null}, ${seed || null}, ${style || null}, ${configJson}, ${isFavorited || false}, ${rating || null}
       )
       RETURNING *

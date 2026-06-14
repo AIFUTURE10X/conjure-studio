@@ -106,12 +106,29 @@ export function ThumbnailTextSection() {
           className="w-full accent-[#c99850]"
         />
       </label>
-      <ToggleRow
-        label="Keep on one line"
-        active={!!headline.noWrap}
-        onToggle={() => setHeadline({ noWrap: !headline.noWrap })}
-      />
-      {!headline.noWrap && (
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <ToggleRow
+            label="Keep on one line"
+            active={!!headline.noWrap}
+            onToggle={() => setHeadline({ noWrap: !headline.noWrap })}
+          />
+        </div>
+        <label className="flex shrink-0 items-center gap-1 text-[11px] text-zinc-500">
+          Lines
+          <input
+            type="number"
+            min={2}
+            max={6}
+            value={headline.lines ?? ''}
+            placeholder="auto"
+            disabled={!!headline.noWrap}
+            onChange={(e) => setHeadline({ lines: e.target.value ? Number(e.target.value) : undefined })}
+            className="w-14 rounded-md border border-zinc-700 bg-zinc-900 px-1.5 py-1.5 text-center text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none disabled:opacity-40"
+          />
+        </label>
+      </div>
+      {!headline.noWrap && (headline.lines ?? 0) < 2 && (
         <RangeRow
           label="Width"
           value={headline.width ?? 60}
