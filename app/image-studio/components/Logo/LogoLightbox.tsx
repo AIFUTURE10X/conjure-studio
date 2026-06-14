@@ -91,7 +91,7 @@ export function LogoLightbox({
           {/* Zoomable / pannable image area */}
           <div
             ref={containerRef}
-            className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-16 pt-12 rounded-t-lg"
+            className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-16 py-12 rounded-t-lg"
             style={backgroundStyle}
           >
             <img

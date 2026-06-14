@@ -109,8 +109,11 @@ export function useImageZoom({ isActive, resetKey }: UseImageZoomOptions) {
     [container],
   )
 
-  const zoomIn = useCallback(() => setView((p) => applyZoom(p, p.zoom + ZOOM_STEP)), [])
-  const zoomOut = useCallback(() => setView((p) => applyZoom(p, p.zoom - ZOOM_STEP)), [])
+  // Button/keyboard zoom keeps the container centre fixed, so the pan offset
+  // scales proportionally and converges back to centred on zoom-out (rather
+  // than holding a stale offset that pins the image to the bottom edge).
+  const zoomIn = useCallback(() => setView((p) => applyZoom(p, p.zoom + ZOOM_STEP, { x: 0, y: 0 })), [])
+  const zoomOut = useCallback(() => setView((p) => applyZoom(p, p.zoom - ZOOM_STEP, { x: 0, y: 0 })), [])
   const reset = useCallback(() => {
     dragRef.current = null
     setView(FIT)
