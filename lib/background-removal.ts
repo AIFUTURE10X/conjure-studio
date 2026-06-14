@@ -38,6 +38,7 @@ export type BackgroundRemovalMethod =
   | 'smart'
   | 'pixelcut'
   | 'photoroom'
+  | 'fal'
 
 export interface RemoveBackgroundOptions {
   method?: BackgroundRemovalMethod
