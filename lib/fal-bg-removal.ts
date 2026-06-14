@@ -13,6 +13,7 @@
  */
 
 import { fal } from "@fal-ai/client"
+import { recoverBrightDetailOnDarkBackground } from "./bright-detail-recovery"
 
 /**
  * Detect MIME type from base64 magic bytes so fal receives a correct data URI.
@@ -98,7 +99,10 @@ export async function removeBackgroundWithFal(
 
     const outputUrl = extractImageUrl(result)
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
-    return await fetchResultAsBase64(outputUrl)
+    const processedBase64 = await fetchResultAsBase64(outputUrl)
+    // Restore faint bright detail (sparkles/glow) the matte drops on dark-bg
+    // logos; no-op for non-dark/busy backgrounds.
+    return await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
   } catch (error) {
     console.error('[fal BG Removal] Error:', error)
     throw error
