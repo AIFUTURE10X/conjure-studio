@@ -10,6 +10,7 @@ import { removeBackgroundWithReplicate, type ReplicateBgModel, type BgRemovalOpt
 import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { removeBackgroundWithPixelcut } from "@/lib/pixelcut-bg-removal"
 import { removeBackgroundWithPhotoRoom } from "@/lib/photoroom-bg-removal"
+import { removeBackgroundWithFal, isFalBgRemovalAvailable } from "@/lib/fal-bg-removal"
 
 async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
@@ -18,8 +19,16 @@ async function handlePost(request: NextRequest) {
   try {
     const formData = await request.formData()
     const imageFile = formData.get('image') as File | null
-    const bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'photoroom'
+    let bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'photoroom'
     const cloudApiKey = formData.get('cloudApiKey') as string | null
+
+    // Safety net: fal · BiRefNet is now the BG Remover default, but it needs
+    // FAL_KEY. If that env var isn't configured (e.g. not yet set in prod),
+    // fall back to PhotoRoom so the public tool never hard-fails.
+    if (bgRemovalMethod === 'fal' && !isFalBgRemovalAvailable()) {
+      console.warn('[Remove BG API] FAL_KEY not set — falling back to PhotoRoom')
+      bgRemovalMethod = 'photoroom'
+    }
 
     // Optional: metadata for saving to history (server-side save). Session
     // identity wins over the client-supplied id when signed in.
@@ -70,6 +79,9 @@ async function handlePost(request: NextRequest) {
     } else if (bgRemovalMethod === '851-labs') {
       // Use 851-labs/background-remover - very cheap, good threshold control
       transparentBase64 = await removeBackgroundWithReplicate(imageBase64, '851-labs')
+    } else if (bgRemovalMethod === 'fal') {
+      // Use fal.ai BiRefNet v2 - pay-as-you-go, top-tier edges, no subscription
+      transparentBase64 = await removeBackgroundWithFal(imageBase64, { isLogoContext })
     } else if (bgRemovalMethod === 'pixelcut') {
       // Use Pixelcut API - logo-optimized, preserves text and fine details
       transparentBase64 = await removeBackgroundWithPixelcut(imageBase64, cloudApiKey || undefined)

@@ -16,6 +16,12 @@ import { BgRemoverPreview } from './BgRemoverPreview'
 import { BgRemoverControls } from './BgRemoverControls'
 import { BgRemoverLightbox } from './BgRemoverLightbox'
 import { Eraser } from 'lucide-react'
+import type { BgRemovalMethod } from '../../hooks/useBackgroundRemoverState'
+
+const BG_ENGINE_OPTIONS: Array<{ value: BgRemovalMethod; label: string; description: string }> = [
+  { value: 'fal', label: 'fal · BiRefNet', description: 'Default — pay-as-you-go on fal, no subscription, top-tier edges on hair & fine text' },
+  { value: 'photoroom', label: 'PhotoRoom', description: 'Professional subscription API — cleanest edges, fast' },
+]
 
 export function BackgroundRemoverPanel() {
   const [showLightbox, setShowLightbox] = useState(false)
@@ -24,6 +30,8 @@ export function BackgroundRemoverPanel() {
   const {
     queue,
     selectedId,
+    selectedMethod,
+    setSelectedMethod,
     isProcessingAll,
     addToQueue,
     removeFromQueue,
@@ -57,6 +65,31 @@ export function BackgroundRemoverPanel() {
           <div>
             <h2 className="text-lg font-semibold text-white">Background Remover</h2>
             <p className="text-xs text-zinc-400">Remove backgrounds from images instantly</p>
+          </div>
+        </div>
+
+        {/* Engine selector — choose which provider does the removal */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs font-medium text-zinc-400">Engine</span>
+          <div className="inline-flex rounded-lg border border-zinc-700 p-0.5">
+            {BG_ENGINE_OPTIONS.map((opt) => {
+              const isActive = selectedMethod === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSelectedMethod(opt.value)}
+                  title={opt.description}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    isActive
+                      ? 'bg-gradient-to-r from-[#c99850] to-[#dbb56e] text-black'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
