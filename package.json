@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
+    "@fal-ai/client": "^1.10.1",
     "@google/genai": "latest",
     "@google/generative-ai": "latest",
     "@hookform/resolvers": "^3.10.0",
