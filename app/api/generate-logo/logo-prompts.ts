@@ -159,11 +159,11 @@ LOGO DESIGN ESSENTIALS:
 export function getBackgroundRequirements(renderStyle: RenderStyle, backgroundMode: LogoBackgroundMode = 'removable'): string {
   if (backgroundMode === 'native-transparent') {
     return `
-CRITICAL - NATIVE TRANSPARENT PNG OUTPUT:
-- Do not paint, fill, or render any background behind the logo
+CRITICAL - LEGACY TRANSPARENT PNG CLEANUP WORKFLOW:
+- Keep the logo as a standalone mark prepared for transparent-background cleanup
 - Keep the logo centered with clean empty space around it
 - No paper, wall, canvas, gradient, shadow field, scene, mockup, or environment
-- The output should be a standalone logo mark with alpha transparency`
+- Use a plain, uncluttered backdrop with crisp logo edges so local cleanup can remove it cleanly`
   }
 
   // For neon style, use dark background
@@ -236,8 +236,9 @@ function getReferenceBackgroundRequirements(backgroundMode: LogoBackgroundMode):
   if (backgroundMode === 'native-transparent') {
     return `
 BACKGROUND HANDLING:
-- Create a native transparent PNG with alpha transparency
-- Do not paint, fill, or render any visible background behind the logo
+- Create a standalone logo prepared for transparent-background cleanup
+- Avoid visible scenes, mockups, gradients, floor shadows, wall textures, or decorative backdrops
+- Keep the logo edges crisp with clean empty space around the mark
 - USER PROMPT HAS PRIORITY for any requested transparent/standalone/logo-only output`
   }
 
@@ -411,7 +412,7 @@ export function buildFreeFormLogoPrompt(
 
   // Determine best background for the style
   const bgInstruction = isNativeTransparent
-    ? 'Use the native transparent PNG background. Do not draw any visible background or scene.'
+    ? 'Create a standalone logo prepared for transparent-background cleanup. Do not draw a visible scene, mockup, wall, floor, or decorative backdrop.'
     : render === 'neon'
       ? 'If no user background is requested, place on a dark charcoal or black background to make the glow pop'
       : backgroundMode === 'removable'

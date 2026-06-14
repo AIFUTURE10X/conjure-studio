@@ -33,7 +33,7 @@ AI-powered image generation, logo design, mockups, and background removal suite 
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
 - **UI Components**: shadcn/ui + Radix UI
-- **AI**: Google Gemini API, Replicate API
+- **AI**: OpenAI API primary, Google Gemini API optional fallback, Replicate API legacy fallback paths
 - **Icons**: Lucide React
 - **Animation**: Framer Motion
 
@@ -43,8 +43,10 @@ AI-powered image generation, logo design, mockups, and background removal suite 
 
 - Node.js 18+
 - npm or pnpm
-- Google Gemini API key
-- Replicate API token (for logo generation)
+- OpenAI API key
+- PhotoRoom API key (for reliable transparent PNG cleanup)
+- Google Gemini API key (optional fallback)
+- Replicate API token (legacy fallback paths)
 
 ### Installation
 
@@ -60,8 +62,9 @@ npm install
 cp .env.example .env.local
 
 # Add your API keys to .env.local
-# GEMINI_API_KEY=your_gemini_key
+# OPENAI_API_KEY=your_openai_key
 # PHOTOROOM_API_KEY=your_photoroom_key
+# GEMINI_API_KEY=your_gemini_key_optional
 # REPLICATE_API_TOKEN=your_replicate_token
 
 # Run development server
@@ -97,9 +100,10 @@ v0promptsgenie/
 
 | Variable | Description |
 |----------|-------------|
-| `GEMINI_API_KEY` | Google Gemini API key for AI analysis |
+| `OPENAI_API_KEY` | Primary key for ChatGPT Images, AI helper, image analysis, prompt enhancement, logos, and recolor |
+| `GEMINI_API_KEY` / `GOOGLE_AI_API_KEY` | Optional Google Gemini fallback/model picker key |
 | `PHOTOROOM_API_KEY` | PhotoRoom API key for default professional logo PNG background removal |
-| `REPLICATE_API_TOKEN` | Replicate API token for image generation |
+| `REPLICATE_API_TOKEN` | Replicate API token for legacy fallback paths |
 | `PIXELCUT_API_KEY` | PixelCut API for background removal (optional) |
 
 ## Deployment

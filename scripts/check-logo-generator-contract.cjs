@@ -110,16 +110,16 @@ const checks = [
       !/<select/.test(read('app/image-studio/components/Logo/LogoAdvancedSettings.tsx')),
   },
   {
-    name: 'OpenAI image client can request transparent PNG output',
-    pass: () => /outputBackground\?:\s*OpenAIImageBackground/.test(read('lib/openai-image-client.ts')) &&
-      /formData\.append\(\"background\",/.test(read('lib/openai-image-client.ts')) &&
-      /\.\.\.\(background \? \{ background \} : \{\}\)/.test(read('lib/openai-image-client.ts')) &&
-      /output_format:\s*\"png\"/.test(read('lib/openai-image-client.ts')),
+    name: 'OpenAI image client avoids unsupported transparent background requests',
+    pass: () => /output_format:\s*\"png\"/.test(read('lib/openai-image-client.ts')) &&
+      !/formData\.append\(\"background\",/.test(read('lib/openai-image-client.ts')) &&
+      !/background:\s*\"transparent\"/.test(read('lib/openai-image-client.ts')) &&
+      !/\.\.\.\(background \? \{ background \} : \{\}\)/.test(read('lib/openai-image-client.ts')),
   },
   {
-    name: 'logo pipeline maps native transparency to OpenAI background parameter',
+    name: 'logo pipeline keeps legacy transparency as local cleanup',
     pass: () => /bgRemovalMethod === 'native-transparent'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')) &&
-      /outputBackground:\s*request\.bgRemovalMethod === 'native-transparent' \? 'transparent' : 'auto'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
+      /outputBackground:\s*'auto'/.test(read('app/api/generate-logo/logo-image-pipeline.ts')),
   },
   {
     name: 'logo pipeline verifies native transparent output has alpha',
@@ -131,6 +131,7 @@ const checks = [
     name: 'native transparent prompt forbids presentation backdrops',
     pass: () => /isNativeTransparent/.test(read('app/api/generate-logo/logo-prompts.ts')) &&
       /No presentation backdrop/.test(read('app/api/generate-logo/logo-prompts.ts')) &&
+      /transparent-background cleanup/.test(read('app/api/generate-logo/logo-prompts.ts')) &&
       /material effects must stay clipped inside the logo/.test(read('app/api/generate-logo/logo-prompts.ts')),
   },
   {

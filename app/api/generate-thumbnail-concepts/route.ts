@@ -1,9 +1,12 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
 import { parseJson } from "@/lib/api/http"
+import {
+  generateOpenAIText,
+  getOpenAITextApiKeyNames,
+  hasOpenAITextApiKey,
+} from "@/lib/openai-text-client"
 import {
   THUMBNAIL_AI_STYLES,
   THUMBNAIL_TEMPLATES,
@@ -81,18 +84,17 @@ export async function POST(request: Request) {
   const { title } = parsed.data
 
   try {
-    const apiKey = getGeminiApiKey()
-    if (!apiKey) {
+    if (!hasOpenAITextApiKey()) {
       return NextResponse.json(
-        { error: "AI service not configured", details: `${getGeminiApiKeyNames()} environment variable is not set` },
+        { error: "AI service not configured", details: `${getOpenAITextApiKeyNames()} environment variable is not set` },
         { status: 500 },
       )
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
-    const result = await model.generateContent(`${SYSTEM_PROMPT}\n\nVideo title: "${title}"\n\nConcepts JSON:`)
-    const concepts = parseConcepts(result.response.text().trim())
+    const text = await generateOpenAIText(`${SYSTEM_PROMPT}\n\nVideo title: "${title}"\n\nConcepts JSON:`, {
+      maxOutputTokens: 1200,
+    })
+    const concepts = parseConcepts(text.trim())
 
     if (concepts.length === 0) {
       return NextResponse.json({ error: "Could not generate concepts — try a different title" }, { status: 502 })

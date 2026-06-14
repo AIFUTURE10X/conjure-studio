@@ -1,6 +1,6 @@
 "use client"
 
-export type GenerationModel = 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
+export type GenerationModel = 'gpt-image-2'
 export type ImageSize = '1K' | '2K' | '4K'
 
 interface ModelSelectorProps {
@@ -23,21 +23,10 @@ export function ModelSelector({
         <label className="text-xs font-bold text-white mb-2 block">
           AI Model
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => onModelChange('gemini-3.1-flash-image-preview')}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              selectedModel === 'gemini-3.1-flash-image-preview'
-                ? 'bg-[#c99850] text-black'
-                : 'bg-zinc-900 text-white/70 hover:bg-zinc-700 border border-[#c99850]/30'
-            }`}
-          >
-            <div className="font-bold">Gemini 3.1 Flash</div>
-            <div className="text-[10px] opacity-70">Fast, high quality</div>
-          </button>
+        <div className="grid grid-cols-1 gap-2">
           <button
             onClick={() => onModelChange('gpt-image-2')}
-            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
               selectedModel === 'gpt-image-2'
                 ? 'bg-[#c99850] text-black'
                 : 'bg-zinc-900 text-white/70 hover:bg-zinc-700 border border-[#c99850]/30'
@@ -45,17 +34,6 @@ export function ModelSelector({
           >
             <div className="font-bold">ChatGPT Images 2.0</div>
             <div className="text-[10px] opacity-70">OpenAI</div>
-          </button>
-          <button
-            onClick={() => onModelChange('gemini-3-pro-image-preview')}
-            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              selectedModel === 'gemini-3-pro-image-preview'
-                ? 'bg-[#c99850] text-black'
-                : 'bg-zinc-900 text-white/70 hover:bg-zinc-700 border border-[#c99850]/30'
-            }`}
-          >
-            <div className="font-bold">Gemini 3 Pro</div>
-            <div className="text-[10px] opacity-70">Best quality</div>
           </button>
         </div>
       </div>

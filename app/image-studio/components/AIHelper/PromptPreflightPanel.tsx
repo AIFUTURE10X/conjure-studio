@@ -80,9 +80,9 @@ export function getPromptPreflightIssues({ mode, currentPromptSettings = {}, upl
 
   if (mode === 'logo' && logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2') {
     issues.push({
-      label: 'Native PNG model mismatch',
-      detail: 'Native transparent PNG only works with ChatGPT Images 2.0.',
-      fixPrompt: 'Check this logo setup for native transparent PNG. If I need true model-side transparency, tell me to use ChatGPT Images 2.0; otherwise rewrite the prompt for PhotoRoom cleanup after generation.',
+      label: 'Legacy PNG model mismatch',
+      detail: 'Legacy transparent PNG cleanup is tied to OpenAI generation; PhotoRoom is the more reliable transparent PNG path.',
+      fixPrompt: 'Check this logo setup for transparent PNG output. Prefer PhotoRoom cleanup after generation, or switch the model to ChatGPT Images 2.0 for the legacy local-cleanup path.',
     })
   }
 

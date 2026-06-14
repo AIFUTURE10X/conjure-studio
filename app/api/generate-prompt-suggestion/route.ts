@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { NextResponse } from "next/server"
 import { buildLogoSystemPrompt } from "@/app/image-studio/constants/ai-logo-knowledge"
@@ -17,19 +16,21 @@ import {
   normalizeCreativeDirection,
   type CreativeDirectionState,
 } from "@/app/image-studio/constants/creative-direction-options"
-import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
+import {
+  generateOpenAIText,
+  getOpenAITextApiKeyNames,
+  hasOpenAITextApiKey,
+  isOpenAIAuthError,
+  isOpenAIRateLimitError,
+} from "@/lib/openai-text-client"
 import {
   LOGO_BACKGROUND_REMOVAL_METHODS,
-  LOGO_GENERATION_MODELS,
   LOGO_TEXT_MODES,
 } from "@/lib/logo-generation-contract"
 
-// Initialize Gemini with API key check
-const apiKey = getGeminiApiKey()
-if (!apiKey) {
-  console.error(`[v0 API] ${getGeminiApiKeyNames()} is not set in environment variables`)
+if (!hasOpenAITextApiKey()) {
+  console.error(`[v0 API] ${getOpenAITextApiKeyNames()} is not set in environment variables`)
 }
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
 
 const CREATIVE_DIRECTION_OPTION_CONTEXT = [
   ...CREATIVE_DIRECTION_SINGLE_GROUPS.map((group) => (
@@ -39,10 +40,10 @@ const CREATIVE_DIRECTION_OPTION_CONTEXT = [
 ].join("\n")
 
 const IMAGE_GENERATION_MODELS = [
-  'gemini-3.1-flash-image-preview',
-  'gemini-3-pro-image-preview',
   'gpt-image-2',
 ] as const
+
+const LOGO_HELPER_GENERATION_MODELS = ['gpt-image-2'] as const
 
 const IMAGE_BACKGROUND_REMOVAL_METHODS = ['photoroom', 'none'] as const
 
@@ -157,9 +158,9 @@ PROMPT SELF-CHECK:
 const SCENARIO_QUALITY_GATES = `SCENARIO QUALITY GATES:
 - Reference wordmark typography: when the user gives or describes a clean script/serif/sans wordmark reference, match the letter proportions, stroke contrast, spacing, capitalization, and visual rhythm. Do not replace a clean wordmark reference with dot matrix, generic geometric lettering, unrelated 3D icon systems, or decorative effects unless the user asks for that change.
 - Exact brand text: if the user cares about a brand name, spelling, capitalization, or wording, use exact-text-overlay when available, repeat the exact text in the prompt, and do not invent words, suffixes, slogans, or alternate spellings.
-- Background intent: white background means visible flat pure white #FFFFFF; transparent PNG means no visible background and needs true PNG cleanup such as PhotoRoom or native transparent output. If both are requested together, ask which output is wanted before generating.
+- Background intent: white background means visible flat pure white #FFFFFF; transparent PNG means no visible background and needs true PNG cleanup such as PhotoRoom. If both are requested together, ask which output is wanted before generating.
 - Single-change follow-up: when CHANGE CONTROL CONTEXT says single requested edit, change only the named attribute, preserve locked elements, and do not reinterpret the concept, palette, typography, icon, camera, or composition.
-- Generator settings: if the request needs professional true PNG cleanup, prefer PhotoRoom. Use native-transparent only when the selected model supports it, such as gpt-image-2.`
+- Generator settings: if the request needs professional true PNG cleanup, prefer PhotoRoom. Do not recommend native-transparent; keep it only for legacy compatibility.`
 
 function normalizeHelperActions(rawActions: unknown, fallbackActions: HelperAction[] = []): HelperAction[] {
   if (!Array.isArray(rawActions)) return fallbackActions
@@ -669,7 +670,7 @@ function buildOperationalDiagnosticFindings(mode: 'image' | 'logo', currentPromp
     `Current model: ${formatGenerationModelLabel(currentModel)}`,
     `Background removal: ${backgroundRemoval}`,
     'PhotoRoom: API post-generation cleanup; the image model creates the artwork first, then PhotoRoom removes the background if selected.',
-    'Native PNG: model-side transparent output only when using ChatGPT Images 2.0 (gpt-image-2) with native-transparent selected.',
+    'Transparent PNG: use PhotoRoom post-generation cleanup for reliable transparent output after OpenAI or Gemini generation.',
     `Current settings snapshot:\n${operationalContext}\n${backgroundRemovalContext ? `\n${backgroundRemovalContext}` : ''}`,
   ]
 }
@@ -680,9 +681,9 @@ function buildLocalDiagnosticResponse(mode: 'image' | 'logo', message: unknown, 
   const diagnosticFindings = buildOperationalDiagnosticFindings(mode, currentPromptSettings)
   return NextResponse.json({
     message: [
-      `I checked the current ${mode} generator settings before Gemini is required.`,
+      `I checked the current ${mode} generator settings before the AI model is required.`,
       diagnosticFindings.slice(0, 4).join('\n'),
-      'So: PhotoRoom is background removal after generation. Native PNG is only model-side transparency with ChatGPT Images 2.0 when native-transparent is selected.',
+      'So: PhotoRoom is background removal after generation. For OpenAI generation, use PhotoRoom cleanup for reliable transparent PNG output.',
     ].join('\n\n'),
     responseMode: 'diagnostic',
     plannerDecision: 'diagnose',
@@ -690,7 +691,7 @@ function buildLocalDiagnosticResponse(mode: 'image' | 'logo', message: unknown, 
     executionPlan: ['Read current generator settings', 'Identify the active model and background-removal path', 'Explain the PNG/background behavior without changing generator settings'],
     diagnosticFindings,
     promptQualityChecklist: [
-      'Planner: answered from current local generator settings before Gemini is required.',
+      'Planner: answered from current local generator settings before the AI model is required.',
       'Current model and background removal settings were reported without creating a new prompt.',
       'Diagnostic answer returned no apply or generate actions.',
     ],
@@ -754,12 +755,12 @@ function buildLocalCapabilityGuideResponse(
     `Current context: ${mode === 'logo' ? 'Logo' : 'Image'} mode, ${formatGenerationModelLabel(currentModel)}, latest output ${hasOutput ? 'available' : 'not available yet'}.`,
     `Reference matching: ${hasReference ? 'reference context is available, so I can preserve typography, layout, palette, background, and composition.' : 'upload a reference image or generate once, then I can compare and tighten the next prompt.'}`,
     `Follow-up edits: ask for one natural change such as "keep everything else but make the background white" or "match the reference font more closely."`,
-    `PhotoRoom / Native PNG: ${backgroundRemoval} Try asking: "what background remover is this using?", "compare latest to reference", or "apply and generate it."`,
+    `PhotoRoom / transparent PNG: ${backgroundRemoval} Try asking: "what background remover is this using?", "compare latest to reference", or "apply and generate it."`,
   ]
 
   return NextResponse.json({
     message: [
-      `I checked the current ${mode} helper state before Gemini is required.`,
+      `I checked the current ${mode} helper state before the AI model is required.`,
       findings.join('\n'),
       'Talk to it like a creative assistant: describe the goal, upload a reference when style matters, then ask for small follow-up changes after each result.',
     ].join('\n\n'),
@@ -886,7 +887,7 @@ function buildLocalMemoryStatusResponse(
 
   return NextResponse.json({
     message: [
-      `I checked the current ${mode} helper memory before Gemini is required.`,
+      `I checked the current ${mode} helper memory before the AI model is required.`,
       diagnosticFindings.join('\n'),
       latestPrompt?.prompt
         ? 'You can keep iterating from this memory, ask for a single change, or restore the last prompt with the action below.'
@@ -1368,7 +1369,7 @@ function formatBackgroundRemovalMethod(method: string, provider: string, enabled
   }
 
   if (method === 'native-transparent') {
-    return 'native-transparent. This asks ChatGPT Images 2.0 for real transparent PNG alpha and skips post-generation removal; it requires selected model gpt-image-2.'
+    return 'native-transparent legacy mode. Generate with OpenAI, then apply local transparent PNG cleanup; PhotoRoom is more reliable when available.'
   }
 
   return `${provider || method} post-generation background removal.`
@@ -1389,8 +1390,8 @@ function formatBackgroundRemovalContext(currentPromptSettings: unknown): string 
     `- Image generator PhotoRoom BG checkbox: ${settings.imagePhotoRoomBgRemovalEnabled ? 'checked, so PhotoRoom API cleanup is on' : 'unchecked, so image background removal is off'}.`,
     `- Image generator background removal action: ${formatBackgroundRemovalMethod(imageMethod, imageProvider, imageEnabled)}`,
     `- Logo generator background removal method: ${formatBackgroundRemovalMethod(logoMethod, logoProvider, logoEnabled)}`,
-    `- Logo generator model for native transparent PNG: ${logoModel || 'unknown'}. native-transparent requires gpt-image-2; PhotoRoom can clean up Gemini or OpenAI outputs after generation.`,
-    `- True PNG guidance: PhotoRoom removes the background after the model creates the image. native-transparent is the only current model-side transparent PNG path, and only for gpt-image-2.`,
+    `- Logo generator model for transparent PNG workflows: ${logoModel || 'unknown'}. Use PhotoRoom for the most reliable cleanup after Gemini or OpenAI generation.`,
+    `- True PNG guidance: PhotoRoom removes the background after the model creates the image. Native transparent is a legacy compatibility mode and should not be recommended over PhotoRoom.`,
     `- If the user asks for a normal logo/image with a visible background, keep background removal off or avoid promising transparent PNG output.`,
   ].join('\n')
 }
@@ -1489,7 +1490,7 @@ export async function POST(request: Request) {
       mode: mode || 'image',
     })
 
-    // Handle logo mode separately; it can answer missing-essential clarifications before Gemini is required.
+    // Handle logo mode separately; it can answer missing-essential clarifications before the model is required.
     if (mode === 'logo') {
       return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory, latestOutputAnalysis)
     }
@@ -1523,16 +1524,13 @@ export async function POST(request: Request) {
       return earlyMemoryStatusResponse
     }
 
-    // Check if Gemini is available
-    if (!genAI) {
-      console.error(`[v0 API] Gemini API not initialized - missing ${getGeminiApiKeyNames()}`)
+    if (!hasOpenAITextApiKey()) {
+      console.error(`[v0 API] OpenAI prompt service not initialized - missing ${getOpenAITextApiKeyNames()}`)
       return NextResponse.json(
-        { error: "AI service not configured", details: `${getGeminiApiKeyNames()} environment variable is not set` },
+        { error: "AI service not configured", details: `${getOpenAITextApiKeyNames()} environment variable is not set` },
         { status: 500 }
       )
     }
-
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
     // Build conversation context WITH generated prompts (so AI can reference previous suggestions)
     const contextMessages = conversationHistory
@@ -1724,7 +1722,7 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
 11. A plannerDecision and promptQualityChecklist that show whether you asked, diagnosed, iterated, or produced a generation-ready prompt
 
-Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2") and suggestions.bgRemovalMethod ("photoroom" or "none"). Use "photoroom" when the user needs post-generation background removal/true PNG cleanup; use "none" when they want a normal image with its generated background kept.
+Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gpt-image-2" only) and suggestions.bgRemovalMethod ("photoroom" or "none"). Use "photoroom" when the user needs post-generation background removal/true PNG cleanup; use "none" when they want a normal image with its generated background kept.
 
 Diagnostic-only questions:
 - If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, set "responseMode": "diagnostic".
@@ -1775,12 +1773,11 @@ Available camera lenses: standard, wide-angle, telephoto, fisheye, macro, portra
 Available aspect ratios: 1:1, 16:9, 9:16, 4:3, 3:4, 21:9
 Available style strengths: subtle, moderate, strong`
 
-    console.log("[v0 API] Calling Gemini API with prompt length:", systemPrompt.length)
+    console.log("[v0 API] Calling OpenAI prompt service with prompt length:", systemPrompt.length)
 
-    const result = await model.generateContent(systemPrompt)
-    const responseText = result.response.text()
+    const responseText = await generateOpenAIText(systemPrompt)
 
-    console.log("[v0 API] Gemini response received, length:", responseText.length)
+    console.log("[v0 API] OpenAI response received, length:", responseText.length)
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -1865,21 +1862,18 @@ Available style strengths: subtle, moderate, strong`
   } catch (error: any) {
     console.error("[v0 API] Error generating prompt suggestion:", error)
 
-    // Check for specific Gemini API errors
     const errorMessage = error?.message || String(error)
-    const isRateLimit = errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("rate")
-    const isAuthError = errorMessage.includes("401") || errorMessage.includes("403") || errorMessage.includes("API key")
 
-    if (isRateLimit) {
+    if (isOpenAIRateLimitError(error)) {
       return NextResponse.json(
         { error: "Rate limit exceeded", details: "Please wait a moment and try again" },
         { status: 429 }
       )
     }
 
-    if (isAuthError) {
+    if (isOpenAIAuthError(error)) {
       return NextResponse.json(
-        { error: "API authentication failed", details: `Check your ${getGeminiApiKeyNames()} configuration` },
+        { error: "API authentication failed", details: `Check your ${getOpenAITextApiKeyNames()} configuration` },
         { status: 401 }
       )
     }
@@ -1933,7 +1927,7 @@ function normalizeLogoPromptSuggestions(rawSuggestions: unknown): LogoPromptSugg
   const normalizedLogoSettings = {
     textMode: normalizeLogoSetting(suggestions.textMode, LOGO_TEXT_MODES),
     bgRemovalMethod: normalizeLogoSetting(suggestions.bgRemovalMethod, LOGO_BACKGROUND_REMOVAL_METHODS),
-    selectedModel: normalizeLogoSetting(suggestions.selectedModel || suggestions.model, LOGO_GENERATION_MODELS),
+    selectedModel: normalizeLogoSetting(suggestions.selectedModel || suggestions.model, LOGO_HELPER_GENERATION_MODELS),
     logoType: normalizeLogoSetting(suggestions.logoType, LOGO_TYPE_VALUES),
     logoVisualStyle: normalizeLogoSetting(suggestions.logoVisualStyle, LOGO_VISUAL_STYLE_VALUES),
     logoRenderTreatment: normalizeLogoSetting(suggestions.logoRenderTreatment, LOGO_RENDER_TREATMENT_VALUES),
@@ -2002,16 +1996,14 @@ async function handleLogoMode(
       return earlyMemoryStatusResponse
     }
 
-    // Check if Gemini is available
-    if (!genAI) {
-      console.error(`[v0 API] Logo mode - Gemini API not initialized - missing ${getGeminiApiKeyNames()}`)
+    if (!hasOpenAITextApiKey()) {
+      console.error(`[v0 API] Logo mode - OpenAI prompt service not initialized - missing ${getOpenAITextApiKeyNames()}`)
       return NextResponse.json(
-        { error: "AI service not configured", details: `${getGeminiApiKeyNames()} environment variable is not set` },
+        { error: "AI service not configured", details: `${getOpenAITextApiKeyNames()} environment variable is not set` },
         { status: 500 }
       )
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
     const diagnosticOnly = isDiagnosticOnlyRequest(message)
 
     // Build conversation context WITH logo configs (so AI can reference previous suggestions)
@@ -2204,7 +2196,7 @@ User Request: ${message}
 
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
-Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", "native-transparent", etc.), suggestions.selectedModel ("gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview", or "gpt-image-2"), suggestions.logoType ("wordmark", "monogram", "icon-wordmark", "badge", "emblem", or "mascot"), suggestions.logoVisualStyle ("minimal", "luxury", "modern", "vintage", "boutique", "corporate", "tech", or "handcrafted"), suggestions.logoRenderTreatment ("flat-vector", "soft-3d", "metallic", "embossed", "foil", "glass", or "neon"), and suggestions.logoTypographyDirection ("clean-sans", "elegant-serif", "script", "geometric", "bold-display", or "reference-match"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup; use native-transparent only with selectedModel gpt-image-2.
+Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", etc.), suggestions.selectedModel ("gpt-image-2" only), suggestions.logoType ("wordmark", "monogram", "icon-wordmark", "badge", "emblem", or "mascot"), suggestions.logoVisualStyle ("minimal", "luxury", "modern", "vintage", "boutique", "corporate", "tech", or "handcrafted"), suggestions.logoRenderTreatment ("flat-vector", "soft-3d", "metallic", "embossed", "foil", "glass", or "neon"), and suggestions.logoTypographyDirection ("clean-sans", "elegant-serif", "script", "geometric", "bold-display", or "reference-match"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup. Do not recommend native-transparent; it is a legacy compatibility mode.
 Remember to respond with a JSON object containing "message", "plannerDecision", "designBrief", "executionPlan", "promptQualityChecklist", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.
@@ -2234,12 +2226,11 @@ Action schema:
   { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
 ]`
 
-    console.log("[v0 API] Logo mode - calling Gemini with dynamic system prompt")
+    console.log("[v0 API] Logo mode - calling OpenAI with dynamic system prompt")
 
-    const result = await model.generateContent(fullPrompt)
-    const responseText = result.response.text()
+    const responseText = await generateOpenAIText(fullPrompt)
 
-    console.log("[v0 API] Logo mode - Gemini response received, length:", responseText.length)
+    console.log("[v0 API] Logo mode - OpenAI response received, length:", responseText.length)
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -2324,21 +2315,18 @@ Action schema:
   } catch (error: any) {
     console.error("[v0 API] Logo mode error:", error)
 
-    // Check for specific Gemini API errors
     const errorMessage = error?.message || String(error)
-    const isRateLimit = errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("rate")
-    const isAuthError = errorMessage.includes("401") || errorMessage.includes("403") || errorMessage.includes("API key")
 
-    if (isRateLimit) {
+    if (isOpenAIRateLimitError(error)) {
       return NextResponse.json(
         { error: "Rate limit exceeded", details: "Please wait a moment and try again" },
         { status: 429 }
       )
     }
 
-    if (isAuthError) {
+    if (isOpenAIAuthError(error)) {
       return NextResponse.json(
-        { error: "API authentication failed", details: `Check your ${getGeminiApiKeyNames()} configuration` },
+        { error: "API authentication failed", details: `Check your ${getOpenAITextApiKeyNames()} configuration` },
         { status: 401 }
       )
     }

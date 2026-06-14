@@ -82,7 +82,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
 
   const generateNow = useCallback(async () => {
     const finalPrompt = state.mainPrompt.trim() || combinedPrompt.trim() || 'a beautiful scene'
-    const imageQuality = state.analysisMode === 'fast' ? 'low' : 'auto'
+    const imageQuality = state.analysisMode === 'fast' ? 'low' : 'medium'
     const normalizedCreativeDirection = normalizeCreativeDirection(state.creativeDirection)
 
     saveParameters({

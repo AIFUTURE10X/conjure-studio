@@ -20,8 +20,8 @@ These MUST be set in Vercel → Settings → Environment Variables (for ALL envi
 |----------|-------------|
 | `NEON_DATABASE_URL` | Neon PostgreSQL connection string |
 | `DATABASE_URL` | Same value — legacy alias used by image-analysis routes |
-| `GOOGLE_AI_API_KEY` | Google Gemini API key (generation + AI helper) |
-| `OPENAI_API_KEY` | OpenAI key (ChatGPT Images 2.0, logos, recolor) |
+| `OPENAI_API_KEY` | Primary OpenAI key (ChatGPT Images, AI helper, image analysis, prompt enhancement, logos, recolor) |
+| `GOOGLE_AI_API_KEY` | Optional Gemini key for fallback/model picker paths |
 | `PHOTOROOM_API_KEY` | PhotoRoom API key for default professional logo PNG background removal |
 | `REPLICATE_API_TOKEN` | Replicate API key (upscaling fallbacks) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob token (auto-provisioned on Vercel) |

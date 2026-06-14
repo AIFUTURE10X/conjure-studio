@@ -26,9 +26,9 @@ const MODEL_MIGRATIONS: Record<string, string> = {
 }
 
 const lenientModelSchema = z.preprocess((value) => {
-  if (typeof value !== 'string' || !value) return 'gemini-3.1-flash-image-preview'
+  if (typeof value !== 'string' || !value) return 'gpt-image-2'
   const migrated = MODEL_MIGRATIONS[value] || value
-  return imageModelSchema.options.includes(migrated as never) ? migrated : 'gemini-3.1-flash-image-preview'
+  return imageModelSchema.options.includes(migrated as never) ? migrated : 'gpt-image-2'
 }, imageModelSchema)
 
 const lenientImageSizeSchema = z.preprocess((value) => {
@@ -46,9 +46,9 @@ const formSchema = z.object({
   ),
   referenceMode: z.enum(['inspire', 'replicate']).default('inspire'),
   seed: z.coerce.number().int().optional(),
-  model: lenientModelSchema.default('gemini-3.1-flash-image-preview'),
+  model: lenientModelSchema.default('gpt-image-2'),
   imageSize: lenientImageSizeSchema.default('1K'),
-  imageQuality: z.enum(['low', 'auto']).default('auto'),
+  imageQuality: z.enum(['low', 'medium', 'high', 'auto']).default('medium'),
 })
 
 function isOpenAIImageModel(model: AppGenerationModel): model is OpenAIImageModel {

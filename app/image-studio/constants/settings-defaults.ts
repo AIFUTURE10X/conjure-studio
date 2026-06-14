@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: ImageStudioSettings = {
     showAdvancedOptions: true,  // Show advanced by default
   },
   api: {
-    defaultModel: 'gemini-3.1-flash-image-preview',
+    defaultModel: 'gpt-image-2',
   },
 }
 
@@ -76,9 +76,7 @@ export const SETTING_DEFINITIONS = {
         description: 'Which model to use for image generation',
         type: 'select' as const,
         options: [
-          { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash (Fast)' },
           { value: 'gpt-image-2', label: 'ChatGPT Images 2.0' },
-          { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro (Best Quality)' },
         ],
       },
     },

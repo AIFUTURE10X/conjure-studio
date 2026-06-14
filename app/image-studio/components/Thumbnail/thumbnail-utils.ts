@@ -51,7 +51,7 @@ export async function postGenerateImage(
   form.append('prompt', buildThumbnailBgPrompt(idea, stylePrompt))
   form.append('aspectRatio', '16:9')
   form.append('count', String(count))
-  form.append('model', options?.model || 'gemini-3.1-flash-image-preview')
+  form.append('model', options?.model || 'gpt-image-2')
   form.append('imageSize', options?.imageSize || '1K')
   const res = await fetch('/api/generate-image', { method: 'POST', body: form })
   const data = (await res.json()) as { images?: string[]; error?: string }

@@ -8,6 +8,7 @@
     "check:ai-helper-ui": "node scripts/check-ai-helper-ui-contract.cjs",
     "check:image-references": "node scripts/check-image-references-ui.cjs",
     "check:logo": "node scripts/check-logo-generator-contract.cjs",
+    "check:openai-migration": "node scripts/check-openai-reliability-migration.cjs",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",

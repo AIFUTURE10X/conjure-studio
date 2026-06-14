@@ -1,8 +1,8 @@
 import type { ImageSize } from "@/lib/gemini-client"
 
 type AllowedRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "5:4" | "4:5"
-export type OpenAIImageQuality = "low" | "auto"
-export type OpenAIImageBackground = "transparent" | "auto"
+export type OpenAIImageQuality = "low" | "medium" | "high" | "auto"
+export type OpenAIImageBackground = "auto"
 
 const RATIO_VALUES: Record<AllowedRatio, readonly [number, number]> = {
   "1:1": [1, 1],
@@ -74,7 +74,6 @@ export async function generateOpenAIImage({
   aspectRatio,
   imageSize,
   imageQuality,
-  outputBackground,
   referenceImageFile,
   maskImageFile,
 }: {
@@ -89,7 +88,6 @@ export async function generateOpenAIImage({
 }) {
   const size = getOpenAIImageSize(aspectRatio, imageSize)
   const apiKey = getOpenAIKey()
-  const background = outputBackground === "transparent" ? "transparent" : undefined
 
   if (referenceImageFile && referenceImageFile.size > 0) {
     const formData = new FormData()
@@ -98,7 +96,6 @@ export async function generateOpenAIImage({
     formData.append("size", size)
     formData.append("quality", imageQuality)
     formData.append("output_format", "png")
-    if (background) formData.append("background", background)
     formData.append("image[]", referenceImageFile, referenceImageFile.name || "reference.png")
     if (maskImageFile && maskImageFile.size > 0) {
       formData.append("mask", maskImageFile, maskImageFile.name || "mask.png")
@@ -137,7 +134,6 @@ export async function generateOpenAIImage({
       n: 1,
       size,
       quality: imageQuality,
-      ...(background ? { background } : {}),
       output_format: "png",
     }),
   })

@@ -411,8 +411,6 @@ export function useAIHelperChatController({
     const wantsExactText = ['use exact text overlay', 'set exact text overlay', 'exact text overlay', 'exact text mode'].some((term) => normalized.includes(term))
     const wantsAiText = ['use ai text', 'set ai text', 'ai text mode', 'let ai draw text'].some((term) => normalized.includes(term))
     const wantsGptImage2 = ['use chatgpt images 2.0', 'use chatgpt images 2', 'use gpt image 2', 'use openai image'].some((term) => normalized.includes(term))
-    const wantsGeminiFlash = ['use gemini flash', 'use gemini 3.1 flash'].some((term) => normalized.includes(term))
-    const wantsGeminiPro = ['use gemini pro', 'use gemini 3 pro'].some((term) => normalized.includes(term))
     const logoType = normalized.includes('set logo type wordmark') || normalized.includes('logo type wordmark')
       ? 'wordmark'
       : normalized.includes('set logo type icon wordmark') || normalized.includes('icon wordmark')
@@ -482,12 +480,6 @@ export function useAIHelperChatController({
     if (wantsGptImage2 && settingsPatch.selectedModel !== 'gpt-image-2') {
       settingsPatch.selectedModel = 'gpt-image-2'
       changedLabels.push('ChatGPT Images 2.0')
-    } else if (wantsGeminiFlash) {
-      settingsPatch.selectedModel = 'gemini-3.1-flash-image-preview'
-      changedLabels.push('Gemini 3.1 Flash')
-    } else if (wantsGeminiPro) {
-      settingsPatch.selectedModel = 'gemini-3-pro-image-preview'
-      changedLabels.push('Gemini 3 Pro')
     }
 
     if (resolution) {
@@ -700,10 +692,6 @@ export function useAIHelperChatController({
       'use chatgpt images 2',
       'use gpt image 2',
       'use openai image',
-      'use gemini flash',
-      'use gemini 3.1 flash',
-      'use gemini pro',
-      'use gemini 3 pro',
       'set 1k',
       'set 2k',
       'set 4k',
@@ -717,8 +705,6 @@ export function useAIHelperChatController({
     const wantsExactText = ['use exact text overlay', 'set exact text overlay', 'exact text overlay', 'exact text mode'].some((term) => normalized.includes(term))
     const wantsAiText = ['use ai text', 'set ai text', 'ai text mode', 'let ai draw text'].some((term) => normalized.includes(term))
     const wantsGptImage2 = ['use chatgpt images 2.0', 'use chatgpt images 2', 'use gpt image 2', 'use openai image'].some((term) => normalized.includes(term))
-    const wantsGeminiFlash = ['use gemini flash', 'use gemini 3.1 flash'].some((term) => normalized.includes(term))
-    const wantsGeminiPro = ['use gemini pro', 'use gemini 3 pro'].some((term) => normalized.includes(term))
     const resolutionPatch = normalized.includes('set 4k') || normalized.includes('4k resolution')
       ? { resolution: '4K' }
       : normalized.includes('set 2k') || normalized.includes('2k resolution')
@@ -733,8 +719,6 @@ export function useAIHelperChatController({
       ...(wantsExactText ? { textMode: 'exact-text-overlay' } : {}),
       ...(wantsAiText ? { textMode: 'ai-text' } : {}),
       ...(wantsGptImage2 ? { selectedModel: 'gpt-image-2' } : {}),
-      ...(wantsGeminiFlash ? { selectedModel: 'gemini-3.1-flash-image-preview' } : {}),
-      ...(wantsGeminiPro ? { selectedModel: 'gemini-3-pro-image-preview' } : {}),
       ...resolutionPatch,
       _appliedAt: Date.now(),
     }
@@ -744,8 +728,6 @@ export function useAIHelperChatController({
       wantsExactText ? 'exact text overlay' : null,
       wantsAiText ? 'AI text mode' : null,
       wantsGptImage2 ? 'ChatGPT Images 2.0' : null,
-      wantsGeminiFlash ? 'Gemini 3.1 Flash' : null,
-      wantsGeminiPro ? 'Gemini 3 Pro' : null,
       requestedResolution ? `${requestedResolution} resolution` : null,
     ].filter(Boolean)
 

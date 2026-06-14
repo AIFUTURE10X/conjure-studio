@@ -153,7 +153,7 @@ export function useThumbnailGenerate({ setConfig, configRef }: Deps) {
       )
       form.append('aspectRatio', '16:9')
       form.append('count', '1')
-      form.append('model', 'gemini-3.1-flash-image-preview')
+      form.append('model', 'gpt-image-2')
       form.append('imageSize', '2K')
       form.append('referenceImage', blob, 'background.png')
       form.append('referenceMode', 'inspire')

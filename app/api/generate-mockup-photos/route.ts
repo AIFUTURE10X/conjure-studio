@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { withCreditGuard, flatCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
-import { generateImageWithRetry } from "@/lib/gemini-client"
+import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { writeFile, mkdir, access } from 'fs/promises'
 import path from 'path'
@@ -528,16 +528,12 @@ async function handlePost(request: NextRequest) {
     console.log(`[Mockup Photo] Generating ${product}/${color}...`)
 
     // Generate the image
-    const result = await generateImageWithRetry({
+    const result = await generateOpenAIImage({
       prompt,
       aspectRatio: '1:1',
       imageSize: '2K',
-      model: 'gemini-3-pro-image-preview',
+      imageQuality: 'medium',
     })
-
-    if (!result.success || !result.imageBase64) {
-      throw new Error(result.error || 'Failed to generate image')
-    }
 
     // Auto-remove background for transparent PNG using AI
     let finalBase64 = result.imageBase64

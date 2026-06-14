@@ -47,11 +47,11 @@ interface UseAISuggestionsHandlerProps {
   setUsePhotoRoomBgRemoval: (enabled: boolean) => void
 }
 
-const validImageModels: GenerationModel[] = [
-  'gemini-3.1-flash-image-preview',
-  'gemini-3-pro-image-preview',
-  'gpt-image-2',
-]
+const normalizeSuggestedImageModel = (model?: string): GenerationModel | null => {
+  if (!model) return null
+  if (model === 'gpt-image-2' || model.startsWith('gemini-')) return 'gpt-image-2'
+  return null
+}
 
 export function useAISuggestionsHandler({
   setMainPrompt,
@@ -158,12 +158,10 @@ export function useAISuggestionsHandler({
     }
 
     const suggestedModel = suggestions.selectedModel || suggestions.model
-    const normalizedModel = suggestedModel && validImageModels.includes(suggestedModel as GenerationModel)
-      ? suggestedModel
-      : null
+    const normalizedModel = normalizeSuggestedImageModel(suggestedModel)
     if (normalizedModel) {
       console.log('[v0] Setting selectedModel to:', normalizedModel)
-      setSelectedModel(normalizedModel as GenerationModel)
+      setSelectedModel(normalizedModel)
     } else if (suggestedModel) {
       console.warn('[v0] Unrecognized image model suggestion:', suggestedModel)
     }

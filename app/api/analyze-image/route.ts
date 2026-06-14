@@ -1,8 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { buildLogoAnalysisPrompt } from "@/app/image-studio/constants/ai-logo-knowledge"
-import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
+import {
+  generateOpenAIVisionText,
+  getOpenAITextApiKeyNames,
+  hasOpenAITextApiKey,
+  isOpenAIAuthError,
+  isOpenAIRateLimitError,
+} from "@/lib/openai-text-client"
 
 export async function POST(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
@@ -31,20 +36,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 })
     }
 
-    // Check for API key with detailed logging
-    const apiKey = getGeminiApiKey()
+    const hasApiKey = hasOpenAITextApiKey()
     console.log("[v0] Environment check:", {
-      hasGeminiKey: !!apiKey,
-      keyLength: apiKey?.length || 0,
-      keyPrefix: apiKey?.substring(0, 10) || "MISSING",
+      hasOpenAIKey: hasApiKey,
     })
 
-    if (!apiKey) {
-      console.error(`[v0] CRITICAL ERROR: ${getGeminiApiKeyNames()} not found in environment`)
+    if (!hasApiKey) {
+      console.error(`[v0] CRITICAL ERROR: ${getOpenAITextApiKeyNames()} not found in environment`)
       return NextResponse.json(
         {
-          error: "Gemini API key not configured",
-          details: `The ${getGeminiApiKeyNames()} environment variable is missing. Please add one in the Vars section of v0.`,
+          error: "OpenAI API key not configured",
+          details: `The ${getOpenAITextApiKeyNames()} environment variable is missing. Please add it in your environment variables.`,
         },
         { status: 500 },
       )
@@ -89,21 +91,12 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Analysis configuration:", { type, mode, promptLength: prompt.length })
 
-    console.log("[v0] Initializing Gemini AI...")
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
-
-    const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType: mimeType,
-      },
-    }
-
-    console.log("[v0] Calling Gemini API (gemini-2.0-flash)...")
-    const result = await model.generateContent([prompt, imagePart])
-    const response = result.response
-    const text = response.text()
+    console.log("[v0] Calling OpenAI vision analysis...")
+    const text = await generateOpenAIVisionText({
+      prompt,
+      imageBase64: base64Image,
+      mimeType,
+    })
 
     console.log("[v0] ===== SUCCESS =====")
     console.log("[v0] Analysis received:", {
@@ -129,12 +122,12 @@ export async function POST(request: NextRequest) {
 
     // Provide helpful error messages
     let hint = "Check browser console for detailed error logs"
-    if (errorMessage.toLowerCase().includes("api key")) {
-      hint = `${getGeminiApiKeyNames()} is invalid or missing. Please check your environment variables in the Vars section.`
-    } else if (errorMessage.toLowerCase().includes("quota") || errorMessage.toLowerCase().includes("limit")) {
-      hint = "Gemini API quota exceeded. Please check your Google AI Studio quota at https://aistudio.google.com/"
+    if (isOpenAIAuthError(error)) {
+      hint = `${getOpenAITextApiKeyNames()} is invalid or missing. Please check your environment variables.`
+    } else if (isOpenAIRateLimitError(error)) {
+      hint = "OpenAI API quota or rate limit exceeded. Check your OpenAI project limits and usage."
     } else if (errorMessage.toLowerCase().includes("fetch")) {
-      hint = "Network error connecting to Gemini API. Check your internet connection."
+      hint = "Network error connecting to OpenAI API. Check your internet connection."
     }
 
     return NextResponse.json(

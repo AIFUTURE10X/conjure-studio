@@ -164,7 +164,7 @@ export function useImageStudioState(): ImageStudioState {
 
   const [seed, setSeed] = useState<number | null>(null)
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K')
-  const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'>('gemini-3.1-flash-image-preview')
+  const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'>('gpt-image-2')
   const [useImageBgRemoval, setUseImageBgRemoval] = useState(true)
   const [usePhotoRoomBgRemoval, setUsePhotoRoomBgRemoval] = useState(true)
   const [creativeDirectionState, setCreativeDirectionState] = useState<CreativeDirectionState>(DEFAULT_CREATIVE_DIRECTION)

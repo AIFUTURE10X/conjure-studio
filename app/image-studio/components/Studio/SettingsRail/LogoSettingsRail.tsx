@@ -29,8 +29,6 @@ import type { LogoSettingsSuggestionPatch } from '../../../context/suggestion-pa
 
 const LOGO_MODEL_OPTIONS = [
   { value: 'gpt-image-2', label: 'ChatGPT Images 2.0' },
-  { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash' },
-  { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro' },
 ] as const
 
 const TEXT_MODE_OPTIONS = [

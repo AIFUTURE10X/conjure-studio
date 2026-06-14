@@ -33,13 +33,15 @@ export interface ParameterHandlers {
 }
 
 const migrateModelName = (model: string): 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2' => {
-  if (model === 'gemini-3-pro-image-preview' || model === 'gemini-3-pro-image') {
-    return 'gemini-3-pro-image-preview'
-  }
-  if (model === 'gpt-image-2' || model === 'chatgpt-image-generator-2' || model === 'chatgpt-image-latest') {
+  if (
+    model === 'gpt-image-2' ||
+    model === 'chatgpt-image-generator-2' ||
+    model === 'chatgpt-image-latest' ||
+    model.startsWith('gemini-')
+  ) {
     return 'gpt-image-2'
   }
-  return 'gemini-3.1-flash-image-preview'
+  return 'gpt-image-2'
 }
 
 const normalizeImageSizeForModel = (
@@ -83,7 +85,7 @@ export function useParameterHandlers({
       if (paramsToRestore.seed !== undefined) setSeed(paramsToRestore.seed)
       const selectedModel = paramsToRestore.selectedModel
         ? migrateModelName(paramsToRestore.selectedModel)
-        : 'gemini-3.1-flash-image-preview'
+        : 'gpt-image-2'
       setImageSize(normalizeImageSizeForModel(paramsToRestore.imageSize, selectedModel))
       if (paramsToRestore.selectedModel) setSelectedModel(selectedModel)
       setCreativeDirection(normalizeCreativeDirection(paramsToRestore.creativeDirection))
@@ -117,7 +119,7 @@ export function useParameterHandlers({
     setStyleStrength('moderate')
     setSeed(null)
     setImageSize('1K')
-    setSelectedModel('gemini-3.1-flash-image-preview')
+    setSelectedModel('gpt-image-2')
     setCreativeDirection(DEFAULT_CREATIVE_DIRECTION)
     setAnalysisResults({
       subjects: [],

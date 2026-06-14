@@ -86,7 +86,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       isFavorite, toggleFavorite, onParametersSave, onClearPrompt, onRestoreParameters,
       generatedImages, setGeneratedImages, onOpenLightbox,
       seed: controlledSeed, setSeed: setControlledSeed,
-      imageSize = '1K', setImageSize, selectedModel = 'gemini-3.1-flash-image-preview', setSelectedModel,
+      imageSize = '1K', setImageSize, selectedModel = 'gpt-image-2', setSelectedModel,
       useImageBgRemoval: controlledUseImageBgRemoval, onImageBgRemovalChange,
       usePhotoRoomBgRemoval: controlledUsePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange,
       generationMode = 'quality', creativeDirection,
@@ -147,7 +147,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
 
     const handleGenerate = async () => {
       const finalPrompt = mainPrompt.trim() || combinedPrompt.trim() || 'a beautiful scene'
-      const imageQuality = generationMode === 'fast' ? 'low' : 'auto'
+      const imageQuality = generationMode === 'fast' ? 'low' : 'medium'
       const normalizedCreativeDirection = normalizeCreativeDirection(creativeDirection)
       onParametersSave?.({ mainPrompt: finalPrompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, seed: activeSeed, creativeDirection: normalizedCreativeDirection })
       onSaveGenerateParams?.({ mainPrompt: finalPrompt, negativePrompt, aspectRatio, selectedStylePreset, selectedCameraAngle, selectedCameraLens, styleStrength, imageSize, selectedModel, generationMode, creativeDirection: normalizedCreativeDirection })

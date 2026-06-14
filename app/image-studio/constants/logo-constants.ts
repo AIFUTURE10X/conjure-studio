@@ -111,9 +111,9 @@ export const BG_REMOVAL_METHODS: Array<{
 }> = [
   {
     value: 'native-transparent',
-    label: 'Native transparent PNG',
-    description: 'OpenAI only - asks the model for real alpha transparency',
-    badge: 'OpenAI',
+    label: 'Legacy transparent PNG',
+    description: 'OpenAI generation with local transparent cleanup; PhotoRoom is more reliable',
+    badge: 'Legacy',
     requiresModel: 'gpt-image-2',
   },
   {
@@ -151,19 +151,9 @@ export const LOGO_MODEL_OPTIONS: Array<{
   description: string
 }> = [
   {
-    value: 'gemini-3.1-flash-image-preview',
-    label: 'Gemini 3.1 Flash',
-    description: 'Fast',
-  },
-  {
     value: 'gpt-image-2',
     label: 'ChatGPT Images 2.0',
     description: 'OpenAI latest',
-  },
-  {
-    value: 'gemini-3-pro-image-preview',
-    label: 'Gemini 3 Pro',
-    description: 'Best Gemini quality',
   },
 ]
 

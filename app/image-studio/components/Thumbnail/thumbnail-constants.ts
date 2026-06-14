@@ -279,8 +279,6 @@ export interface ThumbnailModelOption {
 }
 
 export const THUMBNAIL_MODELS: ThumbnailModelOption[] = [
-  { id: 'gemini-3.1-flash-image-preview', label: 'Flash', full: 'Gemini 3.1 Flash — fastest' },
-  { id: 'gemini-3-pro-image-preview', label: 'Pro', full: 'Gemini 3 Pro — higher quality' },
   { id: 'gpt-image-2', label: 'GPT', full: 'ChatGPT Images 2.0' },
 ]
 

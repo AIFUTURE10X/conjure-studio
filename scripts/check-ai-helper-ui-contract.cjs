@@ -93,7 +93,7 @@ const checks = [
         /normal logo with background/.test(sidebar) &&
         /use exact text overlay/.test(sidebar) &&
         /use chatgpt images 2/.test(sidebar) &&
-        /use gemini 3.1 flash/.test(sidebar) &&
+        !/use gemini/.test(sidebar) &&
         /set 4k/.test(sidebar) &&
         !/bgRemovalMethod: 'smart'/.test(sidebar)
     },
@@ -459,7 +459,7 @@ const checks = [
         /imageBgRemovalMethod\?: string/.test(preflight) &&
         /Exact text mode mismatch/.test(preflight) &&
         /Visible background conflict/.test(preflight) &&
-        /Native PNG model mismatch/.test(preflight) &&
+        /Legacy PNG model mismatch/.test(preflight) &&
         /PNG cleanup off/.test(preflight) &&
         /logoTextMode !== 'exact-text-overlay'/.test(preflight) &&
         /logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2'/.test(preflight) &&
@@ -511,8 +511,10 @@ const checks = [
         /Image settings patch/.test(route) &&
         /setSelectedModel: \(value: GenerationModel\) => void/.test(handler) &&
         /setUsePhotoRoomBgRemoval: \(enabled: boolean\) => void/.test(handler) &&
-        /validImageModels/.test(handler) &&
-        /setSelectedModel\(normalizedModel as GenerationModel\)/.test(handler) &&
+        /normalizeSuggestedImageModel/.test(handler) &&
+        /model\.startsWith\('gemini-'\)/.test(handler) &&
+        /return 'gpt-image-2'/.test(handler) &&
+        /setSelectedModel\(normalizedModel\)/.test(handler) &&
         /setUsePhotoRoomBgRemoval\(true\)/.test(handler) &&
         /setUsePhotoRoomBgRemoval\(false\)/.test(handler) &&
         !/normalizedBgRemovalMethod === 'smart'/.test(handler) &&
@@ -654,14 +656,11 @@ const checks = [
         /use exact text overlay/.test(sidebar) &&
         /use ai text/.test(sidebar) &&
         /use chatgpt images 2\.0/.test(sidebar) &&
-        /use gemini flash/.test(sidebar) &&
-        /use gemini pro/.test(sidebar) &&
+        !/use gemini/.test(sidebar) &&
         /set 4k/.test(sidebar) &&
         /textMode: 'exact-text-overlay'/.test(sidebar) &&
         /textMode: 'ai-text'/.test(sidebar) &&
         /selectedModel: 'gpt-image-2'/.test(sidebar) &&
-        /selectedModel: 'gemini-3\.1-flash-image-preview'/.test(sidebar) &&
-        /selectedModel: 'gemini-3-pro-image-preview'/.test(sidebar) &&
         /resolution: '4K'/.test(sidebar) &&
         /Logo settings updated:/.test(sidebar) &&
         /runDirectLogoSettingsCommand\(userInput\)/.test(sidebar)

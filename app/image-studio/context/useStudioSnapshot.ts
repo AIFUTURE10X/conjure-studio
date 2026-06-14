@@ -17,7 +17,7 @@ import { useStudioCore, useStudioLogoState } from './useStudio'
 
 function formatBackgroundRemovalProvider(method: string) {
   if (method === 'photoroom') return 'PhotoRoom'
-  if (method === 'native-transparent') return 'Native transparent PNG'
+  if (method === 'native-transparent') return 'Legacy transparent cleanup'
   if (method === 'none') return 'No background removal'
   return method
 }

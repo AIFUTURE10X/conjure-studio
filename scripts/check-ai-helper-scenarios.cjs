@@ -60,7 +60,7 @@ const scenarios = [
     source: packageJson,
   },
   {
-    name: 'vague requests can ask clarification before Gemini is required',
+    name: 'vague requests can ask clarification before the AI model is required',
     expected: [
       /buildClarificationResponse/,
       /const earlyClarificationGate = buildClarificationGate/,
@@ -71,22 +71,22 @@ const scenarios = [
     ],
   },
   {
-    name: 'settings questions can be answered locally before Gemini is required',
+    name: 'settings questions can be answered locally before the AI model is required',
     expected: [
       /buildLocalDiagnosticResponse/,
       /buildOperationalDiagnosticFindings/,
       /const earlyDiagnosticResponse = buildLocalDiagnosticResponse/,
       /return earlyDiagnosticResponse/,
-      /before Gemini is required/,
+      /before the AI model is required/,
       /Current model:/,
       /Background removal:/,
       /PhotoRoom/,
-      /Native PNG/,
+      /transparent PNG/,
       /responseMode: 'diagnostic'/,
     ],
   },
   {
-    name: 'capability questions can be answered locally before Gemini is required',
+    name: 'capability questions can be answered locally before the AI model is required',
     expected: [
       /isCapabilityGuideRequest/,
       /buildLocalCapabilityGuideResponse/,
@@ -95,9 +95,9 @@ const scenarios = [
       /AI helper can help with:/,
       /Reference matching/,
       /Follow-up edits/,
-      /PhotoRoom \/ Native PNG/,
+      /PhotoRoom \/ transparent PNG/,
       /Try asking:/,
-      /before Gemini is required/,
+      /before the AI model is required/,
     ],
   },
   {
@@ -116,7 +116,7 @@ const scenarios = [
     ],
   },
   {
-    name: 'memory questions can be answered locally before Gemini is required',
+    name: 'memory questions can be answered locally before the AI model is required',
     expected: [
       /isMemoryStatusRequest/,
       /buildLocalMemoryStatusResponse/,
@@ -169,69 +169,70 @@ for (const scenario of scenarios) {
 }
 
 const postImageClarificationIndex = route.indexOf("return buildClarificationResponse('image', earlyClarificationGate)")
-const postGeminiCheckIndex = route.indexOf('// Check if Gemini is available')
-if (postImageClarificationIndex === -1 || postGeminiCheckIndex === -1 || postImageClarificationIndex > postGeminiCheckIndex) {
+const imageHandlerIndex = route.indexOf('Generate Prompt Suggestion called')
+const postModelCheckIndex = route.indexOf('if (!hasOpenAITextApiKey())', imageHandlerIndex)
+if (postImageClarificationIndex === -1 || postModelCheckIndex === -1 || postImageClarificationIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image clarification happens before Gemini availability check',
-    missing: [/return buildClarificationResponse\('image', earlyClarificationGate\) before \/\/ Check if Gemini is available/],
+    name: 'image clarification happens before OpenAI availability check',
+    missing: [/return buildClarificationResponse\('image', earlyClarificationGate\) before OpenAI availability check/],
   })
 }
 
 const postImageDiagnosticIndex = route.indexOf('return earlyDiagnosticResponse')
-if (postImageDiagnosticIndex === -1 || postGeminiCheckIndex === -1 || postImageDiagnosticIndex > postGeminiCheckIndex) {
+if (postImageDiagnosticIndex === -1 || postModelCheckIndex === -1 || postImageDiagnosticIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image diagnostics happen before Gemini availability check',
-    missing: [/return earlyDiagnosticResponse before \/\/ Check if Gemini is available/],
+    name: 'image diagnostics happen before OpenAI availability check',
+    missing: [/return earlyDiagnosticResponse before OpenAI availability check/],
   })
 }
 
 const postImageCapabilityIndex = route.indexOf('return earlyCapabilityGuideResponse')
-if (postImageCapabilityIndex === -1 || postGeminiCheckIndex === -1 || postImageCapabilityIndex > postGeminiCheckIndex) {
+if (postImageCapabilityIndex === -1 || postModelCheckIndex === -1 || postImageCapabilityIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image capability guide happens before Gemini availability check',
-    missing: [/return earlyCapabilityGuideResponse before \/\/ Check if Gemini is available/],
+    name: 'image capability guide happens before OpenAI availability check',
+    missing: [/return earlyCapabilityGuideResponse before OpenAI availability check/],
   })
 }
 
 const postImageMemoryIndex = route.indexOf('return earlyMemoryStatusResponse')
-if (postImageMemoryIndex === -1 || postGeminiCheckIndex === -1 || postImageMemoryIndex > postGeminiCheckIndex) {
+if (postImageMemoryIndex === -1 || postModelCheckIndex === -1 || postImageMemoryIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image memory status happens before Gemini availability check',
-    missing: [/return earlyMemoryStatusResponse before \/\/ Check if Gemini is available/],
+    name: 'image memory status happens before OpenAI availability check',
+    missing: [/return earlyMemoryStatusResponse before OpenAI availability check/],
   })
 }
 
 const logoHandlerIndex = route.indexOf('async function handleLogoMode')
 const logoClarificationIndex = route.indexOf("return buildClarificationResponse('logo', earlyClarificationGate)", logoHandlerIndex)
-const logoGeminiCheckIndex = route.indexOf('// Check if Gemini is available', logoHandlerIndex)
-if (logoClarificationIndex === -1 || logoGeminiCheckIndex === -1 || logoClarificationIndex > logoGeminiCheckIndex) {
+const logoModelCheckIndex = route.indexOf('if (!hasOpenAITextApiKey())', logoHandlerIndex)
+if (logoClarificationIndex === -1 || logoModelCheckIndex === -1 || logoClarificationIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo clarification happens before Gemini availability check',
-    missing: [/return buildClarificationResponse\('logo', earlyClarificationGate\) before \/\/ Check if Gemini is available/],
+    name: 'logo clarification happens before OpenAI availability check',
+    missing: [/return buildClarificationResponse\('logo', earlyClarificationGate\) before OpenAI availability check/],
   })
 }
 
 const logoDiagnosticIndex = route.indexOf('return earlyDiagnosticResponse', logoHandlerIndex)
-if (logoDiagnosticIndex === -1 || logoGeminiCheckIndex === -1 || logoDiagnosticIndex > logoGeminiCheckIndex) {
+if (logoDiagnosticIndex === -1 || logoModelCheckIndex === -1 || logoDiagnosticIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo diagnostics happen before Gemini availability check',
-    missing: [/return earlyDiagnosticResponse before logo \/\/ Check if Gemini is available/],
+    name: 'logo diagnostics happen before OpenAI availability check',
+    missing: [/return earlyDiagnosticResponse before logo OpenAI availability check/],
   })
 }
 
 const logoCapabilityIndex = route.indexOf('return earlyCapabilityGuideResponse', logoHandlerIndex)
-if (logoCapabilityIndex === -1 || logoGeminiCheckIndex === -1 || logoCapabilityIndex > logoGeminiCheckIndex) {
+if (logoCapabilityIndex === -1 || logoModelCheckIndex === -1 || logoCapabilityIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo capability guide happens before Gemini availability check',
-    missing: [/return earlyCapabilityGuideResponse before logo \/\/ Check if Gemini is available/],
+    name: 'logo capability guide happens before OpenAI availability check',
+    missing: [/return earlyCapabilityGuideResponse before logo OpenAI availability check/],
   })
 }
 
 const logoMemoryIndex = route.indexOf('return earlyMemoryStatusResponse', logoHandlerIndex)
-if (logoMemoryIndex === -1 || logoGeminiCheckIndex === -1 || logoMemoryIndex > logoGeminiCheckIndex) {
+if (logoMemoryIndex === -1 || logoModelCheckIndex === -1 || logoMemoryIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo memory status happens before Gemini availability check',
-    missing: [/return earlyMemoryStatusResponse before logo \/\/ Check if Gemini is available/],
+    name: 'logo memory status happens before OpenAI availability check',
+    missing: [/return earlyMemoryStatusResponse before logo OpenAI availability check/],
   })
 }
 

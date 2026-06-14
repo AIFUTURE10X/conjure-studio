@@ -33,7 +33,8 @@ export interface ParsedLogoGenerationRequest {
 }
 
 function normalizeImageQuality(input: string | null): OpenAIImageQuality {
-  return input === 'low' ? 'low' : 'auto'
+  if (input === 'low' || input === 'medium' || input === 'high' || input === 'auto') return input
+  return 'medium'
 }
 
 function normalizeReferenceMode(input: string | null): LogoReferenceMode {

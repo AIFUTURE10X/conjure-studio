@@ -27,10 +27,12 @@ import type { GeneratePreset } from '../constants/settings-defaults'
 // Migrate old model names to new ones
 const migrateModelName = (model: string): string => {
   const migrations: Record<string, string> = {
-    'gemini-2.5-flash-preview-image': 'gemini-3.1-flash-image-preview',
-    'gemini-2.5-flash-image': 'gemini-3.1-flash-image-preview',
-    'gemini-3-pro-image': 'gemini-3-pro-image-preview',
-    'gemini-2.0-flash-exp': 'gemini-3.1-flash-image-preview',
+    'gemini-2.5-flash-preview-image': 'gpt-image-2',
+    'gemini-2.5-flash-image': 'gpt-image-2',
+    'gemini-3.1-flash-image-preview': 'gpt-image-2',
+    'gemini-3-pro-image': 'gpt-image-2',
+    'gemini-3-pro-image-preview': 'gpt-image-2',
+    'gemini-2.0-flash-exp': 'gpt-image-2',
     'chatgpt-image-generator-2': 'gpt-image-2',
     'chatgpt-image-latest': 'gpt-image-2',
   }

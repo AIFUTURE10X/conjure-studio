@@ -61,7 +61,7 @@ export async function generateLogoBaseImage(
         aspectRatio: request.aspectRatio,
         imageSize: request.resolution,
         imageQuality: request.imageQuality,
-        outputBackground: request.bgRemovalMethod === 'native-transparent' ? 'transparent' : 'auto',
+        outputBackground: 'auto',
         referenceImageFile: request.referenceImageFile,
       })
 
@@ -101,7 +101,7 @@ export async function removeLogoBackgroundIfNeeded(
   })
 
   if (request.bgRemovalMethod === 'native-transparent') {
-    console.log('[Logo API] Verifying OpenAI native transparent PNG output')
+    console.log('[Logo API] Verifying legacy transparent PNG cleanup output')
     return result(await ensureNativeTransparentLogo(imageBase64))
   }
 

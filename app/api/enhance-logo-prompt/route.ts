@@ -1,10 +1,13 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { buildLogoPromptBlueprintInstructions } from "@/app/image-studio/constants/ai-logo-knowledge"
-import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
 import { parseJson } from "@/lib/api/http"
+import {
+  generateOpenAIText,
+  getOpenAITextApiKeyNames,
+  hasOpenAITextApiKey,
+} from "@/lib/openai-text-client"
 
 interface EnhancedLogoPromptResponse {
   enhancedPrompt?: unknown
@@ -68,16 +71,12 @@ export async function POST(request: Request) {
 
     console.log("[Enhance Logo Prompt] Input:", prompt.substring(0, 50))
 
-    const apiKey = getGeminiApiKey()
-    if (!apiKey) {
+    if (!hasOpenAITextApiKey()) {
       return NextResponse.json(
-        { error: "AI service not configured", details: `${getGeminiApiKeyNames()} environment variable is not set` },
+        { error: "AI service not configured", details: `${getOpenAITextApiKeyNames()} environment variable is not set` },
         { status: 500 }
       )
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
     const fullPrompt = `${ENHANCE_SYSTEM_PROMPT}
 
@@ -85,8 +84,7 @@ User's basic description: "${prompt}"
 
 Enhanced prompt JSON:`
 
-    const result = await model.generateContent(fullPrompt)
-    const responseText = result.response.text().trim()
+    const responseText = (await generateOpenAIText(fullPrompt, { maxOutputTokens: 2000 })).trim()
 
     const parsedResponse = extractEnhancedLogoPromptResponse(responseText)
     const enhancedPrompt = typeof parsedResponse?.enhancedPrompt === 'string'
