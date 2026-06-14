@@ -11,10 +11,10 @@
 
 import { useCallback, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { toast } from 'sonner'
-import { postGenerateImage, toDataUrl } from './thumbnail-utils'
+import { postGenerateImage, toDataUrl, type GenerateImageOptions } from './thumbnail-utils'
 import { type ThumbnailConfig } from './thumbnail-constants'
 
-type GenerateOptions = { model?: string; imageSize?: string }
+type GenerateOptions = GenerateImageOptions
 
 interface Deps {
   setConfig: Dispatch<SetStateAction<ThumbnailConfig>>

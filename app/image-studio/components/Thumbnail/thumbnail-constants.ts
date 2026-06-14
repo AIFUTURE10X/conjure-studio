@@ -24,6 +24,8 @@ export interface ThumbnailBackground {
   kind: BackgroundKind
   color: string
   gradient: [string, string]
+  /** Gradient direction in degrees (default 135). */
+  gradientAngle?: number
   imageUrl?: string
   /** Photo adjustments applied to an image background. */
   adjust?: ImageAdjust
@@ -57,9 +59,13 @@ export interface ThumbnailHighlight {
   roundness: number
   /** 0–100 box opacity. */
   opacity: number
+  /** Box padding around the text, 0–100 (50 ≈ the original size). */
+  size?: number
 }
 
-export interface ThumbnailHeadline {
+export interface ThumbnailTextBlock {
+  /** Stable id so multiple blocks can be selected / dragged independently. */
+  id: string
   text: string
   preset: TextPresetId
   color: string
@@ -76,39 +82,52 @@ export interface ThumbnailHeadline {
   gradient?: [string, string] | null
   /** Colored highlight box behind the text (Canva "Background" effect). */
   highlight?: ThumbnailHighlight | null
+  /** Outline thickness 0–100 (50 ≈ the original auto weight). */
+  strokeWidth?: number
+  /** Letter spacing in 0.01em units (-1 ≈ the original -0.01em). */
+  letterSpacing?: number
+  /** Wrap width as a percentage of the stage (default 60). Wider = fewer lines. */
+  width?: number
 }
+
+/** Back-compat alias — the single "headline" is now one of several text blocks. */
+export type ThumbnailHeadline = ThumbnailTextBlock
 
 export interface ThumbnailConfig {
   templateId: string
   background: ThumbnailBackground
   subject: ThumbnailSubject | null
-  headline: ThumbnailHeadline
+  /** One or more draggable headline/text blocks (index 0 is the primary). */
+  headlines: ThumbnailTextBlock[]
   stickers: ThumbnailSticker[]
-  /** Render the subject above the headline when true. */
+  /** Render the subject above the text blocks when true. */
   subjectOnTop?: boolean
 }
 
-export const TEXT_PRESETS: { id: TextPresetId; label: string }[] = [
-  { id: 'pop', label: 'Pop' },
-  { id: 'outline', label: 'Outline' },
-  { id: 'shadow', label: 'Shadow' },
-  { id: 'block', label: 'Block' },
+export const TEXT_PRESETS: { id: TextPresetId; label: string; description: string }[] = [
+  { id: 'pop', label: 'Pop', description: 'Thick black stroke + hard drop shadow — maximum punch.' },
+  { id: 'outline', label: 'Outline', description: 'Bold black outline only, hollow fill.' },
+  { id: 'shadow', label: 'Shadow', description: 'Soft drop shadow for depth over busy photos.' },
+  { id: 'block', label: 'Block', description: 'Solid color block behind each line of text.' },
 ]
 
 export const DEFAULT_CONFIG: ThumbnailConfig = {
   templateId: 'text-left',
   background: { kind: 'gradient', color: '#0b1220', gradient: ['#7c3aed', '#db2777'] },
   subject: null,
-  headline: {
-    text: 'YOUR TITLE HERE',
-    preset: 'pop',
-    color: '#ffe14d',
-    x: 32,
-    y: 50,
-    size: 17,
-    rotation: 0,
-    uppercase: true,
-  },
+  headlines: [
+    {
+      id: 'block-1',
+      text: 'YOUR TITLE HERE',
+      preset: 'pop',
+      color: '#ffe14d',
+      x: 32,
+      y: 50,
+      size: 17,
+      rotation: 0,
+      uppercase: true,
+    },
+  ],
   stickers: [],
 }
 
@@ -122,16 +141,19 @@ export const BLANK_CONFIG: ThumbnailConfig = {
   templateId: '',
   background: { kind: 'solid', color: '#18181b', gradient: ['#000000', '#000000'] },
   subject: null,
-  headline: {
-    text: '',
-    preset: 'pop',
-    color: '#ffffff',
-    x: 50,
-    y: 50,
-    size: 17,
-    rotation: 0,
-    uppercase: true,
-  },
+  headlines: [
+    {
+      id: 'block-1',
+      text: '',
+      preset: 'pop',
+      color: '#ffffff',
+      x: 50,
+      y: 50,
+      size: 17,
+      rotation: 0,
+      uppercase: true,
+    },
+  ],
   stickers: [],
 }
 
@@ -205,7 +227,8 @@ export const THUMBNAIL_TEMPLATES: ThumbnailTemplate[] = [
 
 export function backgroundCss(bg: ThumbnailBackground): string {
   if (bg.kind === 'solid') return bg.color
-  if (bg.kind === 'gradient') return `linear-gradient(135deg, ${bg.gradient[0]} 0%, ${bg.gradient[1]} 100%)`
+  if (bg.kind === 'gradient')
+    return `linear-gradient(${bg.gradientAngle ?? 135}deg, ${bg.gradient[0]} 0%, ${bg.gradient[1]} 100%)`
   return bg.color // image handled by an <img> layer; this is the fallback fill
 }
 
@@ -363,15 +386,31 @@ export const STICKER_EMOJI_ITEMS: StickerEmoji[] = [
 /** Back-compat: plain list of emoji characters. */
 export const STICKER_EMOJIS = STICKER_EMOJI_ITEMS.map((e) => e.char)
 
-/** Sentinel selection ids so the subject and headline share the single-selection
- *  state with stickers (only one layer shows handles at a time). */
+/** Sentinel selection id so the subject shares the single-selection state with
+ *  stickers and text blocks (only one layer shows handles at a time). Text
+ *  blocks are selected by their own id. */
 export const SUBJECT_SELECTION_ID = '__thumbnail_subject__'
-export const HEADLINE_SELECTION_ID = '__thumbnail_headline__'
 
 export const STICKER_SHAPES: { type: StickerType; label: string }[] = [
   { type: 'arrow', label: 'Arrow' },
   { type: 'circle', label: 'Circle' },
 ]
+
+/** Build a new text block with a fresh id (mirrors createSticker). */
+export function createTextBlock(overrides: Partial<ThumbnailTextBlock> = {}): ThumbnailTextBlock {
+  return {
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t_${Date.now()}_${Math.random()}`,
+    text: 'NEW TEXT',
+    preset: 'pop',
+    color: '#ffffff',
+    x: 50,
+    y: 50,
+    size: 14,
+    rotation: 0,
+    uppercase: true,
+    ...overrides,
+  }
+}
 
 export function createSticker(
   type: StickerType,
@@ -459,15 +498,16 @@ export interface ThumbnailStyle {
   color: string
   preset: TextPresetId
   font: string
+  description: string
 }
 
 export const THUMBNAIL_STYLES: ThumbnailStyle[] = [
-  { id: 'punch', label: 'Punch', gradient: ['#7c3aed', '#db2777'], color: '#ffe14d', preset: 'pop', font: 'anton' },
-  { id: 'cinematic', label: 'Cinematic', gradient: ['#0ea5e9', '#1e3a8a'], color: '#ffffff', preset: 'outline', font: 'oswald' },
-  { id: 'gaming', label: 'Gaming', gradient: ['#b91c1c', '#111827'], color: '#ffe14d', preset: 'pop', font: 'bangers' },
-  { id: 'clean', label: 'Clean', gradient: ['#111827', '#0a0a0a'], color: '#ffffff', preset: 'shadow', font: 'montserrat' },
-  { id: 'sunset', label: 'Sunset', gradient: ['#f59e0b', '#b91c1c'], color: '#ffffff', preset: 'block', font: 'archivo' },
-  { id: 'mint', label: 'Mint', gradient: ['#059669', '#064e3b'], color: '#ffffff', preset: 'pop', font: 'bebas' },
+  { id: 'punch', label: 'Punch', gradient: ['#7c3aed', '#db2777'], color: '#ffe14d', preset: 'pop', font: 'anton', description: 'Purple→pink with a yellow Anton headline — high-energy.' },
+  { id: 'cinematic', label: 'Cinematic', gradient: ['#0ea5e9', '#1e3a8a'], color: '#ffffff', preset: 'outline', font: 'oswald', description: 'Cool blue gradient, white outlined Oswald — filmic.' },
+  { id: 'gaming', label: 'Gaming', gradient: ['#b91c1c', '#111827'], color: '#ffe14d', preset: 'pop', font: 'bangers', description: 'Red→black with a yellow Bangers headline — hype.' },
+  { id: 'clean', label: 'Clean', gradient: ['#111827', '#0a0a0a'], color: '#ffffff', preset: 'shadow', font: 'montserrat', description: 'Dark and minimal, white Montserrat shadow — corporate.' },
+  { id: 'sunset', label: 'Sunset', gradient: ['#f59e0b', '#b91c1c'], color: '#ffffff', preset: 'block', font: 'archivo', description: 'Warm amber→red block Archivo — bold and friendly.' },
+  { id: 'mint', label: 'Mint', gradient: ['#059669', '#064e3b'], color: '#ffffff', preset: 'pop', font: 'bebas', description: 'Fresh green gradient with a white Bebas pop.' },
 ]
 
 /** Pools the Shuffle button samples for fresh look variations. */

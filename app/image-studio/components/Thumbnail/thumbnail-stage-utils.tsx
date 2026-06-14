@@ -28,14 +28,17 @@ export function StickerShape({ sticker }: { sticker: ThumbnailSticker }) {
 
 export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
   const fontPx = (headline.size / 100) * THUMB_HEIGHT
-  const stroke = Math.max(3, fontPx * 0.07)
+  // strokeWidth 0–100 scales the auto weight (50 ≈ the original fontPx * 0.07).
+  const stroke = Math.max(0, fontPx * ((headline.strokeWidth ?? 50) / 50) * 0.07)
   const base: CSSProperties = {
     fontSize: fontPx,
     fontWeight: 900,
     lineHeight: 1.02,
     color: headline.color,
     textTransform: headline.uppercase ? 'uppercase' : 'none',
-    letterSpacing: '-0.01em',
+    letterSpacing: `${(headline.letterSpacing ?? -1) / 100}em`,
+    // Honor manual line breaks (Enter in the text box) while still auto-wrapping.
+    whiteSpace: 'pre-line',
     fontFamily: fontFamilyFor(headline.font),
   }
 
@@ -72,12 +75,13 @@ export function headlineStyle(headline: ThumbnailHeadline): CSSProperties {
   // Colored highlight box (Canva "Background" effect) — wins over the block preset.
   if (headline.highlight) {
     const h = headline.highlight
+    const pad = (h.size ?? 50) / 50 // 50 ≈ the original padding; higher = bigger box
     style = {
       ...style,
       color: headline.color,
       backgroundImage: undefined,
       backgroundColor: hexToRgba(h.color, h.opacity / 100),
-      padding: `${fontPx * 0.08}px ${fontPx * 0.2}px`,
+      padding: `${fontPx * 0.08 * pad}px ${fontPx * 0.2 * pad}px`,
       borderRadius: (h.roundness / 100) * fontPx * 0.5,
       boxDecorationBreak: 'clone',
       WebkitBoxDecorationBreak: 'clone',

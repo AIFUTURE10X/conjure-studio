@@ -10,19 +10,18 @@
 
 import { useThumbnail } from './ThumbnailProvider'
 import { ToggleRow } from './ThumbnailControls'
-import { HEADLINE_SELECTION_ID, SUBJECT_SELECTION_ID } from './thumbnail-constants'
+import { SUBJECT_SELECTION_ID } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
-
-function selectionLabel(id: string | null): string {
-  if (id === SUBJECT_SELECTION_ID) return 'Subject'
-  if (id === HEADLINE_SELECTION_ID) return 'Headline'
-  if (id) return 'Sticker'
-  return ''
-}
 
 export function ThumbnailArrangePanel() {
   const { config, selectedStickerId, alignSelected, setSubjectOnTop } = useThumbnail()
-  const label = selectionLabel(selectedStickerId)
+  const label = !selectedStickerId
+    ? ''
+    : selectedStickerId === SUBJECT_SELECTION_ID
+      ? 'Subject'
+      : config.headlines.some((h) => h.id === selectedStickerId)
+        ? 'Text'
+        : 'Sticker'
 
   return (
     <div className="space-y-2">
@@ -30,7 +29,7 @@ export function ThumbnailArrangePanel() {
 
       {config.subject && (
         <ToggleRow
-          label="Subject above headline"
+          label="Subject above text"
           active={!!config.subjectOnTop}
           onToggle={() => setSubjectOnTop(!config.subjectOnTop)}
         />
@@ -51,7 +50,7 @@ export function ThumbnailArrangePanel() {
         </>
       ) : (
         <p className="text-[10px] text-zinc-600">
-          Click a layer on the canvas (subject, headline, or sticker) to align or nudge it.
+          Click a layer on the canvas (subject, text, or sticker) to align or nudge it.
         </p>
       )}
     </div>

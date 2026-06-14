@@ -27,6 +27,7 @@ import {
   THUMBNAIL_TEMPLATES,
   THUMB_STORAGE_KEY,
   createSticker,
+  createTextBlock,
   type ImageAdjust,
   type SubjectFx,
   type ThumbnailBackground,
@@ -36,9 +37,10 @@ import {
   type ThumbnailHistoryItem,
   type ThumbnailSticker,
   type ThumbnailSubject,
+  type ThumbnailTextBlock,
   type UpscaleTarget,
 } from './thumbnail-constants'
-import { loadThumbnailConfig } from './thumbnail-utils'
+import { loadThumbnailConfig, normalizeConfig } from './thumbnail-utils'
 import { useThumbnailGenerate } from './useThumbnailGenerate'
 import { useThumbnailExport } from './useThumbnailExport'
 import { useThumbnailHistory } from './useThumbnailHistory'
@@ -52,7 +54,13 @@ interface ThumbnailContextValue {
   patchSubjectFx: (patch: Partial<SubjectFx>) => void
   patchSubjectAdjust: (patch: Partial<ImageAdjust>) => void
   patchBackgroundAdjust: (patch: Partial<ImageAdjust>) => void
+  /** The text block currently being edited (selected block, else the primary). */
+  activeHeadline: ThumbnailTextBlock
+  /** Patch the active text block (selected block, else the primary). */
   setHeadline: (patch: Partial<ThumbnailHeadline>) => void
+  addTextBlock: () => void
+  patchTextBlock: (id: string, patch: Partial<ThumbnailTextBlock>) => void
+  removeTextBlock: (id: string) => void
   applyTemplate: (id: string) => void
   applyConfig: (config: ThumbnailConfig) => void
   reset: () => void
@@ -161,8 +169,33 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
     setConfig((c) => ({ ...c, background: { ...c.background, adjust: { ...DEFAULT_ADJUST, ...c.background.adjust, ...patch } } }))
   }, [])
 
+  // The text block being edited: the selected block, else the primary (index 0).
+  const activeHeadline = config.headlines.find((h) => h.id === selectedStickerId) ?? config.headlines[0]
+
+  // Patch the active block (selected block, else the primary) — keeps Styles,
+  // Shuffle, the font picker, the FX panel, and AI concepts working unchanged.
   const setHeadline = useCallback((patch: Partial<ThumbnailHeadline>) => {
-    setConfig((c) => ({ ...c, headline: { ...c.headline, ...patch } }))
+    setConfig((c) => {
+      const id = c.headlines.find((h) => h.id === selectedRef.current)?.id ?? c.headlines[0]?.id
+      return { ...c, headlines: c.headlines.map((h) => (h.id === id ? { ...h, ...patch } : h)) }
+    })
+  }, [])
+
+  const addTextBlock = useCallback(() => {
+    const block = createTextBlock({ color: '#ffffff' })
+    setConfig((c) => ({ ...c, headlines: [...c.headlines, block] }))
+    setSelectedStickerId(block.id)
+  }, [])
+
+  const patchTextBlock = useCallback((id: string, patch: Partial<ThumbnailTextBlock>) => {
+    setConfig((c) => ({ ...c, headlines: c.headlines.map((h) => (h.id === id ? { ...h, ...patch } : h)) }))
+  }, [])
+
+  // Keep at least one block so there's always something to edit (matches the
+  // old single-headline model — an empty text block simply renders nothing).
+  const removeTextBlock = useCallback((id: string) => {
+    setConfig((c) => (c.headlines.length <= 1 ? c : { ...c, headlines: c.headlines.filter((h) => h.id !== id) }))
+    setSelectedStickerId((cur) => (cur === id ? null : cur))
   }, [])
 
   const applyTemplate = useCallback((id: string) => {
@@ -172,7 +205,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
       ...c,
       templateId: id,
       background: { ...c.background, ...template.background },
-      headline: { ...c.headline, ...template.headline },
+      headlines: c.headlines.map((h, i) => (i === 0 ? { ...h, ...template.headline } : h)),
       subject: c.subject ? { ...c.subject, ...template.subject } : c.subject,
     }))
   }, [])
@@ -180,7 +213,7 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
   const applyConfig = useCallback((next: ThumbnailConfig) => {
     setSelectedStickerId(null)
     generate.clearVariations()
-    setConfig(next)
+    setConfig(normalizeConfig(next))
   }, [generate])
 
   const reset = useCallback(() => {
@@ -221,7 +254,11 @@ export function ThumbnailProvider({ children }: { children: ReactNode }) {
         patchSubjectFx,
         patchSubjectAdjust,
         patchBackgroundAdjust,
+        activeHeadline,
         setHeadline,
+        addTextBlock,
+        patchTextBlock,
+        removeTextBlock,
         applyTemplate,
         applyConfig,
         reset,

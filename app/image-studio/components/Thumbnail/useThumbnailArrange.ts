@@ -9,7 +9,7 @@
  */
 
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
-import { HEADLINE_SELECTION_ID, SUBJECT_SELECTION_ID, type ThumbnailConfig } from './thumbnail-constants'
+import { SUBJECT_SELECTION_ID, type ThumbnailConfig } from './thumbnail-constants'
 
 const clampPct = (n: number) => Math.min(100, Math.max(0, n))
 
@@ -44,8 +44,13 @@ export function useThumbnailArrange({ setConfig, selectedRef }: Deps) {
         if (id === SUBJECT_SELECTION_ID) {
           return c.subject ? { ...c, subject: { ...c.subject, x: clampPct(mapX(c.subject.x)), y: clampPct(mapY(c.subject.y)) } } : c
         }
-        if (id === HEADLINE_SELECTION_ID) {
-          return { ...c, headline: { ...c.headline, x: clampPct(mapX(c.headline.x)), y: clampPct(mapY(c.headline.y)) } }
+        if (c.headlines.some((h) => h.id === id)) {
+          return {
+            ...c,
+            headlines: c.headlines.map((h) =>
+              h.id === id ? { ...h, x: clampPct(mapX(h.x)), y: clampPct(mapY(h.y)) } : h,
+            ),
+          }
         }
         return { ...c, stickers: c.stickers.map((s) => (s.id === id ? { ...s, x: clampPct(mapX(s.x)), y: clampPct(mapY(s.y)) } : s)) }
       })

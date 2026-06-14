@@ -14,11 +14,11 @@ import { useThumbnail } from './ThumbnailProvider'
 import { useStageDrag } from './useThumbnailDrag'
 import { StickerShape, headlineStyle } from './thumbnail-stage-utils'
 import {
-  HEADLINE_SELECTION_ID,
   SUBJECT_SELECTION_ID,
   THUMB_HEIGHT,
   type ThumbnailSticker,
   type ThumbnailSubject,
+  type ThumbnailTextBlock,
 } from './thumbnail-constants'
 import { subjectImageFilter } from './thumbnail-fx'
 
@@ -87,32 +87,46 @@ export function SubjectLayer({ subject, drag }: { subject: ThumbnailSubject; dra
   )
 }
 
-export function HeadlineLayer({ drag }: { drag: StageDrag }) {
-  const { config, setHeadline, selectedStickerId, setSelectedStickerId } = useThumbnail()
-  const { headline } = config
-  if (!headline.text) return null
-  const selected = selectedStickerId === HEADLINE_SELECTION_ID
+export function TextBlockLayer({ block, drag }: { block: ThumbnailTextBlock; drag: StageDrag }) {
+  const { config, patchTextBlock, removeTextBlock, selectedStickerId, setSelectedStickerId } = useThumbnail()
+  if (!block.text) return null
+  const selected = selectedStickerId === block.id
+  const canDelete = config.headlines.length > 1
   return (
     <div
       data-testid="thumbnail-headline"
       onPointerDown={(e) => {
-        setSelectedStickerId(HEADLINE_SELECTION_ID)
-        drag.startDrag(e, { x: headline.x, y: headline.y }, (x, y) => setHeadline({ x, y }))
+        setSelectedStickerId(block.id)
+        drag.startDrag(e, { x: block.x, y: block.y }, (x, y) => patchTextBlock(block.id, { x, y }))
       }}
-      className={`absolute max-w-[60%] select-none text-center ${drag.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`absolute select-none text-center ${drag.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{
-        left: `${headline.x}%`,
-        top: `${headline.y}%`,
-        transform: `translate(-50%, -50%) rotate(${headline.rotation}deg)`,
-        ...headlineStyle(headline),
+        left: `${block.x}%`,
+        top: `${block.y}%`,
+        maxWidth: `${block.width ?? 60}%`,
+        transform: `translate(-50%, -50%) rotate(${block.rotation}deg)`,
+        ...headlineStyle(block),
       }}
     >
-      {headline.text}
+      {block.text}
       {selected && (
-        <div
-          data-export-ignore
-          className="pointer-events-none absolute -inset-2 rounded-md border-2 border-dashed border-[#c99850]"
-        />
+        <>
+          <div
+            data-export-ignore
+            className="pointer-events-none absolute -inset-2 rounded-md border-2 border-dashed border-[#c99850]"
+          />
+          {canDelete && (
+            <button
+              data-export-ignore
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => removeTextBlock(block.id)}
+              className="absolute -right-4 -top-4 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white shadow-lg hover:bg-red-600"
+              title="Delete text"
+            >
+              ×
+            </button>
+          )}
+        </>
       )}
     </div>
   )

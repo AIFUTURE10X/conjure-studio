@@ -17,9 +17,9 @@ import { THUMBNAIL_FONTS } from './thumbnail-fonts'
 import { railLabel } from './thumbnail-ui'
 
 export function ThumbnailFontPicker() {
-  const { config, setHeadline } = useThumbnail()
+  const { activeHeadline, setHeadline } = useThumbnail()
   const [open, setOpen] = useState(false)
-  const fontId = config.headline.font ?? 'geist'
+  const fontId = activeHeadline?.font ?? 'geist'
   const current = THUMBNAIL_FONTS.find((f) => f.id === fontId) ?? THUMBNAIL_FONTS[0]
 
   return (
@@ -39,9 +39,9 @@ export function ThumbnailFontPicker() {
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="max-h-72 w-(--radix-popover-trigger-width) min-w-56 overflow-y-auto border-zinc-700 bg-zinc-900 p-2"
+          className="max-h-72 w-(--radix-popover-trigger-width) min-w-72 overflow-y-auto border-zinc-700 bg-zinc-900 p-2"
         >
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {THUMBNAIL_FONTS.map((f) => {
               const active = f.id === fontId
               return (
@@ -53,7 +53,7 @@ export function ThumbnailFontPicker() {
                   }}
                   title={f.label}
                   style={{ fontFamily: f.family }}
-                  className={`truncate rounded-md border px-2 py-2 text-sm transition-colors ${
+                  className={`truncate rounded-md border px-1.5 py-2 text-xs transition-colors ${
                     active
                       ? 'border-[#c99850] bg-[#c99850]/10 text-[#dbb56e]'
                       : 'border-zinc-700 bg-zinc-800/70 text-zinc-200 hover:bg-zinc-700'

@@ -83,7 +83,7 @@ export function useThumbnailHistory(
       const canvas = await captureStageCanvas(node)
       const dataUrl = canvasToPngDataUrl(canvas)
       const config = configRef.current
-      const prompt = (config.headline.text || 'YouTube thumbnail').slice(0, 200)
+      const prompt = (config.headlines[0]?.text || 'YouTube thumbnail').slice(0, 200)
       const res = await fetch('/api/logo-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

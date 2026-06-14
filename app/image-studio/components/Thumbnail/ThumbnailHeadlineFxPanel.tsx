@@ -13,17 +13,29 @@ import { RangeRow, SwatchRow, ToggleRow } from './ThumbnailControls'
 import { ThumbnailFontPicker } from './ThumbnailFontPicker'
 
 const DEFAULT_GRADIENT: [string, string] = ['#ffe14d', '#ff5e5e']
-const DEFAULT_HIGHLIGHT = { color: '#ff3b30', roundness: 20, opacity: 100 }
+const DEFAULT_HIGHLIGHT = { color: '#ff3b30', roundness: 20, opacity: 100, size: 50 }
 
 export function ThumbnailHeadlineFxPanel() {
-  const { config, setHeadline } = useThumbnail()
-  const { headline } = config
+  const { activeHeadline, setHeadline } = useThumbnail()
+  const headline = activeHeadline
   const gradient = headline.gradient ?? null
   const highlight = headline.highlight ?? null
+  const hasOutline = headline.preset === 'pop' || headline.preset === 'outline'
 
   return (
     <div className="space-y-2.5">
       <ThumbnailFontPicker />
+
+      {hasOutline && (
+        <RangeRow
+          label="Outline weight"
+          value={headline.strokeWidth ?? 50}
+          min={0}
+          max={100}
+          suffix="%"
+          onChange={(v) => setHeadline({ strokeWidth: v })}
+        />
+      )}
 
       <div className="space-y-1.5">
         <ToggleRow
@@ -60,6 +72,7 @@ export function ThumbnailHeadlineFxPanel() {
         {highlight && (
           <div className="space-y-1.5 rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
             <SwatchRow label="Color" value={highlight.color} onChange={(v) => setHeadline({ highlight: { ...highlight, color: v } })} />
+            <RangeRow label="Box size" value={highlight.size ?? 50} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, size: v } })} />
             <RangeRow label="Roundness" value={highlight.roundness} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, roundness: v } })} />
             <RangeRow label="Opacity" value={highlight.opacity} min={0} max={100} suffix="%" onChange={(v) => setHeadline({ highlight: { ...highlight, opacity: v } })} />
           </div>

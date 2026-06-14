@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useThumbnail } from './ThumbnailProvider'
 import { useStageDrag } from './useThumbnailDrag'
-import { HeadlineLayer, StickerLayer, SubjectLayer } from './ThumbnailLayers'
+import { StickerLayer, SubjectLayer, TextBlockLayer } from './ThumbnailLayers'
 import { THUMB_WIDTH, THUMB_HEIGHT, backgroundCss } from './thumbnail-constants'
 import { backgroundLayerFilter } from './thumbnail-fx'
 import { thumbnailFontVars } from './thumbnail-fonts'
@@ -57,7 +57,8 @@ export function ThumbnailStage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selectedStickerId, nudgeSelected])
 
-  const { background, subject, stickers } = config
+  const { background, subject, stickers, headlines } = config
+  const textBlocks = headlines.map((b) => <TextBlockLayer key={b.id} block={b} drag={drag} />)
 
   return (
     <div
@@ -97,13 +98,13 @@ export function ThumbnailStage() {
 
           {config.subjectOnTop ? (
             <>
-              <HeadlineLayer drag={drag} />
+              {textBlocks}
               {subject && <SubjectLayer subject={subject} drag={drag} />}
             </>
           ) : (
             <>
               {subject && <SubjectLayer subject={subject} drag={drag} />}
-              <HeadlineLayer drag={drag} />
+              {textBlocks}
             </>
           )}
 

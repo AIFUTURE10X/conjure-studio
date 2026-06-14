@@ -4,9 +4,10 @@
  * ThumbnailManualPanel
  *
  * The "Manual" half of the Thumbnail rail: template picker, background source,
- * subject (upload + one-click cutout reusing /api/remove-background), headline
- * text styling, stickers, logo/watermark, export, and saved-thumbnail history.
- * Paired with ThumbnailAiPanel behind the rail's AI | Manual tabs.
+ * subject (upload + one-click cutout reusing /api/remove-background), text
+ * blocks (one or more draggable headlines), stickers, logo/watermark, export,
+ * and saved-thumbnail history. Paired with ThumbnailAiPanel behind the rail's
+ * AI | Manual tabs.
  */
 
 import { type ReactNode } from 'react'
@@ -18,10 +19,12 @@ import { ThumbnailExportPanel } from './ThumbnailExportPanel'
 import { ThumbnailHistoryStrip } from './ThumbnailHistoryStrip'
 import { ThumbnailBackgroundFxPanel } from './ThumbnailBackgroundFxPanel'
 import { ThumbnailSubjectFxPanel } from './ThumbnailSubjectFxPanel'
-import { ThumbnailHeadlineFxPanel } from './ThumbnailHeadlineFxPanel'
 import { ThumbnailArrangePanel } from './ThumbnailArrangePanel'
 import { ThumbnailStylesPanel } from './ThumbnailStylesPanel'
-import { TEXT_PRESETS, THUMBNAIL_TEMPLATES, type BackgroundKind } from './thumbnail-constants'
+import { ThumbnailTemplatePicker } from './ThumbnailTemplatePicker'
+import { ThumbnailTextSection } from './ThumbnailTextSection'
+import { RangeRow } from './ThumbnailControls'
+import { type BackgroundKind } from './thumbnail-constants'
 import { railButton, railLabel } from './thumbnail-ui'
 
 function pickImage(onPicked: (dataUrl: string) => void) {
@@ -54,34 +57,13 @@ const BG_KINDS: { id: BackgroundKind; label: string }[] = [
 ]
 
 export function ThumbnailManualPanel() {
-  const {
-    config,
-    setBackground,
-    setSubject,
-    patchSubject,
-    setHeadline,
-    applyTemplate,
-    removeSubjectBackground,
-    isCuttingOut,
-  } = useThumbnail()
+  const { config, setBackground, setSubject, patchSubject, removeSubjectBackground, isCuttingOut } = useThumbnail()
 
-  const { background, subject, headline } = config
+  const { background, subject } = config
 
   return (
     <div className="space-y-5">
-      <Section title="Template">
-        <div className="grid grid-cols-2 gap-1.5">
-          {THUMBNAIL_TEMPLATES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => applyTemplate(t.id)}
-              className={`${railButton} h-12 text-center leading-tight ${config.templateId === t.id ? 'border-[#c99850] text-[#dbb56e]' : ''}`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </Section>
+      <ThumbnailTemplatePicker />
 
       <ThumbnailStylesPanel />
 
@@ -107,21 +89,31 @@ export function ThumbnailManualPanel() {
           />
         )}
         {background.kind === 'gradient' && (
-          <div className="flex gap-1.5">
-            {[0, 1].map((i) => (
-              <input
-                key={i}
-                type="color"
-                value={background.gradient[i]}
-                onChange={(e) => {
-                  const next: [string, string] = [...background.gradient]
-                  next[i] = e.target.value
-                  setBackground({ gradient: next })
-                }}
-                className="h-8 flex-1 cursor-pointer rounded-md border border-zinc-700 bg-zinc-900"
-                aria-label={`Gradient color ${i + 1}`}
-              />
-            ))}
+          <div className="space-y-1.5">
+            <div className="flex gap-1.5">
+              {[0, 1].map((i) => (
+                <input
+                  key={i}
+                  type="color"
+                  value={background.gradient[i]}
+                  onChange={(e) => {
+                    const next: [string, string] = [...background.gradient]
+                    next[i] = e.target.value
+                    setBackground({ gradient: next })
+                  }}
+                  className="h-8 flex-1 cursor-pointer rounded-md border border-zinc-700 bg-zinc-900"
+                  aria-label={`Gradient color ${i + 1}`}
+                />
+              ))}
+            </div>
+            <RangeRow
+              label="Gradient angle"
+              value={background.gradientAngle ?? 135}
+              min={0}
+              max={360}
+              suffix="°"
+              onChange={(v) => setBackground({ gradientAngle: v })}
+            />
           </div>
         )}
         {background.kind === 'image' && (
@@ -176,64 +168,7 @@ export function ThumbnailManualPanel() {
 
       <ThumbnailSubjectFxPanel />
 
-      <Section title="Headline">
-        <textarea
-          value={headline.text}
-          onChange={(e) => setHeadline({ text: e.target.value })}
-          rows={2}
-          placeholder="Your title here"
-          className="w-full resize-none rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none"
-        />
-        <div className="grid grid-cols-4 gap-1.5">
-          {TEXT_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setHeadline({ preset: p.id })}
-              className={`${railButton} ${headline.preset === p.id ? 'border-[#c99850] text-[#dbb56e]' : ''}`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={headline.color}
-            onChange={(e) => setHeadline({ color: e.target.value })}
-            className="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-zinc-700 bg-zinc-900"
-            aria-label="Headline color"
-          />
-          <button
-            onClick={() => setHeadline({ uppercase: !headline.uppercase })}
-            className={`${railButton} flex-1 ${headline.uppercase ? 'border-[#c99850] text-[#dbb56e]' : ''}`}
-          >
-            UPPERCASE
-          </button>
-        </div>
-        <label className="block text-[11px] text-zinc-500">
-          Size
-          <input
-            type="range"
-            min={8}
-            max={40}
-            value={headline.size}
-            onChange={(e) => setHeadline({ size: Number(e.target.value) })}
-            className="w-full accent-[#c99850]"
-          />
-        </label>
-        <label className="block text-[11px] text-zinc-500">
-          Tilt
-          <input
-            type="range"
-            min={-15}
-            max={15}
-            value={headline.rotation}
-            onChange={(e) => setHeadline({ rotation: Number(e.target.value) })}
-            className="w-full accent-[#c99850]"
-          />
-        </label>
-        <ThumbnailHeadlineFxPanel />
-      </Section>
+      <ThumbnailTextSection />
 
       <ThumbnailStickerPanel />
 

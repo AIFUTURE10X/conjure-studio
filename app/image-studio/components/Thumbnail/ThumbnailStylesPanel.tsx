@@ -9,6 +9,7 @@
  */
 
 import { Shuffle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useThumbnail } from './ThumbnailProvider'
 import {
   SHUFFLE_FONTS,
@@ -48,15 +49,20 @@ export function ThumbnailStylesPanel() {
       </div>
       <div className="grid grid-cols-3 gap-1.5">
         {THUMBNAIL_STYLES.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => applyStyle(s)}
-            title={`${s.label} style`}
-            className={`${railButton} h-9 border-transparent text-white`}
-            style={{ background: `linear-gradient(135deg, ${s.gradient[0]}, ${s.gradient[1]})` }}
-          >
-            {s.label}
-          </button>
+          <Tooltip key={s.id}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => applyStyle(s)}
+                className={`${railButton} h-9 border-transparent text-white`}
+                style={{ background: `linear-gradient(135deg, ${s.gradient[0]}, ${s.gradient[1]})` }}
+              >
+                {s.label}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-48">
+              {s.description}
+            </TooltipContent>
+          </Tooltip>
         ))}
       </div>
       <p className="text-[10px] text-zinc-600">Sets a palette + font + text style. Shuffle for instant variants.</p>

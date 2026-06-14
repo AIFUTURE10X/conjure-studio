@@ -10,7 +10,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Lightbulb, Loader2, Sparkles, Trash2, Type } from 'lucide-react'
+import { Lightbulb, Loader2, Sparkles, Trash2, Type, Upload, X } from 'lucide-react'
 import { useThumbnail } from './ThumbnailProvider'
 import { ThumbnailRecolor } from './ThumbnailRecolor'
 import {
@@ -25,6 +25,20 @@ const chip =
   'rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors disabled:opacity-50'
 const chipOn = 'border-[#c99850] bg-[#c99850]/15 text-[#dbb56e]'
 const chipOff = 'border-zinc-700 bg-zinc-800/70 text-zinc-300 hover:bg-zinc-700'
+
+function pickImage(onPicked: (dataUrl: string) => void) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = () => {
+    const file = input.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => onPicked(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+  input.click()
+}
 
 export function ThumbnailAiPanel() {
   const {
@@ -44,9 +58,12 @@ export function ThumbnailAiPanel() {
   const [size, setSize] = useState<ThumbnailSize>('1K')
   const [concepts, setConcepts] = useState<ThumbnailConcept[]>([])
   const [loadingConcepts, setLoadingConcepts] = useState(false)
+  const [refImage, setRefImage] = useState<string | null>(null)
+  const [refMode, setRefMode] = useState<'inspire' | 'replicate'>('inspire')
 
   const aiStyle = THUMBNAIL_AI_STYLES.find((s) => s.id === styleId) ?? THUMBNAIL_AI_STYLES[0]
   const hasAiBackground = config.background.kind === 'image' && !!config.background.imageUrl
+  const genOptions = { model, imageSize: size, referenceImage: refImage ?? undefined, referenceMode: refMode }
 
   const fetchConcepts = async () => {
     if (!idea.trim()) return
@@ -75,7 +92,7 @@ export function ThumbnailAiPanel() {
     setHeadline({ text: concept.headline, color: concept.color })
     const style = THUMBNAIL_AI_STYLES.find((s) => s.id === concept.styleId) ?? aiStyle
     setStyleId(style.id)
-    generateBackground(concept.backgroundPrompt, style.prompt, { model, imageSize: size })
+    generateBackground(concept.backgroundPrompt, style.prompt, genOptions)
   }
 
   return (
@@ -90,7 +107,7 @@ export function ThumbnailAiPanel() {
         onChange={(e) => setIdea(e.target.value)}
         rows={2}
         placeholder="Paste your video title or describe the thumbnail…"
-        className="w-full resize-none rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none"
+        className="min-h-[3.25rem] w-full resize-y rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none"
       />
 
       {/* 1) AI concepts from the title */}
@@ -158,11 +175,47 @@ export function ThumbnailAiPanel() {
             ))}
           </div>
         </div>
+
+        <div className="space-y-1.5 rounded-md border border-zinc-700/60 bg-zinc-900/40 p-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Reference image (optional)</p>
+          {refImage ? (
+            <>
+              <div className="flex items-center gap-2">
+                <img src={refImage} alt="Reference" className="h-12 w-20 shrink-0 rounded-md border border-zinc-700 object-cover" />
+                <button onClick={() => pickImage(setRefImage)} className={`${chip} ${chipOff} flex-1`}>
+                  Replace
+                </button>
+                <button
+                  onClick={() => setRefImage(null)}
+                  title="Remove reference image"
+                  className={`${chip} ${chipOff} hover:border-red-500/60 hover:text-red-300`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button onClick={() => setRefMode('inspire')} className={`${chip} ${refMode === 'inspire' ? chipOn : chipOff}`}>
+                  Inspire
+                </button>
+                <button onClick={() => setRefMode('replicate')} className={`${chip} ${refMode === 'replicate' ? chipOn : chipOff}`}>
+                  Replicate
+                </button>
+              </div>
+              <p className="text-[10px] leading-snug text-zinc-500">
+                {refMode === 'inspire' ? 'Loosely guides the vibe & colors.' : 'Closely reproduces your image.'}
+              </p>
+            </>
+          ) : (
+            <button onClick={() => pickImage(setRefImage)} className={`${chip} ${chipOff} flex w-full items-center justify-center gap-1.5`}>
+              <Upload className="h-3.5 w-3.5" /> Upload reference image
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1.5">
         <button
-          onClick={() => generateBackground(idea, aiStyle.prompt, { model, imageSize: size })}
+          onClick={() => generateBackground(idea, aiStyle.prompt, genOptions)}
           disabled={isGeneratingBg}
           className="flex flex-1 items-center justify-center gap-2 rounded-md bg-linear-to-r from-purple-500 to-pink-500 px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
@@ -170,7 +223,7 @@ export function ThumbnailAiPanel() {
           {isGeneratingBg ? 'Generating…' : hasAiBackground ? 'Regenerate' : 'Generate background'}
         </button>
         <button
-          onClick={() => generateBackgroundVariations(idea, aiStyle.prompt, { model, imageSize: size })}
+          onClick={() => generateBackgroundVariations(idea, aiStyle.prompt, genOptions)}
           disabled={isGeneratingBg}
           title="Generate 3 options to choose from"
           className="shrink-0 rounded-md border border-purple-400/50 bg-purple-500/10 px-3 py-2 text-xs font-semibold text-purple-200 transition-colors hover:bg-purple-500/20 disabled:opacity-50"
