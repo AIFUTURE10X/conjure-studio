@@ -99,20 +99,20 @@ export function LogoLightbox({
             ...(background === 'transparent' ? transparencyGridStyle : {}),
             backgroundColor: background === 'white' ? '#ffffff' : background === 'black' ? '#000000' : undefined,
             background: background === 'gradient' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : undefined,
-            maxWidth: '92vw',
-            maxHeight: '85vh',
+            maxWidth: '94vw',
+            maxHeight: '90vh',
           }}
         >
           <img
             src={showOriginal && hasOriginal ? originalUrl : logoUrl}
             alt="Generated logo full size"
-            className="max-w-full max-h-[80vh] object-contain select-none"
+            className="max-w-full max-h-[85vh] object-contain select-none"
             draggable={false}
             onMouseDown={onMouseDown}
             onDoubleClick={onDoubleClick}
             style={{
-              minWidth: '600px',
-              minHeight: '500px',
+              minWidth: '820px',
+              minHeight: '560px',
               ...logoFilter,
               transform,
               transition,
