@@ -18,12 +18,13 @@ import { LogoPanelModals } from '../LogoPanel/LogoPanelModals'
 import { LogoActionButtons } from '../Logo/LogoActionButtons'
 import { LogoPreviewPanel, type LogoFilterStyle } from '../Logo/LogoPreviewPanel'
 import { LogoHistoryPanel } from '../Logo/LogoHistory'
-import { useStudioCore, useStudioLogoState } from '../../context/useStudio'
+import { useStudioCore, useStudioLogoState, useStudioMode } from '../../context/useStudio'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
 
 export function LogoCanvas() {
   const state = useStudioLogoState()
   const { state: coreState } = useStudioCore()
+  const { promptCollapsed } = useStudioMode()
 
   // History restores write the prompt to both stores so the shared
   // PromptDock reflects it and a follow-up generate uses it.
@@ -47,7 +48,7 @@ export function LogoCanvas() {
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <Card className="bg-zinc-900/90 border border-zinc-800 p-4">
-        <div className="flex flex-col xl:flex-row gap-4">
+        <div className={`flex flex-col gap-4 ${promptCollapsed ? '' : 'xl:flex-row'}`}>
           <div className="flex-1 space-y-3 min-w-0">
             <LogoModeSection
               logoMode={state.logoMode}
@@ -169,6 +170,7 @@ export function LogoCanvas() {
           </div>
 
           <LogoPreviewPanel
+            stacked={promptCollapsed}
             generatedLogo={generatedLogo}
             onClearLogo={clearLogo}
             onPreviewMockups={generatedLogo ? () => state.setShowMockupPreview(true) : undefined}

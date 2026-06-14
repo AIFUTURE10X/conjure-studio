@@ -11,7 +11,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Minus, Sparkles, Wand2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Minus, Sparkles, Wand2 } from 'lucide-react'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
@@ -19,7 +19,7 @@ import { useHelperBridge } from '../../context/HelperBridgeProvider'
 
 export function PromptDock() {
   const { state } = useStudioCore()
-  const { mode } = useStudioMode()
+  const { mode, promptCollapsed: collapsed, setPromptCollapsed: setCollapsed } = useStudioMode()
   const imageEngine = useImageGenerationEngine()
   const logoEngine = useLogoGenerationEngine()
   const { improveWithHelper } = useHelperBridge()
@@ -29,13 +29,61 @@ export function PromptDock() {
   const isGenerating = isLogoMode ? logoEngine.isGenerating : imageEngine.isGenerating
   const generate = isLogoMode ? logoEngine.requestGenerate : imageEngine.requestGenerate
   const hasPrompt = state.mainPrompt.trim().length > 0
+  const placeholder = isLogoMode
+    ? 'Describe the logo you want to generate…'
+    : 'Describe the image you want to generate…'
+
+  if (collapsed) {
+    return (
+      <div className="border-t border-zinc-800 bg-zinc-900/95 backdrop-blur-sm flex items-center gap-2 px-3 py-2">
+        <button
+          onClick={() => setCollapsed(false)}
+          title="Expand prompt"
+          className="flex flex-1 min-w-0 items-center gap-2 text-left group"
+        >
+          <ChevronUp className="w-4 h-4 shrink-0 text-zinc-400 group-hover:text-[#dbb56e]" />
+          <span className={`truncate text-xs ${hasPrompt ? 'text-zinc-300' : 'text-zinc-500'}`}>
+            {hasPrompt ? state.mainPrompt : placeholder}
+          </span>
+        </button>
+
+        <Button
+          onClick={generate}
+          disabled={isGenerating}
+          size="sm"
+          className={`shrink-0 font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] ${
+            isGenerating ? 'animate-pulse cursor-not-allowed opacity-80' : ''
+          }`}
+        >
+          {isGenerating ? (
+            <><Loader2 className="w-4 h-4 animate-spin sm:mr-2" /><span className="hidden sm:inline">Generating…</span></>
+          ) : (
+            <><Wand2 className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">Generate</span></>
+          )}
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="border-t border-zinc-800 bg-zinc-900/95 backdrop-blur-sm p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          {isLogoMode ? 'Logo prompt' : 'Image prompt'}
+        </span>
+        <button
+          onClick={() => setCollapsed(true)}
+          title="Collapse prompt"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-[#dbb56e]"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      </div>
+
       <Textarea
         value={state.mainPrompt}
         onChange={(e) => state.setMainPrompt(e.target.value)}
-        placeholder={isLogoMode ? 'Describe the logo you want to generate…' : 'Describe the image you want to generate…'}
+        placeholder={placeholder}
         className="min-h-[64px] max-h-40 bg-zinc-950 border-zinc-700 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y"
       />
 

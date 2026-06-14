@@ -25,9 +25,11 @@ interface LogoPreviewPanelProps {
   onPreviewMockups?: () => void
   onFilterChange?: (filter: LogoFilterStyle) => void
   onRecolored?: (newUrl: string) => void
+  /** When true the panel sits stacked under the settings and spans full width. */
+  stacked?: boolean
 }
 
-export function LogoPreviewPanel({ generatedLogo, onClearLogo, onPreviewMockups, onFilterChange, onRecolored }: LogoPreviewPanelProps) {
+export function LogoPreviewPanel({ generatedLogo, onClearLogo, onPreviewMockups, onFilterChange, onRecolored, stacked = false }: LogoPreviewPanelProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxBackground, setLightboxBackground] = useState<LightboxBackground>('transparent')
   const [showOriginal, setShowOriginal] = useState(false)
@@ -84,11 +86,13 @@ export function LogoPreviewPanel({ generatedLogo, onClearLogo, onPreviewMockups,
   // Determine which URL to display
   const displayUrl = showOriginal && hasOriginal ? generatedLogo?.originalUrl : generatedLogo?.url
 
+  const containerClass = stacked ? 'w-full' : 'w-[500px] shrink-0'
+
   if (!generatedLogo) {
     return (
-      <div className="w-[500px] shrink-0">
+      <div className={containerClass}>
         <div
-          className="h-full min-h-[280px] rounded-lg border border-dashed border-zinc-700 flex flex-col items-center justify-center p-4"
+          className={`h-full rounded-lg border border-dashed border-zinc-700 flex flex-col items-center justify-center p-4 ${stacked ? 'min-h-[420px]' : 'min-h-[280px]'}`}
           style={{ backgroundColor: '#1a1a1a' }}
         >
           <ImageIcon className="w-10 h-10 text-zinc-700 mb-2" />
@@ -101,7 +105,7 @@ export function LogoPreviewPanel({ generatedLogo, onClearLogo, onPreviewMockups,
   }
 
   return (
-    <div className="w-[500px] shrink-0">
+    <div className={containerClass}>
       <div className="space-y-2">
         {/* Preview on Mockups Button */}
         {onPreviewMockups && (

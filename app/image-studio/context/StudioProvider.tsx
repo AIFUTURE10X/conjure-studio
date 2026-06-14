@@ -26,6 +26,9 @@ export type StudioLogoState = ReturnType<typeof useLogoPanelState>
 export interface StudioModeValue {
   mode: StudioMode
   setMode: (mode: StudioMode) => void
+  /** Whether the bottom prompt dock is collapsed to its slim preview bar. */
+  promptCollapsed: boolean
+  setPromptCollapsed: (collapsed: boolean) => void
 }
 
 export interface PendingSuggestionValue {
@@ -56,7 +59,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     (nextMode: StudioMode) => setActiveTab(TAB_FOR_MODE[nextMode]),
     [setActiveTab],
   )
-  const modeValue = useMemo(() => ({ mode, setMode }), [mode, setMode])
+  const [promptCollapsed, setPromptCollapsed] = useState(false)
+  const modeValue = useMemo(
+    () => ({ mode, setMode, promptCollapsed, setPromptCollapsed }),
+    [mode, setMode, promptCollapsed],
+  )
 
   const [pendingSuggestion, setPendingSuggestion] = useState<PendingSuggestion | null>(null)
   const clearPendingSuggestion = useCallback(() => setPendingSuggestion(null), [])
