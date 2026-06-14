@@ -28,7 +28,7 @@ interface UseParameterHandlersOptions {
 }
 
 export interface ParameterHandlers {
-  handleRestoreParameters: (params?: any) => void
+  handleRestoreParameters: (params?: any, imageUrl?: string) => void
   handleResetAll: () => void
 }
 
@@ -70,8 +70,13 @@ export function useParameterHandlers({
   setGeneratedImages,
 }: UseParameterHandlersOptions): ParameterHandlers {
 
-  const handleRestoreParameters = useCallback((params?: any) => {
+  const handleRestoreParameters = useCallback((params?: any, imageUrl?: string) => {
     const paramsToRestore = params || loadParameters()
+    if (imageUrl) {
+      // Restore the favorited image itself as the current generated output,
+      // so it reappears in the results canvas alongside its settings.
+      setGeneratedImages([{ url: imageUrl, prompt: paramsToRestore?.mainPrompt, timestamp: Date.now() }])
+    }
     if (paramsToRestore) {
       if (paramsToRestore.mainPrompt) setMainPrompt(paramsToRestore.mainPrompt)
       if (paramsToRestore.aspectRatio) setAspectRatio(paramsToRestore.aspectRatio)
@@ -106,6 +111,8 @@ export function useParameterHandlers({
     setSeed,
     setImageSize,
     setSelectedModel,
+    setCreativeDirection,
+    setGeneratedImages,
   ])
 
   const handleResetAll = useCallback(() => {

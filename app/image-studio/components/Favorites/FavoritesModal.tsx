@@ -13,7 +13,7 @@ interface FavoritesModalProps {
   onClose: () => void
   onRemove: (url: string) => void
   onClearAll: () => void
-  onRestoreParameters?: (params: any) => void
+  onRestoreParameters?: (params: any, imageUrl?: string) => void
 }
 
 export function FavoritesModal({ favorites, onClose, onRemove, onClearAll, onRestoreParameters }: FavoritesModalProps) {
@@ -64,7 +64,8 @@ export function FavoritesModal({ favorites, onClose, onRemove, onClearAll, onRes
     // Support both 'params' (new) and 'parameters' (legacy) keys
     const params = fav.metadata?.params || fav.metadata?.parameters
     if (params && onRestoreParameters) {
-      onRestoreParameters(params)
+      // Bring the image back into the results canvas AND reload its settings
+      onRestoreParameters(params, fav.url)
       onClose()
     }
   }
@@ -191,7 +192,7 @@ function FavoriteCard({ fav, idx, isSelected, onToggleSelect, onDownload, onRemo
 
       <div className="absolute top-2 right-2 flex gap-1 transition-opacity z-20">
         {(fav.metadata?.params || fav.metadata?.parameters) && hasRestoreHandler && (
-          <Button onClick={(e) => { e.stopPropagation(); onRestore(fav) }} size="sm" className="bg-[#c99850] hover:bg-[#dbb56e] text-black backdrop-blur-sm h-8 px-3" title="Restore Parameters">
+          <Button onClick={(e) => { e.stopPropagation(); onRestore(fav) }} size="sm" className="bg-[#c99850] hover:bg-[#dbb56e] text-black backdrop-blur-sm h-8 px-3" title="Restore image & settings to the generator">
             <RotateCcw className="w-4 h-4 mr-1" />Restore
           </Button>
         )}
