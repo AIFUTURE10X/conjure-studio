@@ -9,8 +9,39 @@ import { removeBackgroundCloud, removeBackgroundPixian } from "@/lib/cloud-bg-re
 import { removeBackgroundWithReplicate, type ReplicateBgModel, type BgRemovalOptions } from "@/lib/replicate-bg-removal"
 import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { removeBackgroundWithPixelcut } from "@/lib/pixelcut-bg-removal"
-import { removeBackgroundWithPhotoRoom } from "@/lib/photoroom-bg-removal"
+import { isPhotoRoomBgRemovalError, removeBackgroundWithPhotoRoom } from "@/lib/photoroom-bg-removal"
 import { removeBackgroundWithFal, isFalBgRemovalAvailable } from "@/lib/fal-bg-removal"
+
+interface BgRemovalResult {
+  transparentBase64: string
+  bgRemovalMethod: BackgroundRemovalMethod
+  fallbackWarning?: string
+}
+
+async function runPhotoRoomBackgroundRemoval(
+  imageBase64: string,
+  cloudApiKey: string | null,
+  isLogoContext: boolean
+): Promise<BgRemovalResult> {
+  try {
+    return {
+      transparentBase64: await removeBackgroundWithPhotoRoom(imageBase64, cloudApiKey || undefined),
+      bgRemovalMethod: 'photoroom',
+    }
+  } catch (error) {
+    if (!isFalBgRemovalAvailable()) {
+      throw error
+    }
+
+    const fallbackWarning = error instanceof Error ? error.message : 'PhotoRoom background removal failed'
+    console.warn('[Remove BG API] PhotoRoom failed; falling back to fal:', fallbackWarning)
+    return {
+      transparentBase64: await removeBackgroundWithFal(imageBase64, { isLogoContext }),
+      bgRemovalMethod: 'fal',
+      fallbackWarning,
+    }
+  }
+}
 
 async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
@@ -64,45 +95,71 @@ async function handlePost(request: NextRequest) {
     console.log(`[Remove BG API] Removing background with method: ${bgRemovalMethod}...`)
 
     // Remove background based on selected method
-    let transparentBase64: string
+    let removalResult: BgRemovalResult
 
     if (bgRemovalMethod === 'smart') {
       // Use Smart removal - detects background color and preserves ALL content including text
-      transparentBase64 = await removeBackgroundSmart(imageBase64, {
-        tolerance: 25,
-        edgeSmoothing: false,  // Disabled - causes artifacts
-      })
+      removalResult = {
+        transparentBase64: await removeBackgroundSmart(imageBase64, {
+          tolerance: 25,
+          edgeSmoothing: false,  // Disabled - causes artifacts
+        }),
+        bgRemovalMethod,
+      }
     } else if (bgRemovalMethod === 'replicate') {
       // Use Replicate AI (BRIA) - works on any background color with 256 levels of transparency
       // Pass isLogoContext for text-preserving settings when in logo context
-      transparentBase64 = await removeBackgroundWithReplicate(imageBase64, 'bria', { isLogoContext })
+      removalResult = {
+        transparentBase64: await removeBackgroundWithReplicate(imageBase64, 'bria', { isLogoContext }),
+        bgRemovalMethod,
+      }
     } else if (bgRemovalMethod === '851-labs') {
       // Use 851-labs/background-remover - very cheap, good threshold control
-      transparentBase64 = await removeBackgroundWithReplicate(imageBase64, '851-labs')
+      removalResult = {
+        transparentBase64: await removeBackgroundWithReplicate(imageBase64, '851-labs'),
+        bgRemovalMethod,
+      }
     } else if (bgRemovalMethod === 'fal') {
       // Use fal.ai BiRefNet v2 - pay-as-you-go, top-tier edges, no subscription
-      transparentBase64 = await removeBackgroundWithFal(imageBase64, { isLogoContext })
+      removalResult = {
+        transparentBase64: await removeBackgroundWithFal(imageBase64, { isLogoContext }),
+        bgRemovalMethod,
+      }
     } else if (bgRemovalMethod === 'pixelcut') {
       // Use Pixelcut API - logo-optimized, preserves text and fine details
-      transparentBase64 = await removeBackgroundWithPixelcut(imageBase64, cloudApiKey || undefined)
+      removalResult = {
+        transparentBase64: await removeBackgroundWithPixelcut(imageBase64, cloudApiKey || undefined),
+        bgRemovalMethod,
+      }
     } else if (bgRemovalMethod === 'photoroom') {
-      // Use PhotoRoom API - professional-grade with fast processing
-      transparentBase64 = await removeBackgroundWithPhotoRoom(imageBase64, cloudApiKey || undefined)
+      // Use PhotoRoom API - professional-grade with fast processing.
+      // If PhotoRoom is out of credits or otherwise unavailable, keep the
+      // public tool working by falling back to fal when it is configured.
+      removalResult = await runPhotoRoomBackgroundRemoval(imageBase64, cloudApiKey, isLogoContext)
     } else if (bgRemovalMethod === 'pixian' && cloudApiKey) {
       // Use Pixian.ai API
-      transparentBase64 = await removeBackgroundPixian(imageBase64, cloudApiKey)
+      removalResult = {
+        transparentBase64: await removeBackgroundPixian(imageBase64, cloudApiKey),
+        bgRemovalMethod,
+      }
     } else if (bgRemovalMethod === 'cloud' && cloudApiKey) {
       // Use remove.bg cloud API
-      transparentBase64 = await removeBackgroundCloud(imageBase64, {
-        apiKey: cloudApiKey
-      })
+      removalResult = {
+        transparentBase64: await removeBackgroundCloud(imageBase64, {
+          apiKey: cloudApiKey
+        }),
+        bgRemovalMethod,
+      }
     } else {
       // Use local methods (auto, simple, chromakey)
-      transparentBase64 = await removeBackground(imageBase64, {
-        method: bgRemovalMethod,
-        tolerance: 12,
-        edgeSmoothing: true,
-      })
+      removalResult = {
+        transparentBase64: await removeBackground(imageBase64, {
+          method: bgRemovalMethod,
+          tolerance: 12,
+          edgeSmoothing: true,
+        }),
+        bgRemovalMethod,
+      }
     }
 
     console.log("[Remove BG API] Background removed successfully")
@@ -110,7 +167,7 @@ async function handlePost(request: NextRequest) {
     // Upload to Vercel Blob. If Blob isn't configured (missing
     // BLOB_READ_WRITE_TOKEN), fall back to a base64 data URL so the tool still
     // works instead of hard-failing — same resilience pattern as logo-history.
-    const buffer = Buffer.from(transparentBase64, 'base64')
+    const buffer = Buffer.from(removalResult.transparentBase64, 'base64')
     const filename = `logos/rb-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
 
     let imageUrl: string
@@ -124,7 +181,7 @@ async function handlePost(request: NextRequest) {
       console.log("[Remove BG API] Uploaded to Blob:", imageUrl)
     } catch (blobErr) {
       console.error("[Remove BG API] Blob upload failed, returning data URL:", blobErr)
-      imageUrl = `data:image/png;base64,${transparentBase64}`
+      imageUrl = `data:image/png;base64,${removalResult.transparentBase64}`
     }
 
     // Server-side history save (if metadata provided)
@@ -136,7 +193,8 @@ async function handlePost(request: NextRequest) {
         const config = JSON.stringify({
           wasBackgroundRemoval: true,
           originalUrl: originalUrl || null,
-          bgRemovalMethod
+          bgRemovalMethod: removalResult.bgRemovalMethod,
+          fallbackWarning: removalResult.fallbackWarning || null,
         })
 
         const result = await sql`
@@ -155,11 +213,27 @@ async function handlePost(request: NextRequest) {
     return NextResponse.json({
       success: true,
       image: imageUrl,  // Blob URL, or a base64 data URL if Blob is unconfigured
-      bgRemovalMethod,
+      bgRemovalMethod: removalResult.bgRemovalMethod,
+      fallbackWarning: removalResult.fallbackWarning,
       historyId,  // Return the history ID if saved
     })
   } catch (error) {
     console.error("[Remove BG API] Route error:", error)
+    if (isPhotoRoomBgRemovalError(error)) {
+      const providerStatus = error.status >= 500 ? 502 : error.status
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.status === 402 || error.status === 429 || error.status === 503
+            ? 'provider_unavailable'
+            : 'provider_error',
+          provider: 'photoroom',
+          providerCode: error.code,
+        },
+        { status: providerStatus }
+      )
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to remove background" },
       { status: 500 }

@@ -11,6 +11,28 @@
  * @see https://docs.photoroom.com/remove-background-api-basic-plan
  */
 
+export class PhotoRoomBgRemovalError extends Error {
+  status: number
+  code: string
+
+  constructor(message: string, status: number, code: string) {
+    super(message)
+    this.name = 'PhotoRoomBgRemovalError'
+    this.status = status
+    this.code = code
+  }
+}
+
+export function isPhotoRoomBgRemovalError(error: unknown): error is PhotoRoomBgRemovalError {
+  return error instanceof PhotoRoomBgRemovalError ||
+    (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { name?: unknown }).name === 'PhotoRoomBgRemovalError' &&
+      typeof (error as { status?: unknown }).status === 'number'
+    )
+}
+
 /**
  * Remove background from an image using PhotoRoom API
  *
@@ -27,7 +49,11 @@ export async function removeBackgroundWithPhotoRoom(
   const token = apiKey || process.env.PHOTOROOM_API_KEY
 
   if (!token) {
-    throw new Error("PHOTOROOM_API_KEY environment variable is not set and no API key provided")
+    throw new PhotoRoomBgRemovalError(
+      "PHOTOROOM_API_KEY environment variable is not set and no API key provided",
+      503,
+      'photoroom_not_configured'
+    )
   }
 
   console.log("[PhotoRoom BG Removal] Starting professional background removal...")
@@ -62,6 +88,7 @@ export async function removeBackgroundWithPhotoRoom(
     if (!response.ok) {
       const errorText = await response.text()
       let errorMessage = `PhotoRoom API error: ${response.status}`
+      let errorCode = 'photoroom_api_error'
 
       try {
         const errorJson = JSON.parse(errorText)
@@ -74,19 +101,23 @@ export async function removeBackgroundWithPhotoRoom(
         // Handle specific error codes
         if (response.status === 401) {
           errorMessage = 'PhotoRoom: Invalid API key. Please check your PHOTOROOM_API_KEY.'
+          errorCode = 'photoroom_invalid_api_key'
         } else if (response.status === 402) {
           errorMessage = 'PhotoRoom: Insufficient credits. Please add more credits to your account.'
+          errorCode = 'photoroom_insufficient_credits'
         } else if (response.status === 413) {
           errorMessage = 'PhotoRoom: Image file too large. Please use a smaller image.'
+          errorCode = 'photoroom_image_too_large'
         } else if (response.status === 429) {
           errorMessage = 'PhotoRoom: Rate limit exceeded. Please try again later.'
+          errorCode = 'photoroom_rate_limited'
         }
       } catch {
         // Not JSON, use raw text
         errorMessage = `PhotoRoom API error: ${errorText}`
       }
 
-      throw new Error(errorMessage)
+      throw new PhotoRoomBgRemovalError(errorMessage, response.status, errorCode)
     }
 
     // Response is binary PNG data
@@ -96,8 +127,17 @@ export async function removeBackgroundWithPhotoRoom(
     console.log("[PhotoRoom BG Removal] Success! Professional-grade background removal complete")
     return resultBase64
   } catch (error) {
+    if (isPhotoRoomBgRemovalError(error)) {
+      console.warn('[PhotoRoom BG Removal] API Error:', error.message)
+      throw error
+    }
+
     console.error('[PhotoRoom BG Removal] API Error:', error)
-    throw error
+    throw new PhotoRoomBgRemovalError(
+      error instanceof Error ? error.message : 'PhotoRoom request failed',
+      502,
+      'photoroom_request_failed'
+    )
   }
 }
 

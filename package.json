@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "check:bg-remover": "node scripts/check-background-remover-resilience.cjs",
     "check:ai-helper-scenarios": "node scripts/check-ai-helper-scenarios.cjs",
     "check:ai-helper-ui": "node scripts/check-ai-helper-ui-contract.cjs",
     "check:image-references": "node scripts/check-image-references-ui.cjs",

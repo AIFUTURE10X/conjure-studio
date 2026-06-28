@@ -6,10 +6,26 @@ import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
+function getDatabaseUrl() {
+  return process.env.NEON_DATABASE_URL || process.env.DATABASE_URL
+}
+
+function hasDatabaseConnection() {
+  return !!getDatabaseUrl()
+}
+
 function getSQL() {
-  const url = process.env.NEON_DATABASE_URL
+  const url = getDatabaseUrl()
   if (!url) throw new Error("No database connection string configured")
   return neon(url)
+}
+
+function localOnlyResponse(body: Record<string, unknown> = {}, init?: ResponseInit) {
+  return NextResponse.json({
+    code: 'database_unconfigured',
+    localOnly: true,
+    ...body,
+  }, init)
 }
 
 const getQuerySchema = z.object({ userId: userIdSchema })
@@ -40,6 +56,11 @@ const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema }
 export async function GET(request: NextRequest) {
   const parsedQuery = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
   if (parsedQuery.response) return parsedQuery.response
+  if (!hasDatabaseConnection()) {
+    console.warn('[Logo History] Database not configured; returning local-only history')
+    return localOnlyResponse({ history: [] })
+  }
+
   const userId = await resolveUserId(request, parsedQuery.data.userId)
 
   try {
@@ -80,6 +101,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const parsedBody = await parseJson(request, postBodySchema)
   if (parsedBody.response) return parsedBody.response
+  if (!hasDatabaseConnection()) {
+    console.warn('[Logo History] Database not configured; keeping history local only')
+    return localOnlyResponse({ historyItem: null }, { status: 202 })
+  }
+
   const { imageUrl, prompt, negativePrompt, presetId, seed, style, config, isFavorited, rating } = parsedBody.data
   const userId = await resolveUserId(request, parsedBody.data.userId)
 
@@ -179,6 +205,11 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const parsedBody = await parseJson(request, patchBodySchema)
   if (parsedBody.response) return parsedBody.response
+  if (!hasDatabaseConnection()) {
+    console.warn('[Logo History] Database not configured; favorite/rating update remains local only')
+    return localOnlyResponse({ success: true })
+  }
+
   const { id, isFavorited, rating } = parsedBody.data
   const userId = await resolveUserId(request, parsedBody.data.userId)
 
@@ -213,6 +244,11 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const parsedQuery = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
   if (parsedQuery.response) return parsedQuery.response
+  if (!hasDatabaseConnection()) {
+    console.warn('[Logo History] Database not configured; delete remains local only')
+    return localOnlyResponse({ success: true })
+  }
+
   const { id } = parsedQuery.data
   const userId = await resolveUserId(request, parsedQuery.data.userId)
 

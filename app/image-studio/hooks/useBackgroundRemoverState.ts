@@ -39,6 +39,11 @@ export interface BackgroundRemoverState {
   getSelectedItem: () => QueueItem | undefined
 }
 
+interface RemoveBackgroundResponse {
+  image?: string
+  error?: string
+}
+
 // ============ Helper Functions ============
 
 function generateId(): string {
@@ -126,19 +131,20 @@ export function useBackgroundRemoverState(): BackgroundRemoverState {
         body: formData,
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
+      const data = await response.json().catch((): RemoveBackgroundResponse => ({})) as RemoveBackgroundResponse
 
-      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
 
       if (!data.image) {
         throw new Error(data.error || 'No image returned')
       }
+      const processedImage = data.image
 
       // Mark as complete
       setQueue(prev => prev.map(i =>
-        i.id === id ? { ...i, status: 'complete' as const, processedUrl: data.image } : i
+        i.id === id ? { ...i, status: 'complete' as const, processedUrl: processedImage } : i
       ))
     } catch (error) {
       // Mark as error
