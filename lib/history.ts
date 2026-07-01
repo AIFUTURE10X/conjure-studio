@@ -41,6 +41,34 @@ function addDeletedId(id: string): void {
   }
 }
 
+/**
+ * Persist the history cache to localStorage without ever throwing. localStorage
+ * is a best-effort cache (Neon is the source of truth), but older entries can
+ * embed multi-MB base64 data URIs that blow past the ~5MB quota. Strip data
+ * URIs, then progressively trim the item count, and finally give up silently —
+ * a failed cache write must never break a sync or a save.
+ */
+function persistHistoryCache(items: HistoryItem[]): void {
+  const lightweight = items.map((item) => ({
+    ...item,
+    imageUrls: item.imageUrls.filter((url) => !url.startsWith('data:')),
+  }))
+  const candidates = [lightweight, lightweight.slice(0, 50), lightweight.slice(0, 20)]
+  for (const candidate of candidates) {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(candidate))
+      return
+    } catch {
+      // Payload still too large for the quota — try a smaller slice.
+    }
+  }
+  try {
+    localStorage.removeItem(HISTORY_KEY)
+  } catch {
+    // Nothing more we can do; Neon still has the data.
+  }
+}
+
 export async function saveToHistory(
   prompt: string,
   aspectRatio: string,
@@ -63,7 +91,7 @@ export async function saveToHistory(
     const history = getHistory()
     history.unshift(newItem)
     const trimmedHistory = history.slice(0, MAX_HISTORY_ITEMS)
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmedHistory))
+    persistHistoryCache(trimmedHistory)
     console.log("[v0] History saved to localStorage. Total items:", trimmedHistory.length)
 
     // Also save to Neon for persistence
@@ -148,7 +176,7 @@ export async function syncHistoryFromNeon(): Promise<SyncResult> {
     // Merge with localStorage and update (also filter deleted from local)
     const localHistory = getHistory().filter(item => !deletedIds.has(item.id))
     const mergedHistory = mergeHistories(neonHistory, localHistory)
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(mergedHistory))
+    persistHistoryCache(mergedHistory)
 
     return {
       success: true,
