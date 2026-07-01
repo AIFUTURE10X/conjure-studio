@@ -9,6 +9,15 @@ import { getSessionUser } from '@/lib/auth'
  * unchanged before sign-in (and while SAAS_ENFORCEMENT is off).
  */
 export async function resolveUserId(request: Request, clientUserId: string): Promise<string> {
-  const user = await getSessionUser(request.headers)
-  return user ? user.id : clientUserId
+  // Session lookup runs before each data route's try/catch, so a Better Auth
+  // failure (misconfigured secret, missing auth tables, DB hiccup) must never
+  // throw here — that would turn every data route into a 500 instead of just
+  // serving the request anonymously. Fall back to the (validated) client id.
+  try {
+    const user = await getSessionUser(request.headers)
+    return user ? user.id : clientUserId
+  } catch (error) {
+    console.warn('[identity] session lookup failed; treating request as anonymous:', error)
+    return clientUserId
+  }
 }
