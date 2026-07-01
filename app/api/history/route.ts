@@ -4,13 +4,48 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
+import { ensureGenerationHistorySchema } from '@/lib/db/history-schema'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
+function getDatabaseUrl() {
+  return process.env.NEON_DATABASE_URL || process.env.DATABASE_URL
+}
+
+function hasDatabaseConnection() {
+  return !!getDatabaseUrl()
+}
+
 function getSQL() {
-  const url = process.env.NEON_DATABASE_URL
+  const url = getDatabaseUrl()
   if (!url) throw new Error("No database connection string configured")
   return neon(url)
 }
+
+function localOnlyResponse(body: Record<string, unknown> = {}, init?: ResponseInit) {
+  return NextResponse.json({ code: 'database_unconfigured', localOnly: true, ...body }, init)
+}
+
+/** Neon returns JSONB as a parsed object, but tolerate a string too. */
+function parseMetadata(value: unknown) {
+  if (!value) return undefined
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value)
+    } catch {
+      return undefined
+    }
+  }
+  return value
+}
+
+const metadataSchema = z
+  .object({
+    style: z.string().optional().nullable(),
+    dimensions: z.string().optional().nullable(),
+    fileSize: z.string().optional().nullable(),
+    creativeDirection: z.record(z.unknown()).optional().nullable(),
+  })
+  .passthrough()
 
 const getQuerySchema = z.object({ userId: userIdSchema })
 
@@ -19,6 +54,7 @@ const postBodySchema = z.object({
   prompt: promptSchema,
   aspectRatio: z.string().max(20).optional().nullable(),
   imageUrls: z.array(urlOrDataUriSchema).min(1).max(10),
+  metadata: metadataSchema.optional().nullable(),
 })
 
 const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
@@ -27,10 +63,16 @@ const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema }
 export async function GET(request: NextRequest) {
   const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
   if (parsed.response) return parsed.response
+  if (!hasDatabaseConnection()) {
+    console.warn('[v0] API: Database not configured; returning local-only history')
+    return localOnlyResponse({ history: [] })
+  }
+
   const userId = await resolveUserId(request, parsed.data.userId)
 
   try {
     const sql = getSQL()
+    await ensureGenerationHistorySchema(sql)
     console.log('[v0] API: Loading history for user:', userId)
 
     const result = await sql`
@@ -47,6 +89,7 @@ export async function GET(request: NextRequest) {
       prompt: item.prompt,
       aspectRatio: item.aspect_ratio,
       imageUrls: item.blob_urls || item.image_urls,
+      metadata: parseMetadata(item.metadata),
       timestamp: new Date(item.created_at).getTime()
     }))
 
@@ -61,8 +104,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const parsed = await parseJson(request, postBodySchema)
   if (parsed.response) return parsed.response
-  const { prompt, aspectRatio, imageUrls } = parsed.data
+  const { prompt, aspectRatio, imageUrls, metadata } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
+
+  if (!hasDatabaseConnection()) {
+    // No DB configured (e.g. local dev): report success so the client keeps a
+    // usable session-local copy instead of surfacing a save error.
+    console.warn('[v0] API: Database not configured; keeping history local only')
+    return localOnlyResponse({
+      historyItem: {
+        id: `local-${Date.now()}`,
+        prompt,
+        aspectRatio: aspectRatio ?? null,
+        imageUrls,
+        metadata: metadata ?? undefined,
+        timestamp: Date.now(),
+      },
+    }, { status: 202 })
+  }
 
   try {
     console.log('[v0] API: POST history request received')
@@ -70,41 +129,60 @@ export async function POST(request: NextRequest) {
     console.log('[v0] API: imageUrls count:', imageUrls.length)
 
     const sql = getSQL()
+    await ensureGenerationHistorySchema(sql)
+
+    // Upload each image to Vercel Blob for durable storage. When Blob isn't
+    // configured or a single upload fails, we fall back to storing the original
+    // URL / data URI directly so the save still succeeds (mirrors logo-history).
+    const storedImageUrls: string[] = []
     const blobUrls: string[] = []
 
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i]
+      let blobUrl: string | null = null
       try {
-        console.log(`[v0] API: Fetching image ${i + 1}/${imageUrls.length}...`)
-        const response = await fetch(imageUrl)
-        const blob = await response.blob()
-        console.log(`[v0] API: Image ${i + 1} fetched, size:`, blob.size, 'bytes')
+        let imageBuffer: Buffer
+        if (imageUrl.startsWith('data:')) {
+          const base64Data = imageUrl.split(',')[1]
+          if (!base64Data) throw new Error('Invalid data URL format')
+          imageBuffer = Buffer.from(base64Data, 'base64')
+        } else {
+          const response = await fetch(imageUrl)
+          if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
+          imageBuffer = Buffer.from(await response.arrayBuffer())
+        }
 
         const fileName = `history/${userId}-${Date.now()}-${i}.png`
-        const uploadResult = await put(fileName, blob, {
+        const uploadResult = await put(fileName, imageBuffer, {
           access: 'public',
-          contentType: 'image/png'
+          contentType: 'image/png',
         })
-
-        blobUrls.push(uploadResult.url)
-        console.log(`[v0] API: Image ${i + 1} uploaded to Blob:`, uploadResult.url)
+        blobUrl = uploadResult.url
+        console.log(`[v0] API: Image ${i + 1} uploaded to Blob:`, blobUrl)
       } catch (error) {
-        console.error(`[v0] API: Blob upload failed for image ${i + 1}:`, error)
-        return apiError(500, 'blob_upload_failed', `Failed to upload image ${i + 1}`)
+        console.error(`[v0] API: Blob upload failed for image ${i + 1}, storing URL directly:`, error)
       }
+
+      // When Blob succeeded, avoid storing the (huge) data URI twice.
+      storedImageUrls.push(
+        blobUrl && imageUrl.startsWith('data:') ? imageUrl.substring(0, 50) + '...[base64]' : imageUrl,
+      )
+      blobUrls.push(blobUrl ?? imageUrl)
     }
 
     console.log('[v0] API: All images processed, inserting into Neon database...')
+
+    const metadataJson = metadata ? JSON.stringify(metadata) : null
 
     // The neon driver serializes JS arrays to Postgres arrays — no
     // hand-built '{...}' literals.
     const result = await sql`
       INSERT INTO public.generation_history (
-        user_id, prompt, aspect_ratio, image_urls, blob_urls
+        user_id, prompt, aspect_ratio, image_urls, blob_urls, metadata
       )
       VALUES (
         ${userId}, ${prompt}, ${aspectRatio || null},
-        ${blobUrls}, ${blobUrls}
+        ${storedImageUrls}, ${blobUrls}, ${metadataJson}
       )
       RETURNING *
     `
@@ -116,6 +194,7 @@ export async function POST(request: NextRequest) {
       prompt: result[0].prompt,
       aspectRatio: result[0].aspect_ratio,
       imageUrls: result[0].blob_urls || result[0].image_urls,
+      metadata: parseMetadata(result[0].metadata),
       timestamp: new Date(result[0].created_at).getTime()
     }
 
@@ -130,11 +209,17 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
   if (parsed.response) return parsed.response
+  if (!hasDatabaseConnection()) {
+    console.warn('[v0] API: Database not configured; delete remains local only')
+    return localOnlyResponse({ success: true })
+  }
+
   const { id } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
 
   try {
     const sql = getSQL()
+    await ensureGenerationHistorySchema(sql)
     console.log('[v0] API: Removing history item:', id)
 
     await sql`

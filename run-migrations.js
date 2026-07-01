@@ -28,6 +28,9 @@ async function runMigrations() {
     const migrations = [
       '004_create_neon_favorites_table.sql',
       '005_create_neon_history_table.sql',
+      '006_create_logo_history_table.sql',
+      '007_add_config_to_logo_history.sql',
+      '011_add_metadata_to_history.sql',
       '002-update-ai-helper-history.sql'
     ];
 

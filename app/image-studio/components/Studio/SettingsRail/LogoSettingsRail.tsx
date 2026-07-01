@@ -10,12 +10,13 @@
  */
 
 import { useRef } from 'react'
-import { Separator } from '@/components/ui/separator'
-import { Upload, X } from 'lucide-react'
+import { RotateCcw, Upload, X } from 'lucide-react'
 import { SettingField } from './SettingField'
+import { RailSection } from './RailSection'
 import { ChipSelect, type ChipOption } from './ChipSelect'
 import { useStudioLogoState, usePendingSuggestion } from '../../../context/useStudio'
 import {
+  DEFAULT_LOGO_GENERATION_SETTINGS,
   LOGO_ASPECT_RATIOS,
   LOGO_RESOLUTIONS,
 } from '@/lib/logo-generation-contract'
@@ -74,100 +75,145 @@ export function LogoSettingsRail() {
     return suggestedText !== current ? { current, suggested: suggestedText } : null
   }
 
+  // Section-level resets restore only that group's fields to their defaults,
+  // leaving the prompt and any generated logo untouched.
+  const resetOutput = () => {
+    state.setSelectedModel(DEFAULT_LOGO_GENERATION_SETTINGS.model)
+    state.setResolution('1K')
+    state.setAspectRatio('1:1')
+    state.setTextMode('ai-text')
+  }
+  const resetDesign = () => {
+    state.setLogoType('icon-wordmark')
+    state.setLogoVisualStyle('modern')
+    state.setLogoRenderTreatment('flat-vector')
+    state.setLogoTypographyDirection('clean-sans')
+  }
+  const resetAdvanced = () => {
+    state.setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
+    state.setSeedLocked(false)
+    state.setSeedValue(undefined)
+  }
+  const resetReference = () => {
+    state.setReferenceImage(null)
+    state.setReferenceMode('replicate')
+    state.setRemoveBackgroundOnly(false)
+  }
+  const resetAllSettings = () => {
+    resetOutput()
+    resetDesign()
+    resetAdvanced()
+    resetReference()
+  }
+
   return (
-    <div className="p-4 space-y-4">
-      <SettingField label="AI Model" suggestion={diff('selectedModel', state.selectedModel)}>
-        <ChipSelect
-          options={LOGO_MODEL_OPTIONS}
-          value={state.selectedModel}
-          onChange={(v) => state.setSelectedModel(v as typeof state.selectedModel)}
-        />
-      </SettingField>
+    <div className="p-4 space-y-5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-zinc-300">Logo settings</span>
+        <button
+          type="button"
+          onClick={resetAllSettings}
+          title="Reset all logo settings to defaults"
+          className="flex h-7 items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2 text-[11px] font-medium text-zinc-300 transition-colors hover:border-[#c99850]/50 hover:bg-zinc-800 hover:text-[#f2d39d]"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset all
+        </button>
+      </div>
 
-      <SettingField label="Resolution" suggestion={diff('resolution', state.resolution)}>
-        <ChipSelect
-          options={RESOLUTION_CHIPS}
-          value={state.resolution}
-          onChange={(v) => state.setResolution(v as typeof state.resolution)}
-        />
-      </SettingField>
-
-      <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
-        <ChipSelect
-          options={LOGO_ASPECT_RATIO_CHIPS}
-          value={state.aspectRatio}
-          onChange={(v) => state.setAspectRatio(v as typeof state.aspectRatio)}
-        />
-      </SettingField>
-
-      <SettingField label="Text Mode" suggestion={diff('textMode', state.textMode)}>
-        <ChipSelect
-          options={TEXT_MODE_OPTIONS}
-          value={state.textMode}
-          onChange={(v) => state.setTextMode(v as typeof state.textMode)}
-          columns={2}
-        />
-      </SettingField>
-
-      <Separator className="bg-zinc-800" />
-
-      <SettingField label="Logo Type" suggestion={diff('logoType', state.logoType)}>
-        <ChipSelect options={LOGO_TYPE_CHIPS} value={state.logoType} onChange={(v) => state.setLogoType(v as typeof state.logoType)} />
-      </SettingField>
-
-      <SettingField label="Visual Style" suggestion={diff('logoVisualStyle', state.logoVisualStyle)}>
-        <ChipSelect options={LOGO_VISUAL_STYLE_CHIPS} value={state.logoVisualStyle} onChange={(v) => state.setLogoVisualStyle(v as typeof state.logoVisualStyle)} />
-      </SettingField>
-
-      <SettingField label="Render Treatment" suggestion={diff('logoRenderTreatment', state.logoRenderTreatment)}>
-        <ChipSelect options={LOGO_RENDER_TREATMENT_CHIPS} value={state.logoRenderTreatment} onChange={(v) => state.setLogoRenderTreatment(v as typeof state.logoRenderTreatment)} />
-      </SettingField>
-
-      <SettingField label="Typography" suggestion={diff('logoTypographyDirection', state.logoTypographyDirection)}>
-        <ChipSelect options={LOGO_TYPOGRAPHY_CHIPS} value={state.logoTypographyDirection} onChange={(v) => state.setLogoTypographyDirection(v as typeof state.logoTypographyDirection)} />
-      </SettingField>
-
-      <Separator className="bg-zinc-800" />
-
-      <SettingField label="Background Removal" suggestion={diff('bgRemovalMethod', state.bgRemovalMethod)}>
-        <ChipSelect
-          options={BG_REMOVAL_CHIPS}
-          value={state.bgRemovalMethod}
-          onChange={(v) => state.setBgRemovalMethod(v as typeof state.bgRemovalMethod)}
-        />
-        <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
-          fal · BiRefNet (default) — pay-as-you-go, top-tier edges. Off keeps the generated background.
-        </p>
-      </SettingField>
-
-      <SettingField label="Seed">
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={state.seedValue ?? ''}
-            placeholder="Random"
-            onChange={(e) => {
-              const parsed = Number.parseInt(e.target.value, 10)
-              state.setSeedValue(Number.isInteger(parsed) ? parsed : undefined)
-            }}
-            className="h-8 w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200 placeholder:text-zinc-600"
+      <RailSection title="Model & Output" onReset={resetOutput}>
+        <SettingField label="AI Model" suggestion={diff('selectedModel', state.selectedModel)}>
+          <ChipSelect
+            options={LOGO_MODEL_OPTIONS}
+            value={state.selectedModel}
+            onChange={(v) => state.setSelectedModel(v as typeof state.selectedModel)}
           />
-          <button
-            onClick={() => state.setSeedLocked(!state.seedLocked)}
-            className={`h-8 shrink-0 rounded-md px-3 text-xs font-medium transition-colors ${
-              state.seedLocked
-                ? 'bg-[#c99850]/15 text-[#f2d39d] border border-[#c99850]/50'
-                : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
-            }`}
-          >
-            {state.seedLocked ? 'Locked' : 'Lock'}
-          </button>
-        </div>
-      </SettingField>
+        </SettingField>
 
-      <Separator className="bg-zinc-800" />
+        <SettingField label="Resolution" suggestion={diff('resolution', state.resolution)}>
+          <ChipSelect
+            options={RESOLUTION_CHIPS}
+            value={state.resolution}
+            onChange={(v) => state.setResolution(v as typeof state.resolution)}
+          />
+        </SettingField>
 
-      <SettingField label="Reference Logo">
+        <SettingField label="Aspect Ratio" suggestion={diff('aspectRatio', state.aspectRatio)}>
+          <ChipSelect
+            options={LOGO_ASPECT_RATIO_CHIPS}
+            value={state.aspectRatio}
+            onChange={(v) => state.setAspectRatio(v as typeof state.aspectRatio)}
+          />
+        </SettingField>
+
+        <SettingField label="Text Mode" suggestion={diff('textMode', state.textMode)}>
+          <ChipSelect
+            options={TEXT_MODE_OPTIONS}
+            value={state.textMode}
+            onChange={(v) => state.setTextMode(v as typeof state.textMode)}
+            columns={2}
+          />
+        </SettingField>
+      </RailSection>
+
+      <RailSection title="Logo Design" onReset={resetDesign}>
+        <SettingField label="Logo Type" suggestion={diff('logoType', state.logoType)}>
+          <ChipSelect options={LOGO_TYPE_CHIPS} value={state.logoType} onChange={(v) => state.setLogoType(v as typeof state.logoType)} />
+        </SettingField>
+
+        <SettingField label="Visual Style" suggestion={diff('logoVisualStyle', state.logoVisualStyle)}>
+          <ChipSelect options={LOGO_VISUAL_STYLE_CHIPS} value={state.logoVisualStyle} onChange={(v) => state.setLogoVisualStyle(v as typeof state.logoVisualStyle)} />
+        </SettingField>
+
+        <SettingField label="Render Treatment" suggestion={diff('logoRenderTreatment', state.logoRenderTreatment)}>
+          <ChipSelect options={LOGO_RENDER_TREATMENT_CHIPS} value={state.logoRenderTreatment} onChange={(v) => state.setLogoRenderTreatment(v as typeof state.logoRenderTreatment)} />
+        </SettingField>
+
+        <SettingField label="Typography" suggestion={diff('logoTypographyDirection', state.logoTypographyDirection)}>
+          <ChipSelect options={LOGO_TYPOGRAPHY_CHIPS} value={state.logoTypographyDirection} onChange={(v) => state.setLogoTypographyDirection(v as typeof state.logoTypographyDirection)} />
+        </SettingField>
+      </RailSection>
+
+      <RailSection title="Advanced" onReset={resetAdvanced}>
+        <SettingField label="Background Removal" suggestion={diff('bgRemovalMethod', state.bgRemovalMethod)}>
+          <ChipSelect
+            options={BG_REMOVAL_CHIPS}
+            value={state.bgRemovalMethod}
+            onChange={(v) => state.setBgRemovalMethod(v as typeof state.bgRemovalMethod)}
+          />
+          <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
+            fal · BiRefNet (default) — pay-as-you-go, top-tier edges. Off keeps the generated background.
+          </p>
+        </SettingField>
+
+        <SettingField label="Seed">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={state.seedValue ?? ''}
+              placeholder="Random"
+              onChange={(e) => {
+                const parsed = Number.parseInt(e.target.value, 10)
+                state.setSeedValue(Number.isInteger(parsed) ? parsed : undefined)
+              }}
+              className="h-8 w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200 placeholder:text-zinc-600"
+            />
+            <button
+              onClick={() => state.setSeedLocked(!state.seedLocked)}
+              className={`h-8 shrink-0 rounded-md px-3 text-xs font-medium transition-colors ${
+                state.seedLocked
+                  ? 'bg-[#c99850]/15 text-[#f2d39d] border border-[#c99850]/50'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
+              }`}
+            >
+              {state.seedLocked ? 'Locked' : 'Lock'}
+            </button>
+          </div>
+        </SettingField>
+      </RailSection>
+
+      <RailSection title="Reference Logo" onReset={resetReference}>
+        <SettingField label="Reference Logo">
         <input
           ref={referenceInputRef}
           type="file"
@@ -225,7 +271,8 @@ export function LogoSettingsRail() {
             Upload reference logo
           </button>
         )}
-      </SettingField>
+        </SettingField>
+      </RailSection>
     </div>
   )
 }

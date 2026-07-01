@@ -11,7 +11,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ChevronDown, ChevronUp, Loader2, Minus, Sparkles, Wand2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Minus, Sparkles, Wand2, X } from 'lucide-react'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
@@ -80,20 +80,42 @@ export function PromptDock() {
         </button>
       </div>
 
-      <Textarea
-        value={state.mainPrompt}
-        onChange={(e) => state.setMainPrompt(e.target.value)}
-        placeholder={placeholder}
-        className="min-h-[64px] max-h-40 bg-zinc-950 border-zinc-700 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y"
-      />
+      <div className="relative">
+        <Textarea
+          value={state.mainPrompt}
+          onChange={(e) => state.setMainPrompt(e.target.value)}
+          placeholder={placeholder}
+          className="min-h-[64px] max-h-40 bg-zinc-950 border-zinc-700 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y pr-9"
+        />
+        {hasPrompt && (
+          <button
+            onClick={() => state.setMainPrompt('')}
+            title="Clear prompt"
+            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-[#dbb56e]"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
 
       {showNegative && (
-        <Textarea
-          value={state.negativePrompt}
-          onChange={(e) => state.setNegativePrompt(e.target.value)}
-          placeholder="Negative prompt — things to avoid…"
-          className="min-h-[40px] max-h-28 bg-zinc-950 border-zinc-800 text-xs text-zinc-300 placeholder:text-zinc-600 resize-y"
-        />
+        <div className="relative">
+          <Textarea
+            value={state.negativePrompt}
+            onChange={(e) => state.setNegativePrompt(e.target.value)}
+            placeholder="Negative prompt — things to avoid…"
+            className="min-h-[40px] max-h-28 bg-zinc-950 border-zinc-800 text-xs text-zinc-300 placeholder:text-zinc-600 resize-y pr-9"
+          />
+          {state.negativePrompt.trim().length > 0 && (
+            <button
+              onClick={() => state.setNegativePrompt('')}
+              title="Clear negative prompt"
+              className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-[#dbb56e]"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       )}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">

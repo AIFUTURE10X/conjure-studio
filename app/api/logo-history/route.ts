@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
+import { ensureLogoHistorySchema } from '@/lib/db/history-schema'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getDatabaseUrl() {
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const sql = getSQL()
+    await ensureLogoHistorySchema(sql)
     console.log('[Logo History] Loading history for user:', userId)
 
     const result = await sql`
@@ -156,6 +158,7 @@ export async function POST(request: NextRequest) {
     }
 
     const sql = getSQL()
+    await ensureLogoHistorySchema(sql)
     console.log('[Logo History] Inserting into Neon database...')
 
     // When Blob succeeded, store a tiny placeholder for the (huge) data URL and
@@ -215,6 +218,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const sql = getSQL()
+    await ensureLogoHistorySchema(sql)
     console.log('[Logo History] Updating item:', id, { isFavorited, rating })
 
     if (isFavorited !== undefined) {
@@ -254,6 +258,7 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const sql = getSQL()
+    await ensureLogoHistorySchema(sql)
     console.log('[Logo History] Deleting item:', id)
 
     await sql`
