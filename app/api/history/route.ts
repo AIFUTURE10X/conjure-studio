@@ -25,6 +25,20 @@ function localOnlyResponse(body: Record<string, unknown> = {}, init?: ResponseIn
   return NextResponse.json({ code: 'database_unconfigured', localOnly: true, ...body }, init)
 }
 
+/**
+ * Resolve the acting user id without letting an auth/DB hiccup crash the
+ * route. Session lookup runs before the main try/catch, so any throw here
+ * would surface as an unhandled 500 — fall back to the (validated) client id.
+ */
+async function resolveUserIdSafe(request: NextRequest, clientUserId: string): Promise<string> {
+  try {
+    return await resolveUserId(request, clientUserId)
+  } catch (error) {
+    console.warn('[v0] API: session lookup failed; using client user id:', error)
+    return clientUserId
+  }
+}
+
 /** Neon returns JSONB as a parsed object, but tolerate a string too. */
 function parseMetadata(value: unknown) {
   if (!value) return undefined
@@ -68,7 +82,7 @@ export async function GET(request: NextRequest) {
     return localOnlyResponse({ history: [] })
   }
 
-  const userId = await resolveUserId(request, parsed.data.userId)
+  const userId = await resolveUserIdSafe(request, parsed.data.userId)
 
   try {
     const sql = getSQL()
@@ -105,7 +119,7 @@ export async function POST(request: NextRequest) {
   const parsed = await parseJson(request, postBodySchema)
   if (parsed.response) return parsed.response
   const { prompt, aspectRatio, imageUrls, metadata } = parsed.data
-  const userId = await resolveUserId(request, parsed.data.userId)
+  const userId = await resolveUserIdSafe(request, parsed.data.userId)
 
   if (!hasDatabaseConnection()) {
     // No DB configured (e.g. local dev): report success so the client keeps a
@@ -215,7 +229,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { id } = parsed.data
-  const userId = await resolveUserId(request, parsed.data.userId)
+  const userId = await resolveUserIdSafe(request, parsed.data.userId)
 
   try {
     const sql = getSQL()

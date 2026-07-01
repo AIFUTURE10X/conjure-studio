@@ -29,6 +29,20 @@ function localOnlyResponse(body: Record<string, unknown> = {}, init?: ResponseIn
   }, init)
 }
 
+/**
+ * Resolve the acting user id without letting an auth/DB hiccup crash the
+ * route — session lookup runs before the main try/catch, so fall back to the
+ * (validated) client id instead of surfacing an unhandled 500.
+ */
+async function resolveUserIdSafe(request: NextRequest, clientUserId: string): Promise<string> {
+  try {
+    return await resolveUserId(request, clientUserId)
+  } catch (error) {
+    console.warn('[Logo History] session lookup failed; using client user id:', error)
+    return clientUserId
+  }
+}
+
 const getQuerySchema = z.object({ userId: userIdSchema })
 
 const postBodySchema = z.object({
@@ -62,7 +76,7 @@ export async function GET(request: NextRequest) {
     return localOnlyResponse({ history: [] })
   }
 
-  const userId = await resolveUserId(request, parsedQuery.data.userId)
+  const userId = await resolveUserIdSafe(request, parsedQuery.data.userId)
 
   try {
     const sql = getSQL()
@@ -109,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { imageUrl, prompt, negativePrompt, presetId, seed, style, config, isFavorited, rating } = parsedBody.data
-  const userId = await resolveUserId(request, parsedBody.data.userId)
+  const userId = await resolveUserIdSafe(request, parsedBody.data.userId)
 
   try {
     console.log('[Logo History] POST request received')
@@ -214,7 +228,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { id, isFavorited, rating } = parsedBody.data
-  const userId = await resolveUserId(request, parsedBody.data.userId)
+  const userId = await resolveUserIdSafe(request, parsedBody.data.userId)
 
   try {
     const sql = getSQL()
@@ -254,7 +268,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { id } = parsedQuery.data
-  const userId = await resolveUserId(request, parsedQuery.data.userId)
+  const userId = await resolveUserIdSafe(request, parsedQuery.data.userId)
 
   try {
     const sql = getSQL()
