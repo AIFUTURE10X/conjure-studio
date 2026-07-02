@@ -11,7 +11,8 @@ import sharp from "sharp"
 import { withCreditGuard, flatCost } from "@/lib/api/guard"
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { generateOpenAIImage } from "@/lib/openai-image-client"
-import { closestRatio } from "@/lib/image-aspect"
+import { closestRatio, exactOpenAISize } from "@/lib/image-aspect"
+import { uploadEditImage } from "@/lib/edit-upload"
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -37,7 +38,7 @@ async function handlePost(request: NextRequest) {
     const instruction =
       mode === "replace"
         ? `In the masked area of this image: ${userPrompt}. Blend it naturally with the surrounding image; keep everything outside the mask identical.`
-        : "Remove the content in the masked area and seamlessly fill it with a natural extension of the surrounding background. Keep everything outside the mask identical."
+        : "The masked region shows only empty background: the surrounding scenery continues naturally and uninterrupted across it, matching the existing lighting, texture, and perspective. Everything outside the mask is unchanged."
 
     const sourceBuffer = Buffer.from(await imageFile.arrayBuffer())
     const metadata = await sharp(sourceBuffer).metadata()
@@ -45,15 +46,19 @@ async function handlePost(request: NextRequest) {
     const result = await generateOpenAIImage({
       prompt: instruction,
       aspectRatio: closestRatio(metadata.width, metadata.height),
-      // Match the source's resolution class; 2K-at-high made edits several
-      // times slower than the generations that produced the thumbnails.
-      imageSize: Math.max(metadata.width ?? 0, metadata.height ?? 0) >= 1500 ? "2K" : "1K",
+      // exactSize (below) covers virtually every real photo's aspect ratio;
+      // this bucket is only the fallback for the rare case it can't be
+      // computed. 2K-at-high made edits several times slower than the
+      // generations that produced the thumbnails, so keep the fallback modest.
+      imageSize: "1K",
+      exactSize: exactOpenAISize(metadata.width, metadata.height),
       imageQuality: "medium",
       referenceImageFile: imageFile,
       maskImageFile: maskFile,
     })
 
-    return NextResponse.json({ success: true, image: `data:image/png;base64,${result.imageBase64}` })
+    const imageUrl = await uploadEditImage(Buffer.from(result.imageBase64, "base64"))
+    return NextResponse.json({ success: true, image: imageUrl })
   } catch (error) {
     console.error("[Thumbnail Edit] Error:", error)
     return NextResponse.json(

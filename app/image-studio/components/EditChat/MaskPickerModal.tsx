@@ -55,7 +55,12 @@ export function MaskPickerModal({ imageUrl, onAttach, onClose }: MaskPickerModal
     previewCanvas.height = previewHeight
     previewCanvas.getContext('2d')?.drawImage(overlayCanvas, 0, 0, PREVIEW_WIDTH, previewHeight)
 
-    onAttach({ blob, previewUrl: previewCanvas.toDataURL('image/png') })
+    onAttach({
+      blob,
+      previewUrl: previewCanvas.toDataURL('image/png'),
+      paintedWidth: dims.nw,
+      paintedHeight: dims.nh,
+    })
   }
 
   return (

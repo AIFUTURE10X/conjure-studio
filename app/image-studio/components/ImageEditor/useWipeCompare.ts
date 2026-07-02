@@ -23,6 +23,7 @@ export interface UseWipeCompareReturn {
   position: number
   isHolding: boolean
   onDividerPointerDown: (e: ReactPointerEvent) => void
+  onDividerPointerUp: (e: ReactPointerEvent) => void
   onContainerPointerDown: () => void
   onContainerPointerMove: (e: ReactPointerEvent) => void
   onContainerPointerUp: () => void
@@ -48,6 +49,17 @@ export function useWipeCompare(
   const onDividerPointerDown = useCallback((e: ReactPointerEvent) => {
     e.stopPropagation()
     draggingRef.current = true
+    // Without capture, a fast drag past the container's edge stops
+    // delivering pointermove events (the pointer is no longer over any
+    // listening element), so the divider "drops" the drag instead of
+    // reaching 0%/100%.
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }, [])
+
+  const onDividerPointerUp = useCallback((e: ReactPointerEvent) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
   }, [])
 
   const onContainerPointerDown = useCallback(() => {
@@ -67,6 +79,7 @@ export function useWipeCompare(
     position,
     isHolding,
     onDividerPointerDown,
+    onDividerPointerUp,
     onContainerPointerDown,
     onContainerPointerMove,
     onContainerPointerUp,

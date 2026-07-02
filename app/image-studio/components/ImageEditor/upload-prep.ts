@@ -47,12 +47,15 @@ function drawScaled(img: HTMLImageElement, maxEdge: number): HTMLCanvasElement {
   return canvas
 }
 
-/** Sparse alpha sample — full scans of 2K images cost more than they're worth. */
+/**
+ * Full alpha scan — a sparse sample can step over small transparent regions
+ * entirely (e.g. a thin cutout edge), flattening them to an opaque JPEG
+ * background. The scan itself costs milliseconds even at 2K.
+ */
 function hasTransparency(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext('2d')!
   const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const stride = Math.max(1, Math.floor(data.length / 4 / 4096)) * 4
-  for (let i = 3; i < data.length; i += stride) {
+  for (let i = 3; i < data.length; i += 4) {
     if (data[i] < 255) return true
   }
   return false

@@ -66,6 +66,7 @@ export function EditCompareView({
         {!wipe.isHolding && (
           <div
             onPointerDown={wipe.onDividerPointerDown}
+            onPointerUp={wipe.onDividerPointerUp}
             title="Drag to compare"
             className="absolute top-0 bottom-0 z-10 flex w-6 -translate-x-1/2 cursor-ew-resize items-center justify-center"
             style={{ left: `${wipe.position}%` }}

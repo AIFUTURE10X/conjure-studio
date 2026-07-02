@@ -69,6 +69,32 @@ function formatOpenAIError(status: number, body: string): string {
   }
 }
 
+interface OpenAIErrorBody {
+  error?: { message?: string; param?: string; code?: string }
+}
+
+function parseOpenAIError(body: string): OpenAIErrorBody["error"] {
+  try {
+    return (JSON.parse(body) as OpenAIErrorBody)?.error
+  } catch {
+    return undefined
+  }
+}
+
+const OPENAI_REQUEST_TIMEOUT_MS = 100_000
+
+/** Every OpenAI image call goes through this so a hung request fails fast enough for the credit guard to refund it, instead of the route timing out first. */
+async function fetchOpenAI(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(OPENAI_REQUEST_TIMEOUT_MS) })
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error("OpenAI request timed out")
+    }
+    throw error
+  }
+}
+
 export async function generateOpenAIImage({
   prompt,
   aspectRatio,
@@ -77,6 +103,7 @@ export async function generateOpenAIImage({
   referenceImageFile,
   maskImageFile,
   n,
+  exactSize,
 }: {
   prompt: string
   aspectRatio: AllowedRatio
@@ -88,8 +115,10 @@ export async function generateOpenAIImage({
   maskImageFile?: File | null
   /** Number of variants to request (1-3 in practice; passed through as-is). */
   n?: number
+  /** Exact "WxH" (edges divisible by 16, aspect 1:3-3:1) — overrides the imageSize bucket when set. */
+  exactSize?: string
 }) {
-  const size = getOpenAIImageSize(aspectRatio, imageSize)
+  const size = exactSize ?? getOpenAIImageSize(aspectRatio, imageSize)
   const apiKey = getOpenAIKey()
 
   if (referenceImageFile && referenceImageFile.size > 0) {
@@ -117,7 +146,7 @@ export async function generateOpenAIImage({
     }
 
     const postEdit = (formData: FormData) =>
-      fetch("https://api.openai.com/v1/images/edits", {
+      fetchOpenAI("https://api.openai.com/v1/images/edits", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -127,9 +156,19 @@ export async function generateOpenAIImage({
 
     let response = await postEdit(buildFormData(true))
     let body = await response.text()
-    if (!response.ok && /moderation/i.test(body) && /unknown|unrecognized|unsupported|invalid/i.test(body)) {
-      response = await postEdit(buildFormData(false))
-      body = await response.text()
+    if (!response.ok) {
+      const err = parseOpenAIError(body)
+      const isRealBlock =
+        err?.code === "moderation_blocked" || /safety|content policy|moderation_blocked/i.test(err?.message ?? "")
+      const isUnsupportedParam = err?.param === "moderation" || /unknown parameter/i.test(err?.message ?? "")
+      // Only retry when OpenAI rejected the `moderation` param itself (e.g.
+      // an account/model that doesn't support it) — never for an actual
+      // safety block, which would otherwise get retried into a second,
+      // fully-deterministic re-block.
+      if (!isRealBlock && isUnsupportedParam) {
+        response = await postEdit(buildFormData(false))
+        body = await response.text()
+      }
     }
     if (!response.ok) {
       throw new Error(formatOpenAIError(response.status, body))
@@ -145,7 +184,7 @@ export async function generateOpenAIImage({
     return { imageBase64: imagesBase64[0], imagesBase64, size }
   }
 
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
+  const response = await fetchOpenAI("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,

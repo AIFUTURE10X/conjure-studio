@@ -31,6 +31,8 @@ export interface MaskStroke {
   tool: MaskTool
   size: number
   points: MaskPoint[]
+  /** True when the stroke's start/end points nearly meet — the loop's interior gets filled too, not just the ring. */
+  closed?: boolean
 }
 
 const BRUSH_COLOR = 'rgba(255,60,60,0.55)'
@@ -38,9 +40,14 @@ const BASE_TINT_ALPHA = 140 // ~0.55 * 255, matches BRUSH_COLOR's opacity
 
 function drawStroke(ctx: CanvasRenderingContext2D, stroke: MaskStroke, color = BRUSH_COLOR) {
   if (stroke.points.length === 0) return
+  // Eraser previews must erase fully (alpha=1), not at BRUSH_COLOR's 0.55
+  // alpha — destination-out only removes as much as the shape's own alpha,
+  // so a translucent preview color would erase 55% per pass while
+  // buildMaskBlob (which always paints opaque) erases 100%.
+  const drawColor = stroke.tool === 'eraser' ? '#000' : color
   ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
-  ctx.fillStyle = color
-  ctx.strokeStyle = color
+  ctx.fillStyle = drawColor
+  ctx.strokeStyle = drawColor
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.lineWidth = stroke.size
@@ -60,6 +67,19 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: MaskStroke, color = B
     ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
   }
   ctx.stroke()
+
+  // A stroke whose ends nearly meet is a traced outline, not a ring the
+  // user meant to leave hollow — fill the interior so circling an object
+  // makes the whole object editable, not just a thin band around its edge.
+  if (stroke.closed) {
+    ctx.beginPath()
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
+    }
+    ctx.closePath()
+    ctx.fill()
+  }
 }
 
 /** Tinted (brush-colored) copy of an imported mask, for painting onto the live overlay. */
@@ -124,7 +144,12 @@ export function useMaskPainting() {
     const finished = activeStroke.current
     activeStroke.current = null
     if (finished && finished.points.length > 0) {
-      setStrokes((prev) => [...prev, finished])
+      const first = finished.points[0]
+      const last = finished.points[finished.points.length - 1]
+      const closed =
+        finished.points.length > 8 &&
+        Math.hypot(first.x - last.x, first.y - last.y) <= Math.max(finished.size * 1.5, 24)
+      setStrokes((prev) => [...prev, { ...finished, closed }])
     }
   }, [])
 

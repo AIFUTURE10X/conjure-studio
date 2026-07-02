@@ -11,6 +11,7 @@
 
 import { Eraser, Loader2, Paintbrush, Undo2, Wand2 } from 'lucide-react'
 import { SmartMaskChips } from './SmartMaskChips'
+import type { MaskDims } from './MaskCanvas'
 import type { MaskTool } from './useMaskPainting'
 
 export type EditMode = 'erase' | 'replace'
@@ -22,7 +23,10 @@ interface EditToolbarProps {
   onToolChange: (tool: MaskTool) => void
   brushSize: number
   onBrushSizeChange: (size: number) => void
+  /** Whether there's a stroke to undo — distinct from canClear, since a base (smart-mask) selection with no strokes still has content to clear. */
   canUndo: boolean
+  /** Whether there's anything (strokes and/or a base selection) to clear. */
+  canClear: boolean
   onUndo: () => void
   onClear: () => void
   mode: EditMode
@@ -34,7 +38,7 @@ interface EditToolbarProps {
   isLoading: boolean
   onApply: () => void
   imageUrl: string
-  getDisplayDims: () => { w: number; h: number } | null
+  getDisplayDims: () => MaskDims | null
   onMaskReady: (mask: ImageData) => void
 }
 
@@ -45,7 +49,7 @@ const chipClass = (on: boolean) =>
 
 export function EditToolbar({
   tool, onToolChange, brushSize, onBrushSizeChange,
-  canUndo, onUndo, onClear,
+  canUndo, canClear, onUndo, onClear,
   mode, onModeChange, prompt, onPromptChange,
   variants, onVariantsChange,
   isLoading, onApply,
@@ -88,7 +92,7 @@ export function EditToolbar({
         </button>
         <button
           onClick={onClear}
-          disabled={!canUndo}
+          disabled={!canClear}
           className="rounded-md border border-zinc-700 bg-zinc-800/70 px-3 py-2 text-xs text-zinc-300 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Clear

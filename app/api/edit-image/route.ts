@@ -21,13 +21,13 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
-import { put } from "@vercel/blob"
 import sharp from "sharp"
 import { withCreditGuard, editImageCost } from "@/lib/api/guard"
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { generateOpenAIImage } from "@/lib/openai-image-client"
-import { closestRatio } from "@/lib/image-aspect"
+import { closestRatio, exactOpenAISize } from "@/lib/image-aspect"
 import { hygieneMask, pixelLockComposite } from "@/lib/edit-mask"
+import { uploadEditImage } from "@/lib/edit-upload"
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -43,23 +43,6 @@ function friendlyErrorMessage(error: unknown): { message: string; status: number
     return { message: "The edit took too long — try again, or use fewer variants.", status: 400 }
   }
   return { message: raw, status: 500 }
-}
-
-async function uploadImage(buffer: Buffer): Promise<string> {
-  let imageUrl = `data:image/png;base64,${buffer.toString("base64")}`
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const uploaded = await put(
-        `edits/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`,
-        buffer,
-        { access: "public", contentType: "image/png" },
-      )
-      imageUrl = uploaded.url
-    } catch (error) {
-      console.error("[Edit Image] Blob upload failed; falling back to data URI:", error)
-    }
-  }
-  return imageUrl
 }
 
 async function handlePost(request: NextRequest) {
@@ -93,7 +76,7 @@ async function handlePost(request: NextRequest) {
     const instruction = maskImageFile
       ? mode === "replace"
         ? `In the masked area of this image: ${userPrompt}. Blend it naturally with the surrounding image; keep everything outside the mask identical.`
-        : "Remove the content in the masked area and seamlessly fill it with a natural extension of the surrounding background. Keep everything outside the mask identical."
+        : "The masked region shows only empty background: the surrounding scenery continues naturally and uninterrupted across it, matching the existing lighting, texture, and perspective. Everything outside the mask is unchanged."
       : `Apply this change to the image: ${userPrompt}. Keep everything else unchanged — same composition, style, and level of detail.`
 
     const sourceBuffer = Buffer.from(await imageFile.arrayBuffer())
@@ -110,11 +93,14 @@ async function handlePost(request: NextRequest) {
     const result = await generateOpenAIImage({
       prompt: instruction,
       aspectRatio: closestRatio(metadata.width, metadata.height),
-      // Match the source's resolution class instead of always requesting 2K
-      // at auto (=high) quality: an edit shouldn't take several times longer
-      // than the generation that made the image. Uploads are capped at
-      // 1600px client-side, so 2K output only pays off for sources at that cap.
-      imageSize: Math.max(metadata.width ?? 0, metadata.height ?? 0) >= 1500 ? "2K" : "1K",
+      // exactSize (below) covers virtually every real photo's aspect ratio,
+      // so this bucket only matters for the rare fallback case (extreme
+      // aspect ratio, or unreadable metadata) — not worth resolution-class
+      // switching for that edge case.
+      imageSize: "2K",
+      // Exact "WxH" keeps the edit's output at the source's own aspect
+      // ratio instead of drifting to the nearest fixed bucket.
+      exactSize: exactOpenAISize(metadata.width, metadata.height),
       imageQuality: "medium",
       referenceImageFile: imageFile,
       maskImageFile: openAiMaskFile,
@@ -131,7 +117,7 @@ async function handlePost(request: NextRequest) {
         )
       : result.imagesBase64.map((base64) => Buffer.from(base64, "base64"))
 
-    const imageUrls = await Promise.all(finalBuffers.map(uploadImage))
+    const imageUrls = await Promise.all(finalBuffers.map(uploadEditImage))
 
     return NextResponse.json({ success: true, image: imageUrls[0], images: imageUrls })
   } catch (error) {

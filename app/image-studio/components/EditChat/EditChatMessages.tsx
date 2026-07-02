@@ -11,28 +11,18 @@
  */
 
 import { ImageDown, Loader2, Paintbrush, RotateCcw, RotateCw, Sparkles } from 'lucide-react'
-import { useEditChat, type EditChatMessage } from '../../context/EditChatProvider'
-
-/** The most recent result (resolved version or unresolved candidate row) — only it shows Re-roll. */
-function findNewestResultMessageId(messages: EditChatMessage[]): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i]
-    if (message.resultVersionIndex !== undefined || (message.candidateUrls && !message.chosenUrl)) {
-      return message.id
-    }
-  }
-  return undefined
-}
+import { useEditChat } from '../../context/EditChatProvider'
+import { findNewestResultMessage } from '../../context/edit-chat-types'
 
 const actionButtonClass =
   'flex items-center gap-1 rounded-md border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-700'
 
 export function EditChatMessages() {
   const {
-    messages, versions, currentVersionIndex, isEditing,
+    messages, versions, currentVersionIndex, isEditing, canReroll,
     revertToVersion, applyVersionToCanvas, rerollLast, moreLikeVersion, chooseCandidate,
   } = useEditChat()
-  const newestResultId = findNewestResultMessageId(messages)
+  const newestResultId = findNewestResultMessage(messages)?.id
 
   return (
     <>
@@ -75,8 +65,9 @@ export function EditChatMessages() {
                     <button
                       key={url}
                       onClick={() => chooseCandidate(message.id, url)}
+                      disabled={isEditing}
                       title={`Use candidate ${i + 1}`}
-                      className="overflow-hidden rounded-md border border-zinc-700 transition-colors hover:border-[#c99850]"
+                      className="overflow-hidden rounded-md border border-zinc-700 transition-colors hover:border-[#c99850] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <img src={url} alt={`Candidate ${i + 1}`} className="h-24 w-full object-cover" />
                     </button>
@@ -85,7 +76,7 @@ export function EditChatMessages() {
                 {isNewest && (
                   <button
                     onClick={() => void rerollLast()}
-                    disabled={isEditing}
+                    disabled={isEditing || !canReroll}
                     title="Generate a fresh set of candidates"
                     className={`${actionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                   >
@@ -144,7 +135,7 @@ export function EditChatMessages() {
                       {isNewest && (
                         <button
                           onClick={() => void rerollLast()}
-                          disabled={isEditing}
+                          disabled={isEditing || !canReroll}
                           title="Re-run the last instruction"
                           className={`${actionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                         >

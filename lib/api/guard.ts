@@ -72,7 +72,10 @@ export function withCreditGuard(
       throw error
     }
 
-    if (!response.ok && response.status !== 429) await refund()
+    // Refund on any non-2xx, including 429: some handlers (e.g. /api/edit-image)
+    // run their own rate limiting after this guard has already debited, so a
+    // 429 from inside the handler must refund just like any other failure.
+    if (!response.ok) await refund()
     return response
   }
 }

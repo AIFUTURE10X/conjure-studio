@@ -65,7 +65,7 @@ export function EditChatInput() {
             </button>
           ))}
         </div>
-        {variants > MIN_VARIANTS && <span>+{variants - 1} credit each</span>}
+        {variants > MIN_VARIANTS && <span>+1 credit each</span>}
       </div>
 
       {pendingMask && (

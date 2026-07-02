@@ -77,6 +77,14 @@ export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function
   const painting = useRef(false)
   const [dims, setDims] = useState<MaskDims | null>(null)
 
+  // Stashed in a ref (not an image-load effect dep) so a host re-render that
+  // passes a new onClose identity doesn't re-run the load effect and wipe
+  // the in-progress paint surface — only imageUrl/size changes should reload.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
   useImperativeHandle(ref, () => ({
     getImage: () => imgRef.current,
     getOverlayCanvas: () => overlayRef.current,
@@ -102,13 +110,13 @@ export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function
         setDims({ w: Math.round(nw * scale), h: Math.round(nh * scale), nw, nh })
       } catch {
         toast.error('Could not load the image to edit')
-        onClose()
+        onCloseRef.current()
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [imageUrl, onClose, reservedPx, maxWidthPx])
+  }, [imageUrl, reservedPx, maxWidthPx])
 
   useEffect(() => {
     if (!dims || !imgRef.current) return

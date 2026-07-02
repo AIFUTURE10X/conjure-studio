@@ -6,9 +6,11 @@
  * Near-fullscreen AI Edit modal for generated images: paint a mask, erase
  * or replace the painted area via /api/edit-image (optionally requesting
  * 1-3 variants), then compare before vs after with a wipe-compare view.
- * Keeping a result feeds it back to the caller; strokes are intentionally
- * NOT cleared on Keep or Discard so the user can immediately re-apply or
- * refine the same painted area (the Clear button remains available).
+ * Keeping a result feeds it back to the caller; strokes stay put on Keep or
+ * Discard so the user can immediately re-apply or refine the same painted
+ * area (the Clear button remains available) — UNLESS the kept result's
+ * pixel dimensions differ from what's currently painted, in which case the
+ * strokes would land on the wrong part of the new image and are cleared.
  */
 
 import { useCallback, useRef, useState } from 'react'
@@ -18,7 +20,7 @@ import { MaskCanvas, type MaskCanvasHandle } from './MaskCanvas'
 import { EditToolbar, type EditMode } from './EditToolbar'
 import { EditCompareView } from './EditCompareView'
 import { useMaskPainting, type MaskTool } from './useMaskPainting'
-import { editResponseUrls, parseEditResponse, prepareImageForEdit } from './upload-prep'
+import { editResponseUrls, loadImageElement, parseEditResponse, prepareImageForEdit } from './upload-prep'
 
 export interface ImageEditModalProps {
   imageUrl: string
@@ -91,15 +93,30 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
     }
   }, [mask, mode, prompt, variants])
 
-  const handleKeep = useCallback(() => {
+  const handleKeep = useCallback(async () => {
     const selectedUrl = resultUrls[selectedResultIndex]
     if (!selectedUrl) return
     onApply(selectedUrl, appliedPrompt)
+
+    // The painted strokes are recorded in the current canvas's pixel space;
+    // if the kept result's dimensions differ, they'd land on the wrong part
+    // of the new image, so clear rather than silently misalign.
+    const canvasDims = maskCanvasRef.current?.getDims()
+    try {
+      const resultImage = await loadImageElement(selectedUrl)
+      if (!canvasDims || resultImage.naturalWidth !== canvasDims.nw || resultImage.naturalHeight !== canvasDims.nh) {
+        mask.clear()
+      }
+    } catch (error) {
+      console.error('[ImageEdit] failed to check result dimensions:', error)
+      mask.clear()
+    }
+
     setCurrentImageUrl(selectedUrl)
     setResultUrls([])
     setPrompt('')
     setPhase('paint')
-  }, [resultUrls, selectedResultIndex, appliedPrompt, onApply])
+  }, [resultUrls, selectedResultIndex, appliedPrompt, onApply, mask])
 
   const handleDiscard = useCallback(() => {
     setResultUrls([])
@@ -142,7 +159,8 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
                 onToolChange={setTool}
                 brushSize={brushSize}
                 onBrushSizeChange={setBrushSize}
-                canUndo={mask.hasContent}
+                canUndo={mask.hasStrokes}
+                canClear={mask.hasContent}
                 onUndo={mask.undo}
                 onClear={mask.clear}
                 mode={mode}

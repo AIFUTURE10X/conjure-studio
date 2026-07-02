@@ -12,10 +12,12 @@
  *      model has a little breathing room to blend at the edge instead of
  *      fighting a razor-sharp boundary (which tends to produce seams).
  *   2. pixelLockComposite then pastes the model's result back over the
- *      ORIGINAL image, clipped to a feathered version of the RAW (pre-grow)
- *      mask, so pixels outside the user's painted area come back
- *      byte-identical (or near enough — the feather itself is a deliberate,
- *      narrow blend zone) regardless of what the model actually changed.
+ *      ORIGINAL image, clipped to a grown-then-feathered version of the RAW
+ *      mask (grown by the same amount as (1) so the blend seam sits outside
+ *      the painted area, not straddling it), so pixels outside the user's
+ *      painted area come back byte-identical (or near enough — the feather
+ *      itself is a deliberate, narrow blend zone) regardless of what the
+ *      model actually changed.
  */
 
 import sharp from "sharp"
@@ -53,6 +55,22 @@ function fromRawGray(buffer: Buffer, width: number, height: number) {
 }
 
 /**
+ * Grow a raw single-channel region mask by `growPx`. Must run as two
+ * materialized pipelines (blur, then a fresh sharp() over the result,
+ * then threshold) — sharp applies operations in a fixed internal order
+ * regardless of call order, so chaining `.blur().threshold()` on one
+ * pipeline silently skips the dilation and just re-thresholds the
+ * original edge.
+ */
+async function dilate(regionBuffer: Buffer, width: number, height: number, growPx: number): Promise<Buffer> {
+  const blurred = await fromRawGray(regionBuffer, width, height)
+    .blur(clampSigma(growPx))
+    .raw()
+    .toBuffer()
+  return fromRawGray(blurred, width, height).threshold(DILATE_THRESHOLD).raw().toBuffer()
+}
+
+/**
  * Grow then feather the transparent (edit) region of a raw mask PNG so the
  * boundary sent to OpenAI is soft rather than a hard cutout.
  */
@@ -68,11 +86,7 @@ export async function hygieneMask(
   // ordinary blur/threshold ops can grow and soften.
   const editRegion = invert(alpha)
 
-  const dilated = await fromRawGray(editRegion, width, height)
-    .blur(clampSigma(growPx))
-    .threshold(DILATE_THRESHOLD)
-    .raw()
-    .toBuffer()
+  const dilated = await dilate(editRegion, width, height, growPx)
 
   const feathered = await fromRawGray(dilated, width, height)
     .blur(clampSigma(featherPx))
@@ -94,6 +108,11 @@ export async function hygieneMask(
  * the user's painted (raw, pre-grow) region actually changes — everything
  * else is restored from the original, byte-identical outside a narrow
  * feathered seam.
+ *
+ * Output keeps the ORIGINAL's exact dimensions: the result is resized to
+ * match (gpt-image-2's returned canvas can drift slightly from what was
+ * requested), never the other way around, so locked pixels aren't distorted
+ * by an intermediate resize of the original.
  */
 export async function pixelLockComposite(
   originalBuffer: Buffer,
@@ -102,19 +121,25 @@ export async function pixelLockComposite(
   featherPx: number = DEFAULT_LOCK_FEATHER_PX,
 ): Promise<Buffer> {
   const resultBuffer = Buffer.from(resultBase64, "base64")
-  const { width, height } = await sharp(resultBuffer).metadata()
-  if (!width || !height) throw new Error("Could not read result image dimensions")
+  const { width, height } = await sharp(originalBuffer).metadata()
+  if (!width || !height) throw new Error("Could not read original image dimensions")
 
-  const [originalResized, maskAlpha, resultRgb] = await Promise.all([
-    sharp(originalBuffer).resize(width, height, { fit: "fill" }).ensureAlpha().png().toBuffer(),
-    sharp(rawMaskBuffer).resize(width, height, { fit: "fill" }).ensureAlpha().extractChannel("alpha").raw().toBuffer(),
-    sharp(resultBuffer).removeAlpha().raw().toBuffer(),
+  const [maskAlpha, resultRgb] = await Promise.all([
+    // rawMaskBuffer is already built at the original's exact pixel size
+    // (the client scales it to match the uploaded image) — no resize.
+    sharp(rawMaskBuffer).ensureAlpha().extractChannel("alpha").raw().toBuffer(),
+    sharp(resultBuffer).resize(width, height, { fit: "fill" }).removeAlpha().raw().toBuffer(),
   ])
 
-  // Edit region (where the AI result is allowed to show through), feathered
-  // so the seam against the restored original blends rather than hard-cuts.
+  // Edit region (where the AI result is allowed to show through). Grown by
+  // the same amount hygieneMask granted the model BEFORE feathering, so the
+  // seam's midpoint sits outside the user's painted area instead of
+  // straddling it — feathering the raw edge directly pastes ~50% of the
+  // original back exactly on the boundary, a visible ghost outline, and
+  // throws away the breathing room the model was given to blend into.
   const editRegion = invert(maskAlpha)
-  const featheredAlpha = await fromRawGray(editRegion, width, height)
+  const dilatedRegion = await dilate(editRegion, width, height, DEFAULT_GROW_PX)
+  const featheredAlpha = await fromRawGray(dilatedRegion, width, height)
     .blur(clampSigma(featherPx))
     .raw()
     .toBuffer()
@@ -124,7 +149,7 @@ export async function pixelLockComposite(
     .png()
     .toBuffer()
 
-  return sharp(originalResized)
+  return sharp(originalBuffer)
     .composite([{ input: resultClippedToRegion, blend: "over" }])
     .png()
     .toBuffer()

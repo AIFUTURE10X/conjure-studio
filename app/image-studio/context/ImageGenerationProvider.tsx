@@ -17,15 +17,12 @@ import { useImageGeneration } from '../hooks/useImageGeneration'
 import { useGenerationHistory } from '../hooks/useGenerationHistory'
 import { downloadImageAsFile } from '../utils/export-utils'
 import { buildFinalImagePrompt } from '../utils/build-image-prompt'
+import { getImageMetadata, type ImageMetadata } from '../utils/get-image-metadata'
 import { normalizeCreativeDirection } from '../constants/creative-direction-options'
 import { useStudioCore } from './useStudio'
 
 export type ImageBgRemovalMethod = 'none' | 'photoroom' | 'fal'
-
-export interface ImageMetadata {
-  dimensions: string
-  fileSize: string
-}
+export type { ImageMetadata } from '../utils/get-image-metadata'
 
 export interface ImageGenerationEngine {
   isGenerating: boolean
@@ -37,7 +34,7 @@ export interface ImageGenerationEngine {
   downloadImage: (url: string, index: number, prompt?: string) => Promise<void>
   removeBackground: (index: number) => Promise<void>
   upscaleToFourK: (index: number) => Promise<void>
-  applyEditedImage: (index: number, url: string, editPrompt: string) => Promise<void>
+  applyEditedImage: (index: number, url: string, editPrompt: string, expectedUrl?: string) => Promise<boolean>
   getImageMetadata: (url: string) => Promise<ImageMetadata>
   photoRoomBgRemovalEnabled: boolean
   setPhotoRoomBgRemovalEnabled: (enabled: boolean) => void
@@ -46,28 +43,6 @@ export interface ImageGenerationEngine {
 }
 
 const ImageGenerationContext = createContext<ImageGenerationEngine | null>(null)
-
-async function getImageMetadata(url: string): Promise<ImageMetadata> {
-  return new Promise(resolve => {
-    const img = new Image()
-    img.onload = async () => {
-      let fileSize = '~2 MB'
-      try {
-        if (url.startsWith('data:')) {
-          const b64 = url.split(',')[1]
-          if (b64) fileSize = `~${(Math.ceil((b64.length * 3) / 4) / 1048576).toFixed(1)} MB`
-        } else {
-          const r = await fetch(url, { method: 'HEAD' })
-          const cl = r.headers.get('content-length')
-          if (cl) fileSize = `~${(parseInt(cl) / 1048576).toFixed(1)} MB`
-        }
-      } catch {}
-      resolve({ dimensions: `${img.width}×${img.height}`, fileSize })
-    }
-    img.onerror = () => resolve({ dimensions: 'Unknown', fileSize: 'Unknown' })
-    img.src = url
-  })
-}
 
 export function ImageGenerationProvider({ children }: { children: ReactNode }) {
   const { uploadState, state, saveParameters, saveGenerateParams } = useStudioCore()
@@ -240,9 +215,15 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
   // Feeds a kept AI Edit result back into the grid at `index`, then saves it
   // to history the same way a fresh generation does. History failures are
   // reported but never roll back the image swap — the edit already worked.
-  const applyEditedImage = useCallback(async (index: number, url: string, editPrompt: string) => {
+  // `expectedUrl`, when passed, guards against the canvas moving on (another
+  // edit applied, or the slot regenerated) while a chat edit was in flight.
+  const applyEditedImage = useCallback(async (index: number, url: string, editPrompt: string, expectedUrl?: string): Promise<boolean> => {
     const original = state.generatedImages[index]
-    if (!original) return
+    if (!original) return false
+    if (expectedUrl !== undefined && original.url !== expectedUrl) {
+      toast.error('The canvas changed — switch to that image and start a new edit chat.')
+      return false
+    }
     const updated = [...state.generatedImages]
     updated[index] = { ...original, url }
     state.setGeneratedImages(updated)
@@ -259,6 +240,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       console.error('[v0] AI edit history save error:', error)
       toast.error('Edit applied, but saving to history failed')
     }
+    return true
   }, [state.generatedImages, state.setGeneratedImages, state.aspectRatio, state.selectedStylePreset, saveToHistory])
 
   const value = useMemo<ImageGenerationEngine>(() => ({

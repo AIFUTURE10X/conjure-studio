@@ -19,3 +19,22 @@ export function closestRatio(width?: number, height?: number): Ratio {
     Math.abs(Math.log(target / RATIO_VALUE[r])) < Math.abs(Math.log(target / RATIO_VALUE[best])) ? r : best,
   )
 }
+
+const EXACT_SIZE_MIN_EDGE = 256
+const EXACT_SIZE_MAX_EDGE = 2048
+const roundTo16 = (value: number) => Math.min(EXACT_SIZE_MAX_EDGE, Math.max(EXACT_SIZE_MIN_EDGE, Math.round(value / 16) * 16))
+
+/**
+ * gpt-image-2 accepts arbitrary WxH (each edge divisible by 16, aspect
+ * between 1:3 and 3:1) instead of only its fixed size buckets. Returns the
+ * exact size to request so an edit's output keeps the source's aspect ratio
+ * instead of drifting to the nearest bucket; undefined when the source
+ * aspect falls outside what the endpoint supports, so the caller can fall
+ * back to a size bucket.
+ */
+export function exactOpenAISize(width?: number, height?: number): string | undefined {
+  if (!width || !height) return undefined
+  const ratio = width / height
+  if (ratio < 1 / 3 || ratio > 3) return undefined
+  return `${roundTo16(width)}x${roundTo16(height)}`
+}

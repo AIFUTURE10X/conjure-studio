@@ -13,11 +13,12 @@
 import { useState } from 'react'
 import { Image as ImageIcon, Loader2, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
+import type { MaskDims } from './MaskCanvas'
 
 interface SmartMaskChipsProps {
   imageUrl: string
   /** Lazily read so callers don't need to mirror MaskCanvas's dims into their own state. */
-  getDisplayDims: () => { w: number; h: number } | null
+  getDisplayDims: () => MaskDims | null
   onMaskReady: (mask: ImageData) => void
 }
 
@@ -85,10 +86,14 @@ export function SmartMaskChips({ imageUrl, getDisplayDims, onMaskReady }: SmartM
       }
 
       const cutout = await loadImage(data.image)
-      onMaskReady(maskFromCutout(cutout, dims.w, dims.h, target === 'background'))
+      // Built at natural (not display) resolution — both consumers
+      // (useMaskPainting's redraw/buildMaskBlob) already drawImage-scale
+      // whichever resolution they're handed, so painting at the source's
+      // actual pixel size avoids a lossy upscale of the mask edges later.
+      onMaskReady(maskFromCutout(cutout, dims.nw, dims.nh, target === 'background'))
     } catch (error) {
       console.error('[SmartMaskChips] selection failed:', error)
-      toast.error('Could not detect the subject')
+      toast.error(error instanceof Error ? error.message : 'Could not detect the subject')
     } finally {
       setSelecting(null)
     }
@@ -99,7 +104,7 @@ export function SmartMaskChips({ imageUrl, getDisplayDims, onMaskReady }: SmartM
       <button
         onClick={() => void runSelect('subject')}
         disabled={!!selecting}
-        title="Auto-select the main subject"
+        title="Auto-select the main subject (1 credit)"
         className={chipClass}
       >
         {selecting === 'subject' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserRound className="h-3.5 w-3.5" />}
@@ -108,7 +113,7 @@ export function SmartMaskChips({ imageUrl, getDisplayDims, onMaskReady }: SmartM
       <button
         onClick={() => void runSelect('background')}
         disabled={!!selecting}
-        title="Auto-select everything behind the subject"
+        title="Auto-select everything behind the subject (1 credit)"
         className={chipClass}
       >
         {selecting === 'background' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
