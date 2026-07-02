@@ -1,4 +1,5 @@
 import { getUserId } from '@/lib/user-id'
+import { indexedDBHelper } from '@/lib/db/indexedDB'
 import type { CreativeDirectionState } from '@/app/image-studio/constants/creative-direction-options'
 
 export type HistoryItem = {
@@ -52,6 +53,17 @@ function addDeletedId(id: string): void {
  * cache write must never break a sync or a save.
  */
 function persistHistoryCache(items: HistoryItem[]): void {
+  // Durable cache: IndexedDB has a large quota, so store the FULL items
+  // (including base64 data URIs) and accumulate them across syncs. This is what
+  // lets already-synced history survive a reopen without re-syncing. Fire-and-
+  // forget; on failure we still have the localStorage copy + Neon.
+  const durable = items.filter((item) => item.imageUrls && item.imageUrls.length > 0)
+  void indexedDBHelper.putHistoryItems(durable as unknown as { id: string; timestamp: number }[]).catch((err) => {
+    console.error('[v0] Failed to persist history to IndexedDB:', err)
+  })
+
+  // Fast synchronous fallback in localStorage — only lightweight, displayable
+  // entries (drop data URIs to fit the ~5MB quota; trim the count if needed).
   const lightweight = items.filter(
     (item) => item.imageUrls?.length && item.imageUrls.every((url) => !url.startsWith('data:')),
   )
@@ -147,6 +159,38 @@ export function getHistory(): HistoryItem[] {
   }
 }
 
+/**
+ * Durable history read used by the panel on open. Prefers the large-quota
+ * IndexedDB cache so already-synced items survive a reopen with no re-sync;
+ * on first run after the IndexedDB upgrade it seeds from the legacy localStorage
+ * cache, and it falls back to localStorage if IndexedDB is unavailable.
+ */
+export async function getHistoryDurable(): Promise<HistoryItem[]> {
+  const deletedIds = getDeletedIds()
+  const clean = (items: HistoryItem[]) =>
+    items
+      .filter((item) => item.imageUrls && item.imageUrls.length > 0 && !deletedIds.has(item.id))
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, MAX_HISTORY_ITEMS)
+
+  try {
+    const stored = (await indexedDBHelper.getAllHistoryItems()) as unknown as HistoryItem[]
+    if (stored.length > 0) return clean(stored)
+
+    // First run after the IndexedDB upgrade — migrate the localStorage cache.
+    const local = getHistory()
+    if (local.length > 0) {
+      await indexedDBHelper
+        .putHistoryItems(local as unknown as { id: string; timestamp: number }[])
+        .catch(() => {})
+    }
+    return clean(local)
+  } catch (error) {
+    console.error('[v0] IndexedDB history read failed, using localStorage:', error)
+    return clean(getHistory())
+  }
+}
+
 export type SyncResult = {
   success: boolean
   data: HistoryItem[]
@@ -226,10 +270,15 @@ export async function deleteHistoryItem(id: string): Promise<void> {
     // Track deleted ID to prevent it from coming back on sync
     addDeletedId(id)
 
-    // Remove from localStorage immediately
+    // Remove from the durable IndexedDB cache and localStorage immediately
+    void indexedDBHelper.removeHistoryItem(id).catch(() => {})
     const history = getHistory()
     const filtered = history.filter((item) => item.id !== id)
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered))
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered))
+    } catch {
+      // localStorage quota — the durable IndexedDB delete above is what matters.
+    }
 
     // Also delete from Neon database
     try {
@@ -252,14 +301,16 @@ export async function deleteHistoryItem(id: string): Promise<void> {
 
 export async function clearHistory(): Promise<void> {
   try {
-    const history = getHistory()
+    // Use the durable cache so we clear everything, not just the localStorage subset.
+    const history = await getHistoryDurable()
 
     // Track all IDs as deleted first
     for (const item of history) {
       addDeletedId(item.id)
     }
 
-    // Clear localStorage
+    // Clear the durable IndexedDB cache and localStorage
+    await indexedDBHelper.clearAllHistory().catch(() => {})
     localStorage.removeItem(HISTORY_KEY)
 
     // Delete each item from Neon

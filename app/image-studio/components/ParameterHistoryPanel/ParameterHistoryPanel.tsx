@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Clock } from 'lucide-react'
-import { getHistory, deleteHistoryItem, clearHistory, syncHistoryFromNeon, type HistoryItem } from '@/lib/history'
+import { getHistoryDurable, deleteHistoryItem, clearHistory, syncHistoryFromNeon, type HistoryItem } from '@/lib/history'
 import { toast } from 'sonner'
 import { HistoryHeader } from './HistoryHeader'
 import { HistoryItemCard } from './HistoryItemCard'
@@ -38,8 +38,8 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
-  const loadHistory = () => {
-    const items = getHistory()
+  const loadHistory = async () => {
+    const items = await getHistoryDurable()
     console.log('[v0] Loaded history:', items.length, 'items')
     setHistory(items)
   }
