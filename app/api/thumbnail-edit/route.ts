@@ -45,8 +45,10 @@ async function handlePost(request: NextRequest) {
     const result = await generateOpenAIImage({
       prompt: instruction,
       aspectRatio: closestRatio(metadata.width, metadata.height),
-      imageSize: "2K",
-      imageQuality: "auto",
+      // Match the source's resolution class; 2K-at-high made edits several
+      // times slower than the generations that produced the thumbnails.
+      imageSize: Math.max(metadata.width ?? 0, metadata.height ?? 0) >= 1500 ? "2K" : "1K",
+      imageQuality: "medium",
       referenceImageFile: imageFile,
       maskImageFile: maskFile,
     })

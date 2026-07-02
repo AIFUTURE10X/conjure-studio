@@ -46,7 +46,7 @@ const WELCOME_TEXT =
 const DEFAULT_VARIATION_INSTRUCTION =
   'subtle natural variation of this image; keep composition, subject and style identical'
 const REMOVE_LABEL = '(remove the painted area)'
-const DEFAULT_VARIANTS = 2
+const DEFAULT_VARIANTS = 1
 
 // Plain counter is enough for React keys in a single-tab chat — no need for
 // crypto.randomUUID's collision guarantees here.

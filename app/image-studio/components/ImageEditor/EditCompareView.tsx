@@ -42,7 +42,7 @@ export function EditCompareView({
 
       <div
         ref={containerRef}
-        className="relative flex-1 min-h-0 touch-none overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 select-none"
+        className="relative min-h-[320px] flex-1 touch-none overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 select-none"
         onPointerDown={wipe.onContainerPointerDown}
         onPointerMove={wipe.onContainerPointerMove}
         onPointerUp={wipe.onContainerPointerUp}

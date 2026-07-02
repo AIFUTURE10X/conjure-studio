@@ -110,8 +110,12 @@ async function handlePost(request: NextRequest) {
     const result = await generateOpenAIImage({
       prompt: instruction,
       aspectRatio: closestRatio(metadata.width, metadata.height),
-      imageSize: "2K",
-      imageQuality: "auto",
+      // Match the source's resolution class instead of always requesting 2K
+      // at auto (=high) quality: an edit shouldn't take several times longer
+      // than the generation that made the image. Uploads are capped at
+      // 1600px client-side, so 2K output only pays off for sources at that cap.
+      imageSize: Math.max(metadata.width ?? 0, metadata.height ?? 0) >= 1500 ? "2K" : "1K",
+      imageQuality: "medium",
       referenceImageFile: imageFile,
       maskImageFile: openAiMaskFile,
       n: variants,
