@@ -73,7 +73,7 @@ pub fn run() {
             let url: tauri::Url = "https://v0promptsgenie.vercel.app/".parse().expect("hardcoded URL is valid");
 
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
-                .title("V0 Prompts Genie")
+                .title("Conjure Studio")
                 .inner_size(1200.0, 900.0)
                 .min_inner_size(400.0, 500.0)
                 .resizable(true)

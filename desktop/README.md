@@ -1,6 +1,6 @@
-# V0 Prompts Genie Desktop
+# Conjure Studio Desktop
 
-Native Windows .exe wrapper for V0 Prompts Genie, built with Tauri v2.
+Native Windows .exe wrapper for Conjure Studio, built with Tauri v2.
 Loads https://v0promptsgenie.vercel.app/ using WebView2.
 
 ## Builds

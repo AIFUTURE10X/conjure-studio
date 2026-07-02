@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "V0 Prompts Genie",
+  "productName": "Conjure Studio",
   "version": "0.1.0",
   "identifier": "com.aifuture10x.v0promptsgenie",
   "build": {
