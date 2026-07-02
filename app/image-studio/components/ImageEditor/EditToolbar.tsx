@@ -4,14 +4,18 @@
  * EditToolbar
  *
  * Controls for ImageEditModal's paint phase: brush/eraser tool + size,
- * undo/clear for the mask, the erase-vs-replace AI mode, the replace
- * prompt, and the Apply action.
+ * smart subject/background selection, undo/clear for the mask, the
+ * erase-vs-replace AI mode, the replace prompt, a variant-count stepper,
+ * and the Apply action.
  */
 
 import { Eraser, Loader2, Paintbrush, Undo2, Wand2 } from 'lucide-react'
+import { SmartMaskChips } from './SmartMaskChips'
 import type { MaskTool } from './useMaskPainting'
 
 export type EditMode = 'erase' | 'replace'
+
+const MAX_VARIANTS = 3
 
 interface EditToolbarProps {
   tool: MaskTool
@@ -25,8 +29,13 @@ interface EditToolbarProps {
   onModeChange: (mode: EditMode) => void
   prompt: string
   onPromptChange: (prompt: string) => void
+  variants: number
+  onVariantsChange: (count: number) => void
   isLoading: boolean
   onApply: () => void
+  imageUrl: string
+  getDisplayDims: () => { w: number; h: number } | null
+  onMaskReady: (mask: ImageData) => void
 }
 
 const chipClass = (on: boolean) =>
@@ -38,7 +47,9 @@ export function EditToolbar({
   tool, onToolChange, brushSize, onBrushSizeChange,
   canUndo, onUndo, onClear,
   mode, onModeChange, prompt, onPromptChange,
+  variants, onVariantsChange,
   isLoading, onApply,
+  imageUrl, getDisplayDims, onMaskReady,
 }: EditToolbarProps) {
   return (
     <div className="space-y-3">
@@ -51,6 +62,8 @@ export function EditToolbar({
             <Eraser className="h-3.5 w-3.5" /> Eraser
           </button>
         </div>
+
+        <SmartMaskChips imageUrl={imageUrl} getDisplayDims={getDisplayDims} onMaskReady={onMaskReady} />
 
         <label className="flex min-w-[160px] flex-1 items-center gap-2 text-[11px] text-zinc-500">
           Brush size
@@ -99,6 +112,27 @@ export function EditToolbar({
           className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none"
         />
       )}
+
+      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+        <span>Variants</span>
+        <div className="flex gap-1">
+          {Array.from({ length: MAX_VARIANTS }, (_, i) => i + 1).map((count) => (
+            <button
+              key={count}
+              onClick={() => onVariantsChange(count)}
+              title={`Generate ${count} variant${count > 1 ? 's' : ''}`}
+              className={`h-6 w-6 rounded-md border text-xs font-semibold transition-colors ${
+                variants === count
+                  ? 'border-[#c99850] bg-[#c99850]/10 text-[#dbb56e]'
+                  : 'border-zinc-700 bg-zinc-800/70 text-zinc-400 hover:bg-zinc-700'
+              }`}
+            >
+              {count}
+            </button>
+          ))}
+        </div>
+        {variants > 1 && <span>+1 credit each</span>}
+      </div>
 
       <button
         onClick={onApply}

@@ -4,16 +4,35 @@
  * EditChatMessages
  *
  * Renders the edit-chat transcript: user instructions (with an optional
- * "area painted" chip), assistant replies, version-result cards with
- * apply/revert actions, and inline error bubbles. A trailing "Applying
- * edit…" bubble covers the in-flight request.
+ * "area painted" chip), assistant replies, unresolved multi-variant
+ * candidate rows ("Pick one to continue"), resolved version-result cards
+ * with apply/revert/re-roll/more-like-this actions, and inline error
+ * bubbles. A trailing "Applying edit…" bubble covers the in-flight request.
  */
 
-import { ImageDown, Loader2, Paintbrush, RotateCcw } from 'lucide-react'
-import { useEditChat } from '../../context/EditChatProvider'
+import { ImageDown, Loader2, Paintbrush, RotateCcw, RotateCw, Sparkles } from 'lucide-react'
+import { useEditChat, type EditChatMessage } from '../../context/EditChatProvider'
+
+/** The most recent result (resolved version or unresolved candidate row) — only it shows Re-roll. */
+function findNewestResultMessageId(messages: EditChatMessage[]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message.resultVersionIndex !== undefined || (message.candidateUrls && !message.chosenUrl)) {
+      return message.id
+    }
+  }
+  return undefined
+}
+
+const actionButtonClass =
+  'flex items-center gap-1 rounded-md border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-700'
 
 export function EditChatMessages() {
-  const { messages, versions, currentVersionIndex, isEditing, revertToVersion, applyVersionToCanvas } = useEditChat()
+  const {
+    messages, versions, currentVersionIndex, isEditing,
+    revertToVersion, applyVersionToCanvas, rerollLast, moreLikeVersion, chooseCandidate,
+  } = useEditChat()
+  const newestResultId = findNewestResultMessageId(messages)
 
   return (
     <>
@@ -45,8 +64,42 @@ export function EditChatMessages() {
           )
         }
 
+        if (message.candidateUrls && !message.chosenUrl) {
+          const isNewest = message.id === newestResultId
+          return (
+            <div key={message.id} className="flex justify-start">
+              <div className="max-w-[92%] space-y-2 rounded-lg bg-zinc-800 px-3 py-2">
+                <p className="text-xs font-medium text-zinc-300">Pick one to continue</p>
+                <div className={`grid gap-1.5 ${message.candidateUrls.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                  {message.candidateUrls.map((url, i) => (
+                    <button
+                      key={url}
+                      onClick={() => chooseCandidate(message.id, url)}
+                      title={`Use candidate ${i + 1}`}
+                      className="overflow-hidden rounded-md border border-zinc-700 transition-colors hover:border-[#c99850]"
+                    >
+                      <img src={url} alt={`Candidate ${i + 1}`} className="h-24 w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+                {isNewest && (
+                  <button
+                    onClick={() => void rerollLast()}
+                    disabled={isEditing}
+                    title="Generate a fresh set of candidates"
+                    className={`${actionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    <RotateCw className="h-3 w-3" /> Re-roll
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        }
+
         const resultIndex = message.resultVersionIndex
         const version = resultIndex !== undefined ? versions[resultIndex] : undefined
+        const isNewest = message.id === newestResultId
 
         return (
           <div key={message.id} className="flex justify-start">
@@ -63,7 +116,7 @@ export function EditChatMessages() {
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-[#dbb56e]">
                       {version.label}
                     </span>
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap justify-end gap-1.5">
                       <button
                         onClick={() => void applyVersionToCanvas(resultIndex)}
                         title="Apply this version to the canvas"
@@ -75,9 +128,27 @@ export function EditChatMessages() {
                         <button
                           onClick={() => revertToVersion(resultIndex)}
                           title="Continue editing from this version"
-                          className="flex items-center gap-1 rounded-md border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-700"
+                          className={actionButtonClass}
                         >
                           <RotateCcw className="h-3 w-3" /> Edit from this
+                        </button>
+                      )}
+                      <button
+                        onClick={() => void moreLikeVersion(resultIndex)}
+                        disabled={isEditing}
+                        title="Generate another variation of this version"
+                        className={`${actionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        <Sparkles className="h-3 w-3" /> More like this
+                      </button>
+                      {isNewest && (
+                        <button
+                          onClick={() => void rerollLast()}
+                          disabled={isEditing}
+                          title="Re-run the last instruction"
+                          className={`${actionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                        >
+                          <RotateCw className="h-3 w-3" /> Re-roll
                         </button>
                       )}
                     </div>

@@ -14,6 +14,7 @@ import { useRef, useState } from 'react'
 import { Eraser, Paintbrush, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { MaskCanvas, type MaskCanvasHandle } from '../ImageEditor/MaskCanvas'
+import { SmartMaskChips } from '../ImageEditor/SmartMaskChips'
 import { useMaskPainting, type MaskTool } from '../ImageEditor/useMaskPainting'
 import type { PendingMask } from '../../context/EditChatProvider'
 
@@ -100,6 +101,12 @@ export function MaskPickerModal({ imageUrl, onAttach, onClose }: MaskPickerModal
               </button>
             </div>
 
+            <SmartMaskChips
+              imageUrl={imageUrl}
+              getDisplayDims={() => maskCanvasRef.current?.getDims() ?? null}
+              onMaskReady={mask.setBaseMask}
+            />
+
             <label className="flex min-w-[160px] flex-1 items-center gap-2 text-[11px] text-zinc-500">
               Brush size
               <input
@@ -123,7 +130,7 @@ export function MaskPickerModal({ imageUrl, onAttach, onClose }: MaskPickerModal
             </button>
             <button
               onClick={mask.clear}
-              disabled={!mask.hasStrokes}
+              disabled={!mask.hasContent}
               title="Clear the mask"
               className="rounded-md border border-zinc-700 bg-zinc-800/70 px-3 py-2 text-xs text-zinc-300 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
             >

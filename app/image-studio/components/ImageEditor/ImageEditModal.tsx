@@ -4,10 +4,11 @@
  * ImageEditModal
  *
  * Near-fullscreen AI Edit modal for generated images: paint a mask, erase
- * or replace the painted area via /api/edit-image, then compare before vs
- * after. Keeping a result feeds it back to the caller and starts a fresh
- * mask so the user can keep refining the same image; discarding returns to
- * painting with the mask intact.
+ * or replace the painted area via /api/edit-image (optionally requesting
+ * 1-3 variants), then compare before vs after with a wipe-compare view.
+ * Keeping a result feeds it back to the caller; strokes are intentionally
+ * NOT cleared on Keep or Discard so the user can immediately re-apply or
+ * refine the same painted area (the Clear button remains available).
  */
 
 import { useCallback, useRef, useState } from 'react'
@@ -17,7 +18,7 @@ import { MaskCanvas, type MaskCanvasHandle } from './MaskCanvas'
 import { EditToolbar, type EditMode } from './EditToolbar'
 import { EditCompareView } from './EditCompareView'
 import { useMaskPainting, type MaskTool } from './useMaskPainting'
-import { parseEditResponse, prepareImageForEdit } from './upload-prep'
+import { editResponseUrls, parseEditResponse, prepareImageForEdit } from './upload-prep'
 
 export interface ImageEditModalProps {
   imageUrl: string
@@ -30,11 +31,13 @@ type Phase = 'paint' | 'compare'
 export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalProps) {
   const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl)
   const [phase, setPhase] = useState<Phase>('paint')
-  const [resultUrl, setResultUrl] = useState<string | null>(null)
+  const [resultUrls, setResultUrls] = useState<string[]>([])
+  const [selectedResultIndex, setSelectedResultIndex] = useState(0)
   const [tool, setTool] = useState<MaskTool>('brush')
   const [brushSize, setBrushSize] = useState(36)
   const [mode, setMode] = useState<EditMode>('erase')
   const [prompt, setPrompt] = useState('')
+  const [variants, setVariants] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [appliedPrompt, setAppliedPrompt] = useState('')
 
@@ -69,13 +72,16 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
       formData.append('mask', maskBlob, 'mask.png')
       formData.append('mode', mode)
       if (mode === 'replace') formData.append('prompt', trimmedPrompt)
+      formData.append('variants', String(variants))
 
       const response = await fetch('/api/edit-image', { method: 'POST', body: formData })
       const data = await parseEditResponse(response)
-      if (!response.ok || !data.image) throw new Error(data.error || 'Edit failed')
+      const urls = editResponseUrls(data)
+      if (!response.ok || urls.length === 0) throw new Error(data.error || 'Edit failed')
 
       setAppliedPrompt(mode === 'replace' ? trimmedPrompt : '')
-      setResultUrl(data.image)
+      setResultUrls(urls)
+      setSelectedResultIndex(0)
       setPhase('compare')
     } catch (error) {
       console.error('[ImageEdit] edit failed:', error)
@@ -83,20 +89,20 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
     } finally {
       setIsLoading(false)
     }
-  }, [mask, mode, prompt])
+  }, [mask, mode, prompt, variants])
 
   const handleKeep = useCallback(() => {
-    if (!resultUrl) return
-    onApply(resultUrl, appliedPrompt)
-    mask.clear()
-    setCurrentImageUrl(resultUrl)
-    setResultUrl(null)
+    const selectedUrl = resultUrls[selectedResultIndex]
+    if (!selectedUrl) return
+    onApply(selectedUrl, appliedPrompt)
+    setCurrentImageUrl(selectedUrl)
+    setResultUrls([])
     setPrompt('')
     setPhase('paint')
-  }, [resultUrl, appliedPrompt, onApply, mask])
+  }, [resultUrls, selectedResultIndex, appliedPrompt, onApply])
 
   const handleDiscard = useCallback(() => {
-    setResultUrl(null)
+    setResultUrls([])
     setPhase('paint')
   }, [])
 
@@ -134,22 +140,29 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
                 onToolChange={setTool}
                 brushSize={brushSize}
                 onBrushSizeChange={setBrushSize}
-                canUndo={mask.hasStrokes}
+                canUndo={mask.hasContent}
                 onUndo={mask.undo}
                 onClear={mask.clear}
                 mode={mode}
                 onModeChange={setMode}
                 prompt={prompt}
                 onPromptChange={setPrompt}
+                variants={variants}
+                onVariantsChange={setVariants}
                 isLoading={isLoading}
                 onApply={handleApply}
+                imageUrl={currentImageUrl}
+                getDisplayDims={() => maskCanvasRef.current?.getDims() ?? null}
+                onMaskReady={mask.setBaseMask}
               />
             </>
           ) : (
-            resultUrl && (
+            resultUrls.length > 0 && (
               <EditCompareView
                 beforeUrl={currentImageUrl}
-                afterUrl={resultUrl}
+                afterUrls={resultUrls}
+                selectedIndex={selectedResultIndex}
+                onSelectIndex={setSelectedResultIndex}
                 onKeep={handleKeep}
                 onDiscard={handleDiscard}
               />

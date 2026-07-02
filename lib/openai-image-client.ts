@@ -76,6 +76,7 @@ export async function generateOpenAIImage({
   imageQuality,
   referenceImageFile,
   maskImageFile,
+  n,
 }: {
   prompt: string
   aspectRatio: AllowedRatio
@@ -85,6 +86,8 @@ export async function generateOpenAIImage({
   referenceImageFile?: File | null
   /** PNG mask for inpainting — fully transparent areas mark what to edit. */
   maskImageFile?: File | null
+  /** Number of variants to request (1-3 in practice; passed through as-is). */
+  n?: number
 }) {
   const size = getOpenAIImageSize(aspectRatio, imageSize)
   const apiKey = getOpenAIKey()
@@ -99,6 +102,9 @@ export async function generateOpenAIImage({
     formData.append("image[]", referenceImageFile, referenceImageFile.name || "reference.png")
     if (maskImageFile && maskImageFile.size > 0) {
       formData.append("mask", maskImageFile, maskImageFile.name || "mask.png")
+    }
+    if (n && n > 1) {
+      formData.append("n", String(n))
     }
 
     const response = await fetch("https://api.openai.com/v1/images/edits", {
@@ -115,11 +121,13 @@ export async function generateOpenAIImage({
     }
 
     const data = JSON.parse(body)
-    const imageBase64 = data?.data?.[0]?.b64_json
-    if (!imageBase64) {
+    const imagesBase64: string[] = (data?.data ?? [])
+      .map((entry: { b64_json?: string }) => entry?.b64_json)
+      .filter((value: string | undefined): value is string => Boolean(value))
+    if (imagesBase64.length === 0) {
       throw new Error("No image data returned from OpenAI API")
     }
-    return { imageBase64, size }
+    return { imageBase64: imagesBase64[0], imagesBase64, size }
   }
 
   const response = await fetch("https://api.openai.com/v1/images/generations", {
@@ -149,5 +157,5 @@ export async function generateOpenAIImage({
     throw new Error("No image data returned from OpenAI API")
   }
 
-  return { imageBase64, size }
+  return { imageBase64, imagesBase64: [imageBase64], size }
 }

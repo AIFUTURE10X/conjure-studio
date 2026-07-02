@@ -95,19 +95,30 @@ export async function scaleMaskBlob(mask: Blob, width: number, height: number): 
   }
 }
 
+export interface EditResponseBody {
+  image?: string
+  images?: string[]
+  error?: string
+}
+
 /**
  * Parse an edit-route response that may not be JSON — proxies answer plain
  * text for oversized bodies (413 "Request Entity Too Large") and gateway
  * errors, which otherwise surfaces as a JSON.parse toast.
  */
-export async function parseEditResponse(response: Response): Promise<{ image?: string; error?: string }> {
+export async function parseEditResponse(response: Response): Promise<EditResponseBody> {
   const text = await response.text()
   try {
-    return JSON.parse(text) as { image?: string; error?: string }
+    return JSON.parse(text) as EditResponseBody
   } catch {
     if (response.status === 413) {
       return { error: 'The image is too large to upload. Try again — it will be compressed further.' }
     }
     return { error: `Edit failed (${response.status || 'network error'})` }
   }
+}
+
+/** Multi-variant responses carry `images`; older single-image responses carry `image`. */
+export function editResponseUrls(data: EditResponseBody): string[] {
+  return data.images?.length ? data.images : data.image ? [data.image] : []
 }

@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 import { apiError } from './http'
 import { getSessionUser } from '@/lib/auth'
 import { debitCredits, refundReservation, InsufficientCreditsError } from '@/lib/credits'
-import { imageGenerationCost, transformCost, type TransformOperation } from '@/lib/credits/cost-map'
+import { imageGenerationCost, transformCost, TRANSFORM_COSTS, type TransformOperation } from '@/lib/credits/cost-map'
 
 /**
  * Credit guard for the provider-billed generation/transform routes.
@@ -88,4 +88,12 @@ export async function imageFormCost(request: NextRequest): Promise<number> {
 
 export function flatCost(operation: TransformOperation): number {
   return transformCost(operation)
+}
+
+/** Cost for /api/edit-image: base imageEdit cost plus 1 credit per extra variant (n=1-3). */
+export async function editImageCost(request: NextRequest): Promise<number> {
+  const formData = await request.clone().formData()
+  const variants = Number.parseInt((formData.get('variants') as string) || '1', 10) || 1
+  const clamped = Math.min(Math.max(variants, 1), 3)
+  return TRANSFORM_COSTS.imageEdit + (clamped - 1)
 }

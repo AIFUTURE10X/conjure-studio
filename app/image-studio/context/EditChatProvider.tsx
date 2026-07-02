@@ -11,64 +11,42 @@
  * useImageGenerationEngine().applyEditedImage. Must be mounted inside
  * ImageGenerationProvider — it calls useImageGenerationEngine at the top
  * level of the provider component.
+ *
+ * Multi-variant responses (variants > 1) don't create a version right away:
+ * they're held on the assistant message as `candidateUrls` until the user
+ * picks one via chooseCandidate. The painted mask is intentionally NOT
+ * cleared after a send — it stays attached so re-roll/"more like this" and
+ * quick follow-ups against the same region are one click, not a repaint.
  */
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import {
+  editResponseUrls,
   loadImageElement,
   parseEditResponse,
   prepareImageForEdit,
   scaleMaskBlob,
 } from '../components/ImageEditor/upload-prep'
 import { useImageGenerationEngine } from './ImageGenerationProvider'
+import type { EditChatEngine, EditChatMessage, EditChatTarget, EditChatVersion, PendingMask } from './edit-chat-types'
 
-export interface EditChatVersion {
-  url: string
-  label: string
-  /** The instruction that produced this version, if any (absent for "Original"). */
-  promptUsed?: string
-}
-
-export interface EditChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  text?: string
-  hasMask?: boolean
-  resultVersionIndex?: number
-  isError?: boolean
-}
-
-export interface PendingMask {
-  blob: Blob
-  previewUrl: string
-}
-
-export interface EditChatTarget {
-  index: number
-  originalUrl: string
-}
-
-export interface EditChatEngine {
-  target: EditChatTarget | null
-  versions: EditChatVersion[]
-  currentVersionIndex: number
-  messages: EditChatMessage[]
-  isEditing: boolean
-  pendingMask: PendingMask | null
-  startEditChat: (index: number, url: string) => void
-  exitEditChat: () => void
-  setPendingMask: (mask: PendingMask | null) => void
-  currentImageUrl: () => string | undefined
-  sendEdit: (instruction: string) => Promise<void>
-  revertToVersion: (index: number) => void
-  applyVersionToCanvas: (index: number) => Promise<void>
-}
+export type {
+  EditChatEngine,
+  EditChatMessage,
+  EditChatTarget,
+  EditChatVersion,
+  PendingMask,
+} from './edit-chat-types'
 
 const EditChatContext = createContext<EditChatEngine | null>(null)
 
 const WELCOME_TEXT =
   'Describe the change you want — or paint an area first so the edit only touches that spot.'
+const DEFAULT_VARIATION_INSTRUCTION =
+  'subtle natural variation of this image; keep composition, subject and style identical'
+const REMOVE_LABEL = '(remove the painted area)'
+const DEFAULT_VARIANTS = 2
 
 // Plain counter is enough for React keys in a single-tab chat — no need for
 // crypto.randomUUID's collision guarantees here.
@@ -87,6 +65,8 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<EditChatMessage[]>([])
   const [isEditing, setIsEditing] = useState(false)
   const [pendingMask, setPendingMask] = useState<PendingMask | null>(null)
+  const [variants, setVariants] = useState(DEFAULT_VARIANTS)
+  const lastInstructionRef = useRef('')
 
   const startEditChat = useCallback((index: number, url: string) => {
     setTarget({ index, originalUrl: url })
@@ -94,6 +74,7 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
     setCurrentVersionIndex(0)
     setMessages([{ id: nextMessageId(), role: 'assistant', text: WELCOME_TEXT }])
     setPendingMask(null)
+    lastInstructionRef.current = ''
   }, [])
 
   const exitEditChat = useCallback(() => {
@@ -103,6 +84,7 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
     setMessages([])
     setPendingMask(null)
     setIsEditing(false)
+    lastInstructionRef.current = ''
   }, [])
 
   const currentImageUrl = useCallback(
@@ -110,18 +92,26 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
     [versions, currentVersionIndex],
   )
 
-  const sendEdit = useCallback(async (instruction: string) => {
-    const trimmed = instruction.trim()
-    if (isEditing || !target || !trimmed) return
+  // Shared edit flow. `sourceIndex` is threaded through explicitly (rather
+  // than reading currentVersionIndex state inside) so callers that just
+  // changed the working version — moreLikeVersion — don't race a stale
+  // closure from a setState that hasn't committed yet.
+  const runEdit = useCallback(async (instructionRaw: string, sourceIndex: number) => {
+    if (isEditing || !target) return
+    const trimmed = instructionRaw.trim()
+    const activeMask = pendingMask
+    const isRemove = !trimmed && !!activeMask
+    if (!trimmed && !activeMask) return
+
+    lastInstructionRef.current = trimmed
 
     setMessages((prev) => [
       ...prev,
-      { id: nextMessageId(), role: 'user', text: trimmed, hasMask: !!pendingMask },
+      { id: nextMessageId(), role: 'user', text: isRemove ? REMOVE_LABEL : trimmed, hasMask: !!activeMask },
     ])
     setIsEditing(true)
 
-    const activeMask = pendingMask
-    const sourceUrl = versions[currentVersionIndex]?.url
+    const sourceUrl = versions[sourceIndex]?.url
     const pushError = (text: string) => {
       setMessages((prev) => [...prev, { id: nextMessageId(), role: 'assistant', isError: true, text }])
     }
@@ -150,9 +140,10 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
         // The mask was painted at the source's natural size; rescale it to
         // the exact pixel size actually being uploaded.
         formData.append('mask', await scaleMaskBlob(activeMask.blob, prepared.width, prepared.height), 'mask.png')
-        formData.append('mode', 'replace')
+        formData.append('mode', isRemove ? 'erase' : 'replace')
       }
-      formData.append('prompt', trimmed)
+      if (trimmed) formData.append('prompt', trimmed)
+      formData.append('variants', String(variants))
 
       let response: Response
       try {
@@ -165,23 +156,57 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await parseEditResponse(response)
-      if (!response.ok || !data.image) {
+      const urls = editResponseUrls(data)
+      if (!response.ok || urls.length === 0) {
         pushError(data.error || 'Edit failed')
         return
       }
 
+      if (urls.length > 1) {
+        setMessages((prev) => [
+          ...prev,
+          { id: nextMessageId(), role: 'assistant', candidateUrls: urls, instruction: trimmed },
+        ])
+        return
+      }
+
       const newIndex = versions.length
-      setVersions([...versions, { url: data.image, label: `Edit ${newIndex}`, promptUsed: trimmed }])
+      setVersions([...versions, { url: urls[0], label: `Edit ${newIndex}`, promptUsed: trimmed }])
       setCurrentVersionIndex(newIndex)
       setMessages((prev) => [
         ...prev,
         { id: nextMessageId(), role: 'assistant', resultVersionIndex: newIndex, text: trimmed },
       ])
-      setPendingMask(null)
     } finally {
       setIsEditing(false)
     }
-  }, [isEditing, target, pendingMask, versions, currentVersionIndex])
+  }, [isEditing, target, pendingMask, versions, variants])
+
+  const sendEdit = useCallback(
+    (instruction: string) => runEdit(instruction, currentVersionIndex),
+    [runEdit, currentVersionIndex],
+  )
+
+  const rerollLast = useCallback(
+    () => runEdit(lastInstructionRef.current, currentVersionIndex),
+    [runEdit, currentVersionIndex],
+  )
+
+  const moreLikeVersion = useCallback((index: number) => {
+    setCurrentVersionIndex(index)
+    const instruction = versions[index]?.promptUsed ?? DEFAULT_VARIATION_INSTRUCTION
+    return runEdit(instruction, index)
+  }, [runEdit, versions])
+
+  const chooseCandidate = useCallback((messageId: string, url: string) => {
+    const message = messages.find((m) => m.id === messageId)
+    const newIndex = versions.length
+    setVersions([...versions, { url, label: `Edit ${newIndex}`, promptUsed: message?.instruction }])
+    setCurrentVersionIndex(newIndex)
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, chosenUrl: url, resultVersionIndex: newIndex } : m)),
+    )
+  }, [messages, versions])
 
   const revertToVersion = useCallback((index: number) => {
     setCurrentVersionIndex(index)
@@ -210,16 +235,22 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
     messages,
     isEditing,
     pendingMask,
+    variants,
+    setVariants,
     startEditChat,
     exitEditChat,
     setPendingMask,
     currentImageUrl,
     sendEdit,
+    rerollLast,
+    moreLikeVersion,
+    chooseCandidate,
     revertToVersion,
     applyVersionToCanvas,
   }), [
-    target, versions, currentVersionIndex, messages, isEditing, pendingMask,
-    startEditChat, exitEditChat, currentImageUrl, sendEdit, revertToVersion, applyVersionToCanvas,
+    target, versions, currentVersionIndex, messages, isEditing, pendingMask, variants,
+    startEditChat, exitEditChat, currentImageUrl, sendEdit, rerollLast, moreLikeVersion,
+    chooseCandidate, revertToVersion, applyVersionToCanvas,
   ])
 
   return <EditChatContext.Provider value={value}>{children}</EditChatContext.Provider>
