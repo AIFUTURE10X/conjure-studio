@@ -44,15 +44,17 @@ function addDeletedId(id: string): void {
 /**
  * Persist the history cache to localStorage without ever throwing. localStorage
  * is a best-effort cache (Neon is the source of truth), but older entries can
- * embed multi-MB base64 data URIs that blow past the ~5MB quota. Strip data
- * URIs, then progressively trim the item count, and finally give up silently —
- * a failed cache write must never break a sync or a save.
+ * embed multi-MB base64 data URIs that blow past the ~5MB quota. Cache only
+ * lightweight, displayable entries — drop items whose only image is a base64
+ * data URI (they come back from Neon on sync) and any with no image at all, so
+ * an emptied entry can't resurface as a blank card after a merge. Then
+ * progressively trim the item count, and finally give up silently — a failed
+ * cache write must never break a sync or a save.
  */
 function persistHistoryCache(items: HistoryItem[]): void {
-  const lightweight = items.map((item) => ({
-    ...item,
-    imageUrls: item.imageUrls.filter((url) => !url.startsWith('data:')),
-  }))
+  const lightweight = items.filter(
+    (item) => item.imageUrls?.length && item.imageUrls.every((url) => !url.startsWith('data:')),
+  )
   const candidates = [lightweight, lightweight.slice(0, 50), lightweight.slice(0, 20)]
   for (const candidate of candidates) {
     try {
@@ -135,8 +137,10 @@ export function getHistory(): HistoryItem[] {
       return []
     }
     const parsed = JSON.parse(stored) as HistoryItem[]
-    console.log("[v0] History retrieved from localStorage:", parsed.length, "items")
-    return parsed
+    // Drop blank entries (no image) so they can't render as empty cards.
+    const items = parsed.filter((item) => item.imageUrls && item.imageUrls.length > 0)
+    console.log("[v0] History retrieved from localStorage:", items.length, "items")
+    return items
   } catch (error) {
     console.error("[v0] Error loading history:", error)
     return []
@@ -199,16 +203,20 @@ function mergeHistories(neonHistory: HistoryItem[], localHistory: HistoryItem[])
   const merged = [...neonHistory]
   const existingUrls = new Set(neonHistory.flatMap(h => h.imageUrls))
   
-  // Add local items that don't exist in Neon
+  // Add local items that don't exist in Neon. Skip blank entries (no image) —
+  // an empty imageUrls array matches nothing, so it would otherwise always be
+  // appended as a duplicate blank card next to its real Neon row.
   for (const item of localHistory) {
+    if (!item.imageUrls || item.imageUrls.length === 0) continue
     const hasMatch = item.imageUrls.some(url => existingUrls.has(url))
     if (!hasMatch) {
       merged.push(item)
     }
   }
-  
-  // Sort by timestamp and limit
+
+  // Drop any blank entries (including from Neon), sort by timestamp, and limit.
   return merged
+    .filter(item => item.imageUrls && item.imageUrls.length > 0)
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, MAX_HISTORY_ITEMS)
 }
