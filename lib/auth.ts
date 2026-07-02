@@ -21,6 +21,27 @@ function resolveBaseURL(): string | undefined {
   return undefined
 }
 
+/**
+ * Origins allowed to hit the auth endpoints besides the baseURL. Needed when
+ * the app is served from a domain other than the one Vercel infers (e.g. a
+ * custom domain added after the project was created) — otherwise Better Auth
+ * rejects requests from the real site. Comma-separated env override plus the
+ * resolved base URL.
+ */
+function resolveTrustedOrigins(): string[] {
+  const origins = new Set(
+    (process.env.BETTER_AUTH_TRUSTED_ORIGINS || '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  )
+  const base = resolveBaseURL()
+  if (base) origins.add(base)
+  return [...origins]
+}
+
+const trustedOrigins = resolveTrustedOrigins()
+
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 
@@ -28,6 +49,7 @@ export const auth = betterAuth({
   database: pgPool,
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: resolveBaseURL(),
+  ...(trustedOrigins.length ? { trustedOrigins } : {}),
   emailAndPassword: {
     enabled: true,
   },

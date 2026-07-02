@@ -70,7 +70,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let url: tauri::Url = "https://v0promptsgenie.vercel.app/".parse().expect("hardcoded URL is valid");
+            let url: tauri::Url = "https://conjure.aifuturestudio.com/".parse().expect("hardcoded URL is valid");
 
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
                 .title("Conjure Studio")
