@@ -221,8 +221,10 @@ export async function syncHistoryFromNeon(): Promise<SyncResult> {
 
     console.log('[v0] Synced history from Neon:', neonHistory.length, 'items (after filtering deleted)')
 
-    // Merge with localStorage and update (also filter deleted from local)
-    const localHistory = getHistory().filter(item => !deletedIds.has(item.id))
+    // Merge against the DURABLE cache (not just localStorage) so the sync is
+    // strictly additive — it can add new/changed Neon items but never drops the
+    // already-persisted ones (which is what the reopen auto-sync depends on).
+    const localHistory = (await getHistoryDurable()).filter(item => !deletedIds.has(item.id))
     const mergedHistory = mergeHistories(neonHistory, localHistory)
     persistHistoryCache(mergedHistory)
 
@@ -234,9 +236,11 @@ export async function syncHistoryFromNeon(): Promise<SyncResult> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error('[v0] Failed to sync from Neon:', errorMessage)
+    // On failure keep whatever is durably cached instead of shrinking to the
+    // (possibly smaller/empty) localStorage copy.
     return {
       success: false,
-      data: getHistory(),
+      data: await getHistoryDurable(),
       error: errorMessage,
       syncedCount: 0
     }
