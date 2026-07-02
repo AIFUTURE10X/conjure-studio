@@ -93,29 +93,44 @@ export async function generateOpenAIImage({
   const apiKey = getOpenAIKey()
 
   if (referenceImageFile && referenceImageFile.size > 0) {
-    const formData = new FormData()
-    formData.append("model", "gpt-image-2")
-    formData.append("prompt", prompt)
-    formData.append("size", size)
-    formData.append("quality", imageQuality)
-    formData.append("output_format", "png")
-    formData.append("image[]", referenceImageFile, referenceImageFile.name || "reference.png")
-    if (maskImageFile && maskImageFile.size > 0) {
-      formData.append("mask", maskImageFile, maskImageFile.name || "mask.png")
-    }
-    if (n && n > 1) {
-      formData.append("n", String(n))
+    const buildFormData = (includeModeration: boolean) => {
+      const formData = new FormData()
+      formData.append("model", "gpt-image-2")
+      formData.append("prompt", prompt)
+      formData.append("size", size)
+      formData.append("quality", imageQuality)
+      formData.append("output_format", "png")
+      formData.append("image[]", referenceImageFile, referenceImageFile.name || "reference.png")
+      if (maskImageFile && maskImageFile.size > 0) {
+        formData.append("mask", maskImageFile, maskImageFile.name || "mask.png")
+      }
+      if (n && n > 1) {
+        formData.append("n", String(n))
+      }
+      // OpenAI's safety filter over-triggers on edits of images containing
+      // realistic people; 'low' is the documented relaxation for creative
+      // tools. Dropped on retry if the model rejects the parameter.
+      if (includeModeration) {
+        formData.append("moderation", "low")
+      }
+      return formData
     }
 
-    const response = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: formData,
-    })
+    const postEdit = (formData: FormData) =>
+      fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: formData,
+      })
 
-    const body = await response.text()
+    let response = await postEdit(buildFormData(true))
+    let body = await response.text()
+    if (!response.ok && /moderation/i.test(body) && /unknown|unrecognized|unsupported|invalid/i.test(body)) {
+      response = await postEdit(buildFormData(false))
+      body = await response.text()
+    }
     if (!response.ok) {
       throw new Error(formatOpenAIError(response.status, body))
     }
