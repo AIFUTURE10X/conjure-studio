@@ -11,6 +11,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
+import { put } from "@vercel/blob"
 import sharp from "sharp"
 import { withCreditGuard, flatCost } from "@/lib/api/guard"
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
@@ -62,7 +63,25 @@ async function handlePost(request: NextRequest) {
       maskImageFile,
     })
 
-    return NextResponse.json({ success: true, image: `data:image/png;base64,${result.imageBase64}` })
+    // Store the result in Blob and return a URL instead of a multi-MB data
+    // URI: downstream saves (history, favorites) post the image URL in JSON,
+    // and a 2K base64 payload blows Vercel's request-body cap (413). Data-URI
+    // fallback keeps local dev (no Blob token) working.
+    let imageUrl = `data:image/png;base64,${result.imageBase64}`
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const uploaded = await put(
+          `edits/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`,
+          Buffer.from(result.imageBase64, "base64"),
+          { access: "public", contentType: "image/png" },
+        )
+        imageUrl = uploaded.url
+      } catch (error) {
+        console.error("[Edit Image] Blob upload failed; falling back to data URI:", error)
+      }
+    }
+
+    return NextResponse.json({ success: true, image: imageUrl })
   } catch (error) {
     console.error("[Edit Image] Error:", error)
     return NextResponse.json(
