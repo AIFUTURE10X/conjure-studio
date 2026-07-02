@@ -109,7 +109,7 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
       <div
-        className="flex w-full max-w-5xl max-h-[92vh] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl"
+        className="flex h-[94vh] w-[96vw] max-w-[1800px] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-5 py-4">
@@ -134,6 +134,7 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
                   redraw={mask.redraw}
                   onClose={onClose}
                   reservedPx={360}
+                  maxWidthPx={1500}
                 />
               </div>
               <EditToolbar

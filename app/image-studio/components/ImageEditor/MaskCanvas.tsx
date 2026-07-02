@@ -53,6 +53,8 @@ interface MaskCanvasProps {
    * space that actually remains, so tall images can't overlap the controls.
    */
   reservedPx?: number
+  /** Max display width for the canvas; clamped to the viewport. Default 860. */
+  maxWidthPx?: number
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -66,7 +68,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function MaskCanvas(
-  { imageUrl, tool, brushSize, onStartStroke, onExtendStroke, onEndStroke, redraw, onClose, reservedPx },
+  { imageUrl, tool, brushSize, onStartStroke, onExtendStroke, onEndStroke, redraw, onClose, reservedPx, maxWidthPx },
   ref,
 ) {
   const imgRef = useRef<HTMLImageElement | null>(null)
@@ -95,7 +97,8 @@ export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function
           reservedPx != null
             ? Math.max(240, window.innerHeight * 0.92 - reservedPx)
             : window.innerHeight * MAX_DISPLAY_HEIGHT_RATIO
-        const scale = Math.min(1, MAX_DISPLAY_WIDTH / nw, maxHeight / nh)
+        const maxWidth = Math.max(320, Math.min(maxWidthPx ?? MAX_DISPLAY_WIDTH, window.innerWidth * 0.96 - 96))
+        const scale = Math.min(1, maxWidth / nw, maxHeight / nh)
         setDims({ w: Math.round(nw * scale), h: Math.round(nh * scale), nw, nh })
       } catch {
         toast.error('Could not load the image to edit')
@@ -105,7 +108,7 @@ export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function
     return () => {
       cancelled = true
     }
-  }, [imageUrl, onClose, reservedPx])
+  }, [imageUrl, onClose, reservedPx, maxWidthPx])
 
   useEffect(() => {
     if (!dims || !imgRef.current) return
@@ -118,8 +121,16 @@ export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function
   }, [redraw, dims])
 
   const pointFromEvent = (e: ReactPointerEvent<HTMLCanvasElement>): MaskPoint => {
-    const rect = overlayRef.current!.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    // Map from screen to canvas pixels via the rendered size, not 1:1 — the
+    // studio's UI-zoom control scales the whole app with a CSS transform, so
+    // the canvas can render smaller/larger than its pixel grid; without this
+    // ratio the stroke lands offset from the crosshair.
+    const canvas = overlayRef.current!
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    }
   }
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {

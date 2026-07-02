@@ -61,7 +61,7 @@ export function MaskPickerModal({ imageUrl, onAttach, onClose }: MaskPickerModal
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
       <div
-        className="flex w-full max-w-3xl max-h-[92vh] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl"
+        className="flex w-full h-[92vh] w-[92vw] max-w-[1400px] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-5 py-4">
@@ -89,6 +89,7 @@ export function MaskPickerModal({ imageUrl, onAttach, onClose }: MaskPickerModal
               redraw={mask.redraw}
               onClose={onClose}
               reservedPx={280}
+              maxWidthPx={1200}
             />
           </div>
 
