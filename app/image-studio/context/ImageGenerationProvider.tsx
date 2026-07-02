@@ -37,6 +37,7 @@ export interface ImageGenerationEngine {
   downloadImage: (url: string, index: number, prompt?: string) => Promise<void>
   removeBackground: (index: number) => Promise<void>
   upscaleToFourK: (index: number) => Promise<void>
+  applyEditedImage: (index: number, url: string, editPrompt: string) => Promise<void>
   getImageMetadata: (url: string) => Promise<ImageMetadata>
   photoRoomBgRemovalEnabled: boolean
   setPhotoRoomBgRemovalEnabled: (enabled: boolean) => void
@@ -236,6 +237,30 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     }
   }, [state.generatedImages, state.setGeneratedImages, upscaleImage])
 
+  // Feeds a kept AI Edit result back into the grid at `index`, then saves it
+  // to history the same way a fresh generation does. History failures are
+  // reported but never roll back the image swap — the edit already worked.
+  const applyEditedImage = useCallback(async (index: number, url: string, editPrompt: string) => {
+    const original = state.generatedImages[index]
+    if (!original) return
+    const updated = [...state.generatedImages]
+    updated[index] = { ...original, url }
+    state.setGeneratedImages(updated)
+    toast.success('AI edit applied')
+
+    const historyPrompt = editPrompt ? `AI edit: ${editPrompt}` : 'AI edit: erase'
+    try {
+      const saved = await saveToHistory(historyPrompt, state.aspectRatio, [url], {
+        style: state.selectedStylePreset,
+        ...(await getImageMetadata(url)),
+      })
+      if (!saved) toast.error('Edit applied, but saving to history failed')
+    } catch (error) {
+      console.error('[v0] AI edit history save error:', error)
+      toast.error('Edit applied, but saving to history failed')
+    }
+  }, [state.generatedImages, state.setGeneratedImages, state.aspectRatio, state.selectedStylePreset, saveToHistory])
+
   const value = useMemo<ImageGenerationEngine>(() => ({
     isGenerating,
     error,
@@ -245,6 +270,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     downloadImage,
     removeBackground,
     upscaleToFourK,
+    applyEditedImage,
     getImageMetadata,
     photoRoomBgRemovalEnabled,
     setPhotoRoomBgRemovalEnabled,
@@ -252,7 +278,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     setImageBgRemovalMethod,
   }), [
     isGenerating, error, generateNow, requestGenerate, clearImages, downloadImage,
-    removeBackground, upscaleToFourK, photoRoomBgRemovalEnabled, setPhotoRoomBgRemovalEnabled,
+    removeBackground, upscaleToFourK, applyEditedImage, photoRoomBgRemovalEnabled, setPhotoRoomBgRemovalEnabled,
     imageBgRemovalMethod, setImageBgRemovalMethod,
   ])
 

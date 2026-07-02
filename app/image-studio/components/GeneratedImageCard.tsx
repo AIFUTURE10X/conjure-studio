@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand } from 'lucide-react'
+import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand, Wand2 } from 'lucide-react'
 import { FavoriteButton } from './SimpleFavorites'
 
 interface GeneratedImageCardProps {
@@ -24,6 +24,7 @@ interface GeneratedImageCardProps {
   onRestoreParameters?: (params: any) => void
   onRemoveBackground?: (index: number) => Promise<void>
   onUpscale?: (index: number) => Promise<void>
+  onEdit?: () => void
 }
 
 export function GeneratedImageCard({
@@ -42,6 +43,7 @@ export function GeneratedImageCard({
   onRestoreParameters,
   onRemoveBackground,
   onUpscale,
+  onEdit,
 }: GeneratedImageCardProps) {
   const [metadata, setMetadata] = useState<{ dimensions: string; fileSize?: string } | null>(imageMetadata || null)
   const [isRemovingBg, setIsRemovingBg] = useState(false)
@@ -227,6 +229,17 @@ export function GeneratedImageCard({
                 Upscale 4K
               </>
             )}
+          </Button>
+        )}
+        {onEdit && (
+          <Button
+            onClick={onEdit}
+            size="sm"
+            className="flex-1 bg-linear-to-r from-purple-500 to-pink-500 text-white hover:opacity-90"
+            title="AI Edit — paint a mask and erase or replace part of the image"
+          >
+            <Wand2 className="w-3 h-3 mr-1" />
+            AI Edit
           </Button>
         )}
       </div>

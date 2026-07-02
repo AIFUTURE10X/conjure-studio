@@ -36,6 +36,7 @@ export const TRANSFORM_COSTS = {
   mockupPhoto: 1,
   brandKit: 3,
   thumbnailEdit: 2,
+  imageEdit: 2,
 } as const
 
 export type TransformOperation = keyof typeof TRANSFORM_COSTS

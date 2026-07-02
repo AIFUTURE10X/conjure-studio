@@ -16,7 +16,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
-import { ImageLightbox } from '../ImageLightbox'
 import { FavoritesModal } from '../SimpleFavorites'
 import { ParameterHistoryPanel } from '../ParameterHistoryPanel'
 import { MockupPhotoGenerator } from '../Logo/MockupPreview/MockupPhotoGenerator'
@@ -25,6 +24,7 @@ import { HelperPanel } from './HelperPanel'
 import { CanvasPanel } from './CanvasPanel'
 import { SettingsRail } from './SettingsRail'
 import { StudioMobileLayout } from './StudioMobileLayout'
+import { StudioLightbox } from './StudioLightbox'
 import { useStudioCore } from '../../context/useStudio'
 import { ImageGenerationProvider } from '../../context/ImageGenerationProvider'
 import { LogoGenerationProvider } from '../../context/LogoGenerationProvider'
@@ -35,7 +35,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery'
 export function StudioShell() {
   const {
     favorites, toggleFavorite, clearAll, state,
-    handleRestoreParameters, closeLightbox, navigateLightbox, handleDownloadFromLightbox,
+    handleRestoreParameters,
     showPhotoGenerator, setShowPhotoGenerator,
   } = useStudioCore()
 
@@ -82,6 +82,7 @@ export function StudioShell() {
           ) : (
             <StudioMobileLayout />
           )}
+          <StudioLightbox />
         </ThumbnailProvider>
         </HelperBridgeProvider>
         </LogoGenerationProvider>
@@ -105,15 +106,6 @@ export function StudioShell() {
           onRestoreParameters={handleRestoreParameters}
         />
       )}
-
-      <ImageLightbox
-        isOpen={state.lightboxOpen}
-        images={state.generatedImages}
-        currentIndex={state.lightboxIndex}
-        onClose={closeLightbox}
-        onNavigate={navigateLightbox}
-        onDownload={handleDownloadFromLightbox}
-      />
 
       {showPhotoGenerator && (
         <MockupPhotoGenerator onClose={() => setShowPhotoGenerator(false)} />

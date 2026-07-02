@@ -8,11 +8,13 @@
  * empty state, and generation errors.
  */
 
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ImageIcon } from 'lucide-react'
 import { UploadPanel } from '../UploadPanel'
 import { GeneratedImageCard } from '../GeneratedImageCard'
+import { ImageEditModal } from '../ImageEditor'
 import { useStudioCore } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { normalizeCreativeDirection } from '../../constants/creative-direction-options'
@@ -24,9 +26,10 @@ export function ResultsCanvas() {
   } = useStudioCore()
   const {
     isGenerating, error, clearImages, downloadImage, removeBackground,
-    upscaleToFourK, getImageMetadata,
+    upscaleToFourK, getImageMetadata, applyEditedImage,
   } = useImageGenerationEngine()
 
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const { generatedImages } = state
   const creativeDirection = normalizeCreativeDirection(state.creativeDirection)
   const cardParameters = (prompt?: string) => ({
@@ -126,6 +129,7 @@ export function ResultsCanvas() {
                 onRestoreParameters={handleRestoreParameters}
                 onRemoveBackground={removeBackground}
                 onUpscale={upscaleToFourK}
+                onEdit={() => setEditingIndex(i)}
               />
             ))}
           </div>
@@ -136,6 +140,14 @@ export function ResultsCanvas() {
         <Card className="bg-red-900/20 border-red-900/50 p-4">
           <p className="text-red-400 text-sm">{error}</p>
         </Card>
+      )}
+
+      {editingIndex !== null && generatedImages[editingIndex] && (
+        <ImageEditModal
+          imageUrl={generatedImages[editingIndex].url}
+          onApply={(url, editPrompt) => applyEditedImage(editingIndex, url, editPrompt)}
+          onClose={() => setEditingIndex(null)}
+        />
       )}
     </div>
   )

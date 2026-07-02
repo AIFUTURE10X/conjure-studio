@@ -1,9 +1,11 @@
 /**
- * API Route: Thumbnail Edit (AI inpaint)
+ * API Route: AI Edit (masked inpaint) for generated images
  *
- * Masked inpainting for the thumbnail editor — erase an object (fill from the
- * surroundings) or replace the masked area from a prompt. Uses OpenAI's
- * gpt-image-2 image-edit endpoint with a mask (transparent = edit here).
+ * Same masked-inpaint flow as /api/thumbnail-edit, exposed for the v2
+ * studio's "AI Edit" action on generated images: erase the masked area
+ * (fill from the surrounding image) or replace it from a prompt. Uses
+ * OpenAI's gpt-image-2 image-edit endpoint with a mask (transparent = edit
+ * here).
  */
 
 import { type NextRequest, NextResponse } from "next/server"
@@ -53,7 +55,7 @@ async function handlePost(request: NextRequest) {
 
     return NextResponse.json({ success: true, image: `data:image/png;base64,${result.imageBase64}` })
   } catch (error) {
-    console.error("[Thumbnail Edit] Error:", error)
+    console.error("[Edit Image] Error:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to edit image" },
       { status: 500 },
@@ -61,4 +63,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard("thumbnailEdit", flatCost("thumbnailEdit"), handlePost)
+export const POST = withCreditGuard("imageEdit", flatCost("imageEdit"), handlePost)

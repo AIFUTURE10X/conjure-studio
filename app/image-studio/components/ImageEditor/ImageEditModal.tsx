@@ -1,0 +1,161 @@
+"use client"
+
+/**
+ * ImageEditModal
+ *
+ * Near-fullscreen AI Edit modal for generated images: paint a mask, erase
+ * or replace the painted area via /api/edit-image, then compare before vs
+ * after. Keeping a result feeds it back to the caller and starts a fresh
+ * mask so the user can keep refining the same image; discarding returns to
+ * painting with the mask intact.
+ */
+
+import { useCallback, useRef, useState } from 'react'
+import { X } from 'lucide-react'
+import { toast } from 'sonner'
+import { MaskCanvas, type MaskCanvasHandle } from './MaskCanvas'
+import { EditToolbar, type EditMode } from './EditToolbar'
+import { EditCompareView } from './EditCompareView'
+import { useMaskPainting, type MaskTool } from './useMaskPainting'
+
+export interface ImageEditModalProps {
+  imageUrl: string
+  onApply: (url: string, editPrompt: string) => void
+  onClose: () => void
+}
+
+type Phase = 'paint' | 'compare'
+
+export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalProps) {
+  const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl)
+  const [phase, setPhase] = useState<Phase>('paint')
+  const [resultUrl, setResultUrl] = useState<string | null>(null)
+  const [tool, setTool] = useState<MaskTool>('brush')
+  const [brushSize, setBrushSize] = useState(36)
+  const [mode, setMode] = useState<EditMode>('erase')
+  const [prompt, setPrompt] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [appliedPrompt, setAppliedPrompt] = useState('')
+
+  const maskCanvasRef = useRef<MaskCanvasHandle>(null)
+  const mask = useMaskPainting()
+
+  const handleApply = useCallback(async () => {
+    const overlayCanvas = maskCanvasRef.current?.getOverlayCanvas()
+    const image = maskCanvasRef.current?.getImage()
+    const dims = maskCanvasRef.current?.getDims()
+    if (!overlayCanvas || !image || !dims) return
+
+    if (!mask.hasMask(overlayCanvas)) {
+      toast.error('Paint over the area to edit first')
+      return
+    }
+    const trimmedPrompt = prompt.trim()
+    if (mode === 'replace' && !trimmedPrompt) {
+      toast.error('Describe what to put in the painted area')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const [imageBlob, maskBlob] = await Promise.all([
+        mask.buildImageBlob(image, dims.nw, dims.nh),
+        mask.buildMaskBlob(overlayCanvas, dims.nw, dims.nh),
+      ])
+
+      const formData = new FormData()
+      formData.append('image', imageBlob, 'image.png')
+      formData.append('mask', maskBlob, 'mask.png')
+      formData.append('mode', mode)
+      if (mode === 'replace') formData.append('prompt', trimmedPrompt)
+
+      const response = await fetch('/api/edit-image', { method: 'POST', body: formData })
+      const data = (await response.json()) as { image?: string; error?: string }
+      if (!response.ok || !data.image) throw new Error(data.error || 'Edit failed')
+
+      setAppliedPrompt(mode === 'replace' ? trimmedPrompt : '')
+      setResultUrl(data.image)
+      setPhase('compare')
+    } catch (error) {
+      console.error('[ImageEdit] edit failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Edit failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [mask, mode, prompt])
+
+  const handleKeep = useCallback(() => {
+    if (!resultUrl) return
+    onApply(resultUrl, appliedPrompt)
+    mask.clear()
+    setCurrentImageUrl(resultUrl)
+    setResultUrl(null)
+    setPrompt('')
+    setPhase('paint')
+  }, [resultUrl, appliedPrompt, onApply, mask])
+
+  const handleDiscard = useCallback(() => {
+    setResultUrl(null)
+    setPhase('paint')
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+      <div
+        className="flex w-full max-w-5xl max-h-[92vh] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h2 className="text-sm font-semibold text-white">AI Edit</h2>
+          <button onClick={onClose} title="Close" className="text-zinc-400 transition-colors hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-5">
+          {phase === 'paint' ? (
+            <>
+              <div className="flex flex-1 min-h-0 items-center justify-center">
+                <MaskCanvas
+                  ref={maskCanvasRef}
+                  imageUrl={currentImageUrl}
+                  tool={tool}
+                  brushSize={brushSize}
+                  onStartStroke={mask.startStroke}
+                  onExtendStroke={mask.extendStroke}
+                  onEndStroke={mask.endStroke}
+                  redraw={mask.redraw}
+                  onClose={onClose}
+                />
+              </div>
+              <EditToolbar
+                tool={tool}
+                onToolChange={setTool}
+                brushSize={brushSize}
+                onBrushSizeChange={setBrushSize}
+                canUndo={mask.hasStrokes}
+                onUndo={mask.undo}
+                onClear={mask.clear}
+                mode={mode}
+                onModeChange={setMode}
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                isLoading={isLoading}
+                onApply={handleApply}
+              />
+            </>
+          ) : (
+            resultUrl && (
+              <EditCompareView
+                beforeUrl={currentImageUrl}
+                afterUrl={resultUrl}
+                onKeep={handleKeep}
+                onDiscard={handleDiscard}
+              />
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

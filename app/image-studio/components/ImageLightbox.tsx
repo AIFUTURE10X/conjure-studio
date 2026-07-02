@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Download, Wand2 } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useImageZoom } from '../hooks/useImageZoom'
 import { ZoomControls } from './ZoomControls'
@@ -13,6 +13,7 @@ interface ImageLightboxProps {
   onClose: () => void
   onNavigate: (direction: 'prev' | 'next') => void
   onDownload?: () => void
+  onEdit?: () => void
 }
 
 export function ImageLightbox({
@@ -21,7 +22,8 @@ export function ImageLightbox({
   currentIndex,
   onClose,
   onNavigate,
-  onDownload
+  onDownload,
+  onEdit,
 }: ImageLightboxProps) {
   const {
     containerRef,
@@ -74,6 +76,18 @@ export function ImageLightbox({
               aria-label="Download image"
             >
               <Download className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* AI Edit button */}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              title="AI Edit"
+              className="absolute top-4 right-28 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+              aria-label="Edit image with AI"
+            >
+              <Wand2 className="w-6 h-6" />
             </button>
           )}
 
