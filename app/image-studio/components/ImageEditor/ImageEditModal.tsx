@@ -17,6 +17,7 @@ import { MaskCanvas, type MaskCanvasHandle } from './MaskCanvas'
 import { EditToolbar, type EditMode } from './EditToolbar'
 import { EditCompareView } from './EditCompareView'
 import { useMaskPainting, type MaskTool } from './useMaskPainting'
+import { parseEditResponse, prepareImageForEdit } from './upload-prep'
 
 export interface ImageEditModalProps {
   imageUrl: string
@@ -58,19 +59,19 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
 
     setIsLoading(true)
     try {
-      const [imageBlob, maskBlob] = await Promise.all([
-        mask.buildImageBlob(image, dims.nw, dims.nh),
-        mask.buildMaskBlob(overlayCanvas, dims.nw, dims.nh),
-      ])
+      // Downscale/re-encode to fit Vercel's request-body cap; the mask must
+      // be built at the same pixel size as the uploaded image.
+      const prepared = await prepareImageForEdit(image)
+      const maskBlob = await mask.buildMaskBlob(overlayCanvas, prepared.width, prepared.height)
 
       const formData = new FormData()
-      formData.append('image', imageBlob, 'image.png')
+      formData.append('image', prepared.blob, prepared.fileName)
       formData.append('mask', maskBlob, 'mask.png')
       formData.append('mode', mode)
       if (mode === 'replace') formData.append('prompt', trimmedPrompt)
 
       const response = await fetch('/api/edit-image', { method: 'POST', body: formData })
-      const data = (await response.json()) as { image?: string; error?: string }
+      const data = await parseEditResponse(response)
       if (!response.ok || !data.image) throw new Error(data.error || 'Edit failed')
 
       setAppliedPrompt(mode === 'replace' ? trimmedPrompt : '')

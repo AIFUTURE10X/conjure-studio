@@ -138,17 +138,6 @@ export function useMaskPainting() {
     [strokes],
   )
 
-  const buildImageBlob = useCallback(
-    (img: HTMLImageElement, naturalWidth: number, naturalHeight: number): Promise<Blob> => {
-      const canvas = document.createElement('canvas')
-      canvas.width = naturalWidth
-      canvas.height = naturalHeight
-      canvas.getContext('2d')!.drawImage(img, 0, 0, naturalWidth, naturalHeight)
-      return toBlob(canvas)
-    },
-    [],
-  )
-
   return {
     strokes,
     hasStrokes: strokes.length > 0,
@@ -160,7 +149,6 @@ export function useMaskPainting() {
     redraw,
     hasMask,
     buildMaskBlob,
-    buildImageBlob,
   }
 }
 

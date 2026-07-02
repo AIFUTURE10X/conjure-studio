@@ -15,6 +15,12 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import {
+  loadImageElement,
+  parseEditResponse,
+  prepareImageForEdit,
+  scaleMaskBlob,
+} from '../components/ImageEditor/upload-prep'
 import { useImageGenerationEngine } from './ImageGenerationProvider'
 
 export interface EditChatVersion {
@@ -126,10 +132,11 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      let imageBlob: Blob
+      // Downscale/re-encode to fit Vercel's request-body cap — edit results
+      // are 2K PNGs, and reposting one unmodified for the next round 413s.
+      let prepared: Awaited<ReturnType<typeof prepareImageForEdit>>
       try {
-        const sourceResponse = await fetch(sourceUrl)
-        imageBlob = await sourceResponse.blob()
+        prepared = await prepareImageForEdit(await loadImageElement(sourceUrl))
       } catch (error) {
         console.error('[EditChat] failed to load source image:', error)
         toast.error('Network error — could not load the current image')
@@ -138,9 +145,11 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
       }
 
       const formData = new FormData()
-      formData.append('image', new File([imageBlob], 'image.png', { type: 'image/png' }))
+      formData.append('image', prepared.blob, prepared.fileName)
       if (activeMask) {
-        formData.append('mask', activeMask.blob, 'mask.png')
+        // The mask was painted at the source's natural size; rescale it to
+        // the exact pixel size actually being uploaded.
+        formData.append('mask', await scaleMaskBlob(activeMask.blob, prepared.width, prepared.height), 'mask.png')
         formData.append('mode', 'replace')
       }
       formData.append('prompt', trimmed)
@@ -155,11 +164,7 @@ export function EditChatProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const data = (await response.json().catch(() => ({}))) as {
-        success?: boolean
-        image?: string
-        error?: string
-      }
+      const data = await parseEditResponse(response)
       if (!response.ok || !data.image) {
         pushError(data.error || 'Edit failed')
         return
