@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, Download, Wand2 } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Download, Wand2, MessagesSquare } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useImageZoom } from '../hooks/useImageZoom'
 import { ZoomControls } from './ZoomControls'
@@ -14,6 +14,7 @@ interface ImageLightboxProps {
   onNavigate: (direction: 'prev' | 'next') => void
   onDownload?: () => void
   onEdit?: () => void
+  onEditInChat?: () => void
 }
 
 export function ImageLightbox({
@@ -24,6 +25,7 @@ export function ImageLightbox({
   onNavigate,
   onDownload,
   onEdit,
+  onEditInChat,
 }: ImageLightboxProps) {
   const {
     containerRef,
@@ -88,6 +90,18 @@ export function ImageLightbox({
               aria-label="Edit image with AI"
             >
               <Wand2 className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* Edit in chat button */}
+          {onEditInChat && (
+            <button
+              onClick={onEditInChat}
+              title="Edit in chat"
+              className="absolute top-4 right-40 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+              aria-label="Edit in chat"
+            >
+              <MessagesSquare className="w-6 h-6" />
             </button>
           )}
 

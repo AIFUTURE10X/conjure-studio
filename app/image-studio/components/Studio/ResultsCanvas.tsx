@@ -17,6 +17,7 @@ import { GeneratedImageCard } from '../GeneratedImageCard'
 import { ImageEditModal } from '../ImageEditor'
 import { useStudioCore } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
+import { useEditChat } from '../../context/EditChatProvider'
 import { normalizeCreativeDirection } from '../../constants/creative-direction-options'
 
 export function ResultsCanvas() {
@@ -28,6 +29,7 @@ export function ResultsCanvas() {
     isGenerating, error, clearImages, downloadImage, removeBackground,
     upscaleToFourK, getImageMetadata, applyEditedImage,
   } = useImageGenerationEngine()
+  const { startEditChat } = useEditChat()
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const { generatedImages } = state
@@ -130,6 +132,7 @@ export function ResultsCanvas() {
                 onRemoveBackground={removeBackground}
                 onUpscale={upscaleToFourK}
                 onEdit={() => setEditingIndex(i)}
+                onEditInChat={() => startEditChat(i, img.url)}
               />
             ))}
           </div>

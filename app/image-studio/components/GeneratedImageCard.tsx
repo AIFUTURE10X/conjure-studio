@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand, Wand2 } from 'lucide-react'
+import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand, Wand2, MessagesSquare } from 'lucide-react'
 import { FavoriteButton } from './SimpleFavorites'
 
 interface GeneratedImageCardProps {
@@ -25,6 +25,7 @@ interface GeneratedImageCardProps {
   onRemoveBackground?: (index: number) => Promise<void>
   onUpscale?: (index: number) => Promise<void>
   onEdit?: () => void
+  onEditInChat?: () => void
 }
 
 export function GeneratedImageCard({
@@ -44,6 +45,7 @@ export function GeneratedImageCard({
   onRemoveBackground,
   onUpscale,
   onEdit,
+  onEditInChat,
 }: GeneratedImageCardProps) {
   const [metadata, setMetadata] = useState<{ dimensions: string; fileSize?: string } | null>(imageMetadata || null)
   const [isRemovingBg, setIsRemovingBg] = useState(false)
@@ -240,6 +242,17 @@ export function GeneratedImageCard({
           >
             <Wand2 className="w-3 h-3 mr-1" />
             AI Edit
+          </Button>
+        )}
+        {onEditInChat && (
+          <Button
+            onClick={onEditInChat}
+            size="sm"
+            className="px-2 bg-zinc-800 text-[#dbb56e] hover:bg-zinc-700"
+            title="Edit in chat — describe changes conversationally"
+            aria-label="Edit in chat"
+          >
+            <MessagesSquare className="w-3 h-3" />
           </Button>
         )}
       </div>

@@ -27,6 +27,7 @@ import { StudioMobileLayout } from './StudioMobileLayout'
 import { StudioLightbox } from './StudioLightbox'
 import { useStudioCore } from '../../context/useStudio'
 import { ImageGenerationProvider } from '../../context/ImageGenerationProvider'
+import { EditChatProvider } from '../../context/EditChatProvider'
 import { LogoGenerationProvider } from '../../context/LogoGenerationProvider'
 import { HelperBridgeProvider } from '../../context/HelperBridgeProvider'
 import { ThumbnailProvider } from '../Thumbnail'
@@ -58,6 +59,7 @@ export function StudioShell() {
 
       <div className="flex-1 min-h-0 flex flex-col">
         <ImageGenerationProvider>
+        <EditChatProvider>
         <LogoGenerationProvider>
         <HelperBridgeProvider>
         <ThumbnailProvider>
@@ -86,6 +88,7 @@ export function StudioShell() {
         </ThumbnailProvider>
         </HelperBridgeProvider>
         </LogoGenerationProvider>
+        </EditChatProvider>
         </ImageGenerationProvider>
       </div>
 

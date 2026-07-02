@@ -15,10 +15,12 @@ import { ImageLightbox } from '../ImageLightbox'
 import { ImageEditModal } from '../ImageEditor'
 import { useStudioCore } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
+import { useEditChat } from '../../context/EditChatProvider'
 
 export function StudioLightbox() {
   const { state, closeLightbox, navigateLightbox, handleDownloadFromLightbox } = useStudioCore()
   const { applyEditedImage } = useImageGenerationEngine()
+  const { startEditChat } = useEditChat()
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   return (
@@ -34,6 +36,12 @@ export function StudioLightbox() {
           const index = state.lightboxIndex
           closeLightbox()
           setEditingIndex(index)
+        }}
+        onEditInChat={() => {
+          const index = state.lightboxIndex
+          const url = state.generatedImages[index]?.url
+          closeLightbox()
+          if (url) startEditChat(index, url)
         }}
       />
 

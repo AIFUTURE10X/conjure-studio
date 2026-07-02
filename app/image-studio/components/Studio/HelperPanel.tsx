@@ -17,14 +17,17 @@ import { ContextSnapshot } from '../AIHelper/ContextSnapshot'
 import { PromptSuggestionChips } from '../AIHelper/PromptSuggestionChips'
 import { PromptPreflightPanel } from '../AIHelper/PromptPreflightPanel'
 import { useAIHelperChatController } from '../AIHelper/useAIHelperChatController'
+import { EditChatPanel } from '../EditChat'
 import { useStudioCore, useStudioMode, usePendingSuggestion } from '../../context/useStudio'
 import { useStudioSnapshot } from '../../context/useStudioSnapshot'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
 import { useHelperBridge } from '../../context/HelperBridgeProvider'
+import { useEditChat } from '../../context/EditChatProvider'
 import type { ImageSettingsPatch, LogoSettingsSuggestionPatch } from '../../context/suggestion-patch'
 
 export function HelperPanel() {
+  const editChat = useEditChat()
   const { handleApplyAISuggestions, state } = useStudioCore()
   const { setMode } = useStudioMode()
   const { setPendingSuggestion } = usePendingSuggestion()
@@ -136,6 +139,17 @@ export function HelperPanel() {
       return
     }
   }, [messages, setPendingSuggestion])
+
+  // The edit chat takes over the whole panel while it has a target image;
+  // exiting it (EditChatPanel's back button) clears the target and this
+  // falls back through to the normal helper below.
+  if (editChat.target) {
+    return (
+      <div className="h-full flex flex-col bg-zinc-950 border-r border-zinc-800">
+        <EditChatPanel />
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex flex-col bg-zinc-950 border-r border-zinc-800">
