@@ -26,10 +26,16 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // On open: show the local cache instantly, then refresh from Neon in the
+  // background. The cache intentionally drops heavyweight data-URI entries
+  // (quota safety), so without this auto-sync fresh generations only appeared
+  // after pressing Sync — and vanished again on reopen.
   useEffect(() => {
     if (isOpen) {
       loadHistory()
+      void syncFromNeon(true)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   const loadHistory = () => {
@@ -75,7 +81,7 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
     }
   }
 
-  const syncFromNeon = async () => {
+  const syncFromNeon = async (silent = false) => {
     setLoading(true)
     try {
       console.log('[v0] Syncing history from Neon...')
@@ -83,19 +89,21 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
       setHistory(result.data)
 
       if (result.success) {
-        if (result.syncedCount === 0) {
-          toast.info('No history found in cloud database')
-        } else {
-          toast.success(`Synced ${result.syncedCount} items from cloud`)
+        if (!silent) {
+          if (result.syncedCount === 0) {
+            toast.info('No history found in cloud database')
+          } else {
+            toast.success(`Synced ${result.syncedCount} items from cloud`)
+          }
         }
         console.log('[v0] Synced', result.syncedCount, 'items from Neon')
       } else {
-        toast.error(`Sync failed: ${result.error}`)
+        if (!silent) toast.error(`Sync failed: ${result.error}`)
         console.error('[v0] Sync failed:', result.error)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Sync failed: ${errorMessage}`)
+      if (!silent) toast.error(`Sync failed: ${errorMessage}`)
       console.error('[v0] Failed to sync history:', error)
     } finally {
       setLoading(false)
@@ -167,7 +175,7 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
           loading={loading}
           isDeleting={isDeleting}
           onSelectAll={handleSelectAll}
-          onSync={syncFromNeon}
+          onSync={() => void syncFromNeon()}
           onBulkDelete={handleBulkDelete}
           onClearAll={handleClearAll}
           onClose={onClose}

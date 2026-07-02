@@ -72,10 +72,17 @@ export function useParameterHandlers({
 
   const handleRestoreParameters = useCallback((params?: any, imageUrl?: string) => {
     const paramsToRestore = params || loadParameters()
-    if (imageUrl) {
-      // Restore the favorited image itself as the current generated output,
-      // so it reappears in the results canvas alongside its settings.
-      setGeneratedImages([{ url: imageUrl, prompt: paramsToRestore?.mainPrompt, timestamp: Date.now() }])
+    // Restore the image(s) themselves as the current generated output, so
+    // they reappear in the results canvas alongside their settings — a single
+    // url from favorites, or the full imageUrls array from a history entry.
+    const restoredUrls: string[] = imageUrl
+      ? [imageUrl]
+      : Array.isArray(paramsToRestore?.imageUrls)
+        ? paramsToRestore.imageUrls.filter((url: unknown): url is string => typeof url === 'string' && url.length > 0)
+        : []
+    if (restoredUrls.length > 0) {
+      const timestamp = Date.now()
+      setGeneratedImages(restoredUrls.map((url) => ({ url, prompt: paramsToRestore?.mainPrompt, timestamp })))
     }
     if (paramsToRestore) {
       if (paramsToRestore.mainPrompt) setMainPrompt(paramsToRestore.mainPrompt)
