@@ -122,7 +122,7 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
         <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-5">
           {phase === 'paint' ? (
             <>
-              <div className="flex flex-1 min-h-0 items-center justify-center">
+              <div className="flex flex-1 min-h-0 items-center justify-center overflow-hidden">
                 <MaskCanvas
                   ref={maskCanvasRef}
                   imageUrl={currentImageUrl}
@@ -133,6 +133,7 @@ export function ImageEditModal({ imageUrl, onApply, onClose }: ImageEditModalPro
                   onEndStroke={mask.endStroke}
                   redraw={mask.redraw}
                   onClose={onClose}
+                  reservedPx={360}
                 />
               </div>
               <EditToolbar

@@ -77,7 +77,7 @@ export function MaskPickerModal({ imageUrl, onAttach, onClose }: MaskPickerModal
         </div>
 
         <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-5">
-          <div className="flex flex-1 min-h-0 items-center justify-center">
+          <div className="flex flex-1 min-h-0 items-center justify-center overflow-hidden">
             <MaskCanvas
               ref={maskCanvasRef}
               imageUrl={imageUrl}
@@ -88,6 +88,7 @@ export function MaskPickerModal({ imageUrl, onAttach, onClose }: MaskPickerModal
               onEndStroke={mask.endStroke}
               redraw={mask.redraw}
               onClose={onClose}
+              reservedPx={280}
             />
           </div>
 

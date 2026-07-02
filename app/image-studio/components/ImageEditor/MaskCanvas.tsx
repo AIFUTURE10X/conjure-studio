@@ -47,6 +47,12 @@ interface MaskCanvasProps {
   onEndStroke: () => void
   redraw: (canvas: HTMLCanvasElement) => void
   onClose: () => void
+  /**
+   * Vertical pixels the host modal's chrome (header, toolbar, padding)
+   * occupies inside its 92vh shell. When set, the canvas sizes itself to the
+   * space that actually remains, so tall images can't overlap the controls.
+   */
+  reservedPx?: number
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -60,7 +66,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function MaskCanvas(
-  { imageUrl, tool, brushSize, onStartStroke, onExtendStroke, onEndStroke, redraw, onClose },
+  { imageUrl, tool, brushSize, onStartStroke, onExtendStroke, onEndStroke, redraw, onClose, reservedPx },
   ref,
 ) {
   const imgRef = useRef<HTMLImageElement | null>(null)
@@ -85,7 +91,10 @@ export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function
         imgRef.current = img
         const nw = img.naturalWidth || 1024
         const nh = img.naturalHeight || 1024
-        const maxHeight = window.innerHeight * MAX_DISPLAY_HEIGHT_RATIO
+        const maxHeight =
+          reservedPx != null
+            ? Math.max(240, window.innerHeight * 0.92 - reservedPx)
+            : window.innerHeight * MAX_DISPLAY_HEIGHT_RATIO
         const scale = Math.min(1, MAX_DISPLAY_WIDTH / nw, maxHeight / nh)
         setDims({ w: Math.round(nw * scale), h: Math.round(nh * scale), nw, nh })
       } catch {
@@ -96,7 +105,7 @@ export const MaskCanvas = forwardRef<MaskCanvasHandle, MaskCanvasProps>(function
     return () => {
       cancelled = true
     }
-  }, [imageUrl, onClose])
+  }, [imageUrl, onClose, reservedPx])
 
   useEffect(() => {
     if (!dims || !imgRef.current) return
