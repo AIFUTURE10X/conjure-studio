@@ -10,6 +10,7 @@
  * image mode is fully functional inside the shell.
  */
 
+import { useEffect } from 'react'
 import { useDefaultLayout } from 'react-resizable-panels'
 import {
   ResizableHandle,
@@ -43,17 +44,30 @@ export function StudioShell() {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'studio-layout' })
   const isDesktop = useMediaQuery('(min-width: 1024px)')
 
+  // The studio is a fixed full-window workspace: every scroll lives inside a
+  // panel, never the document. Lock the page scroll while the shell is mounted
+  // (restored on navigation away) so nothing — a fresh generation, an image
+  // that grows a panel — can ever push the document taller than the viewport
+  // and expose empty space below the app.
+  useEffect(() => {
+    const html = document.documentElement
+    const { overflow: prevHtml } = html.style
+    const { overflow: prevBody } = document.body.style
+    html.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = prevHtml
+      document.body.style.overflow = prevBody
+    }
+  }, [])
+
   return (
     <div
-      className="flex flex-col bg-linear-to-br from-zinc-950 via-black to-zinc-950"
-      style={{
-        // Compensate for the interface-zoom scale (set on <html>) so the
-        // fixed shell always fills the window — no gap below / right when
-        // zoomed out, no overflow when zoomed in. Falls back to a normal
-        // full-window shell when no zoom is set.
-        width: 'calc(100vw / var(--ui-zoom, 1))',
-        height: 'calc(100dvh / var(--ui-zoom, 1))',
-      }}
+      // Pinned to the viewport (fixed + inset-0) so the shell fills the window
+      // at any interface-zoom level without relying on viewport-unit math, and
+      // stays out of document flow so it can never contribute page scroll.
+      // overflow-hidden keeps any panel overflow inside its own scroll area.
+      className="fixed inset-0 flex flex-col overflow-hidden bg-linear-to-br from-zinc-950 via-black to-zinc-950"
     >
       <StudioTopBar />
 

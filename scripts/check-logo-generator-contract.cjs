@@ -139,8 +139,8 @@ const checks = [
     pass: () => /Native transparent PNG requires ChatGPT Images 2\.0/.test(read('app/api/generate-logo/route.ts')),
   },
   {
-    name: 'default logo background removal uses PhotoRoom without Replicate',
-    pass: () => /bgRemovalMethod:\s*'photoroom'/.test(read('lib/logo-generation-contract.ts')) &&
+    name: 'default logo background removal uses Fal without Replicate',
+    pass: () => /bgRemovalMethod:\s*'fal'/.test(read('lib/logo-generation-contract.ts')) &&
       !/bgRemovalMethod:\s*'replicate'/.test(read('lib/logo-generation-contract.ts')),
   },
   {
@@ -182,7 +182,7 @@ const checks = [
       /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       !/formData\.append\('bgRemovalMethod', 'replicate'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(read('app/image-studio/components/Logo/MockupPreview/generic/useBackgroundRemoval.ts')) &&
-      /useState<BgRemovalMethod>\('photoroom'\)/.test(read('app/image-studio/hooks/useBackgroundRemoverState.ts')),
+      /useState<BgRemovalMethod>\('fal'\)/.test(read('app/image-studio/hooks/useBackgroundRemoverState.ts')),
   },
   {
     name: 'batch generation fallback metadata uses shared background removal default',
