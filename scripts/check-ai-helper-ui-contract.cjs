@@ -60,7 +60,7 @@ const checks = [
         /Aspect Ratio/.test(rail) &&
         /Camera Angle/.test(rail) &&
         /Style Strength/.test(rail) &&
-        /PhotoRoom BG/.test(rail) &&
+        /Background Removal/.test(rail) &&
         /Reference Image/.test(rail) &&
         /suggestion=\{diff\(/.test(rail) &&
         /line-through/.test(field) &&
@@ -893,12 +893,12 @@ const checks = [
         /setUseImageBgRemoval/.test(state) &&
         /usePhotoRoomBgRemoval/.test(state) &&
         /setUsePhotoRoomBgRemoval/.test(state) &&
-        /checked=\{photoRoomBgRemovalEnabled\}/.test(imageRail) &&
-        /setPhotoRoomBgRemovalEnabled\(e\.target\.checked\)/.test(imageRail) &&
-        /PhotoRoom BG/.test(imageRail) &&
+        /value=\{imageBgRemovalMethod\}/.test(imageRail) &&
+        /setImageBgRemovalMethod\(/.test(imageRail) &&
+        /Background Removal/.test(imageRail) &&
         /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval/.test(imageEngine) &&
-        /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(imageEngine) &&
-        /if \(!photoRoomBgRemovalEnabled\)/.test(imageEngine) &&
+        /formData\.append\('bgRemovalMethod', imageBgRemovalMethod\)/.test(imageEngine) &&
+        /if \(imageBgRemovalMethod === 'none'\)/.test(imageEngine) &&
         /imageBgRemovalEnabled: state\.useImageBgRemoval/.test(studioSnapshot) &&
         /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval \? 'photoroom' : 'none'/.test(studioSnapshot) &&
         /logoBgRemovalMethod: logo\.bgRemovalMethod/.test(studioSnapshot) &&
