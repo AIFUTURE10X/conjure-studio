@@ -164,7 +164,7 @@ const checks = [
     pass: () => {
       const input = read('app/image-studio/components/AIHelper/ChatInput.tsx')
       return /items-end/.test(input) &&
-        /min-h-\[96px\]/.test(input) &&
+        /min-h-\[120px\]/.test(input) &&
         /w-12/.test(input)
     },
   },

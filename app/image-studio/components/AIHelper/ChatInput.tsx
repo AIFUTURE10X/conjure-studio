@@ -1,8 +1,13 @@
 'use client'
 
 import { ImageIcon, Send, Square } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { AIHelperMode } from '../../hooks/useAIHelper'
+
+// The composer starts tall enough to see a few lines (min-h-[120px]) and grows
+// with the text up to this cap, after which it scrolls internally instead of
+// pushing the chat off-screen. Keep in sync with the max-h-[360px] class.
+const MAX_TEXTAREA_HEIGHT = 360
 
 interface ChatInputProps {
   input: string
@@ -19,6 +24,22 @@ interface ChatInputProps {
 export function ChatInput({ input, setInput, mode, isLoading, hasImages, pendingQuestion, onSend, onCancelRequest, onImageUpload }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Grow the composer to fit its content (up to MAX), then let it scroll. The
+  // CSS min-height is the floor; here we only ever set an explicit height when
+  // the content needs more room. Measured in a rAF so the first pass runs after
+  // layout settles (measuring mid-mount can report a stale, oversized height).
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`
+  }, [])
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(autoResize)
+    return () => cancelAnimationFrame(raf)
+  }, [input, autoResize])
 
   useEffect(() => {
     if (pendingQuestion && !isLoading) {
@@ -60,9 +81,9 @@ export function ChatInput({ input, setInput, mode, isLoading, hasImages, pending
           }}
           placeholder={pendingQuestion ? 'Answer the follow-up question...' : defaultPlaceholder}
           aria-label={pendingQuestion ? 'Answer follow-up question' : 'Describe prompt idea'}
-          className="min-h-[96px] flex-1 px-4 py-3 bg-zinc-800 border border-[#c99850]/30 rounded text-sm leading-6 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#c99850]/50 resize-none"
+          className="min-h-[120px] max-h-[360px] flex-1 px-4 py-3 bg-zinc-800 border border-[#c99850]/30 rounded text-sm leading-6 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#c99850]/50 resize-none overflow-y-auto"
           disabled={isLoading}
-          rows={3}
+          rows={1}
         />
         <button
           onClick={isLoading ? onCancelRequest : onSend}
