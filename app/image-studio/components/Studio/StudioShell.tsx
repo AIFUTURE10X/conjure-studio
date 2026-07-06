@@ -44,7 +44,7 @@ export function StudioShell() {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'studio-layout' })
   const isDesktop = useMediaQuery('(min-width: 1024px)')
 
-  // The studio is a fixed full-window workspace: every scroll lives inside a
+  // The studio is a full-window workspace: every scroll lives inside a
   // panel, never the document. Lock the page scroll while the shell is mounted
   // (restored on navigation away) so nothing — a fresh generation, an image
   // that grows a panel — can ever push the document taller than the viewport
@@ -63,11 +63,20 @@ export function StudioShell() {
 
   return (
     <div
-      // Pinned to the viewport (fixed + inset-0) so the shell fills the window
-      // at any interface-zoom level without relying on viewport-unit math, and
-      // stays out of document flow so it can never contribute page scroll.
-      // overflow-hidden keeps any panel overflow inside its own scroll area.
-      className="fixed inset-0 flex flex-col overflow-hidden bg-linear-to-br from-zinc-950 via-black to-zinc-950"
+      // Size the shell IN-FLOW to the zoom-compensated viewport rather than with
+      // position:fixed. Under the interface-zoom CSS `zoom` on <html>, a fixed
+      // inset-0 box mis-computes its containing block on the first layout pass in
+      // the installed/standalone app — the shell fills only part of the window
+      // until a reflow (a manual zoom change) corrects it. An in-flow height
+      // resolves correctly at first paint on every surface. overflow-hidden clips
+      // panel overflow, and the html/body scroll-lock above keeps the *document*
+      // from ever scrolling — together they stop the empty-space-below /
+      // jump-on-generate bug without needing fixed positioning.
+      className="flex flex-col overflow-hidden bg-linear-to-br from-zinc-950 via-black to-zinc-950"
+      style={{
+        width: 'calc(100vw / var(--ui-zoom, 1))',
+        height: 'calc(100dvh / var(--ui-zoom, 1))',
+      }}
     >
       <StudioTopBar />
 
