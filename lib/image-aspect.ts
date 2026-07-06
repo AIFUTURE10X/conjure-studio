@@ -22,7 +22,8 @@ export function closestRatio(width?: number, height?: number): Ratio {
 
 const EXACT_SIZE_MIN_EDGE = 256
 const EXACT_SIZE_MAX_EDGE = 2048
-const roundTo16 = (value: number) => Math.min(EXACT_SIZE_MAX_EDGE, Math.max(EXACT_SIZE_MIN_EDGE, Math.round(value / 16) * 16))
+const clampEdge = (value: number) =>
+  Math.min(EXACT_SIZE_MAX_EDGE, Math.max(EXACT_SIZE_MIN_EDGE, Math.round(value / 16) * 16))
 
 /**
  * gpt-image-2 accepts arbitrary WxH (each edge divisible by 16, aspect
@@ -36,5 +37,17 @@ export function exactOpenAISize(width?: number, height?: number): string | undef
   if (!width || !height) return undefined
   const ratio = width / height
   if (ratio < 1 / 3 || ratio > 3) return undefined
-  return `${roundTo16(width)}x${roundTo16(height)}`
+
+  // Scale the whole image so both edges land within [256, 2048] while keeping
+  // the source aspect ratio. Clamping each edge independently (the previous
+  // behavior) skews the aspect whenever only one edge is out of range — e.g.
+  // 1600x3000 became 1600x2048 — making gpt-image edit on a wrong-shaped canvas
+  // that pixelLockComposite then stretches back. The 1:3–3:1 guard above means
+  // the shrink-to-fit and grow-to-fit factors can never conflict.
+  const longEdge = Math.max(width, height)
+  const shortEdge = Math.min(width, height)
+  let scale = Math.min(1, EXACT_SIZE_MAX_EDGE / longEdge)
+  scale = Math.max(scale, EXACT_SIZE_MIN_EDGE / shortEdge)
+
+  return `${clampEdge(width * scale)}x${clampEdge(height * scale)}`
 }

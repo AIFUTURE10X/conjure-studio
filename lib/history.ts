@@ -250,12 +250,16 @@ export async function syncHistoryFromNeon(): Promise<SyncResult> {
 function mergeHistories(neonHistory: HistoryItem[], localHistory: HistoryItem[]): HistoryItem[] {
   const merged = [...neonHistory]
   const existingUrls = new Set(neonHistory.flatMap(h => h.imageUrls))
-  
+  const existingIds = new Set(neonHistory.map(h => h.id))
+
   // Add local items that don't exist in Neon. Skip blank entries (no image) —
   // an empty imageUrls array matches nothing, so it would otherwise always be
-  // appended as a duplicate blank card next to its real Neon row.
+  // appended as a duplicate blank card next to its real Neon row. Match on the
+  // durable id as well as image URLs so an already-synced row can't reappear as
+  // a second card if its stored URL was rewritten server-side.
   for (const item of localHistory) {
     if (!item.imageUrls || item.imageUrls.length === 0) continue
+    if (existingIds.has(item.id)) continue
     const hasMatch = item.imageUrls.some(url => existingUrls.has(url))
     if (!hasMatch) {
       merged.push(item)

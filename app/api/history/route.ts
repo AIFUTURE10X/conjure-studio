@@ -25,6 +25,20 @@ function localOnlyResponse(body: Record<string, unknown> = {}, init?: ResponseIn
   return NextResponse.json({ code: 'database_unconfigured', localOnly: true, ...body }, init)
 }
 
+/**
+ * True for URLs already stored in our own Vercel Blob store (durable + public,
+ * e.g. an edit result from uploadEditImage). Re-uploading these would mint a
+ * new history/ URL that no longer matches the copy the client already holds,
+ * which resurfaces the item as a duplicate card on the next sync.
+ */
+function isDurableBlobUrl(url: string) {
+  try {
+    return new URL(url).hostname.endsWith('.public.blob.vercel-storage.com')
+  } catch {
+    return false
+  }
+}
+
 /** Neon returns JSONB as a parsed object, but tolerate a string too. */
 function parseMetadata(value: unknown) {
   if (!value) return undefined
@@ -139,6 +153,16 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i]
+
+      // Already in our durable Blob store: keep the URL as-is so it stays
+      // identical to the copy the client saved locally (avoids sync duplicates)
+      // and so we don't store a second copy of the same asset.
+      if (isDurableBlobUrl(imageUrl)) {
+        storedImageUrls.push(imageUrl)
+        blobUrls.push(imageUrl)
+        continue
+      }
+
       let blobUrl: string | null = null
       try {
         let imageBuffer: Buffer
