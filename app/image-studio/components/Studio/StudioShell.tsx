@@ -34,6 +34,7 @@ import { HelperBridgeProvider } from '../../context/HelperBridgeProvider'
 import { ThumbnailProvider } from '../Thumbnail'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { useZoomedViewportSize } from '../../hooks/useZoomedViewportSize'
+import { useFirstPaintReflowNudge } from '../../hooks/useFirstPaintReflowNudge'
 
 export function StudioShell() {
   const {
@@ -45,6 +46,7 @@ export function StudioShell() {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'studio-layout' })
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const viewport = useZoomedViewportSize()
+  useFirstPaintReflowNudge()
 
   // The studio is a full-window workspace: every scroll lives inside a
   // panel, never the document. Lock the page scroll while the shell is mounted
