@@ -33,6 +33,7 @@ import { LogoGenerationProvider } from '../../context/LogoGenerationProvider'
 import { HelperBridgeProvider } from '../../context/HelperBridgeProvider'
 import { ThumbnailProvider } from '../Thumbnail'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
+import { useZoomedViewportSize } from '../../hooks/useZoomedViewportSize'
 
 export function StudioShell() {
   const {
@@ -43,6 +44,7 @@ export function StudioShell() {
 
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: 'studio-layout' })
   const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const viewport = useZoomedViewportSize()
 
   // The studio is a full-window workspace: every scroll lives inside a
   // panel, never the document. Lock the page scroll while the shell is mounted
@@ -63,20 +65,19 @@ export function StudioShell() {
 
   return (
     <div
-      // Size the shell IN-FLOW to the zoom-compensated viewport rather than with
-      // position:fixed. Under the interface-zoom CSS `zoom` on <html>, a fixed
-      // inset-0 box mis-computes its containing block on the first layout pass in
-      // the installed/standalone app — the shell fills only part of the window
-      // until a reflow (a manual zoom change) corrects it. An in-flow height
-      // resolves correctly at first paint on every surface. overflow-hidden clips
-      // panel overflow, and the html/body scroll-lock above keeps the *document*
-      // from ever scrolling — together they stop the empty-space-below /
-      // jump-on-generate bug without needing fixed positioning.
+      // Size the shell IN-FLOW to explicit, JS-measured pixels rather than with
+      // position:fixed or viewport units. The installed app's webview (WebView2)
+      // can resolve viewport units — and a fixed box's containing block — against
+      // a stale window size on the first layout pass and never re-resolve them,
+      // which rendered the studio cramped into the top of the window. The hook
+      // measures window.innerWidth/innerHeight (always current), compensates for
+      // the interface-zoom CSS `zoom` on <html>, and re-measures on resize/zoom
+      // change, so the shell fills the window on every surface. overflow-hidden
+      // clips panel overflow, and the html/body scroll-lock above keeps the
+      // *document* from ever scrolling — together they stop the
+      // empty-space-below / jump-on-generate behavior.
       className="flex flex-col overflow-hidden bg-linear-to-br from-zinc-950 via-black to-zinc-950"
-      style={{
-        width: 'calc(100vw / var(--ui-zoom, 1))',
-        height: 'calc(100dvh / var(--ui-zoom, 1))',
-      }}
+      style={{ width: viewport.width, height: viewport.height }}
     >
       <StudioTopBar />
 

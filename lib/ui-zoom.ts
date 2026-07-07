@@ -11,6 +11,9 @@ export const UI_ZOOM_MIN = 0.5
 export const UI_ZOOM_MAX = 2
 export const UI_ZOOM_STEP = 0.1
 
+/** Fired on window whenever applyUiZoom changes the document zoom. */
+export const UI_ZOOM_EVENT = 'ui-zoom-change'
+
 /** Clamp to the supported range and round to whole percent (avoids float drift). */
 export const clampUiZoom = (zoom: number): number =>
   Math.min(UI_ZOOM_MAX, Math.max(UI_ZOOM_MIN, Math.round(zoom * 100) / 100))
@@ -28,6 +31,18 @@ export function applyUiZoom(zoom: number): void {
     // to `100vw / zoom` × `100dvh / zoom` and still fill the window.
     root.style.setProperty('--ui-zoom', String(zoom))
   }
+  window.dispatchEvent(new Event(UI_ZOOM_EVENT))
+}
+
+/**
+ * The zoom currently applied to <html> — the inline style set by applyUiZoom
+ * or the pre-paint boot script in app/layout.tsx. 1 when no zoom is applied.
+ */
+export function readAppliedUiZoom(): number {
+  if (typeof document === 'undefined') return 1
+  const raw = document.documentElement.style.zoom
+  const parsed = raw ? Number.parseFloat(String(raw)) : 1
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
 }
 
 export function readStoredUiZoom(): number {
