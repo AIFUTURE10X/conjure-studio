@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { urlToBase64 } from '../utils/export-utils'
+
 export type ImageSize = "1K" | "2K" | "4K"
 export type GenerationModel = "gemini-3.1-flash-image-preview" | "gemini-3-pro-image-preview" | "gemini-2.5-flash-image" | "gpt-image-2"
 export type ReferenceMode = "replicate" | "inspire"
@@ -40,7 +42,9 @@ export function useImageGeneration(
     setIsUpscaling(true)
     try {
       const formData = new FormData()
-      formData.append('imageBase64', imageUrl)
+      // The upscale API decodes imageBase64 with Buffer.from(..., 'base64'),
+      // so a remote Blob URL must be fetched and converted to a data URL first.
+      formData.append('imageBase64', await urlToBase64(imageUrl))
       formData.append('targetResolution', target)
       formData.append('method', 'fast')
       const response = await fetch('/api/upscale-logo', { method: 'POST', body: formData })
