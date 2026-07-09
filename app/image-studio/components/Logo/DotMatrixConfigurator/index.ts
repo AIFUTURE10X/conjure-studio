@@ -1,0 +1,11 @@
+// DotMatrixConfigurator sub-components barrel exports
+export { OptionButton, OptionButtonSmall, ToggleSwitch } from './OptionButton'
+export { BrandTab } from './BrandTab'
+export { DotsTab } from './DotsTab'
+export { ColorsTab } from './ColorsTab'
+export { TypographyTab } from './TypographyTab'
+export { MaterialsTab } from './MaterialsTab'
+export { LayoutTab } from './LayoutTab'
+export { EffectsTab } from './EffectsTab'
+export { AdvancedTab } from './AdvancedTab'
+export { ConfigFooter } from './ConfigFooter'

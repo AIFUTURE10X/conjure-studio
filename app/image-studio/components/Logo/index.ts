@@ -1,0 +1,16 @@
+export { LogoPromptSection } from './LogoPromptSection'
+export { LogoStyleSelector } from './LogoStyleSelector'
+export { LogoAdvancedSettings } from './LogoAdvancedSettings'
+export { LogoPreviewPanel } from './LogoPreviewPanel'
+export { LogoActionButtons } from './LogoActionButtons'
+export { EraserToolModal } from './EraserToolModal'
+
+// Dot Matrix 3D Configurator and sub-components
+export { DotMatrixConfigurator } from './DotMatrixConfigurator'
+export { FancyFontGrid, getFontById, FANCY_FONT_STYLES, FONT_CATEGORIES } from './FancyFontGrid'
+export { LetterColorPicker, LETTER_COLOR_PALETTE } from './LetterColorPicker'
+export { MaterialSelector, getMaterialById, MATERIAL_OPTIONS, MATERIAL_CATEGORIES } from './MaterialSelector'
+export { ExpandedColorPicker, EXPANDED_COLOR_PRESETS, COLOR_CATEGORIES, GRADIENT_DEFINITIONS } from './ExpandedColorPicker'
+export { DepthSlider, getDepthPromptDescription, DEPTH_PRESETS } from './DepthSlider'
+export { TextEffectsPanel, TEXT_OUTLINE_OPTIONS, GLOW_EFFECT_OPTIONS, TEXT_TEXTURE_OPTIONS, LETTER_EFFECT_OPTIONS } from './TextEffectsPanel'
+export { IconSelector, getIconById, getPositionById, getIconPromptDescription, ICON_OPTIONS, ICON_CATEGORIES, POSITION_OPTIONS } from './IconSelector'
