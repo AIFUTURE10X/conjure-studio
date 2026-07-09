@@ -129,8 +129,6 @@ export function CanvasSection({
               color={selectedColor}
               onError={onPhotoLoadError}
             />
-          ) : effectiveProductImageUrl ? (
-            <div className="absolute inset-0 bg-zinc-800" />
           ) : (
             <ShapeComponent
               color={selectedColor}
