@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/windows-schema.json",
+  "identifier": "default",
+  "description": "Default capability for main window",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["https://v0promptsgenie.vercel.app/*"]
+  },
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "opener:allow-open-url"
+  ]
+}

@@ -1,0 +1,89 @@
+use tauri::{WebviewUrl, WebviewWindowBuilder};
+
+const EXTERNAL_LINK_INTERCEPTOR: &str = r#"
+(function () {
+  function log() { try { console.log.apply(console, ["[desktop]"].concat([].slice.call(arguments))); } catch (e) {} }
+
+  function isExternal(href) {
+    try {
+      var u = new URL(href, window.location.href);
+      if (!/^https?:$/.test(u.protocol)) return false;
+      return u.host !== window.location.host;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function openExternal(href) {
+    var ipc = window.__TAURI_INTERNALS__;
+    if (!ipc || typeof ipc.invoke !== "function") {
+      log("IPC bridge missing, cannot open", href);
+      return false;
+    }
+    log("opening externally:", href);
+    ipc.invoke("plugin:opener|open_url", { url: href, with: null })
+      .then(function () { log("opener succeeded"); })
+      .catch(function (err) { log("opener failed:", err); });
+    return true;
+  }
+
+  document.addEventListener(
+    "click",
+    function (e) {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      var node = e.target;
+      while (node && node !== document.body) {
+        if (node.tagName === "A" && node.href) {
+          var href = node.href;
+          var blank = node.target === "_blank";
+          if (blank || isExternal(href)) {
+            if (openExternal(href)) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }
+          return;
+        }
+        node = node.parentNode;
+      }
+    },
+    true
+  );
+
+  var origOpen = window.open;
+  window.open = function (url, target) {
+    if (url && (target === "_blank" || isExternal(url))) {
+      if (openExternal(String(url))) return null;
+    }
+    return origOpen.apply(this, arguments);
+  };
+
+  log("link interceptor installed");
+})();
+"#;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let url: tauri::Url = "https://conjure.aifuturestudio.com/".parse().expect("hardcoded URL is valid");
+
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+                .title("Conjure Studio")
+                .inner_size(1200.0, 900.0)
+                .min_inner_size(400.0, 500.0)
+                .resizable(true)
+                .center()
+                .initialization_script(EXTERNAL_LINK_INTERCEPTOR)
+                .devtools(true)
+                .build()?;
+
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
