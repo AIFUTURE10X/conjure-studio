@@ -6,7 +6,7 @@
  * Manages custom products, selection state, and save-to-history logic.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { getMockupConfig, customUploadConfig } from './configs'
 import { getSubCategoryById, DEFAULT_SUB_CATEGORY_ID, DEFAULT_MOCKUP_ID } from './categories'
@@ -102,7 +102,13 @@ export function useProductMockupsState({ brandName, onLogoUrlChange }: UseProduc
     return undefined
   }, [localStorage.customProducts])
 
-  const currentConfig = getProductConfig(selectedMockupId)
+  // Memoized so a custom product's spread config keeps one identity across
+  // renders — a fresh object each render cascades through GenericMockup's
+  // handleReset -> controls effect -> setControls into an infinite loop.
+  const currentConfig = useMemo(
+    () => getProductConfig(selectedMockupId),
+    [getProductConfig, selectedMockupId],
+  )
   const currentCustomProduct = localStorage.customProducts.find(p => p.id === selectedMockupId)
 
   // Handle sub-category selection
