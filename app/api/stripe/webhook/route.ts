@@ -8,8 +8,10 @@ import { pgPool } from '@/lib/db/pool'
  * POST /api/stripe/webhook — signature-verified Stripe events.
  *
  * checkout.session.completed grants the purchased credits. The ledger
- * idempotency key is the Stripe event id, so webhook retries (or manual
- * replays) can never grant twice.
+ * idempotency key is the Stripe checkout session id, so duplicate
+ * deliveries of the same completed checkout can never grant twice — even
+ * when Stripe delivers them as separate Event objects with different event
+ * ids (which retries and at-least-once delivery both allow).
  */
 
 export async function POST(request: NextRequest) {
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const result = await grantCredits(userId, credits, `purchase:${packId}`, `stripe:${event.id}`, {
+      const result = await grantCredits(userId, credits, `purchase:${packId}`, `stripe:session:${session.id}`, {
         checkoutSessionId: session.id,
         amountTotal: session.amount_total,
         currency: session.currency,
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
       }
 
       console.log(
-        `[stripe/webhook] ${result.applied ? 'granted' : 'already granted'} ${credits} credits to ${userId} (event ${event.id})`,
+        `[stripe/webhook] ${result.applied ? 'granted' : 'already granted'} ${credits} credits to ${userId} (session ${session.id}, event ${event.id})`,
       )
     } catch (error) {
       console.error('[stripe/webhook] grant failed:', error)
