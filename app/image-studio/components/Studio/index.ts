@@ -1,0 +1,8 @@
+export { StudioShell } from './StudioShell'
+export { StudioTopBar } from './StudioTopBar'
+export { HelperPanel } from './HelperPanel'
+export { CanvasPanel } from './CanvasPanel'
+export { ResultsCanvas } from './ResultsCanvas'
+export { LogoCanvas } from './LogoCanvas'
+export { PromptDock } from './PromptDock'
+export { SettingsRail } from './SettingsRail'

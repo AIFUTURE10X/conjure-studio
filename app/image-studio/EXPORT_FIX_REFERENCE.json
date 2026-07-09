@@ -1,0 +1,79 @@
+{
+  "title": "Export Fix Reference - DO NOT MODIFY",
+  "dateFixed": "December 2024",
+  "problem": {
+    "summary": "Exports fail when generatedLogo.url is a Vercel Blob URL instead of a data URL",
+    "symptoms": [
+      "PNG Download: Browser navigates to URL instead of downloading",
+      "SVG/Upscale: API receives URL string instead of base64, fails to decode",
+      "PDF: Was drawing checkerboard pattern (removed per user request)"
+    ]
+  },
+  "rootCause": {
+    "explanation": "After background removal, images are uploaded to Vercel Blob and generatedLogo.url contains a remote URL. Code that assumed data URLs broke when receiving remote URLs.",
+    "urlTypes": {
+      "dataUrl": "data:image/png;base64,... (works directly with APIs)",
+      "vercelBlobUrl": "https://xxx.blob.vercel-storage.com/... (must fetch first)"
+    }
+  },
+  "solutions": {
+    "pngDownload": {
+      "pattern": "Fetch + Blob",
+      "files": [
+        "app/image-studio/hooks/useLogoGeneration.ts",
+        "app/image-studio/components/Logo/LogoLightbox.tsx"
+      ],
+      "code": "const downloadLogo = async (logo: GeneratedLogo) => {\n  try {\n    // Fetch the image and create a blob for proper download\n    // This fixes issues with Vercel Blob URLs opening in tab instead of downloading\n    const response = await fetch(logo.url)\n    const blob = await response.blob()\n    const blobUrl = URL.createObjectURL(blob)\n\n    const link = document.createElement('a')\n    link.href = blobUrl\n    const sanitizedPrompt = logo.prompt\n      .toLowerCase()\n      .replace(/[^a-z0-9]+/g, '-')\n      .substring(0, 30)\n    link.download = `logo-${sanitizedPrompt}-${Date.now()}.png`\n    document.body.appendChild(link)\n    link.click()\n    document.body.removeChild(link)\n    URL.revokeObjectURL(blobUrl)\n  } catch (err) {\n    console.error('[Logo] Download failed:', err)\n  }\n}"
+    },
+    "urlToBase64": {
+      "pattern": "Convert URL to Base64 Before API Call",
+      "files": [
+        "app/image-studio/hooks/useLogoPanelHandlers.ts"
+      ],
+      "usedBy": ["handleExportSvg", "handleUpscale"],
+      "code": "// Fetch the image and convert to base64 for the API\n// This fixes issues when generatedLogo.url is a Vercel Blob URL instead of data URL\nconst imageResponse = await fetch(generatedLogo.url)\nconst imageBlob = await imageResponse.blob()\nconst imageBase64 = await new Promise<string>((resolve) => {\n  const reader = new FileReader()\n  reader.onloadend = () => resolve(reader.result as string)\n  reader.readAsDataURL(imageBlob)\n})\n\nconst formData = new FormData()\nformData.append('imageBase64', imageBase64)\n// ... rest of API call"
+    },
+    "pdfExport": {
+      "pattern": "No Checkerboard",
+      "files": [
+        "app/image-studio/hooks/useLogoPanelHandlers.ts"
+      ],
+      "code": "const x = (pdfWidth - imgWidth) / 2\nconst y = (pdfHeight - imgHeight) / 2\n\n// Draw the logo on the PDF (transparent areas will show PDF's default white background)\npdf.addImage(img, 'PNG', x, y, imgWidth, imgHeight)\n\ntoast.success('PDF exported successfully!')"
+    }
+  },
+  "filesModified": [
+    {
+      "file": "app/image-studio/hooks/useLogoGeneration.ts",
+      "function": "downloadLogo",
+      "change": "Fetch + blob download"
+    },
+    {
+      "file": "app/image-studio/components/Logo/LogoLightbox.tsx",
+      "function": "handleDownload",
+      "change": "Fetch + blob download"
+    },
+    {
+      "file": "app/image-studio/hooks/useLogoPanelHandlers.ts",
+      "function": "handleUpscale",
+      "change": "Convert URL to base64"
+    },
+    {
+      "file": "app/image-studio/hooks/useLogoPanelHandlers.ts",
+      "function": "handleExportSvg",
+      "change": "Convert URL to base64"
+    },
+    {
+      "file": "app/image-studio/hooks/useLogoPanelHandlers.ts",
+      "function": "handleExportPdf",
+      "change": "Removed checkerboard"
+    }
+  ],
+  "testingChecklist": [
+    "Generate a logo",
+    "Click 'BG' button to remove background (creates Vercel Blob URL)",
+    "Export PNG - downloads as file, not opens in tab",
+    "Export SVG - downloads without error",
+    "Export PDF - shows logo on white background",
+    "Upscale - works without error"
+  ]
+}
