@@ -1,0 +1,14 @@
+{
+  "github": { "enabled": false },
+  "git": {
+    "deploymentEnabled": {
+      "review-base-empty": false,
+      "review-1-core-backend": false,
+      "review-2-shell-shared": false,
+      "review-3-studio-framework": false,
+      "review-4-logo": false,
+      "review-5-thumbnail": false,
+      "layout-fix-review-base": false
+    }
+  }
+}
