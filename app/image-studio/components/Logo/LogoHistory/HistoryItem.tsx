@@ -36,6 +36,8 @@ interface HistoryItemProps {
   canSelect: boolean
   /** Hide the "Use Settings" button (for mockups that don't have generation settings) */
   hideUseSettings?: boolean
+  /** Open the full-size lightbox view of this logo */
+  onPreview?: () => void
 }
 
 export function HistoryItem({
@@ -48,6 +50,7 @@ export function HistoryItem({
   onUseSettings,
   onLoadImage,
   onSendToMockups,
+  onPreview,
   canSelect,
   hideUseSettings = false
 }: HistoryItemProps) {
@@ -114,8 +117,12 @@ export function HistoryItem({
         {isSelected && <Check className="w-3 h-3" />}
       </button>
 
-      {/* Thumbnail */}
-      <div className="relative aspect-square rounded overflow-hidden mb-2 bg-zinc-900">
+      {/* Thumbnail — click for the full-size lightbox view */}
+      <div
+        className={`relative aspect-square rounded overflow-hidden mb-2 bg-zinc-900 ${onPreview ? 'cursor-zoom-in' : ''}`}
+        title={onPreview ? 'Click for larger view' : undefined}
+        onClick={onPreview}
+      >
         <img
           src={item.imageUrl}
           alt="Generated logo"

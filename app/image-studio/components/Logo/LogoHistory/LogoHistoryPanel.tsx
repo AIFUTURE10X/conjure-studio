@@ -7,11 +7,13 @@
  * Toolbar extracted to HistoryToolbar.tsx to keep files under 300 lines.
  */
 
-import { useState, useEffect, MutableRefObject } from 'react'
+import { useState, useEffect, useMemo, MutableRefObject } from 'react'
 import { History, ChevronDown, ChevronUp, Heart } from 'lucide-react'
 import { HistoryItem } from './HistoryItem'
 import { HistoryToolbar } from './HistoryToolbar'
 import { useLogoHistory, LogoHistoryItem } from './useLogoHistory'
+import { ImageLightbox } from '../../ImageLightbox'
+import { usePreviewLightbox } from '../../../hooks/usePreviewLightbox'
 
 interface LogoHistoryPanelProps {
   onUseSettings?: (item: LogoHistoryItem) => void
@@ -86,6 +88,13 @@ export function LogoHistoryPanel({
   const displayItems = showFavoritesOnly
     ? styleFilteredItems.filter(i => i.isFavorited)
     : styleFilteredItems
+
+  // Large view: arrows browse exactly what's displayed (current filters).
+  const previewImages = useMemo(
+    () => displayItems.map((i) => ({ url: i.imageUrl, prompt: i.prompt })),
+    [displayItems],
+  )
+  const lightbox = usePreviewLightbox(previewImages)
 
   // Count favorites within filtered items
   const filteredFavoritesCount = styleFilteredItems.filter(i => i.isFavorited).length
@@ -215,6 +224,10 @@ export function LogoHistoryPanel({
                     onSendToMockups={onSendToMockups ? () => onSendToMockups(item) : undefined}
                     canSelect={true}
                     hideUseSettings={filterStyle === 'mockup'}
+                    onPreview={() => {
+                      const flatIndex = displayItems.findIndex((d) => d.id === item.id)
+                      if (flatIndex >= 0) lightbox.open(flatIndex)
+                    }}
                   />
                 </div>
               ))}
@@ -241,6 +254,15 @@ export function LogoHistoryPanel({
           </p>
         </div>
       )}
+
+      <ImageLightbox
+        isOpen={lightbox.isOpen}
+        images={previewImages}
+        currentIndex={lightbox.index ?? 0}
+        onClose={lightbox.close}
+        onNavigate={lightbox.navigate}
+        onDownload={() => void lightbox.download()}
+      />
     </div>
   )
 }
