@@ -1,5 +1,13 @@
 import { getUserId } from '@/lib/user-id'
 import { indexedDBHelper } from '@/lib/db/indexedDB'
+import {
+  addDeletedId,
+  addDeletedUrls,
+  clearTombstones,
+  getDeletedIds,
+  getDeletedUrls,
+  isTombstoned,
+} from '@/lib/history-tombstones'
 import type { CreativeDirectionState } from '@/app/image-studio/constants/creative-direction-options'
 
 export type HistoryItem = {
@@ -17,30 +25,7 @@ export type HistoryItem = {
 }
 
 const HISTORY_KEY = "image_generation_history"
-const DELETED_IDS_KEY = "history_deleted_ids"
 const MAX_HISTORY_ITEMS = 100
-
-// Track deleted IDs to prevent them from coming back on sync
-function getDeletedIds(): Set<string> {
-  try {
-    const data = localStorage.getItem(DELETED_IDS_KEY)
-    return data ? new Set(JSON.parse(data)) : new Set()
-  } catch {
-    return new Set()
-  }
-}
-
-function addDeletedId(id: string): void {
-  try {
-    const existing = getDeletedIds()
-    existing.add(id)
-    // Keep only last 500 deleted IDs to prevent unbounded growth
-    const arr = Array.from(existing).slice(-500)
-    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(arr))
-  } catch (err) {
-    console.error('[v0] Failed to save deleted ID:', err)
-  }
-}
 
 /**
  * Persist the history cache to localStorage without ever throwing. localStorage
@@ -130,6 +115,15 @@ export async function saveToHistory(
 
       if (response.ok) {
         console.log('[v0] ✅ History saved to Neon database:', responseData)
+        // Adopt Neon's id for the cached copy. The cache was written under a
+        // client UUID, but Neon assigns its own serial id — leaving both in
+        // play means a later delete tombstones/DELETEs an id Neon has never
+        // heard of, and the sync resurrects the row. One id everywhere fixes
+        // that at the root.
+        const savedId = (responseData as { historyItem?: { id?: unknown } })?.historyItem?.id
+        if (savedId != null && String(savedId) !== newItem.id && !String(savedId).startsWith('local-')) {
+          reidentifyCachedItem(newItem.id, String(savedId))
+        }
       } else {
         console.error('[v0] ❌ Failed to save history to Neon:', response.status, responseData)
       }
@@ -138,6 +132,20 @@ export async function saveToHistory(
     }
   } catch (error) {
     console.error("[v0] Error saving to history:", error)
+  }
+}
+
+/** Rewrite a cached item's id (localStorage + IndexedDB) after Neon assigns one. */
+function reidentifyCachedItem(oldId: string, newId: string): void {
+  try {
+    const history = getHistory()
+    const index = history.findIndex((item) => item.id === oldId)
+    if (index === -1) return
+    history[index] = { ...history[index], id: newId }
+    persistHistoryCache(history)
+    void indexedDBHelper.removeHistoryItem(oldId).catch(() => {})
+  } catch (error) {
+    console.error('[v0] Failed to adopt Neon history id:', error)
   }
 }
 
@@ -167,9 +175,10 @@ export function getHistory(): HistoryItem[] {
  */
 export async function getHistoryDurable(): Promise<HistoryItem[]> {
   const deletedIds = getDeletedIds()
+  const deletedUrls = getDeletedUrls()
   const clean = (items: HistoryItem[]) =>
     items
-      .filter((item) => item.imageUrls && item.imageUrls.length > 0 && !deletedIds.has(item.id))
+      .filter((item) => item.imageUrls && item.imageUrls.length > 0 && !isTombstoned(item, deletedIds, deletedUrls))
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, MAX_HISTORY_ITEMS)
 
@@ -202,8 +211,9 @@ export async function syncHistoryFromNeon(): Promise<SyncResult> {
   try {
     const userId = getUserId()
     const deletedIds = getDeletedIds()
+    const deletedUrls = getDeletedUrls()
     console.log('[v0] Syncing history from Neon for user:', userId)
-    console.log('[v0] Filtering out', deletedIds.size, 'deleted items')
+    console.log('[v0] Filtering out', deletedIds.size, 'deleted ids /', deletedUrls.size, 'deleted urls')
 
     const response = await fetch(`/api/history?userId=${userId}`)
 
@@ -214,9 +224,10 @@ export async function syncHistoryFromNeon(): Promise<SyncResult> {
     }
 
     const data = await response.json()
-    // Filter out items that were deleted locally
+    // Filter out items that were deleted locally — by id, or by image URL for
+    // rows whose Neon id never matched the cached copy (legacy UUID cache ids).
     const neonHistory = (data.history as HistoryItem[]).filter(
-      item => !deletedIds.has(item.id)
+      item => !isTombstoned(item, deletedIds, deletedUrls)
     )
 
     console.log('[v0] Synced history from Neon:', neonHistory.length, 'items (after filtering deleted)')
@@ -224,7 +235,7 @@ export async function syncHistoryFromNeon(): Promise<SyncResult> {
     // Merge against the DURABLE cache (not just localStorage) so the sync is
     // strictly additive — it can add new/changed Neon items but never drops the
     // already-persisted ones (which is what the reopen auto-sync depends on).
-    const localHistory = (await getHistoryDurable()).filter(item => !deletedIds.has(item.id))
+    const localHistory = (await getHistoryDurable()).filter(item => !isTombstoned(item, deletedIds, deletedUrls))
     const mergedHistory = mergeHistories(neonHistory, localHistory)
     persistHistoryCache(mergedHistory)
 
@@ -275,8 +286,17 @@ function mergeHistories(neonHistory: HistoryItem[], localHistory: HistoryItem[])
 
 export async function deleteHistoryItem(id: string): Promise<void> {
   try {
-    // Track deleted ID to prevent it from coming back on sync
+    // Track the deleted id AND the item's image URLs so no sync can bring it
+    // back — the URL tombstone covers rows whose Neon id differs from the
+    // cached id (legacy UUID entries) or whose Neon DELETE fails below.
     addDeletedId(id)
+    try {
+      const cached = (await getHistoryDurable()).find((item) => item.id === id)
+        ?? getHistory().find((item) => item.id === id)
+      addDeletedUrls(cached?.imageUrls)
+    } catch {
+      // Tombstoning by id still applies.
+    }
 
     // Remove from the durable IndexedDB cache and localStorage immediately
     void indexedDBHelper.removeHistoryItem(id).catch(() => {})
@@ -312,9 +332,11 @@ export async function clearHistory(): Promise<void> {
     // Use the durable cache so we clear everything, not just the localStorage subset.
     const history = await getHistoryDurable()
 
-    // Track all IDs as deleted first
+    // Track everything as deleted first — ids and image URLs — so the wipe
+    // sticks even if some Neon deletes below fail.
     for (const item of history) {
       addDeletedId(item.id)
+      addDeletedUrls(item.imageUrls)
     }
 
     // Clear the durable IndexedDB cache and localStorage
@@ -322,19 +344,28 @@ export async function clearHistory(): Promise<void> {
     localStorage.removeItem(HISTORY_KEY)
 
     // Delete each item from Neon
+    let allRemoteDeletesSucceeded = true
     for (const item of history) {
       try {
-        await fetch(`/api/history?id=${encodeURIComponent(item.id)}&userId=${encodeURIComponent(getUserId())}`, {
+        const response = await fetch(`/api/history?id=${encodeURIComponent(item.id)}&userId=${encodeURIComponent(getUserId())}`, {
           method: 'DELETE'
         })
+        if (!response.ok) allRemoteDeletesSucceeded = false
       } catch (err) {
+        allRemoteDeletesSucceeded = false
         console.error('[v0] Failed to delete item from Neon:', item.id, err)
       }
     }
 
-    // Clear deleted IDs tracking since DB is now clean
-    localStorage.removeItem(DELETED_IDS_KEY)
-    console.log('[v0] Cleared all history from localStorage and Neon')
+    // Only drop the tombstones once the cloud is confirmed clean. Clearing
+    // them after failed deletes is what used to resurrect the entire history
+    // on the next sync.
+    if (allRemoteDeletesSucceeded) {
+      clearTombstones()
+      console.log('[v0] Cleared all history from local caches and Neon')
+    } else {
+      console.warn('[v0] Some Neon deletes failed — keeping tombstones so the wipe survives future syncs')
+    }
   } catch (error) {
     console.error("[v0] Error clearing history:", error)
   }
