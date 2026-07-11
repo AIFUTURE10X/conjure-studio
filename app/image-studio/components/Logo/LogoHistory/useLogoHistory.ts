@@ -7,20 +7,25 @@
  * Combines data operations, sync, and selection management
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import type { LogoHistoryItem, LogoHistoryState } from './types'
 import { useLogoHistoryData, saveToLocal, getUserId } from './useLogoHistoryData'
 import { useLogoHistorySync, addDeletedIds } from './useLogoHistorySync'
+import { logoHistoryStore } from './logoHistoryStore'
 
 // Re-export types for backwards compatibility
 export type { LogoHistoryItem, LogoHistoryState } from './types'
 
 export function useLogoHistory() {
-  const [state, setState] = useState<LogoHistoryState>({
-    items: [],
-    isLoading: true,
-    isSyncing: false
-  })
+  // Shared across every mounted panel (inline bar, pop-out modal, mockup
+  // dropdown) — a delete in one place updates all of them at once. Selection
+  // stays per-instance.
+  const state = useSyncExternalStore(
+    logoHistoryStore.subscribe,
+    logoHistoryStore.getState,
+    logoHistoryStore.getState,
+  )
+  const setState = logoHistoryStore.setState
   const [selectedForComparison, setSelectedForComparison] = useState<string[]>([])
 
   // Data operations hook
