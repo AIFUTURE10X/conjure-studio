@@ -177,11 +177,11 @@ const checks = [
       !/handleBulkRemoveBackground/.test(read('app/image-studio/components/GeneratePanel.tsx')),
   },
   {
-    name: 'manual background removal uses PhotoRoom and avoids Replicate',
+    name: 'manual background removal uses fal (the BG Remover default) and avoids Replicate',
     pass: () => /if \(!photoRoomBgRemovalEnabled\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
+      /formData\.append\('bgRemovalMethod', 'fal'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
       !/formData\.append\('bgRemovalMethod', 'replicate'\)/.test(read('app/image-studio/components/GeneratePanel.tsx')) &&
-      /formData\.append\('bgRemovalMethod', 'photoroom'\)/.test(read('app/image-studio/components/Logo/MockupPreview/generic/useBackgroundRemoval.ts')) &&
+      /formData\.append\('bgRemovalMethod', 'fal'\)/.test(read('app/image-studio/components/Logo/MockupPreview/generic/useBackgroundRemoval.ts')) &&
       /useState<BgRemovalMethod>\('fal'\)/.test(read('app/image-studio/hooks/useBackgroundRemoverState.ts')),
   },
   {

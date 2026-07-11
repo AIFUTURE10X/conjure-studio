@@ -71,7 +71,7 @@ export const CONJURE_BRAND_PRESETS: ConjureBrandPreset[] = [
     textMode: 'ai-text',
     aspectRatio: '1:1',
     resolution: '4K',
-    bgRemovalMethod: 'photoroom',
+    bgRemovalMethod: 'fal',
     chips: ['Monogram', 'Tech', 'Metallic', '1:1', '4K'],
   },
   {
@@ -95,7 +95,7 @@ export const CONJURE_BRAND_PRESETS: ConjureBrandPreset[] = [
     textMode: 'exact-text-overlay',
     aspectRatio: '3:2',
     resolution: '4K',
-    bgRemovalMethod: 'photoroom',
+    bgRemovalMethod: 'fal',
     chips: ['Icon + Wordmark', 'Modern', 'Flat Vector', '3:2', '4K'],
   },
   {
@@ -119,7 +119,7 @@ export const CONJURE_BRAND_PRESETS: ConjureBrandPreset[] = [
     textMode: 'exact-text-overlay',
     aspectRatio: '1:1',
     resolution: '4K',
-    bgRemovalMethod: 'photoroom',
+    bgRemovalMethod: 'fal',
     chips: ['Emblem', 'Luxury', 'Foil', '1:1', '4K'],
   },
 ]
