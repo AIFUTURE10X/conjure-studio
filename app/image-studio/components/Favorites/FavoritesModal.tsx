@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Heart, X, Download, RotateCcw, Trash2, Check } from 'lucide-react'
 import { NeonStatusBadge } from '../NeonStatusBadge'
+import { ImageLightbox } from '../ImageLightbox'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { usePreviewLightbox } from '../../hooks/usePreviewLightbox'
 import type { FavoriteImage } from '@/lib/db/dbService'
 
 interface FavoritesModalProps {
@@ -19,6 +21,8 @@ interface FavoritesModalProps {
 export function FavoritesModal({ favorites, onClose, onRemove, onClearAll, onRestoreParameters }: FavoritesModalProps) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const previewImages = useMemo(() => favorites.map((fav) => ({ url: fav.url })), [favorites])
+  const lightbox = usePreviewLightbox(previewImages)
 
   const handleToggleSelect = (url: string) => {
     setSelectedItems(prev => {
@@ -124,12 +128,22 @@ export function FavoritesModal({ favorites, onClose, onRemove, onClearAll, onRes
                   onRemove={onRemove}
                   onRestore={handleRestore}
                   hasRestoreHandler={!!onRestoreParameters}
+                  onPreview={() => lightbox.open(idx)}
                 />
               ))}
             </div>
           )}
         </div>
       </Card>
+
+      <ImageLightbox
+        isOpen={lightbox.isOpen}
+        images={previewImages}
+        currentIndex={lightbox.index ?? 0}
+        onClose={lightbox.close}
+        onNavigate={lightbox.navigate}
+        onDownload={() => void lightbox.download()}
+      />
     </div>
   )
 }
@@ -143,9 +157,10 @@ interface FavoriteCardProps {
   onRemove: (url: string) => void
   onRestore: (fav: FavoriteImage) => void
   hasRestoreHandler: boolean
+  onPreview: () => void
 }
 
-function FavoriteCard({ fav, idx, isSelected, onToggleSelect, onDownload, onRemove, onRestore, hasRestoreHandler }: FavoriteCardProps) {
+function FavoriteCard({ fav, idx, isSelected, onToggleSelect, onDownload, onRemove, onRestore, hasRestoreHandler, onPreview }: FavoriteCardProps) {
   const [fileSize, setFileSize] = useState<string | null>(null)
 
   // Calculate file size on mount (fallback if metadata.fileSize is missing)
@@ -200,7 +215,8 @@ function FavoriteCard({ fav, idx, isSelected, onToggleSelect, onDownload, onRemo
         <Button onClick={(e) => { e.stopPropagation(); onRemove(fav.url) }} size="sm" className="bg-red-500/80 hover:bg-red-600/90 text-white backdrop-blur-sm h-8 px-2"><X className="w-4 h-4" /></Button>
       </div>
 
-      <div className="absolute inset-0 cursor-pointer z-10" onClick={() => { if (fav.metadata?.params || fav.metadata?.parameters) onRestore(fav) }} />
+      {/* Click the image for the large lightbox view; Restore stays on its button. */}
+      <div className="absolute inset-0 cursor-zoom-in z-10" title="Click for larger view" onClick={onPreview} />
     </div>
   )
 }

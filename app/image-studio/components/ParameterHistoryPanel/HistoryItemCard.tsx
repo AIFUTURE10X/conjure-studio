@@ -19,6 +19,7 @@ interface HistoryItemCardProps {
   onRestore: (item: HistoryItem) => void
   onDelete: (id: string, e: React.MouseEvent) => void
   onDownload: (imageUrl: string, index: number) => void
+  onPreview: (item: HistoryItem) => void
 }
 
 export function HistoryItemCard({
@@ -28,6 +29,7 @@ export function HistoryItemCard({
   onRestore,
   onDelete,
   onDownload,
+  onPreview,
 }: HistoryItemCardProps) {
   return (
     <Card
@@ -89,7 +91,14 @@ export function HistoryItemCard({
               </div>
             )}
 
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <div
+              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 cursor-zoom-in"
+              title="Click for larger view"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPreview(item)
+              }}
+            >
               <Button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -102,6 +111,10 @@ export function HistoryItemCard({
                 Download
               </Button>
               <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRestore(item)
+                }}
                 size="sm"
                 className="bg-[#c99850] hover:bg-[#dbb56e] text-black"
               >

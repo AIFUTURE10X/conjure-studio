@@ -6,13 +6,15 @@
  * Panel for viewing and managing generation parameter history
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Clock } from 'lucide-react'
 import { getHistoryDurable, deleteHistoryItem, clearHistory, syncHistoryFromNeon, type HistoryItem } from '@/lib/history'
 import { toast } from 'sonner'
 import { HistoryHeader } from './HistoryHeader'
 import { HistoryItemCard } from './HistoryItemCard'
+import { ImageLightbox } from '../ImageLightbox'
+import { usePreviewLightbox } from '../../hooks/usePreviewLightbox'
 
 interface ParameterHistoryPanelProps {
   isOpen: boolean
@@ -25,6 +27,21 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
   const [loading, setLoading] = useState(false)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Every image across all history items, flattened so the lightbox arrows
+  // browse the whole history (multi-image items contribute each image).
+  const previewImages = useMemo(
+    () =>
+      history.flatMap((item) =>
+        (item.imageUrls ?? []).map((url) => ({ url, prompt: item.prompt })),
+      ),
+    [history],
+  )
+  const lightbox = usePreviewLightbox(previewImages)
+  const openPreviewFor = (item: HistoryItem) => {
+    const flatIndex = previewImages.findIndex((image) => image.url === item.imageUrls?.[0])
+    if (flatIndex >= 0) lightbox.open(flatIndex)
+  }
 
   // On open: show the local cache instantly, then refresh from Neon in the
   // background. The cache intentionally drops heavyweight data-URI entries
@@ -202,12 +219,22 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
                   onRestore={handleRestore}
                   onDelete={handleDelete}
                   onDownload={handleDownloadImage}
+                  onPreview={openPreviewFor}
                 />
               ))}
             </div>
           )}
         </div>
       </Card>
+
+      <ImageLightbox
+        isOpen={lightbox.isOpen}
+        images={previewImages}
+        currentIndex={lightbox.index ?? 0}
+        onClose={lightbox.close}
+        onNavigate={lightbox.navigate}
+        onDownload={() => void lightbox.download()}
+      />
     </div>
   )
 }
