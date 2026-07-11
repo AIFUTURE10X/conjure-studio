@@ -29,7 +29,7 @@ export function CanvasPanel() {
       {mode === 'thumbnail' && <ThumbnailCanvas />}
 
       <Card
-        className={`flex-1 min-h-0 m-3 bg-zinc-900/90 border border-zinc-800 overflow-hidden ${
+        className={`flex-1 min-h-0 m-3 bg-zinc-900/90 border border-zinc-800 overflow-clip ${
           mode !== 'mockups' ? 'hidden' : ''
         }`}
       >

@@ -18,6 +18,7 @@ import { ModelSelector, type GenerationModel, type ImageSize } from './GenerateP
 import { ReferenceImageUpload, type ReferenceImage } from './GeneratePanel/ReferenceImageUpload'
 import { PromptInputs } from './GeneratePanel/PromptInputs'
 import { PresetControls } from './GeneratePanel/PresetControls'
+import { scrollContainerToElement } from '../utils/scroll-utils'
 import { downloadImageAsFile } from '../utils/export-utils'
 import { buildFinalImagePrompt } from '../utils/build-image-prompt'
 import {
@@ -111,7 +112,9 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     const generatedImagesRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => { if (controlledSeed !== undefined) setSeedInternal(controlledSeed) }, [controlledSeed])
-    useEffect(() => { if (generatedImages.length > 0) setTimeout(() => generatedImagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100) }, [generatedImages.length])
+    // Scoped scroll: scrollIntoView would also scroll overflow-hidden ancestors
+    // (the studio shell included), shoving the whole app off the top.
+    useEffect(() => { if (generatedImages.length > 0) setTimeout(() => scrollContainerToElement(generatedImagesRef.current), 100) }, [generatedImages.length])
 
     const activeSeed = controlledSeed ?? seed
     const setSeed = setControlledSeed ?? setSeedInternal

@@ -43,7 +43,7 @@ export function ChatInput({ input, setInput, mode, isLoading, hasImages, pending
 
   useEffect(() => {
     if (pendingQuestion && !isLoading) {
-      textareaRef.current?.focus()
+      textareaRef.current?.focus({ preventScroll: true })
     }
   }, [pendingQuestion, isLoading])
 

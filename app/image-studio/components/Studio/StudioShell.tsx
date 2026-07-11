@@ -57,8 +57,10 @@ export function StudioShell() {
     const html = document.documentElement
     const { overflow: prevHtml } = html.style
     const { overflow: prevBody } = document.body.style
-    html.style.overflow = 'hidden'
-    document.body.style.overflow = 'hidden'
+    // 'clip' (not 'hidden'): a clipped box is not a scroll container at all,
+    // so focus()/scrollIntoView can never scroll the document programmatically.
+    html.style.overflow = 'clip'
+    document.body.style.overflow = 'clip'
     return () => {
       html.style.overflow = prevHtml
       document.body.style.overflow = prevBody
@@ -74,11 +76,14 @@ export function StudioShell() {
       // which rendered the studio cramped into the top of the window. The hook
       // measures window.innerWidth/innerHeight (always current), compensates for
       // the interface-zoom CSS `zoom` on <html>, and re-measures on resize/zoom
-      // change, so the shell fills the window on every surface. overflow-hidden
-      // clips panel overflow, and the html/body scroll-lock above keeps the
-      // *document* from ever scrolling — together they stop the
-      // empty-space-below / jump-on-generate behavior.
-      className="flex flex-col overflow-hidden bg-linear-to-br from-zinc-950 via-black to-zinc-950"
+      // change, so the shell fills the window on every surface. overflow-clip
+      // (not hidden — a hidden box is still programmatically scrollable, so a
+      // focus() or scrollIntoView inside a panel could scroll the whole app
+      // off the top of the window) makes the shell a non-scroll container,
+      // and the html/body clip above does the same for the document — together
+      // they stop the empty-space-below / jump-on-generate / shift-to-top
+      // behaviors for good.
+      className="flex flex-col overflow-clip bg-linear-to-br from-zinc-950 via-black to-zinc-950"
       style={{ width: viewport.width, height: viewport.height }}
     >
       <StudioTopBar />
@@ -95,7 +100,9 @@ export function StudioShell() {
               defaultLayout={defaultLayout}
               onLayoutChanged={onLayoutChanged}
             >
-              <ResizablePanel id="helper" defaultSize={22} minSize={14} collapsible>
+              {/* minSize 20: below ~200px the helper composer and rail controls
+                  wrap into unusable slivers; collapsing stays available. */}
+              <ResizablePanel id="helper" defaultSize={22} minSize={20} collapsible>
                 <HelperPanel />
               </ResizablePanel>
               <ResizableHandle withHandle className="bg-zinc-800" />
@@ -103,7 +110,7 @@ export function StudioShell() {
                 <CanvasPanel />
               </ResizablePanel>
               <ResizableHandle withHandle className="bg-zinc-800" />
-              <ResizablePanel id="settings-rail" defaultSize={22} minSize={14} collapsible>
+              <ResizablePanel id="settings-rail" defaultSize={22} minSize={20} collapsible>
                 <SettingsRail />
               </ResizablePanel>
             </ResizablePanelGroup>

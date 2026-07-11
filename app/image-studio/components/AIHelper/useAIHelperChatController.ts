@@ -22,6 +22,7 @@ import {
   normalizeDirectCommand,
 } from '../../utils/helper-commands'
 import { buildSuggestionPatchFromFollowUp } from '../../utils/helper-suggestion-patch'
+import { scrollContainerToBottom } from '../../utils/scroll-utils'
 
 export interface AIHelperPromptSettings {
   activeTab?: string
@@ -109,7 +110,10 @@ export function useAIHelperChatController({
 
   const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, sharedProjectBrief, activeTaskContext, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  // Scroll only the chat's own list. scrollIntoView also scrolls every
+  // scrollable ancestor — overflow-hidden clippers included — which shoved
+  // the whole studio off the top of the window in the installed app.
+  useEffect(() => { scrollContainerToBottom(messagesEndRef.current) }, [messages])
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])

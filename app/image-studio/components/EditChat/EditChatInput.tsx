@@ -37,7 +37,7 @@ export function EditChatInput() {
 
   const handleChipPick = (fill: string) => {
     setInput((prev) => (prev ? `${prev}${fill}` : fill))
-    textareaRef.current?.focus()
+    textareaRef.current?.focus({ preventScroll: true })
   }
 
   const sourceUrl = currentImageUrl()
