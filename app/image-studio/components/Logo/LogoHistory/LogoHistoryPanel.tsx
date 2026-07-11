@@ -29,6 +29,10 @@ interface LogoHistoryPanelProps {
   refreshRef?: MutableRefObject<(() => void) | null>
   /** When true, removes the collapsible header and shows content directly with full height */
   alwaysExpanded?: boolean
+  /** With alwaysExpanded: grid fills the container (for modal hosting) instead of capping at 400px */
+  fullHeight?: boolean
+  /** When set, the collapsed header opens a pop-out modal instead of expanding inline */
+  onPopOut?: () => void
 }
 
 export function LogoHistoryPanel({
@@ -39,7 +43,9 @@ export function LogoHistoryPanel({
   filterStyle,
   compact = false,
   refreshRef,
-  alwaysExpanded = false
+  alwaysExpanded = false,
+  fullHeight = false,
+  onPopOut,
 }: LogoHistoryPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
@@ -118,7 +124,7 @@ export function LogoHistoryPanel({
       {/* Header Toggle - only show when not always expanded */}
       {!alwaysExpanded && (
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={() => (onPopOut ? onPopOut() : setIsExpanded(!isExpanded))}
           className={`w-full flex items-center justify-between bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-white transition-colors ${
             compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"
           }`}
@@ -207,7 +213,9 @@ export function LogoHistoryPanel({
           {displayItems.length > 0 ? (
             <div className={`grid gap-2 pr-1 ${
               alwaysExpanded
-                ? "grid-cols-4 overflow-y-auto scrollbar-hide max-h-[400px]"
+                ? fullHeight
+                  ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4 auto-rows-min gap-4 overflow-y-auto flex-1 min-h-0"
+                  : "grid-cols-4 overflow-y-auto scrollbar-hide max-h-[400px]"
                 : `overflow-y-auto ${compact ? "grid-cols-2 max-h-[400px]" : "grid-cols-3 max-h-[300px]"}`
             }`}>
               {displayItems.map((item) => (

@@ -26,6 +26,7 @@ import { LogoAdvancedSettings } from '../Logo/LogoAdvancedSettings'
 import { LogoPreviewPanel, type LogoFilterStyle } from '../Logo/LogoPreviewPanel'
 import { LogoActionButtons } from '../Logo/LogoActionButtons'
 import { LogoHistoryPanel, useLogoHistory, type LogoHistoryItem } from '../Logo/LogoHistory'
+import { LogoHistoryModal } from '../Logo/LogoHistory/LogoHistoryModal'
 
 import { LogoPanelHeader } from './LogoPanelHeader'
 import { LogoPanelModals } from './LogoPanelModals'
@@ -282,6 +283,63 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
 
   const handleClearAll = () => { state.handleClearAll(); clearLogo() }
 
+  // Generation History pop-out (full-size modal, like the image generator's
+  // Parameter History). The inline bar below only triggers this modal.
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+
+  const historyUseSettings = (item: LogoHistoryItem) => {
+    state.setPrompt(item.prompt)
+    if (item.negativePrompt) state.setNegativePrompt(item.negativePrompt)
+    if (item.seed) {
+      state.setSeedValue(item.seed)
+      state.setSeedLocked(true)
+    }
+    if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
+    if (item.config?.textMode) state.setTextMode(item.config.textMode)
+    if (item.presetId) state.setSelectedPresetId(item.presetId)
+  }
+
+  const historyLoadImage = (item: LogoHistoryItem) => {
+    setLogo({
+      url: item.imageUrl,
+      prompt: item.prompt,
+      style: item.style || '',
+      aspectRatio: item.config?.aspectRatio || '1:1',
+      textMode: item.config?.textMode || 'ai-text',
+      bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
+      timestamp: item.timestamp,
+      seed: item.seed
+    })
+    historyUseSettings(item)
+    onLogoGenerated?.(buildHistoryLogoOutputContext(item, 'history'))
+    setShowHistoryModal(false)
+    toast.success('Image loaded! You can now preview on mockups.', { duration: 3000 })
+  }
+
+  const historySendToMockups = (item: LogoHistoryItem) => {
+    setLogo({
+      url: item.imageUrl,
+      prompt: item.prompt,
+      style: item.style || '',
+      aspectRatio: item.config?.aspectRatio || '1:1',
+      textMode: item.config?.textMode || 'ai-text',
+      bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
+      timestamp: item.timestamp,
+      seed: item.seed
+    })
+    if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
+    if (item.config?.textMode) state.setTextMode(item.config.textMode)
+    onLogoGenerated?.(buildHistoryLogoOutputContext(item, 'mockup'))
+    setShowHistoryModal(false)
+    state.setShowMockupPreview(true)
+    toast.success('Logo sent to mockups!')
+  }
+
+  const historyCompare = (items: LogoHistoryItem[]) => {
+    state.setComparisonItems(items)
+    state.setShowComparisonView(true)
+  }
+
   return (
     <Card className="bg-zinc-900/90 border border-zinc-800 p-4">
       <LogoPanelHeader
@@ -415,64 +473,20 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
           )}
 
           <LogoHistoryPanel
-            onUseSettings={(item) => {
-              state.setPrompt(item.prompt)
-              if (item.negativePrompt) state.setNegativePrompt(item.negativePrompt)
-              if (item.seed) {
-                state.setSeedValue(item.seed)
-                state.setSeedLocked(true)
-              }
-              if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
-              if (item.config?.textMode) state.setTextMode(item.config.textMode)
-              if (item.presetId) state.setSelectedPresetId(item.presetId)
-            }}
-            onLoadImage={(item) => {
-              // Load the image into the preview panel
-              setLogo({
-                url: item.imageUrl,
-                prompt: item.prompt,
-                style: item.style || '',
-                aspectRatio: item.config?.aspectRatio || '1:1',
-                textMode: item.config?.textMode || 'ai-text',
-                bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
-                timestamp: item.timestamp,
-                seed: item.seed
-              })
-              // Also load the settings
-              state.setPrompt(item.prompt)
-              if (item.negativePrompt) state.setNegativePrompt(item.negativePrompt)
-              if (item.seed) {
-                state.setSeedValue(item.seed)
-                state.setSeedLocked(true)
-              }
-              if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
-              if (item.config?.textMode) state.setTextMode(item.config.textMode)
-              if (item.presetId) state.setSelectedPresetId(item.presetId)
-              onLogoGenerated?.(buildHistoryLogoOutputContext(item, 'history'))
-              toast.success('Image loaded! You can now preview on mockups.', { duration: 3000 })
-            }}
-            onSendToMockups={(item) => {
-              // Load the image and directly open mockups
-              setLogo({
-                url: item.imageUrl,
-                prompt: item.prompt,
-                style: item.style || '',
-                aspectRatio: item.config?.aspectRatio || '1:1',
-                textMode: item.config?.textMode || 'ai-text',
-                bgRemovalMethod: item.config?.bgRemovalMethod || 'none',
-                timestamp: item.timestamp,
-                seed: item.seed
-              })
-              if (item.config?.aspectRatio) state.setAspectRatio(item.config.aspectRatio)
-              if (item.config?.textMode) state.setTextMode(item.config.textMode)
-              onLogoGenerated?.(buildHistoryLogoOutputContext(item, 'mockup'))
-              state.setShowMockupPreview(true)
-              toast.success('Logo sent to mockups!')
-            }}
-            onCompare={(items) => {
-              state.setComparisonItems(items)
-              state.setShowComparisonView(true)
-            }}
+            onPopOut={() => setShowHistoryModal(true)}
+            onUseSettings={historyUseSettings}
+            onLoadImage={historyLoadImage}
+            onSendToMockups={historySendToMockups}
+            onCompare={historyCompare}
+          />
+
+          <LogoHistoryModal
+            isOpen={showHistoryModal}
+            onClose={() => setShowHistoryModal(false)}
+            onUseSettings={historyUseSettings}
+            onLoadImage={historyLoadImage}
+            onSendToMockups={historySendToMockups}
+            onCompare={historyCompare}
           />
 
           {!generatedLogo && (
