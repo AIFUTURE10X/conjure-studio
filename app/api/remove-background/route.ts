@@ -47,6 +47,10 @@ async function handlePost(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
+  // Set when the caller asked for fal but FAL_KEY is missing, so a PhotoRoom
+  // failure after the silent reroute reports the real story, not just PhotoRoom.
+  let falConfigNote: string | null = null
+
   try {
     const formData = await request.formData()
     const imageFile = formData.get('image') as File | null
@@ -58,6 +62,7 @@ async function handlePost(request: NextRequest) {
     // fall back to PhotoRoom so the public tool never hard-fails.
     if (bgRemovalMethod === 'fal' && !isFalBgRemovalAvailable()) {
       console.warn('[Remove BG API] FAL_KEY not set — falling back to PhotoRoom')
+      falConfigNote = 'Fal is not configured on the server (FAL_KEY is not set in the environment)'
       bgRemovalMethod = 'photoroom'
     }
 
@@ -223,7 +228,7 @@ async function handlePost(request: NextRequest) {
       const providerStatus = error.status >= 500 ? 502 : error.status
       return NextResponse.json(
         {
-          error: error.message,
+          error: falConfigNote ? `${error.message} — ${falConfigNote}, so PhotoRoom was used instead` : error.message,
           code: error.status === 402 || error.status === 429 || error.status === 503
             ? 'provider_unavailable'
             : 'provider_error',

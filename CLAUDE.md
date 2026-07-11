@@ -23,6 +23,7 @@ These MUST be set in Vercel → Settings → Environment Variables (for ALL envi
 | `OPENAI_API_KEY` | Primary OpenAI key (ChatGPT Images, AI helper, image analysis, prompt enhancement, logos, recolor) |
 | `GOOGLE_AI_API_KEY` | Optional Gemini key for fallback/model picker paths |
 | `PHOTOROOM_API_KEY` | PhotoRoom API key for default professional logo PNG background removal |
+| `FAL_KEY` | fal.ai API key — the BG Remover's default "Fal · BiRefNet" method; without it that option silently falls back to PhotoRoom |
 | `REPLICATE_API_TOKEN` | Replicate API key (upscaling fallbacks) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob token (auto-provisioned on Vercel) |
 | `ADMIN_API_KEY` | Optional — gates `/api/logo-history/debug` (account merge); endpoint stays closed when unset |
