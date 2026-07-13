@@ -127,7 +127,7 @@ export function LogoCanvas() {
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <Card className="min-h-full bg-zinc-900/90 border border-zinc-800 p-4">
-        <div className={`flex flex-col gap-4 ${promptCollapsed ? '' : 'xl:flex-row'}`}>
+        <div className={`flex flex-col gap-4 ${promptCollapsed ? '' : '2xl:flex-row'}`}>
           <div className="flex-1 space-y-3 min-w-0">
             <LogoModeSection
               logoMode={state.logoMode}
@@ -161,7 +161,7 @@ export function LogoCanvas() {
             {!state.removeBackgroundOnly && (
               <LogoVariationsGenerator
                 onApply={applyVariationPatch}
-                defaultBrief={coreState.mainPrompt}
+                currentLogoPrompt={coreState.mainPrompt}
                 disabled={isGenerating}
               />
             )}

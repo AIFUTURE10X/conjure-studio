@@ -68,9 +68,12 @@ export function PromptDock() {
   return (
     <div className="border-t border-zinc-800 bg-zinc-900/95 backdrop-blur-sm p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-          {isLogoMode ? 'Logo prompt' : 'Image prompt'}
-        </span>
+        <label
+          htmlFor="studio-main-prompt"
+          className="text-[11px] font-medium uppercase tracking-wide text-zinc-500"
+        >
+          {isLogoMode ? 'Logo prompt — used by Generate' : 'Image prompt — used by Generate'}
+        </label>
         <button
           onClick={() => setCollapsed(true)}
           title="Collapse prompt"
@@ -82,6 +85,7 @@ export function PromptDock() {
 
       <div className="relative">
         <Textarea
+          id="studio-main-prompt"
           value={state.mainPrompt}
           onChange={(e) => state.setMainPrompt(e.target.value)}
           placeholder={placeholder}

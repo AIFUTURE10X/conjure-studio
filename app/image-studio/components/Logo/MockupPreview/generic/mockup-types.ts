@@ -166,6 +166,8 @@ export interface MockupConfig {
   defaultTextPosition: Position
   /** Initial text scale (1.0 = 100%) */
   defaultTextScale: number
+  /** Optional initial brand-text color */
+  defaultTextColor?: string
 
   // ---- Product Variants ----
   /** Available color options for this product */

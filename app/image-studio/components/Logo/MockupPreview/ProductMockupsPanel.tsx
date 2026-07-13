@@ -61,7 +61,7 @@ export const ProductMockupsPanel = forwardRef<ProductMockupsPanelRef, ProductMoc
       <div className="flex flex-col h-full">
         {/* Header 1: Exit + MegaMenu + View Larger + Generate Photos */}
         {!state.isExpanded && (
-          <div className="relative flex items-center gap-2 px-4 py-2 border-b border-zinc-800">
+          <div className="relative flex flex-wrap items-center gap-2 px-4 py-2 border-b border-zinc-800">
             {onClose && (
               <button
                 onClick={onClose}
@@ -133,10 +133,10 @@ export const ProductMockupsPanel = forwardRef<ProductMockupsPanelRef, ProductMoc
             <button
               onClick={() => state.setShowPhotoGenerator(true)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
-              title="Generate AI product photos for realistic mockups"
+              title="Create one AI product photo"
             >
               <Wand2 className="w-4 h-4" />
-              Generate Photos
+              Create Product Photo
             </button>
           </div>
         )}
@@ -175,6 +175,7 @@ export const ProductMockupsPanel = forwardRef<ProductMockupsPanelRef, ProductMoc
           <div className={state.isExpanded ? 'flex-1 min-h-0' : 'h-full'}>
             {state.currentConfig ? (
               <GenericMockup
+                key={state.currentConfig.id}
                 config={state.currentConfig}
                 logoUrl={effectiveLogoUrl || undefined}
                 brandName={brandName || 'Your Brand'}

@@ -10,11 +10,12 @@ import type { ProductConfig, GenerationStatus, HatCategory } from './mockup-gene
 
 interface ProductSectionProps {
   status: GenerationStatus
-  isGeneratingAll: boolean
   expandedProducts: Record<string, boolean>
   onToggleProduct: (productId: string) => void
-  onGenerate: (product: string, color: string, skipExisting: boolean) => void
+  onGenerate: (product: string, color: string) => void
 }
+
+const colorCountLabel = (count: number) => `${count} color${count === 1 ? '' : 's'}`
 
 // Collapsible header component
 function CollapsibleHeader({
@@ -22,15 +23,19 @@ function CollapsibleHeader({
   title,
   subtitle,
   onToggle,
+  contentId,
 }: {
   isExpanded: boolean
   title: string
   subtitle: string
   onToggle: () => void
+  contentId: string
 }) {
   return (
     <button
       onClick={onToggle}
+      aria-expanded={isExpanded}
+      aria-controls={contentId}
       className="w-full flex items-center justify-between p-3 hover:bg-zinc-800/80 transition-colors"
     >
       <div className="flex items-center gap-2">
@@ -50,7 +55,6 @@ function CollapsibleHeader({
 export function ClothingProductSection({
   product,
   status,
-  isGeneratingAll,
   expandedProducts,
   onToggleProduct,
   onGenerate,
@@ -65,11 +69,13 @@ export function ClothingProductSection({
       <CollapsibleHeader
         isExpanded={isExpanded}
         title={product.id.replace('-', ' ')}
-        subtitle={`(${product.colors.length} colors × 3 views = ${product.colors.length * 3} photos)`}
+        subtitle={`${colorCountLabel(product.colors.length)} · choose a view and color`}
         onToggle={() => onToggleProduct(product.id)}
+        contentId={`mockup-product-${product.id}`}
       />
       {isExpanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-zinc-700/50 space-y-3">
+        <div id={`mockup-product-${product.id}`} className="px-3 pb-3 pt-1 border-t border-zinc-700/50 space-y-3">
+          <p className="text-[11px] font-semibold text-purple-300">Step 2 · Choose a view and color</p>
           {/* Front View */}
           <div>
             <h4 className="text-xs font-medium text-zinc-400 mb-2">Front View</h4>
@@ -80,7 +86,6 @@ export function ClothingProductSection({
                   productId={product.id}
                   color={color}
                   status={status}
-                  isGeneratingAll={isGeneratingAll}
                   onGenerate={onGenerate}
                 />
               ))}
@@ -96,7 +101,6 @@ export function ClothingProductSection({
                   productId={product.id}
                   color={color}
                   status={status}
-                  isGeneratingAll={isGeneratingAll}
                   onGenerate={onGenerate}
                 />
               ))}
@@ -112,7 +116,6 @@ export function ClothingProductSection({
                   productId={product.id}
                   color={color}
                   status={status}
-                  isGeneratingAll={isGeneratingAll}
                   onGenerate={onGenerate}
                 />
               ))}
@@ -128,7 +131,6 @@ export function ClothingProductSection({
 export function OtherProductSection({
   product,
   status,
-  isGeneratingAll,
   expandedProducts,
   onToggleProduct,
   onGenerate,
@@ -140,11 +142,13 @@ export function OtherProductSection({
       <CollapsibleHeader
         isExpanded={isExpanded}
         title={product.id.replace('-', ' ')}
-        subtitle={`(${product.colors.length} colors)`}
+        subtitle={`${colorCountLabel(product.colors.length)} · choose one to generate`}
         onToggle={() => onToggleProduct(product.id)}
+        contentId={`mockup-product-${product.id}`}
       />
       {isExpanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-zinc-700/50">
+        <div id={`mockup-product-${product.id}`} className="px-3 pb-3 pt-1 border-t border-zinc-700/50">
+          <p className="mb-2 text-[11px] font-semibold text-purple-300">Step 2 · Choose a color</p>
           <div className="flex flex-wrap gap-2">
             {product.colors.map(color => (
               <MockupGeneratorColorButton
@@ -152,7 +156,6 @@ export function OtherProductSection({
                 productId={product.id}
                 color={color}
                 status={status}
-                isGeneratingAll={isGeneratingAll}
                 onGenerate={onGenerate}
               />
             ))}
@@ -167,7 +170,6 @@ export function OtherProductSection({
 export function HatsCategorySection({
   category,
   status,
-  isGeneratingAll,
   expandedProducts,
   onToggleProduct,
   onGenerate,
@@ -180,11 +182,13 @@ export function HatsCategorySection({
       <CollapsibleHeader
         isExpanded={isExpanded}
         title={category.name}
-        subtitle={`(${category.items.length} types × ${category.items[0].colors.length} colors = ${totalPhotos} photos)`}
+        subtitle={`${category.items.length} types · ${totalPhotos} color options`}
         onToggle={() => onToggleProduct(category.id)}
+        contentId={`mockup-product-${category.id}`}
       />
       {isExpanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-zinc-700/50">
+        <div id={`mockup-product-${category.id}`} className="px-3 pb-3 pt-1 border-t border-zinc-700/50">
+          <p className="mb-2 text-[11px] font-semibold text-purple-300">Step 2 · Choose a style and color</p>
           {category.items.map(item => {
             const displayName = item.id === 'hat' ? 'Cap' : 'Beanie'
             return (
@@ -197,7 +201,6 @@ export function HatsCategorySection({
                       productId={item.id}
                       color={color}
                       status={status}
-                      isGeneratingAll={isGeneratingAll}
                       onGenerate={onGenerate}
                     />
                   ))}

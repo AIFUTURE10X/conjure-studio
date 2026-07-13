@@ -35,7 +35,7 @@ export function createInitialState(
       position: config.defaultTextPosition,
       scale: config.defaultTextScale,
       font: 'montserrat',
-      color: '#ffffff',
+      color: config.defaultTextColor || '#ffffff',
       effect: 'none',
       rotation: 0,
       weight: 400,

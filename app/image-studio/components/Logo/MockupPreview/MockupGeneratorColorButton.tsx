@@ -11,8 +11,7 @@ interface ColorButtonProps {
   productId: string
   color: string
   status: GenerationStatus
-  isGeneratingAll: boolean
-  onGenerate: (product: string, color: string, skipExisting: boolean) => void
+  onGenerate: (product: string, color: string) => void
 }
 
 // Get base color name (strips -back and -side suffixes)
@@ -39,10 +38,21 @@ function ColorSwatch({ color }: { color: string }) {
   )
 }
 
-export function MockupGeneratorColorButton({ productId, color, status, isGeneratingAll, onGenerate }: ColorButtonProps) {
+export function MockupGeneratorColorButton({ productId, color, status, onGenerate }: ColorButtonProps) {
   const key = `${productId}-${color}`
   const currentStatus = status[key]
   const isGenerating = currentStatus === 'generating'
+  const baseColor = getBaseColor(color)
+  const view = color.endsWith('-back') ? ' back' : color.endsWith('-side') ? ' side' : ''
+  const productName = productId.replaceAll('-', ' ')
+  const photoName = `${baseColor}${view} ${productName} photo`
+  const accessibleLabel = currentStatus === 'generating'
+    ? `Creating ${photoName}`
+    : currentStatus === 'success'
+      ? `${photoName} generated`
+      : currentStatus === 'error'
+        ? `Retry ${photoName}`
+        : `Generate ${photoName}`
 
   const renderIcon = () => {
     if (currentStatus === 'generating') {
@@ -62,8 +72,10 @@ export function MockupGeneratorColorButton({ productId, color, status, isGenerat
 
   return (
     <button
-      onClick={() => onGenerate(productId, color, false)}
-      disabled={isGenerating || isGeneratingAll}
+      onClick={() => onGenerate(productId, color)}
+      disabled={isGenerating}
+      aria-label={accessibleLabel}
+      aria-busy={isGenerating}
       className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
         currentStatus === 'success'
           ? 'bg-green-500/20 text-green-400 border border-green-500/30'

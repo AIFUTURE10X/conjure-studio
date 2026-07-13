@@ -86,7 +86,7 @@ export function LogoPreviewPanel({ generatedLogo, onClearLogo, onPreviewMockups,
   // Determine which URL to display
   const displayUrl = showOriginal && hasOriginal ? generatedLogo?.originalUrl : generatedLogo?.url
 
-  const containerClass = stacked ? 'w-full' : 'w-[500px] shrink-0'
+  const containerClass = stacked ? 'w-full' : 'w-full 2xl:w-[500px] 2xl:shrink-0'
 
   if (!generatedLogo) {
     return (

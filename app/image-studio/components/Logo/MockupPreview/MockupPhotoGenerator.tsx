@@ -3,11 +3,10 @@
 /**
  * MockupPhotoGenerator Component
  *
- * Admin UI for generating AI product photos for realistic mockups.
- * Generates photos and saves them to public/mockups folder.
+ * Customer-facing UI for generating one AI product photo at a time.
  */
 
-import { Loader2, X, RefreshCw } from 'lucide-react'
+import { Download, Loader2, X } from 'lucide-react'
 import { useMockupGeneration } from './useMockupGeneration'
 import { ClothingProductSection, OtherProductSection, HatsCategorySection } from './MockupGeneratorProductSection'
 import { CLOTHING_WITH_VIEWS, HATS_CATEGORY, OTHER_PRODUCTS } from './mockup-generator-constants'
@@ -19,11 +18,10 @@ interface MockupPhotoGeneratorProps {
 export function MockupPhotoGenerator({ onClose }: MockupPhotoGeneratorProps) {
   const {
     status,
-    isGeneratingAll,
+    lastResult,
     expandedProducts,
     toggleProduct,
     generatePhoto,
-    generateAll,
   } = useMockupGeneration()
 
   return (
@@ -32,25 +30,14 @@ export function MockupPhotoGenerator({ onClose }: MockupPhotoGeneratorProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
           <div>
-            <h2 className="text-lg font-semibold text-white">Generate Mockup Photos</h2>
-            <p className="text-xs text-zinc-400">AI-generate product photos for realistic mockups</p>
+            <h2 className="text-lg font-semibold text-white">Create a Product Photo</h2>
+            <p className="text-xs text-zinc-400">Choose one product and color. Each photo usually takes 30–90 seconds.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={generateAll}
-              disabled={isGeneratingAll}
-              className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-700 text-white text-sm rounded-lg transition-colors"
-            >
-              {isGeneratingAll ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              Generate All
-            </button>
             {onClose && (
               <button
                 onClick={onClose}
+                aria-label="Close product photo generator"
                 className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
               >
                 <X className="w-5 h-5" />
@@ -61,6 +48,43 @@ export function MockupPhotoGenerator({ onClose }: MockupPhotoGeneratorProps) {
 
         {/* Product Grid */}
         <div className="overflow-y-auto max-h-[65vh] p-4">
+          <p className="mb-3 text-xs font-semibold text-zinc-300">Step 1 · Choose a product</p>
+
+          {lastResult && (
+            <div
+              role={lastResult.status === 'error' ? 'alert' : 'status'}
+              className={`sticky top-0 z-10 mb-4 rounded-lg border p-3 shadow-lg ${
+                lastResult.status === 'error'
+                  ? 'border-red-500/40 bg-red-950'
+                  : lastResult.status === 'success'
+                    ? 'border-green-500/40 bg-green-950'
+                    : 'border-purple-500/40 bg-purple-950'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {lastResult.status === 'generating' && <Loader2 className="h-4 w-4 animate-spin text-purple-300" />}
+                <p className="text-xs font-medium text-zinc-200">{lastResult.message}</p>
+              </div>
+              {lastResult.status === 'success' && lastResult.imageUrl && (
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={lastResult.imageUrl}
+                    alt={`${lastResult.color} ${lastResult.product} product photo`}
+                    className="h-24 w-24 rounded-lg border border-zinc-700 bg-zinc-950 object-contain"
+                  />
+                  <a
+                    href={lastResult.imageUrl}
+                    download={`${lastResult.product}-${lastResult.color}-product-photo.png`}
+                    className="flex items-center gap-1.5 rounded-md bg-green-500/20 px-3 py-2 text-xs font-semibold text-green-300 transition-colors hover:bg-green-500/30"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download photo
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Clothing Section */}
           <div className="mb-6">
             <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-3 font-semibold">
@@ -72,7 +96,6 @@ export function MockupPhotoGenerator({ onClose }: MockupPhotoGeneratorProps) {
                   key={product.id}
                   product={product}
                   status={status}
-                  isGeneratingAll={isGeneratingAll}
                   expandedProducts={expandedProducts}
                   onToggleProduct={toggleProduct}
                   onGenerate={generatePhoto}
@@ -90,7 +113,6 @@ export function MockupPhotoGenerator({ onClose }: MockupPhotoGeneratorProps) {
               <HatsCategorySection
                 category={HATS_CATEGORY}
                 status={status}
-                isGeneratingAll={isGeneratingAll}
                 expandedProducts={expandedProducts}
                 onToggleProduct={toggleProduct}
                 onGenerate={generatePhoto}
@@ -109,7 +131,6 @@ export function MockupPhotoGenerator({ onClose }: MockupPhotoGeneratorProps) {
                   key={product.id}
                   product={product}
                   status={status}
-                  isGeneratingAll={isGeneratingAll}
                   expandedProducts={expandedProducts}
                   onToggleProduct={toggleProduct}
                   onGenerate={generatePhoto}
@@ -117,13 +138,13 @@ export function MockupPhotoGenerator({ onClose }: MockupPhotoGeneratorProps) {
               ))}
             </div>
           </div>
+
         </div>
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-zinc-800 bg-zinc-900/50">
           <p className="text-xs text-zinc-500">
-            Photos are saved to <code className="text-zinc-400">public/mockups/</code>.
-            After generating, set <code className="text-zinc-400">renderMode: 'photo'</code> in configs.
+            Step 2 · Choose a color inside the product row. Your finished photo stays at the top and remains available to download.
           </p>
         </div>
       </div>

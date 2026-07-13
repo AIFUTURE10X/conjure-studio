@@ -18,7 +18,7 @@ import type { LogoSettingsSuggestionPatch } from '../../../context/suggestion-pa
 
 interface LogoVariationsGeneratorProps {
   onApply: (patch: LogoSettingsSuggestionPatch) => void
-  defaultBrief?: string
+  currentLogoPrompt?: string
   disabled?: boolean
 }
 
@@ -27,8 +27,8 @@ const MODEL_TIERS: { value: HelperModelTier; label: string; hint: string; icon: 
   { value: 'hq', label: 'Quality', hint: 'Larger model — slower, sharper ideas', icon: Sparkles },
 ]
 
-export function LogoVariationsGenerator({ onApply, defaultBrief = '', disabled }: LogoVariationsGeneratorProps) {
-  const [brief, setBrief] = useState(defaultBrief)
+export function LogoVariationsGenerator({ onApply, currentLogoPrompt = '', disabled }: LogoVariationsGeneratorProps) {
+  const [brief, setBrief] = useState(currentLogoPrompt)
   const [model, setModel] = useState<HelperModelTier>('fast')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,18 +65,22 @@ export function LogoVariationsGenerator({ onApply, defaultBrief = '', disabled }
     const chosen = variations.find((v) => v.id === selectedId)
     if (!chosen) return
     onApply(variationToPatch(chosen))
-    toast.success(`"${chosen.label}" applied — tweak the prompt or hit Generate.`)
+    toast.success(`"${chosen.label}" applied to the Logo prompt.`)
   }
 
   return (
     <div className="rounded-xl border border-purple-500/30 bg-linear-to-br from-purple-500/10 to-zinc-900/40 p-3">
       <div className="mb-2 flex items-center gap-2">
         <Wand2 className="h-4 w-4 text-purple-300" />
-        <span className="text-sm font-semibold text-white">AI Logo Variations</span>
-        <span className="ml-auto text-[10px] text-zinc-500">3 directions · 1 click apply</span>
+        <span className="text-sm font-semibold text-white">Logo direction ideas</span>
+        <span className="ml-auto text-[10px] text-zinc-500">3 suggestions · apply one</span>
       </div>
 
+      <label htmlFor="logo-variation-brief" className="mb-1 block text-[11px] font-medium text-zinc-300">
+        Variation brief — used only to create three directions
+      </label>
       <textarea
+        id="logo-variation-brief"
         value={brief}
         onChange={(e) => setBrief(e.target.value)}
         placeholder="Describe the brand / logo (e.g. 'Conjure Studio — an AI image-generation studio, magical & premium, gold on black')"
@@ -84,6 +88,20 @@ export function LogoVariationsGenerator({ onApply, defaultBrief = '', disabled }
         disabled={disabled || loading}
         className="w-full resize-y rounded-md border border-zinc-700 bg-zinc-950 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-purple-500/60 focus:outline-none disabled:opacity-50"
       />
+
+      <div className="mt-1.5 flex items-start justify-between gap-2">
+        <p className="text-[10px] leading-4 text-zinc-500">
+          This does not change the Logo prompt used by Generate until you apply a direction.
+        </p>
+        <button
+          type="button"
+          onClick={() => setBrief(currentLogoPrompt)}
+          disabled={disabled || loading || !currentLogoPrompt.trim()}
+          className="shrink-0 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors hover:border-purple-500/50 hover:text-purple-200 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Copy current Logo prompt
+        </button>
+      </div>
 
       <div className="mt-2 flex items-center gap-2">
         <div className="flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-900 p-0.5">
@@ -109,7 +127,7 @@ export function LogoVariationsGenerator({ onApply, defaultBrief = '', disabled }
           className="ml-auto flex items-center gap-1.5 rounded-md bg-linear-to-r from-purple-500 to-pink-500 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          {loading ? 'Thinking…' : 'Generate 3 variations'}
+          {loading ? 'Thinking…' : 'Create 3 directions'}
         </button>
       </div>
 
@@ -132,10 +150,10 @@ export function LogoVariationsGenerator({ onApply, defaultBrief = '', disabled }
             disabled={!selectedId}
             className="w-full rounded-md bg-linear-to-r from-[#c99850] to-[#dbb56e] px-3 py-2 text-xs font-semibold text-black transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Apply selected to settings
+            Apply selected to Logo prompt
           </button>
           <p className="text-[10px] leading-4 text-zinc-500">
-            Tick a direction, apply it, then tweak the prompt or hit Generate. Run again to explore more.
+            Applying updates the Logo prompt and its suggested settings. You can edit either before generating.
           </p>
         </div>
       )}

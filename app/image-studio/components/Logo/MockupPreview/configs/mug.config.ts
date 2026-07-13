@@ -49,8 +49,9 @@ export const mugConfig: MockupConfig = {
 
   defaultLogoPosition: { x: 42, y: 50 },
   defaultLogoScale: 0.9,
-  defaultTextPosition: { x: 42, y: 75 },
-  defaultTextScale: 1,
+  defaultTextPosition: { x: 42, y: 60 },
+  defaultTextScale: 1.2,
+  defaultTextColor: '#18181b',
 
   colors: MUG_COLORS,
   defaultColorId: 'white',

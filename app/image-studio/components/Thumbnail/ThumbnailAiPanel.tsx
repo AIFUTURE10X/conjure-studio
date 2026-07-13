@@ -102,13 +102,20 @@ export function ThumbnailAiPanel() {
         <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[#dbb56e]">AI Generate</h4>
       </div>
 
+      <label htmlFor="thumbnail-video-brief" className="block text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+        Video title or brief
+      </label>
       <textarea
+        id="thumbnail-video-brief"
         value={idea}
         onChange={(e) => setIdea(e.target.value)}
         rows={2}
         placeholder="Paste your video title or describe the thumbnail…"
         className="min-h-[3.25rem] w-full resize-y rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-[#c99850]/60 focus:outline-none"
       />
+      <p className="text-[10px] leading-snug text-zinc-500">
+        Your full brief stays here. Each concept adds a short, editable headline to the canvas.
+      </p>
 
       {/* 1) AI concepts from the title */}
       <button
@@ -119,6 +126,12 @@ export function ThumbnailAiPanel() {
         {loadingConcepts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lightbulb className="h-3.5 w-3.5" />}
         {loadingConcepts ? 'Thinking…' : 'Get 3 thumbnail ideas'}
       </button>
+
+      {loadingConcepts && (
+        <p role="status" className="text-[10px] leading-snug text-[#dbb56e]">
+          Drafting 3 ideas — usually 5–15 seconds.
+        </p>
+      )}
 
       <p className="text-[10px] leading-snug text-zinc-500">
         Picking an idea builds its background with the model &amp; size selected below.
@@ -213,6 +226,12 @@ export function ThumbnailAiPanel() {
         </div>
       </div>
 
+      {isGeneratingBg && (
+        <p role="status" className="text-[10px] leading-snug text-purple-200">
+          Creating your background — usually 30–90 seconds.
+        </p>
+      )}
+
       <div className="flex gap-1.5">
         <button
           onClick={() => generateBackground(idea, aiStyle.prompt, genOptions)}
@@ -258,7 +277,7 @@ export function ThumbnailAiPanel() {
           disabled={!idea.trim()}
           className={`${chip} ${chipOff} flex flex-1 items-center justify-center gap-1.5`}
         >
-          <Type className="h-3.5 w-3.5" /> Use as headline
+          <Type className="h-3.5 w-3.5" /> Use full brief as headline
         </button>
         {hasAiBackground && (
           <button

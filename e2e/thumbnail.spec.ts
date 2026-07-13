@@ -101,9 +101,8 @@ test('AI: title → 3 concepts renders cards and applying one builds it', async 
   )
 
   await page.getByRole('button', { name: 'AI', exact: true }).click()
-  await page
-    .getByPlaceholder(/Paste your video title/)
-    .fill('How I built a gaming PC in 10 minutes')
+  const brief = page.getByLabel('Video title or brief')
+  await brief.fill('How I built a gaming PC in 10 minutes')
   await page.getByRole('button', { name: 'Get 3 thumbnail ideas' }).click()
 
   await expect(page.getByText('Click a concept to build it')).toBeVisible()
@@ -111,19 +110,25 @@ test('AI: title → 3 concepts renders cards and applying one builds it', async 
   // Picking a concept applies its headline and generates the background.
   await page.getByRole('button', { name: /MIND BLOWN/ }).click()
   await expect(page.getByTestId('thumbnail-headline')).toContainText('MIND BLOWN')
+  await expect(brief).toHaveValue('How I built a gaming PC in 10 minutes')
   await expect(page.getByTestId('thumbnail-stage').locator('img')).toBeVisible()
 })
 
-test('AI: Generate background adds an image layer to the stage', async ({ page }) => {
-  await page.route('**/api/generate-image', (route) =>
-    route.fulfill({ json: { images: [FAKE_PNG] } }),
-  )
+test('AI: Generate background shows an honest ETA and adds an image layer', async ({ page }) => {
+  await page.route('**/api/generate-image', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    await route.fulfill({ json: { images: [FAKE_PNG] } })
+  })
 
   await page.getByRole('button', { name: 'AI', exact: true }).click()
-  await page.getByPlaceholder(/Paste your video title/).fill('Epic mountain sunrise, dramatic')
-  await page.getByRole('button', { name: 'Generate background' }).click()
+  await page.getByLabel('Video title or brief').fill('Epic mountain sunrise, dramatic')
+  const generate = page.getByRole('button', { name: 'Generate background' })
+  await generate.click()
 
+  await expect(page.getByRole('status')).toContainText('usually 30–90 seconds')
+  await expect(page.getByRole('button', { name: 'Generating…' })).toBeDisabled()
   await expect(page.getByTestId('thumbnail-stage').locator('img')).toBeVisible()
+  await expect(page.getByText('Creating your background')).toHaveCount(0)
 })
 
 test('Manual: font picker opens a grid and selects a font', async ({ page }) => {
@@ -158,8 +163,9 @@ test('Manual: Clear all wipes the canvas to a blank screen', async ({ page }) =>
   await expect(page.getByTestId('thumbnail-stage')).toBeVisible()
 })
 
-test('Manual: Export PNG downloads a 1280×720 file', async ({ page }) => {
-  await openManualTab(page)
+test('AI: Export PNG is always available and downloads a 1280×720 file', async ({ page }) => {
+  await expect(page.getByRole('button', { name: 'AI', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: /Export PNG/ })).toBeVisible()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: /Export PNG/ }).click()
   const download = await downloadPromise

@@ -5,8 +5,8 @@
  *
  * The contextual settings rail. It shows controls for whatever is selected on
  * the canvas: a Scene/Design overview when nothing is selected, or a focused
- * editor for the selected text block / subject / sticker. Export stays pinned at
- * the bottom so it's always reachable.
+ * editor for the selected text block / subject / sticker. Export lives in the
+ * settings-rail shell so it remains reachable from both AI and Manual.
  */
 
 import { useThumbnail } from './ThumbnailProvider'
@@ -14,7 +14,6 @@ import { ThumbnailSceneView } from './ThumbnailSceneView'
 import { ThumbnailTextSection } from './ThumbnailTextSection'
 import { ThumbnailSubjectView } from './ThumbnailSubjectView'
 import { ThumbnailStickerControls } from './ThumbnailStickerControls'
-import { ThumbnailExportPanel } from './ThumbnailExportPanel'
 import { SUBJECT_SELECTION_ID, type ThumbnailConfig } from './thumbnail-constants'
 
 type SelectionKind = 'scene' | 'text' | 'subject' | 'sticker'
@@ -42,7 +41,6 @@ export function ThumbnailManualPanel() {
       ) : (
         <ThumbnailSceneView />
       )}
-      <ThumbnailExportPanel />
     </div>
   )
 }

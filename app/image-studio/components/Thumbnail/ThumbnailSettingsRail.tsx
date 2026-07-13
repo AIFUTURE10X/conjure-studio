@@ -18,6 +18,7 @@ import { useState } from 'react'
 import { Pencil, Sparkles, type LucideIcon } from 'lucide-react'
 import { ThumbnailAiPanel } from './ThumbnailAiPanel'
 import { ThumbnailManualPanel } from './ThumbnailManualPanel'
+import { ThumbnailExportPanel } from './ThumbnailExportPanel'
 
 type RailTab = 'ai' | 'manual'
 
@@ -56,6 +57,8 @@ export function ThumbnailSettingsRail() {
       <div className={tab === 'manual' ? '' : 'hidden'}>
         <ThumbnailManualPanel />
       </div>
+
+      <ThumbnailExportPanel />
     </div>
   )
 }
