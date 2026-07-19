@@ -684,6 +684,20 @@ const checks = [
     },
   },
   {
+    name: 'AI helper direct chat shortcuts ignore creative requests that merely mention settings',
+    pass: () => {
+      const sidebar = readSidebarBundle()
+      return /isBareDirectCommand/.test(sidebar) &&
+        /looksLikeNewCreationRequest/.test(sidebar) &&
+        /DIRECT_SETTINGS_COMMAND_PHRASES/.test(sidebar) &&
+        /if \(!isBareDirectCommand\(userInput, DIRECT_SETTINGS_COMMAND_PHRASES\)\) return null/.test(sidebar) &&
+        /if \(!isBareDirectCommand\(userInput, backgroundRemovalCommandTerms\)\) return false/.test(sidebar) &&
+        /if \(!isBareDirectCommand\(userInput, logoSettingsCommandTerms\)\) return false/.test(sidebar) &&
+        /if \(!isBareDirectCommand\(userInput, clearMemoryCommandTerms\)\) return false/.test(sidebar) &&
+        /if \(looksLikeNewCreationRequest\(userInput\)\) return false/.test(sidebar)
+    },
+  },
+  {
     name: 'AI helper local commands explain preserve change and action like a planner',
     pass: () => {
       const sidebar = readSidebarBundle()

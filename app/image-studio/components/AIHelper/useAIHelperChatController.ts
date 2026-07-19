@@ -17,12 +17,41 @@ import type { CreativeDirectionState } from '../../constants/creative-direction-
 import {
   buildLocalActionSummary,
   detectRequestedHelperMode,
+  isBareDirectCommand,
+  looksLikeNewCreationRequest,
   matchesDirectCommand,
   matchesNaturalDirectCommand,
   normalizeDirectCommand,
 } from '../../utils/helper-commands'
 import { buildSuggestionPatchFromFollowUp } from '../../utils/helper-suggestion-patch'
 import { scrollContainerToBottom } from '../../utils/scroll-utils'
+
+// Every phrase buildDirectSettingsPatch can recognize. isBareDirectCommand
+// strips these (plus connector words) from a message; anything left over means
+// the message is a creative request that merely mentions a setting, so it must
+// reach the AI intact instead of being consumed by the local shortcut.
+// Keep in sync with the matcher lists inside buildDirectSettingsPatch.
+const DIRECT_SETTINGS_COMMAND_PHRASES = [
+  'use photoroom', 'turn on photoroom', 'photoroom bg', 'photoroom background removal',
+  'turn off background removal', 'disable background removal', 'no background removal',
+  'normal logo with background', 'normal image with background',
+  'use exact text overlay', 'set exact text overlay', 'exact text overlay', 'exact text mode',
+  'use ai text', 'set ai text', 'ai text mode', 'let ai draw text',
+  'use chatgpt images 2.0', 'use chatgpt images 2', 'use gpt image 2', 'use openai image',
+  'set logo type wordmark', 'logo type wordmark', 'set logo type icon wordmark', 'icon wordmark',
+  'set logo type monogram', 'logo type monogram', 'set logo type badge', 'logo type badge',
+  'set logo style luxury', 'logo style luxury', 'set logo style minimal', 'logo style minimal',
+  'set logo style modern', 'logo style modern', 'set logo style boutique', 'logo style boutique',
+  'set logo render flat vector', 'logo render flat vector', 'set logo render metallic', 'logo render metallic',
+  'set logo render foil', 'logo render foil', 'set logo render soft 3d', 'logo render soft 3d',
+  'set logo typography elegant serif', 'logo typography elegant serif',
+  'set logo typography clean sans', 'logo typography clean sans',
+  'set logo typography script', 'logo typography script',
+  'set logo typography reference match', 'logo typography reference match',
+  'set 4k', '4k resolution', 'and 4k', '4k', 'set 2k', '2k resolution', 'and 2k', '2k',
+  'set 1k', '1k resolution', 'and 1k', '1k',
+  'and generate', 'then generate', 'generate it', 'run it', 'generate',
+]
 
 export interface AIHelperPromptSettings {
   activeTab?: string
@@ -323,6 +352,7 @@ export function useAIHelperChatController({
     ]
 
     if (!matchesNaturalDirectCommand(userInput, clearMemoryCommandTerms)) return false
+    if (!isBareDirectCommand(userInput, clearMemoryCommandTerms)) return false
 
     const activeMode = mode
     setPendingFollowUp(null)
@@ -350,6 +380,7 @@ export function useAIHelperChatController({
     ]
 
     if (!matchesNaturalDirectCommand(userInput, backgroundRemovalCommandTerms)) return false
+    if (!isBareDirectCommand(userInput, backgroundRemovalCommandTerms)) return false
 
     const wantsOff = ['turn off background removal', 'disable background removal', 'no background removal', 'normal logo with background', 'normal image with background'].some((term) => normalized.includes(term))
     const wantsPhotoRoom = ['use photoroom', 'turn on photoroom', 'photoroom bg', 'photoroom background removal'].some((term) => normalized.includes(term))
@@ -398,6 +429,7 @@ export function useAIHelperChatController({
   }
 
   const buildDirectSettingsPatch = (userInput: string) => {
+    if (!isBareDirectCommand(userInput, DIRECT_SETTINGS_COMMAND_PHRASES)) return null
     const normalized = normalizeDirectCommand(userInput)
     const settingsDecisionCommandTerms = [
       'use photoroom and 4k',
@@ -568,6 +600,7 @@ export function useAIHelperChatController({
 
   const runDirectSuggestionPatchCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
+    if (looksLikeNewCreationRequest(userInput)) return false
 
     const patchGenerateCommandTerms = [
       'make the logo background white and generate',
@@ -705,6 +738,7 @@ export function useAIHelperChatController({
     ]
 
     if (!matchesNaturalDirectCommand(userInput, logoSettingsCommandTerms)) return false
+    if (!isBareDirectCommand(userInput, logoSettingsCommandTerms)) return false
 
     const wantsExactText = ['use exact text overlay', 'set exact text overlay', 'exact text overlay', 'exact text mode'].some((term) => normalized.includes(term))
     const wantsAiText = ['use ai text', 'set ai text', 'ai text mode', 'let ai draw text'].some((term) => normalized.includes(term))
@@ -823,6 +857,7 @@ export function useAIHelperChatController({
 
   const runDirectLatestOutputCommand = (userInput: string) => {
     if (uploadedImages.length > 0) return false
+    if (looksLikeNewCreationRequest(userInput)) return false
 
     const critiqueCommandTerms = [
       'critique',
