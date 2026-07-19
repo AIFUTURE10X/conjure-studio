@@ -86,10 +86,12 @@ export const isBareDirectCommand = (value: string, commandPhrases: string[]) => 
  * mention follow-up vocabulary like "white background" or "critique" without
  * being follow-ups. Keeps the local single-change and latest-output shortcuts
  * away from new-scene requests so those messages reach the AI whole.
+ * Deliberately not normalizeDirectCommand: that strips leading politeness
+ * words, which would erase the "please add" signal at the start of a message.
  */
 export const looksLikeNewCreationRequest = (value: string) => {
-  const normalized = normalizeDirectCommand(value)
-  return /(^|\s)(i want|i need|i would like|i'd like|give me|show me|maybe you can|how about|can you add|could you add|please add|create a|create an|design a|design an|draw a|draw an|an image of|a picture of|a photo of|an illustration of)(\s|$)/.test(normalized)
+  const lowered = value.toLowerCase().trim()
+  return /(^|\s)(i want|i need|i would like|i'd like|give me|show me|maybe you can|how about|can you add|could you add|please add|create a|create an|design a|design an|draw a|draw an|an image of|a picture of|a photo of|an illustration of)(\s|$)/.test(lowered)
 }
 
 export const appendPromptDirective = (prompt: string | undefined, directive: string) => {
