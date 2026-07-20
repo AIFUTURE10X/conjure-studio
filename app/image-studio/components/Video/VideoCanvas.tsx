@@ -14,8 +14,9 @@ import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { BookmarkPlus, Clapperboard, Loader2, Sparkles } from 'lucide-react'
+import { BookmarkPlus, BookOpen, Clapperboard, Loader2, Sparkles } from 'lucide-react'
 import { VideoSettings } from './VideoSettings'
+import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
 import { CameraMotionChips } from './CameraMotionChips'
 import { VideoResultCard } from './VideoResultCard'
 import { useVideoGeneration } from './useVideoGeneration'
@@ -33,6 +34,7 @@ export function VideoCanvas() {
   const settings = state.videoSettings
   const setSettings = state.setVideoSettings
   const [showEndFrameDialog, setShowEndFrameDialog] = useState(false)
+  const [showLibrary, setShowLibrary] = useState(false)
 
   const handleSavePreset = () => {
     savePreset(
@@ -79,14 +81,24 @@ export function VideoCanvas() {
         <div className="flex items-center gap-2">
           <Clapperboard className="w-4 h-4 text-[#dbb56e]" />
           <h3 className="text-sm font-bold text-white">Video Generator</h3>
-          <button
-            onClick={handleSavePreset}
-            title="Save the current prompt + clip settings as a preset (Settings → Presets)"
-            className="ml-auto flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
-          >
-            <BookmarkPlus className="w-3 h-3" />
-            Save preset
-          </button>
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              onClick={() => setShowLibrary(true)}
+              title="Prompt Library — reuse, star, and search every prompt you've generated with"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+            >
+              <BookOpen className="w-3 h-3" />
+              Library
+            </button>
+            <button
+              onClick={handleSavePreset}
+              title="Save the current prompt + clip settings as a preset (Settings → Presets)"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+            >
+              <BookmarkPlus className="w-3 h-3" />
+              Save preset
+            </button>
+          </div>
         </div>
 
         <Textarea
@@ -155,6 +167,13 @@ export function VideoCanvas() {
           </p>
         </div>
       )}
+
+      <PromptLibraryModal
+        open={showLibrary}
+        onOpenChange={setShowLibrary}
+        defaultFilter="video"
+        onUsePrompt={(libraryPrompt) => setPrompt(libraryPrompt)}
+      />
 
       <EndFrameDialog
         isOpen={showEndFrameDialog}

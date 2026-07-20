@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { logPromptUse } from '@/lib/prompt-log'
 
 import { urlToBase64 } from '../utils/export-utils'
 
@@ -178,6 +179,7 @@ export function useImageGeneration(
         setError(`${failedCount} of ${options.count} images failed to generate`)
       }
 
+      logPromptUse(options.prompt, 'image')
       return allImages
     } finally {
       setIsGenerating(false)

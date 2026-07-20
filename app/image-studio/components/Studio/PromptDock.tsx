@@ -11,8 +11,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ChevronDown, ChevronUp, Loader2, Minus, Sparkles, Wand2, X } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronUp, Loader2, Minus, Sparkles, Wand2, X } from 'lucide-react'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
+import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
 import { imageGenerationCost } from '@/lib/credits/cost-map'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
@@ -25,6 +26,7 @@ export function PromptDock() {
   const logoEngine = useLogoGenerationEngine()
   const { improveWithHelper } = useHelperBridge()
   const [showNegative, setShowNegative] = useState(false)
+  const [showLibrary, setShowLibrary] = useState(false)
 
   const isLogoMode = mode === 'logo'
   const isGenerating = isLogoMode ? logoEngine.isGenerating : imageEngine.isGenerating
@@ -160,6 +162,15 @@ export function PromptDock() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowLibrary(true)}
+            title="Prompt Library — reuse, star, and search every prompt you've generated with"
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Library</span>
+          </button>
+
+          <button
             onClick={() => improveWithHelper(state.mainPrompt)}
             disabled={!hasPrompt || isGenerating}
             title="Send this idea to the AI helper to craft a polished prompt"
@@ -184,6 +195,13 @@ export function PromptDock() {
           </Button>
         </div>
       </div>
+
+      <PromptLibraryModal
+        open={showLibrary}
+        onOpenChange={setShowLibrary}
+        defaultFilter={isLogoMode ? 'logo' : 'image'}
+        onUsePrompt={(prompt) => state.setMainPrompt(prompt)}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getUserId } from '@/lib/user-id'
+import { logPromptUse } from '@/lib/prompt-log'
 import { imageUrlToImageFile } from '../../utils/annotation-reference'
 import { VIDEO_MODELS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
 
@@ -144,6 +145,7 @@ export function useVideoGeneration() {
         ...current,
       ])
       toast.success('Video generation started — this can take a few minutes')
+      logPromptUse(options.prompt, 'video')
       return true
     } catch (error) {
       console.error('[video] Submit failed:', error)
