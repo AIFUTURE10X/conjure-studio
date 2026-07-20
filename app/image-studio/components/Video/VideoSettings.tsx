@@ -11,16 +11,11 @@
 import { useRef } from 'react'
 import { toast } from 'sonner'
 import { Film, Sparkles, Upload, Volume2, VolumeX, X } from 'lucide-react'
-import { VIDEO_MODELS, VIDEO_MODEL_IDS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
+import { VIDEO_MODELS, VIDEO_MODEL_IDS } from '@/lib/video/providers'
 import { videoGenerationCost } from '@/lib/credits/cost-map'
+import type { VideoSettingsValue } from '../../constants/video-settings-defaults'
 
-export interface VideoSettingsValue {
-  model: VideoModelId
-  duration: number
-  resolution: VideoResolution
-  aspectRatio: string
-  generateAudio: boolean
-}
+export type { VideoSettingsValue }
 
 interface VideoSettingsProps {
   value: VideoSettingsValue

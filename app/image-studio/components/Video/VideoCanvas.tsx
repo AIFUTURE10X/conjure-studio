@@ -10,11 +10,12 @@
  */
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Clapperboard, Loader2, Sparkles } from 'lucide-react'
-import { VideoSettings, type VideoSettingsValue } from './VideoSettings'
+import { BookmarkPlus, Clapperboard, Loader2, Sparkles } from 'lucide-react'
+import { VideoSettings } from './VideoSettings'
 import { CameraMotionChips } from './CameraMotionChips'
 import { VideoResultCard } from './VideoResultCard'
 import { useVideoGeneration } from './useVideoGeneration'
@@ -23,21 +24,35 @@ import { EndFrameDialog } from '../Studio/EndFrameDialog'
 import { useStudioCore } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 
-const DEFAULT_SETTINGS: VideoSettingsValue = {
-  model: 'seedance-fast',
-  duration: 5,
-  resolution: '1080p',
-  aspectRatio: 'auto',
-  generateAudio: false,
-}
-
 export function VideoCanvas() {
-  const { state } = useStudioCore()
+  const { state, savePreset } = useStudioCore()
   const { createEndFrame } = useImageGenerationEngine()
   const { jobs, isSubmitting, historyLoaded, submitVideo, extendVideo } = useVideoGeneration()
-  const [prompt, setPrompt] = useState('')
-  const [settings, setSettings] = useState<VideoSettingsValue>(DEFAULT_SETTINGS)
+  const prompt = state.videoPrompt
+  const setPrompt = state.setVideoPrompt
+  const settings = state.videoSettings
+  const setSettings = state.setVideoSettings
   const [showEndFrameDialog, setShowEndFrameDialog] = useState(false)
+
+  const handleSavePreset = () => {
+    savePreset(
+      `Video · ${settings.model} · ${settings.duration}s`,
+      {
+        mainPrompt: prompt,
+        negativePrompt: '',
+        aspectRatio: settings.aspectRatio,
+        selectedStylePreset: '',
+        selectedCameraAngle: '',
+        selectedCameraLens: '',
+        styleStrength: 'moderate',
+        imageSize: '1K',
+        selectedModel: '',
+        video: settings,
+      },
+      'video',
+    )
+    toast.success('Video preset saved — rename it in Settings → Presets')
+  }
 
   const startFrameUrl = state.videoStartFrame
   const endFrameUrl = state.videoEndFrame
@@ -64,6 +79,14 @@ export function VideoCanvas() {
         <div className="flex items-center gap-2">
           <Clapperboard className="w-4 h-4 text-[#dbb56e]" />
           <h3 className="text-sm font-bold text-white">Video Generator</h3>
+          <button
+            onClick={handleSavePreset}
+            title="Save the current prompt + clip settings as a preset (Settings → Presets)"
+            className="ml-auto flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+          >
+            <BookmarkPlus className="w-3 h-3" />
+            Save preset
+          </button>
         </div>
 
         <Textarea

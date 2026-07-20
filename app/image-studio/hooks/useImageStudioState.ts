@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import { SETTINGS_STORAGE_KEY } from '../constants/settings-defaults'
+import { DEFAULT_VIDEO_SETTINGS, type VideoSettingsValue } from '../constants/video-settings-defaults'
 import {
   DEFAULT_CREATIVE_DIRECTION,
   normalizeCreativeDirection,
@@ -114,6 +115,12 @@ export interface ImageStudioState {
   setVideoStartFrame: (url: string | null) => void
   videoEndFrame: string | null
   setVideoEndFrame: (url: string | null) => void
+
+  // Video generator prompt + clip settings (lifted so presets/story mode can drive them)
+  videoPrompt: string
+  setVideoPrompt: (prompt: string) => void
+  videoSettings: VideoSettingsValue
+  setVideoSettings: (settings: VideoSettingsValue) => void
 }
 
 export function useImageStudioState(): ImageStudioState {
@@ -199,6 +206,10 @@ export function useImageStudioState(): ImageStudioState {
   const [videoStartFrame, setVideoStartFrame] = useState<string | null>(null)
   const [videoEndFrame, setVideoEndFrame] = useState<string | null>(null)
 
+  // Video generator prompt + clip settings
+  const [videoPrompt, setVideoPrompt] = useState('')
+  const [videoSettings, setVideoSettings] = useState<VideoSettingsValue>(DEFAULT_VIDEO_SETTINGS)
+
   return {
     // Favorites & History UI
     showFavorites, setShowFavorites,
@@ -243,5 +254,9 @@ export function useImageStudioState(): ImageStudioState {
     // Video frame pair
     videoStartFrame, setVideoStartFrame,
     videoEndFrame, setVideoEndFrame,
+
+    // Video generator prompt + clip settings
+    videoPrompt, setVideoPrompt,
+    videoSettings, setVideoSettings,
   }
 }

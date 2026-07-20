@@ -11,6 +11,7 @@ const SOURCE_LABELS: Record<PresetSource, string> = {
   'logo': 'Logo Generator',
   'mockups': 'Mockups',
   'bg-remover': 'BG Remover',
+  'video': 'Video Generator',
 }
 
 interface PresetsPanelProps {

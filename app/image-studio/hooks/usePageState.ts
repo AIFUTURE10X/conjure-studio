@@ -167,6 +167,12 @@ export function usePageState() {
   // Load preset handler
   const handleLoadPreset = (preset: GeneratePreset) => {
     const p = preset.params
+    if (preset.source === 'video' && p.video) {
+      state.setVideoSettings(p.video)
+      state.setVideoPrompt(p.mainPrompt || '')
+      state.setActiveTab('video')
+      return
+    }
     if (p.mainPrompt) state.setMainPrompt(p.mainPrompt)
     if (p.negativePrompt) state.setNegativePrompt(p.negativePrompt)
     if (p.aspectRatio) state.setAspectRatio(p.aspectRatio)

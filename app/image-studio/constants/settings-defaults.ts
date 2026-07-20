@@ -1,5 +1,6 @@
 // Image Studio Settings - Defaults and Configuration
 import type { CreativeDirectionState } from './creative-direction-options'
+import type { VideoSettingsValue } from './video-settings-defaults'
 
 // ===== APP SETTINGS TYPE =====
 export interface ImageStudioSettings {
@@ -98,12 +99,14 @@ export interface SavedGenerateParams {
   selectedModel: string
   generationMode?: 'fast' | 'quality'
   creativeDirection?: CreativeDirectionState
+  /** Present on presets saved from the video panel (source 'video'). */
+  video?: VideoSettingsValue
 }
 
 // ===== PRESETS STORAGE =====
 export const PRESETS_STORAGE_KEY = 'image-studio-presets'
 
-export type PresetSource = 'generate' | 'logo' | 'mockups' | 'bg-remover'
+export type PresetSource = 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'video'
 
 export interface GeneratePreset {
   id: string
