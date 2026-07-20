@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { BookmarkPlus, BookOpen, Clapperboard, Loader2, Sparkles } from 'lucide-react'
 import { VideoSettings } from './VideoSettings'
+import { StoryModeCard } from './StoryMode/StoryModeCard'
 import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
 import { CameraMotionChips } from './CameraMotionChips'
 import { VideoResultCard } from './VideoResultCard'
@@ -80,6 +81,13 @@ export function VideoCanvas() {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <StoryModeCard
+        settings={settings}
+        aspectRatio={settings.aspectRatio}
+        selectedModel={state.selectedModel}
+        submitVideo={submitVideo}
+      />
+
       <Card className="bg-zinc-900 border-zinc-800 p-4 space-y-4">
         <div className="flex items-center gap-2">
           <Clapperboard className="w-4 h-4 text-[#dbb56e]" />
