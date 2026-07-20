@@ -61,6 +61,7 @@ const VIDEO_CREDITS_PER_SECOND: Record<string, { base: number; audio: number }> 
 export const VIDEO_TOOL_COSTS = {
   lipsync: 10,
   videoUpscale: 15,
+  filmAssembly: 10,
 } as const
 
 export type VideoToolOperation = keyof typeof VIDEO_TOOL_COSTS

@@ -370,6 +370,29 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         ],
       },
       {
+        title: 'Assemble Film — stitch, narrate, score',
+        paragraphs: [
+          'The "Assemble film" button in the Videos header (appears once you have 2+ finished clips) turns separate clips into one finished film: pick clips in order, add AI narration in your chosen voice, pick a music mood, and one MP4 lands back in your Videos list.',
+        ],
+        more: [
+          {
+            heading: 'Step by step',
+            steps: [
+              'Press "Assemble film" in the Videos list header. Story Mode shots auto-preselect in shot order; otherwise click clips in the order you want them (the number badge shows each clip’s position — click again to remove).',
+              'Pick narration: ElevenLabs (best quality — 10 narrator voices like Rachel, Brian, George) or Kling (the 46 Lip Sync voices), or None.',
+              'Write the narration script — or press "Write with AI" and it writes one timed to your film’s length from the clips’ own prompts.',
+              'Pick a music mood: Cinematic Score, Melancholy Piano, Uplifting Build, Ambient, Tension, Warm Acoustic, Electronic Pulse — the track is AI-generated to match (or No music).',
+              'Press Assemble. Clips merge, narration and music generate, and everything composes into one film (10 credits). It appears in the Videos list like any clip — download it, Enhance it to 4K, favorite it.',
+            ],
+            tips: [
+              'Music generation caps at 30 seconds — longer films go quiet after the track ends, so front-load the music-dependent moments or keep films ≤30s.',
+              'Narration pacing: about 2 words per second of film fits comfortably. The AI writer handles this automatically.',
+              'Failed assemblies auto-refund like every other job.',
+            ],
+          },
+        ],
+      },
+      {
         title: 'Video presets',
         paragraphs: [
           '"Save preset" in the Video Generator header stores your current prompt + model + clip settings. Load or rename presets in Settings → Presets — loading one restores everything and switches you to the Video tab. Presets sync to your account across devices.',
@@ -419,7 +442,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           {
             heading: 'Finishing the film',
             paragraphs: [
-              'Animate All queues each shot as its own clip. Download them and cut together in any editor (CapCut, Premiere, Resolve) — or Extend individual shots first where you need more air. Add music in the editor; or generate key shots with Audio on (Seedance 2.0 / Kling / Veo) for diegetic sound.',
+              'Animate All queues each shot as its own clip. Then press "Assemble film" in the Videos header — your shots auto-preselect in order, and you add narration and music right there (see the Video Generator section). For manual control, download the clips and cut in any editor instead.',
             ],
           },
         ],

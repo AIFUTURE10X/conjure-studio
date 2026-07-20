@@ -14,8 +14,9 @@ import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { BookmarkPlus, BookOpen, Clapperboard, Loader2, Sparkles } from 'lucide-react'
+import { BookmarkPlus, BookOpen, Clapperboard, Film, Loader2, Sparkles } from 'lucide-react'
 import { VideoSettings } from './VideoSettings'
+import { AssembleFilmDialog } from './AssembleFilmDialog'
 import { StoryModeCard } from './StoryMode/StoryModeCard'
 import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
 import { CameraMotionChips } from './CameraMotionChips'
@@ -33,8 +34,10 @@ export function VideoCanvas() {
   const { improveWithHelper } = useHelperBridge()
   const {
     jobs, isSubmitting, historyLoaded, submitVideo, extendVideo,
-    toggleFavorite, submitLipSync, submitEnhance,
+    toggleFavorite, submitLipSync, submitEnhance, submitAssembleFilm,
   } = useVideoGeneration()
+  const [showAssemble, setShowAssemble] = useState(false)
+  const completedCount = jobs.filter((job) => job.status === 'completed' && job.videoUrl).length
   const prompt = state.videoPrompt
   const setPrompt = state.setVideoPrompt
   const settings = state.videoSettings
@@ -193,6 +196,13 @@ export function VideoCanvas() {
         </div>
       )}
 
+      <AssembleFilmDialog
+        isOpen={showAssemble}
+        onOpenChange={setShowAssemble}
+        jobs={jobs}
+        onConfirm={submitAssembleFilm}
+      />
+
       <PromptLibraryModal
         open={showLibrary}
         onOpenChange={setShowLibrary}
@@ -211,7 +221,20 @@ export function VideoCanvas() {
 
       {jobs.length > 0 && (
         <Card className="bg-zinc-900 border-[#c99850]/30 p-4">
-          <h3 className="text-lg font-bold text-white mb-4">Videos ({jobs.length})</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white">Videos ({jobs.length})</h3>
+            {completedCount >= 2 && (
+              <Button
+                onClick={() => setShowAssemble(true)}
+                size="sm"
+                className="bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850]"
+                title="Stitch clips into one film with narration and music"
+              >
+                <Film className="w-3.5 h-3.5 mr-1.5" />
+                Assemble film
+              </Button>
+            )}
+          </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {jobs.map((job) => (
               <VideoResultCard

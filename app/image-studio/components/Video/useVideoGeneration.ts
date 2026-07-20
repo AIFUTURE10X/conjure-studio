@@ -264,6 +264,46 @@ export function useVideoGeneration() {
     }
   }, [addPendingJob])
 
+  const submitAssembleFilm = useCallback(async (
+    selectedJobs: VideoJob[],
+    options: {
+      narration?: { text: string; engine: 'elevenlabs' | 'kling'; voiceId: string }
+      musicStyleId?: string
+    },
+  ): Promise<boolean> => {
+    const clips = selectedJobs
+      .filter((job) => job.videoUrl)
+      .map((job) => ({ url: job.videoUrl as string, durationSeconds: job.durationSeconds ?? 5 }))
+    if (clips.length < 2) {
+      toast.error('Pick at least two finished clips')
+      return false
+    }
+    try {
+      const response = await fetch('/api/assemble-film', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: getUserId(),
+          clips,
+          narration: options.narration,
+          music: options.musicStyleId ? { styleId: options.musicStyleId } : undefined,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || `Film assembly failed (${response.status})`)
+      const label = `Film: ${clips.length} clips` +
+        (options.narration ? ' · narrated' : '') +
+        (options.musicStyleId && options.musicStyleId !== 'none' ? ' · music' : '')
+      addPendingJob(data.jobId as number, label, 'film-assembly', selectedJobs[0])
+      toast.success('Assembling your film — narration and music are being generated')
+      return true
+    } catch (error) {
+      console.error('[video] Film assembly failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to assemble film')
+      return false
+    }
+  }, [addPendingJob])
+
   const toggleFavorite = useCallback((job: VideoJob) => {
     const next = !job.isFavorited
     setJobs((current) => current.map((item) => (
@@ -286,5 +326,6 @@ export function useVideoGeneration() {
     toggleFavorite,
     submitLipSync,
     submitEnhance,
+    submitAssembleFilm,
   }
 }

@@ -20,6 +20,7 @@ interface VideoResultCardProps {
 const TOOL_MODEL_LABELS: Record<string, string> = {
   'kling-lipsync': 'Kling Lip Sync',
   'seedvr-upscale': 'SeedVR2 Enhance',
+  'film-assembly': 'Film Assembly',
 }
 
 function modelLabel(model: string): string {

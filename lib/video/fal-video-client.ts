@@ -34,6 +34,39 @@ export async function submitVideoJob(
   return requestId
 }
 
+/**
+ * Run a fast fal endpoint synchronously (TTS, music, ffmpeg merge) and
+ * return its result data. Used by multi-step pipelines like film assembly
+ * where intermediate outputs feed the next call.
+ */
+export async function runFalDirect(
+  endpoint: string,
+  input: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  configureFal()
+  const result = await fal.subscribe(endpoint, { input, logs: false })
+  const data = (result as { data?: unknown })?.data ?? result
+  if (!data || typeof data !== "object") {
+    throw new Error(`fal ${endpoint} returned no data`)
+  }
+  return data as Record<string, unknown>
+}
+
+/** Pull a media URL out of the varying fal output shapes ({video:{url}}, {audio:{url}}, {url}, {video_url}). */
+export function extractMediaUrl(data: Record<string, unknown>): string {
+  for (const key of ["video", "audio", "image"]) {
+    const media = data[key]
+    if (media && typeof media === "object") {
+      const url = (media as { url?: unknown }).url
+      if (typeof url === "string") return url
+    }
+  }
+  if (typeof data.url === "string") return data.url
+  if (typeof data.video_url === "string") return data.video_url
+  if (typeof data.audio_url === "string") return data.audio_url
+  throw new Error("Could not extract a media URL from the fal response")
+}
+
 export type FalQueueStatus = "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED"
 
 /** Current queue status of a video job. Throws if fal reports the job as errored. */
@@ -73,6 +106,11 @@ export async function getVideoJobResult(
     const directUrl = (data as { url?: unknown }).url
     if (typeof directUrl === "string") {
       return { videoUrl: directUrl, contentType: "video/mp4" }
+    }
+    // ffmpeg compose returns { video_url } instead of a File object.
+    const composeUrl = (data as { video_url?: unknown }).video_url
+    if (typeof composeUrl === "string") {
+      return { videoUrl: composeUrl, contentType: "video/mp4" }
     }
   }
 
