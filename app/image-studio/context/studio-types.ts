@@ -7,9 +7,9 @@
  * 'settings' has no studio mode — it becomes a dialog in the new shell.
  */
 
-export type StudioMode = 'image' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'thumbnail' | 'translate'
+export type StudioMode = 'image' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'thumbnail' | 'translate' | 'guide'
 
-export type LegacyTab = 'generate' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail' | 'translate'
+export type LegacyTab = 'generate' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail' | 'translate' | 'guide'
 
 export const TAB_FOR_MODE: Record<StudioMode, LegacyTab> = {
   image: 'generate',
@@ -19,6 +19,7 @@ export const TAB_FOR_MODE: Record<StudioMode, LegacyTab> = {
   'bg-remover': 'bg-remover',
   thumbnail: 'thumbnail',
   translate: 'translate',
+  guide: 'guide',
 }
 
 export const MODE_FOR_TAB: Record<LegacyTab, StudioMode> = {
@@ -30,4 +31,5 @@ export const MODE_FOR_TAB: Record<LegacyTab, StudioMode> = {
   settings: 'image',
   thumbnail: 'thumbnail',
   translate: 'translate',
+  guide: 'guide',
 }

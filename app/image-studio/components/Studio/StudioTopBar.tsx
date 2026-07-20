@@ -29,6 +29,7 @@ const MODE_OPTIONS: Array<{ mode: StudioMode; label: string }> = [
   { mode: 'translate', label: 'Translate' },
   { mode: 'mockups', label: 'Mockups' },
   { mode: 'bg-remover', label: 'BG Remover' },
+  { mode: 'guide', label: 'Guide' },
 ]
 
 const SHOW_ACCOUNT_CONTROLS = ['on', 'true', '1'].includes(

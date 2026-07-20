@@ -18,6 +18,7 @@ import { BackgroundRemoverPanel } from '../BackgroundRemover'
 import { ThumbnailCanvas } from '../Thumbnail'
 import { TranslateTextPanel } from '../TranslateText'
 import { VideoCanvas } from '../Video'
+import { GuideCanvas } from '../Guide/GuideCanvas'
 import { useStudioMode } from '../../context/useStudio'
 
 export function CanvasPanel() {
@@ -30,6 +31,7 @@ export function CanvasPanel() {
       {mode === 'logo' && <LogoCanvas />}
       {mode === 'thumbnail' && <ThumbnailCanvas />}
       {mode === 'translate' && <TranslateTextPanel />}
+      {mode === 'guide' && <GuideCanvas />}
 
       {/* Mounted-hidden so pending video jobs keep polling across mode switches. */}
       <div className={`flex-1 min-h-0 flex-col ${mode === 'video' ? 'flex' : 'hidden'}`}>
