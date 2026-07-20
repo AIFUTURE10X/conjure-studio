@@ -13,10 +13,12 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Clapperboard, Loader2 } from 'lucide-react'
+import { Clapperboard, Loader2, Sparkles } from 'lucide-react'
 import { VideoSettings, type VideoSettingsValue } from './VideoSettings'
+import { CameraMotionChips } from './CameraMotionChips'
 import { VideoResultCard } from './VideoResultCard'
 import { useVideoGeneration } from './useVideoGeneration'
+import { useMotionSuggestion } from './useMotionSuggestion'
 import { EndFrameDialog } from '../Studio/EndFrameDialog'
 import { useStudioCore } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
@@ -39,6 +41,7 @@ export function VideoCanvas() {
 
   const startFrameUrl = state.videoStartFrame
   const endFrameUrl = state.videoEndFrame
+  const { isSuggesting, suggestNow } = useMotionSuggestion({ startFrameUrl, prompt, setPrompt })
   const canGenerate = prompt.trim().length > 0 && !isSubmitting
 
   const handleGenerate = async () => {
@@ -66,11 +69,27 @@ export function VideoCanvas() {
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder={startFrameUrl
-            ? 'Describe the motion — e.g. slow camera push-in while the logo shimmers…'
-            : 'Describe the video you want to generate…'}
+          placeholder={isSuggesting
+            ? 'Writing a motion prompt from your start frame…'
+            : startFrameUrl
+              ? 'Describe the motion — e.g. slow camera push-in while the logo shimmers…'
+              : 'Describe the video you want to generate…'}
           className="min-h-[70px] bg-zinc-950 border-zinc-800 text-sm text-zinc-200 placeholder:text-zinc-600 resize-y"
         />
+
+        {startFrameUrl && (
+          <button
+            onClick={suggestNow}
+            disabled={isSuggesting}
+            title="AI looks at your start frame and writes the motion prompt for you (replaces the current prompt)"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors disabled:opacity-50"
+          >
+            {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {isSuggesting ? 'Writing motion prompt…' : 'Suggest motion from start frame'}
+          </button>
+        )}
+
+        <CameraMotionChips prompt={prompt} onPromptChange={setPrompt} />
 
         <VideoSettings
           value={settings}
@@ -79,6 +98,8 @@ export function VideoCanvas() {
           endFrameUrl={endFrameUrl}
           onClearStartFrame={() => state.setVideoStartFrame(null)}
           onClearEndFrame={() => state.setVideoEndFrame(null)}
+          onUploadStartFrame={(dataUrl) => state.setVideoStartFrame(dataUrl)}
+          onUploadEndFrame={(dataUrl) => state.setVideoEndFrame(dataUrl)}
           onGenerateEndFrame={() => setShowEndFrameDialog(true)}
         />
 

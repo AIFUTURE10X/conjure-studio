@@ -8,7 +8,9 @@
  * controls (audio, end frame, resolutions) disable themselves per model.
  */
 
-import { Film, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
+import { useRef } from 'react'
+import { toast } from 'sonner'
+import { Film, Sparkles, Upload, Volume2, VolumeX, X } from 'lucide-react'
 import { VIDEO_MODELS, VIDEO_MODEL_IDS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
 import { videoGenerationCost } from '@/lib/credits/cost-map'
 
@@ -27,19 +29,44 @@ interface VideoSettingsProps {
   endFrameUrl: string | null
   onClearStartFrame: () => void
   onClearEndFrame: () => void
+  /** Direct upload into the start/end slots (browse or drag-drop). */
+  onUploadStartFrame?: (dataUrl: string) => void
+  onUploadEndFrame?: (dataUrl: string) => void
   /** Shown in the empty end slot when a start frame is set: AI-generate a matching end frame. */
   onGenerateEndFrame?: () => void
 }
 
 const ASPECT_RATIOS = ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9']
 
-function FrameSlot({ label, hint, url, onClear, action }: {
+const MAX_FRAME_FILE_BYTES = 10 * 1024 * 1024
+
+function FrameSlot({ label, hint, url, onClear, onUpload, action }: {
   label: string
   hint: string
   url: string | null
   onClear: () => void
+  /** Direct file upload into the slot (browse or drag-drop). */
+  onUpload?: (dataUrl: string) => void
   action?: { label: string; onClick: () => void }
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = (file: File | undefined) => {
+    if (!file || !onUpload) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file')
+      return
+    }
+    if (file.size > MAX_FRAME_FILE_BYTES) {
+      toast.error('Image is too large (max 10MB)')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onUpload(reader.result as string)
+    reader.onerror = () => toast.error('Could not read that file')
+    reader.readAsDataURL(file)
+  }
+
   return (
     <div className="flex-1 min-w-[120px]">
       <p className="text-xs text-zinc-400 mb-1">{label}</p>
@@ -55,17 +82,42 @@ function FrameSlot({ label, hint, url, onClear, action }: {
           </button>
         </div>
       ) : (
-        <div className="h-20 rounded-md border border-dashed border-zinc-700 flex flex-col items-center justify-center gap-1.5 px-2">
+        <div
+          className="h-20 rounded-md border border-dashed border-zinc-700 flex flex-col items-center justify-center gap-1 px-2"
+          onDragOver={onUpload ? (e) => e.preventDefault() : undefined}
+          onDrop={onUpload ? (e) => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]) } : undefined}
+        >
           <p className="text-[10px] text-zinc-600 text-center leading-4">{hint}</p>
-          {action && (
-            <button
-              onClick={action.onClick}
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors"
-            >
-              <Sparkles className="w-3 h-3" />
-              {action.label}
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {onUpload && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = '' }}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload an image from your computer (or drag & drop one here)"
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+                >
+                  <Upload className="w-3 h-3" />
+                  Upload
+                </button>
+              </>
+            )}
+            {action && (
+              <button
+                onClick={action.onClick}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors"
+              >
+                <Sparkles className="w-3 h-3" />
+                {action.label}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -73,7 +125,8 @@ function FrameSlot({ label, hint, url, onClear, action }: {
 }
 
 export function VideoSettings({
-  value, onChange, startFrameUrl, endFrameUrl, onClearStartFrame, onClearEndFrame, onGenerateEndFrame,
+  value, onChange, startFrameUrl, endFrameUrl, onClearStartFrame, onClearEndFrame,
+  onUploadStartFrame, onUploadEndFrame, onGenerateEndFrame,
 }: VideoSettingsProps) {
   const model = VIDEO_MODELS[value.model]
   const caps = model.capabilities
@@ -210,17 +263,19 @@ export function VideoSettings({
       <div className="flex flex-wrap gap-3">
         <FrameSlot
           label="Start frame"
-          hint="Press “Animate” on a generated image to set the opening frame — or leave empty for text-to-video"
+          hint="Press “Animate” on a generated image, upload one, or leave empty for text-to-video"
           url={startFrameUrl}
           onClear={onClearStartFrame}
+          onUpload={onUploadStartFrame}
         />
         <FrameSlot
           label={caps.endFrame ? 'End frame (optional)' : 'End frame'}
           hint={caps.endFrame
-            ? 'Press “End Frame” on a generated image to set the closing frame the video moves toward'
+            ? 'Press “End Frame” on a generated image or upload the closing frame the video moves toward'
             : `${model.label} can’t use an end frame — switch to Seedance 2.0, Kling 3.0 Pro, or Veo 3.1`}
           url={caps.endFrame ? endFrameUrl : null}
           onClear={onClearEndFrame}
+          onUpload={caps.endFrame ? onUploadEndFrame : undefined}
           action={caps.endFrame && startFrameUrl && !endFrameUrl && onGenerateEndFrame
             ? { label: 'Generate from start frame', onClick: onGenerateEndFrame }
             : undefined}
