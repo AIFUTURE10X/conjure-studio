@@ -8,8 +8,10 @@
  * Contains: History, Favorites, Restore Parameters
  */
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Clock, Heart, Settings } from 'lucide-react'
+import { Clock, FolderOpen, Heart, Settings } from 'lucide-react'
+import { CollectionsModal } from './Collections/CollectionsModal'
 
 interface HeaderContextButtonsProps {
   favoritesCount: number
@@ -26,6 +28,8 @@ export function HeaderContextButtons({
   onRestoreParameters,
   onShowFavorites,
 }: HeaderContextButtonsProps) {
+  const [showCollections, setShowCollections] = useState(false)
+
   return (
     <div className="flex items-center gap-2">
       {/* History Button */}
@@ -49,6 +53,18 @@ export function HeaderContextButtons({
         <Heart className="w-4 h-4" />
         <span className="text-sm">Favorites ({favoritesCount})</span>
       </Button>
+
+      {/* Collections Button */}
+      <Button
+        onClick={() => setShowCollections(true)}
+        variant="ghost"
+        size="sm"
+        className="text-zinc-400 hover:text-white flex items-center gap-2"
+      >
+        <FolderOpen className="w-4 h-4" />
+        <span className="text-sm">Collections</span>
+      </Button>
+      <CollectionsModal open={showCollections} onOpenChange={setShowCollections} />
 
       {/* Restore Parameters Button - only shown if stored params exist */}
       {hasStoredParams && (

@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { BookOpen, ChevronDown, ChevronUp, Loader2, Minus, Sparkles, Wand2, X } from 'lucide-react'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
+import { CollectionSelect } from '../Collections/CollectionSelect'
 import { imageGenerationCost } from '@/lib/credits/cost-map'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
@@ -138,6 +139,8 @@ export function PromptDock() {
             <Minus className="w-3 h-3" />
             Negative
           </button>
+
+          {!isLogoMode && <CollectionSelect />}
 
           {!isLogoMode && (
             <div className="flex items-center gap-1">

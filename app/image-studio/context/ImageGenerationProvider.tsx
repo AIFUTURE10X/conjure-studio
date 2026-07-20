@@ -20,6 +20,7 @@ import { buildFinalImagePrompt } from '../utils/build-image-prompt'
 import { getImageMetadata, type ImageMetadata } from '../utils/get-image-metadata'
 import { getAnnotationReferenceInstruction, imageUrlToImageFile } from '../utils/annotation-reference'
 import { normalizeCreativeDirection } from '../constants/creative-direction-options'
+import { addToActiveCollection } from '@/lib/collections-client'
 import { useStudioCore } from './useStudio'
 
 export type ImageBgRemovalMethod = 'none' | 'photoroom' | 'fal'
@@ -140,6 +141,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         imageQuality,
       })
       if (imgs?.length) {
+        addToActiveCollection(imgs.map((img) => img.url), finalPrompt)
         let historySaveFailed = false
         for (const img of imgs) {
           const m = await getImageMetadata(img.url)
