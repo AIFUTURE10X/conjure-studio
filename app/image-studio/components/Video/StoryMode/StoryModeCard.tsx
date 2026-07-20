@@ -31,6 +31,7 @@ export function StoryModeCard({ settings, aspectRatio, selectedModel, submitVide
   const {
     storyTitle, shots, isWritingScript, isGeneratingFrames, isAnimating,
     writeScript, updateShot, removeShot, generateFrameFor, generateAllFrames, animateAll, clearStory,
+    refineWithHelper,
   } = useStoryMode({ settings, aspectRatio, selectedModel, submitVideo })
 
   const framesDone = shots.filter((shot) => shot.frameStatus === 'done').length
@@ -96,6 +97,14 @@ export function StoryModeCard({ settings, aspectRatio, selectedModel, submitVide
               <div className="flex items-center gap-2">
                 <p className="text-xs font-medium text-[#f0d49b] flex-1 truncate">“{storyTitle}”</p>
                 <p className="text-[10px] text-zinc-500 shrink-0">{framesDone}/{shots.length} frames</p>
+                <button
+                  onClick={refineWithHelper}
+                  title="Send this plan to the AI helper for conversational revision — chat, then Apply the revised plan"
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors shrink-0"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Refine with AI
+                </button>
                 <button
                   onClick={clearStory}
                   title="Discard this story plan"

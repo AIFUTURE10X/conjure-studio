@@ -25,10 +25,12 @@ import { useMotionSuggestion } from './useMotionSuggestion'
 import { EndFrameDialog } from '../Studio/EndFrameDialog'
 import { useStudioCore } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
+import { useHelperBridge } from '../../context/HelperBridgeProvider'
 
 export function VideoCanvas() {
   const { state, savePreset } = useStudioCore()
   const { createEndFrame } = useImageGenerationEngine()
+  const { improveWithHelper } = useHelperBridge()
   const {
     jobs, isSubmitting, historyLoaded, submitVideo, extendVideo,
     toggleFavorite, submitLipSync, submitEnhance,
@@ -123,17 +125,29 @@ export function VideoCanvas() {
           className="min-h-[70px] bg-zinc-950 border-zinc-800 text-sm text-zinc-200 placeholder:text-zinc-600 resize-y"
         />
 
-        {startFrameUrl && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {startFrameUrl && (
+            <button
+              onClick={suggestNow}
+              disabled={isSuggesting}
+              title="AI looks at your start frame and writes the motion prompt for you (replaces the current prompt)"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors disabled:opacity-50"
+            >
+              {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {isSuggesting ? 'Writing motion prompt…' : 'Suggest motion from start frame'}
+            </button>
+          )}
           <button
-            onClick={suggestNow}
-            disabled={isSuggesting}
-            title="AI looks at your start frame and writes the motion prompt for you (replaces the current prompt)"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors disabled:opacity-50"
+            onClick={() => improveWithHelper(prompt.trim()
+              ? `Improve this video prompt and suggest the best model/settings for it: "${prompt.trim()}"`
+              : 'Help me write a great video prompt — ask me what I need if the goal is unclear.')}
+            title="Chat with the AI video director in the helper panel — it knows every model and can apply prompts and settings for you"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-[#c99850]/40 bg-[#c99850]/10 text-[#f0d49b] hover:bg-[#c99850]/20 transition-colors"
           >
-            {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-            {isSuggesting ? 'Writing motion prompt…' : 'Suggest motion from start frame'}
+            <Sparkles className="w-3 h-3" />
+            Improve with AI
           </button>
-        )}
+        </div>
 
         <CameraMotionChips prompt={prompt} onPromptChange={setPrompt} />
 

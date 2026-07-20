@@ -17,6 +17,7 @@ import { ContextSnapshot } from '../AIHelper/ContextSnapshot'
 import { PromptSuggestionChips } from '../AIHelper/PromptSuggestionChips'
 import { PromptPreflightPanel } from '../AIHelper/PromptPreflightPanel'
 import { useAIHelperChatController } from '../AIHelper/useAIHelperChatController'
+import { VideoHelperPanel } from '../AIHelper/VideoHelper/VideoHelperPanel'
 import { EditChatPanel } from '../EditChat'
 import { useStudioCore, useStudioMode, usePendingSuggestion } from '../../context/useStudio'
 import { useStudioSnapshot } from '../../context/useStudioSnapshot'
@@ -29,7 +30,7 @@ import type { ImageSettingsPatch, LogoSettingsSuggestionPatch } from '../../cont
 export function HelperPanel() {
   const editChat = useEditChat()
   const { handleApplyAISuggestions, state } = useStudioCore()
-  const { setMode } = useStudioMode()
+  const { mode: studioMode, setMode } = useStudioMode()
   const { setPendingSuggestion } = usePendingSuggestion()
   const { requestGenerate } = useImageGenerationEngine()
   const logoEngine = useLogoGenerationEngine()
@@ -72,12 +73,15 @@ export function HelperPanel() {
   const [helperSection, setHelperSection] = useState<'chat' | 'tools' | 'context'>('chat')
 
   // Expose the prompt runner so the PromptDock's "Improve with AI" button can
-  // hand the typed idea to the helper.
+  // hand the typed idea to the helper. In video mode the VideoHelperPanel
+  // owns the bridge runner instead, so registration skips (and re-registers
+  // when the mode switches back).
   const { registerHelperRunner } = useHelperBridge()
   useEffect(() => {
+    if (studioMode === 'video') return
     registerHelperRunner((prompt) => void runHelperPrompt(prompt))
     return () => registerHelperRunner(null)
-  }, [registerHelperRunner, runHelperPrompt])
+  }, [registerHelperRunner, runHelperPrompt, studioMode])
 
   // Auto-preview: the newest assistant suggestion flows into the settings
   // rail as a pending patch (amber ring + diff chips). Logo suggestions get
@@ -149,6 +153,11 @@ export function HelperPanel() {
         <EditChatPanel />
       </div>
     )
+  }
+
+  // Video mode gets its own model-aware chat (prompt/settings/shot-plan applies).
+  if (studioMode === 'video') {
+    return <VideoHelperPanel />
   }
 
   return (

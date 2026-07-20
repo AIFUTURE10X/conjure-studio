@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useImageGeneration, type GenerationModel } from '../../../hooks/useImageGeneration'
+import { useHelperBridge, type StoryPlanShot } from '../../../context/HelperBridgeProvider'
 import type { SubmitVideoOptions } from '../useVideoGeneration'
 import type { VideoSettingsValue } from '../../../constants/video-settings-defaults'
 import { VIDEO_MODELS } from '@/lib/video/providers'
@@ -31,6 +32,7 @@ interface UseStoryModeOptions {
 }
 
 export function useStoryMode({ settings, aspectRatio, selectedModel, submitVideo }: UseStoryModeOptions) {
+  const { improveWithHelper, registerStoryPlanApplier } = useHelperBridge()
   const [storyTitle, setStoryTitle] = useState('')
   const [shots, setShots] = useState<StoryShot[]>([])
   const [isWritingScript, setIsWritingScript] = useState(false)
@@ -149,6 +151,40 @@ export function useStoryMode({ settings, aspectRatio, selectedModel, submitVideo
     setShots([])
   }, [])
 
+  /**
+   * The AI helper can hand back a revised plan. Merge by position: shots
+   * whose framePrompt is unchanged keep their generated frame; changed or
+   * new shots reset so "Generate frames" fills only what actually changed.
+   */
+  useEffect(() => {
+    registerStoryPlanApplier((revised: StoryPlanShot[]) => {
+      setShots((prev) => revised.map((shot, index) => {
+        const existing = prev[index]
+        const frameStillValid = existing && existing.framePrompt.trim() === shot.framePrompt.trim()
+        return {
+          ...shot,
+          id: index + 1,
+          frameUrl: frameStillValid ? existing.frameUrl : null,
+          frameStatus: frameStillValid ? existing.frameStatus : 'none',
+          videoQueued: frameStillValid ? existing.videoQueued : false,
+        }
+      }))
+    })
+    return () => registerStoryPlanApplier(null)
+  }, [registerStoryPlanApplier])
+
+  /** Send the current plan to the video helper chat for conversational revision. */
+  const refineWithHelper = useCallback(() => {
+    if (shots.length === 0) return
+    const plan = shots.map(({ title, framePrompt, motionPrompt, durationSeconds }) => ({
+      title, framePrompt, motionPrompt, durationSeconds,
+    }))
+    improveWithHelper(
+      `Here is my current Story Mode shot plan titled “${storyTitle}” (JSON):\n${JSON.stringify(plan)}\n\nReview it as a director: tighten weak shots, strengthen continuity and pacing, and return the complete revised plan.`,
+    )
+    toast.info('Plan sent to the AI helper — chat there to refine it, then press Apply')
+  }, [shots, storyTitle, improveWithHelper])
+
   return {
     storyTitle,
     shots,
@@ -162,5 +198,6 @@ export function useStoryMode({ settings, aspectRatio, selectedModel, submitVideo
     generateAllFrames,
     animateAll,
     clearStory,
+    refineWithHelper,
   }
 }

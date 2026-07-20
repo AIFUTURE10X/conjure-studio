@@ -17,10 +17,22 @@ import { createContext, useCallback, useContext, useMemo, useRef, type ReactNode
 
 type HelperRunner = (prompt: string) => void
 
+/** Shot shape shared with Story Mode's plan (runtime frame state excluded). */
+export interface StoryPlanShot {
+  title: string
+  framePrompt: string
+  motionPrompt: string
+  durationSeconds: number
+}
+
 export interface HelperBridgeValue {
   registerHelperRunner: (runner: HelperRunner | null) => void
   registerOpenHelper: (open: (() => void) | null) => void
   improveWithHelper: (prompt: string) => void
+  /** Story Mode registers how a helper-revised shot plan gets applied back. */
+  registerStoryPlanApplier: (applier: ((shots: StoryPlanShot[]) => void) | null) => void
+  /** Video helper chat calls this to push a revised plan into Story Mode. Returns false if nothing registered. */
+  applyStoryPlan: (shots: StoryPlanShot[]) => boolean
 }
 
 const HelperBridgeContext = createContext<HelperBridgeValue | null>(null)
@@ -45,6 +57,18 @@ export function HelperBridgeProvider({ children }: { children: ReactNode }) {
     openRef.current = open
   }, [])
 
+  const storyApplierRef = useRef<((shots: StoryPlanShot[]) => void) | null>(null)
+
+  const registerStoryPlanApplier = useCallback((applier: ((shots: StoryPlanShot[]) => void) | null) => {
+    storyApplierRef.current = applier
+  }, [])
+
+  const applyStoryPlan = useCallback((shots: StoryPlanShot[]): boolean => {
+    if (!storyApplierRef.current) return false
+    storyApplierRef.current(shots)
+    return true
+  }, [])
+
   const improveWithHelper = useCallback((prompt: string) => {
     const text = prompt.trim()
     if (!text) return
@@ -57,8 +81,8 @@ export function HelperBridgeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<HelperBridgeValue>(
-    () => ({ registerHelperRunner, registerOpenHelper, improveWithHelper }),
-    [registerHelperRunner, registerOpenHelper, improveWithHelper],
+    () => ({ registerHelperRunner, registerOpenHelper, improveWithHelper, registerStoryPlanApplier, applyStoryPlan }),
+    [registerHelperRunner, registerOpenHelper, improveWithHelper, registerStoryPlanApplier, applyStoryPlan],
   )
 
   return <HelperBridgeContext.Provider value={value}>{children}</HelperBridgeContext.Provider>
