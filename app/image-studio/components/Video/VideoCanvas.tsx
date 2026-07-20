@@ -28,7 +28,10 @@ import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 export function VideoCanvas() {
   const { state, savePreset } = useStudioCore()
   const { createEndFrame } = useImageGenerationEngine()
-  const { jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, toggleFavorite } = useVideoGeneration()
+  const {
+    jobs, isSubmitting, historyLoaded, submitVideo, extendVideo,
+    toggleFavorite, submitLipSync, submitEnhance,
+  } = useVideoGeneration()
   const prompt = state.videoPrompt
   const setPrompt = state.setVideoPrompt
   const settings = state.videoSettings
@@ -194,6 +197,8 @@ export function VideoCanvas() {
                 job={job}
                 onExtend={async (source, extensionPrompt, lastFrame) => extendVideo(source, extensionPrompt, lastFrame)}
                 onToggleFavorite={toggleFavorite}
+                onLipSync={submitLipSync}
+                onEnhance={submitEnhance}
               />
             ))}
           </div>

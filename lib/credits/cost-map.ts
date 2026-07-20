@@ -57,6 +57,18 @@ const VIDEO_CREDITS_PER_SECOND: Record<string, { base: number; audio: number }> 
   'veo-3.1': { base: 12, audio: 20 },
 }
 
+/** Post-production video tools (flat per-run). */
+export const VIDEO_TOOL_COSTS = {
+  lipsync: 10,
+  videoUpscale: 15,
+} as const
+
+export type VideoToolOperation = keyof typeof VIDEO_TOOL_COSTS
+
+export function videoToolCost(operation: VideoToolOperation): number {
+  return VIDEO_TOOL_COSTS[operation]
+}
+
 /** Cost of one video clip. Unknown models fall back to the most expensive rate so misconfig never undercharges. */
 export function videoGenerationCost(
   model: string,

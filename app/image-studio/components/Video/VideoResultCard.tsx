@@ -3,8 +3,9 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Download, Heart, ListPlus, Loader2, TriangleAlert } from 'lucide-react'
+import { Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, Wand2 } from 'lucide-react'
 import { ExtendVideoDialog } from './ExtendVideoDialog'
+import { LipSyncDialog } from './LipSyncDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
 import type { VideoJob } from './useVideoGeneration'
 
@@ -12,15 +13,24 @@ interface VideoResultCardProps {
   job: VideoJob
   onExtend?: (job: VideoJob, extensionPrompt: string, lastFrameDataUrl?: string) => Promise<boolean>
   onToggleFavorite?: (job: VideoJob) => void
+  onLipSync?: (job: VideoJob, payload: { mode: 'text'; text: string; voiceId: string } | { mode: 'audio'; audioFile: File }) => Promise<boolean>
+  onEnhance?: (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p') => Promise<boolean>
+}
+
+const TOOL_MODEL_LABELS: Record<string, string> = {
+  'kling-lipsync': 'Kling Lip Sync',
+  'seedvr-upscale': 'SeedVR2 Enhance',
 }
 
 function modelLabel(model: string): string {
-  return VIDEO_MODELS[model as VideoModelId]?.label ?? model
+  return VIDEO_MODELS[model as VideoModelId]?.label ?? TOOL_MODEL_LABELS[model] ?? model
 }
 
-export function VideoResultCard({ job, onExtend, onToggleFavorite }: VideoResultCardProps) {
+export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance }: VideoResultCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [showExtend, setShowExtend] = useState(false)
+  const [showLipSync, setShowLipSync] = useState(false)
+  const [showEnhanceMenu, setShowEnhanceMenu] = useState(false)
   const model = VIDEO_MODELS[job.model as VideoModelId]
   const isNativeExtend = model?.extendMode === 'native'
 
@@ -135,7 +145,42 @@ export function VideoResultCard({ job, onExtend, onToggleFavorite }: VideoResult
                 <Heart className="w-3.5 h-3.5" fill={job.isFavorited ? 'currentColor' : 'none'} />
               </button>
             )}
-            {onExtend && (
+            {onLipSync && (
+              <Button
+                onClick={() => setShowLipSync(true)}
+                size="sm"
+                className="bg-zinc-800 text-[#dbb56e] hover:bg-zinc-700 px-2"
+                title="Lip Sync — make the person in this clip speak (typed text or uploaded audio)"
+              >
+                <Mic className="w-3 h-3" />
+              </Button>
+            )}
+            {onEnhance && (
+              <div className="relative">
+                <Button
+                  onClick={() => setShowEnhanceMenu(!showEnhanceMenu)}
+                  size="sm"
+                  className="bg-zinc-800 text-[#dbb56e] hover:bg-zinc-700 px-2"
+                  title="Enhance — AI-upscale this clip (SeedVR2)"
+                >
+                  <Wand2 className="w-3 h-3" />
+                </Button>
+                {showEnhanceMenu && (
+                  <div className="absolute bottom-full right-0 mb-1 w-36 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl z-40 p-1 space-y-0.5">
+                    {(['1080p', '1440p', '2160p'] as const).map((res) => (
+                      <button
+                        key={res}
+                        onClick={() => { setShowEnhanceMenu(false); void onEnhance(job, res) }}
+                        className="w-full text-left px-2 py-1.5 rounded-md text-xs text-zinc-300 hover:bg-zinc-800 transition-colors"
+                      >
+                        Upscale to {res === '2160p' ? '4K' : res}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {onExtend && model && (
               <Button
                 onClick={() => setShowExtend(true)}
                 size="sm"
@@ -167,6 +212,14 @@ export function VideoResultCard({ job, onExtend, onToggleFavorite }: VideoResult
         modelLabel={modelLabel(job.model)}
         onConfirm={handleExtendConfirm}
       />
+
+      {onLipSync && (
+        <LipSyncDialog
+          isOpen={showLipSync}
+          onOpenChange={setShowLipSync}
+          onConfirm={async (payload) => { await onLipSync(job, payload) }}
+        />
+      )}
     </div>
   )
 }

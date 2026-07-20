@@ -193,6 +193,76 @@ export function useVideoGeneration() {
     return submitVideo({ ...shared, duration: job.durationSeconds || 5, startFrameUrl: lastFrameDataUrl })
   }, [submitVideo])
 
+  /** Prepend a pending post-production job (lipsync/enhance) returned by its API. */
+  const addPendingJob = useCallback((jobId: number, prompt: string, model: string, sourceJob: VideoJob) => {
+    setJobs((current) => [
+      {
+        jobId,
+        status: 'pending' as const,
+        prompt,
+        model,
+        videoUrl: null,
+        error: null,
+        startImageUrl: sourceJob.startImageUrl,
+        timestamp: Date.now(),
+        durationSeconds: sourceJob.durationSeconds,
+        resolution: sourceJob.resolution,
+        aspectRatio: sourceJob.aspectRatio,
+        hasAudio: model === 'kling-lipsync' ? true : sourceJob.hasAudio,
+      },
+      ...current,
+    ])
+  }, [])
+
+  const submitLipSync = useCallback(async (
+    job: VideoJob,
+    payload: { mode: 'text'; text: string; voiceId: string } | { mode: 'audio'; audioFile: File },
+  ): Promise<boolean> => {
+    if (!job.videoUrl) return false
+    try {
+      const formData = new FormData()
+      formData.append('userId', getUserId())
+      formData.append('videoUrl', job.videoUrl)
+      formData.append('mode', payload.mode)
+      if (payload.mode === 'text') {
+        formData.append('text', payload.text)
+        formData.append('voiceId', payload.voiceId)
+      } else {
+        formData.append('audio', payload.audioFile)
+      }
+      const response = await fetch('/api/lipsync', { method: 'POST', body: formData })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || `Lip sync failed (${response.status})`)
+      addPendingJob(data.jobId as number, payload.mode === 'text' ? `Lip sync: “${payload.text}”` : 'Lip sync (uploaded audio)', 'kling-lipsync', job)
+      toast.success('Lip sync started — this can take a few minutes')
+      return true
+    } catch (error) {
+      console.error('[video] Lip sync failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to start lip sync')
+      return false
+    }
+  }, [addPendingJob])
+
+  const submitEnhance = useCallback(async (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p'): Promise<boolean> => {
+    if (!job.videoUrl) return false
+    try {
+      const response = await fetch('/api/enhance-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: getUserId(), videoUrl: job.videoUrl, targetResolution }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || `Enhance failed (${response.status})`)
+      addPendingJob(data.jobId as number, `Enhanced (upscaled to ${targetResolution})`, 'seedvr-upscale', job)
+      toast.success('Enhance started — this can take a few minutes')
+      return true
+    } catch (error) {
+      console.error('[video] Enhance failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to start enhance')
+      return false
+    }
+  }, [addPendingJob])
+
   const toggleFavorite = useCallback((job: VideoJob) => {
     const next = !job.isFavorited
     setJobs((current) => current.map((item) => (
@@ -213,5 +283,7 @@ export function useVideoGeneration() {
     submitVideo,
     extendVideo,
     toggleFavorite,
+    submitLipSync,
+    submitEnhance,
   }
 }
