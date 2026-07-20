@@ -18,6 +18,7 @@ import { CreativeDirectionPopover } from '../../Toolbar'
 import { SettingField } from './SettingField'
 import { RailSection } from './RailSection'
 import { ChipSelect, type ChipOption } from './ChipSelect'
+import { StyleRecipeChips } from './StyleRecipeChips'
 import { DEFAULT_CREATIVE_DIRECTION, normalizeCreativeDirection } from '../../../constants/creative-direction-options'
 import { useStudioCore, usePendingSuggestion } from '../../../context/useStudio'
 import { useImageGenerationEngine } from '../../../context/ImageGenerationProvider'
@@ -107,6 +108,12 @@ export function ImageSettingsRail() {
           Reset all
         </button>
       </div>
+
+      <RailSection title="Quick Recipes">
+        <SettingField label="One-tap looks — set prompt template + settings">
+          <StyleRecipeChips />
+        </SettingField>
+      </RailSection>
 
       <RailSection title="Model & Output" onReset={resetOutput}>
         <SettingField label="AI Model" suggestion={diff('selectedModel', state.selectedModel)}>
