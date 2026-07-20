@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import { SETTINGS_STORAGE_KEY } from '../constants/settings-defaults'
 import {
@@ -9,7 +9,7 @@ import {
   type CreativeDirectionState,
 } from '../constants/creative-direction-options'
 
-type ActiveTab = 'generate' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail'
+type ActiveTab = 'generate' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail' | 'translate'
 
 // Read defaultTab from localStorage settings (called in useEffect to avoid hydration mismatch)
 function getStoredDefaultTab(): ActiveTab | null {
@@ -18,7 +18,7 @@ function getStoredDefaultTab(): ActiveTab | null {
     if (stored) {
       const parsed = JSON.parse(stored)
       const defaultTab = parsed.ui?.defaultTab
-      if (defaultTab && ['generate', 'logo', 'mockups', 'bg-remover'].includes(defaultTab)) {
+      if (defaultTab && ['generate', 'video', 'logo', 'mockups', 'bg-remover', 'thumbnail', 'translate'].includes(defaultTab)) {
         return defaultTab as ActiveTab
       }
     }
@@ -67,7 +67,7 @@ export interface ImageStudioState {
   lightboxIndex: number
   setLightboxIndex: (index: number | ((prev: number) => number)) => void
   generatedImages: GeneratedImage[]
-  setGeneratedImages: (images: GeneratedImage[]) => void
+  setGeneratedImages: Dispatch<SetStateAction<GeneratedImage[]>>
 
   // Generation parameters
   aspectRatio: string
@@ -108,6 +108,12 @@ export interface ImageStudioState {
   setReferenceImage: (image: any | null) => void
   analysisMode: 'fast' | 'quality'
   setAnalysisMode: (mode: 'fast' | 'quality') => void
+
+  // Video frame pair (start/end stills feeding the video generator)
+  videoStartFrame: string | null
+  setVideoStartFrame: (url: string | null) => void
+  videoEndFrame: string | null
+  setVideoEndFrame: (url: string | null) => void
 }
 
 export function useImageStudioState(): ImageStudioState {
@@ -189,6 +195,10 @@ export function useImageStudioState(): ImageStudioState {
   const [referenceImage, setReferenceImage] = useState<any | null>(null)
   const [analysisMode, setAnalysisMode] = useState<'fast' | 'quality'>('fast')
 
+  // Video frame pair
+  const [videoStartFrame, setVideoStartFrame] = useState<string | null>(null)
+  const [videoEndFrame, setVideoEndFrame] = useState<string | null>(null)
+
   return {
     // Favorites & History UI
     showFavorites, setShowFavorites,
@@ -229,5 +239,9 @@ export function useImageStudioState(): ImageStudioState {
     styleStrength, setStyleStrength,
     referenceImage, setReferenceImage,
     analysisMode, setAnalysisMode,
+
+    // Video frame pair
+    videoStartFrame, setVideoStartFrame,
+    videoEndFrame, setVideoEndFrame,
   }
 }

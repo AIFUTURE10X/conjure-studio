@@ -8,7 +8,7 @@
  * Absorbs ImageStudioHeader's role for the v2 shell.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Home, ImageIcon, Settings } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -18,15 +18,25 @@ import { AccountMenu } from './AccountMenu'
 import { UiZoomControl } from './UiZoomControl'
 import { SettingsPanel } from '../Settings'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
+import { getKnownUserIds, getUserId } from '@/lib/user-id'
 import type { StudioMode } from '../../context/studio-types'
 
 const MODE_OPTIONS: Array<{ mode: StudioMode; label: string }> = [
   { mode: 'image', label: 'Image' },
+  { mode: 'video', label: 'Video' },
   { mode: 'logo', label: 'Logo' },
   { mode: 'thumbnail', label: 'Thumbnail' },
+  { mode: 'translate', label: 'Translate' },
   { mode: 'mockups', label: 'Mockups' },
   { mode: 'bg-remover', label: 'BG Remover' },
 ]
+
+const SHOW_ACCOUNT_CONTROLS = ['on', 'true', '1'].includes(
+  (process.env.NEXT_PUBLIC_SAAS_ENFORCEMENT || '').toLowerCase(),
+)
+
+const deviceClaimMarkerKey = (targetUserId: string, knownIds: string[]) =>
+  `genie-device-claimed-known-ids:${targetUserId}:${[...knownIds].sort().join('|')}`
 
 export function StudioTopBar() {
   const { mode, setMode } = useStudioMode()
@@ -36,6 +46,38 @@ export function StudioTopBar() {
     deletePreset, updatePreset, clearAllPresets,
   } = useStudioCore()
   const [showSettings, setShowSettings] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || SHOW_ACCOUNT_CONTROLS) return
+
+    const targetUserId = getUserId()
+    const knownIds = getKnownUserIds()
+    const legacyUserIds = knownIds.filter((id) => id !== targetUserId)
+    if (legacyUserIds.length === 0) return
+
+    const markerKey = deviceClaimMarkerKey(targetUserId, knownIds)
+    if (localStorage.getItem(markerKey)) return
+
+    localStorage.setItem(markerKey, 'pending')
+
+    fetch('/api/device/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId, legacyUserIds }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(data?.error || 'Device claim failed')
+        localStorage.setItem(markerKey, '1')
+        if (typeof data?.moved === 'number' && data.moved > 0) {
+          window.location.reload()
+        }
+      })
+      .catch((error) => {
+        localStorage.removeItem(markerKey)
+        console.error('[StudioTopBar] Anonymous device claim failed:', error)
+      })
+  }, [])
 
   return (
     <header className="border-b border-zinc-800 px-4 py-2 bg-black/50 backdrop-blur-sm shrink-0 z-50">
@@ -99,8 +141,12 @@ export function StudioTopBar() {
           >
             <Settings className="w-4 h-4" />
           </button>
-          <AccountManager />
-          <AccountMenu />
+          {SHOW_ACCOUNT_CONTROLS && (
+            <>
+              <AccountManager />
+              <AccountMenu />
+            </>
+          )}
         </div>
       </div>
 

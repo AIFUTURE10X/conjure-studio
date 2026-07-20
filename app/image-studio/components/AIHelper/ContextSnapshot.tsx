@@ -71,6 +71,7 @@ const formatBackgroundRemovalChip = (scope: 'image' | 'logo', method?: string, e
   const scopeLabel = scope === 'logo' ? 'Logo' : 'Image'
   if (!enabled || method === 'none') return `${scopeLabel} BG off`
   if (method === 'photoroom') return 'PhotoRoom BG'
+  if (method === 'fal') return 'BiRefNet BG'
   if (!method) return `${scopeLabel} BG unknown`
   return `${scopeLabel} BG: ${method}`
 }

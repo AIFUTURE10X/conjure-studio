@@ -15,7 +15,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Coins, FolderInput, Loader2, LogIn, LogOut, UserCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSession, signOut } from '@/lib/auth-client'
-import { getUserId } from '@/lib/user-id'
+import { getKnownUserIds } from '@/lib/user-id'
+
+const claimMarkerKey = (accountId: string, knownIds: string[]) =>
+  `genie-claimed-known-ids:${accountId}:${[...knownIds].sort().join('|')}`
 
 export function AccountMenu() {
   const { data: session, isPending } = useSession()
@@ -29,7 +32,7 @@ export function AccountMenu() {
       const res = await fetch('/api/account/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ legacyUserId: getUserId() }),
+        body: JSON.stringify({ legacyUserIds: getKnownUserIds() }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -48,6 +51,44 @@ export function AccountMenu() {
       setIsClaiming(false)
     }
   }
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+
+    const knownIds = getKnownUserIds()
+    if (knownIds.length === 0) return
+
+    const storageKey = claimMarkerKey(session.user.id, knownIds)
+    if (localStorage.getItem(storageKey)) return
+
+    let cancelled = false
+
+    fetch('/api/account/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacyUserIds: knownIds }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(data?.error || 'Claim failed')
+        return data
+      })
+      .then((data) => {
+        if (cancelled) return
+        localStorage.setItem(storageKey, '1')
+        if (typeof data?.moved === 'number' && data.moved > 0) {
+          toast.success(`Restored ${data.moved} saved items to your account`)
+          setTimeout(() => window.location.reload(), 700)
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) console.error('[AccountMenu] Automatic data claim failed:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [session])
 
   // Load on sign-in, refresh whenever the popover opens.
   useEffect(() => {

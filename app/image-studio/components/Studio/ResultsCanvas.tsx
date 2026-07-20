@@ -15,10 +15,12 @@ import { ImageIcon } from 'lucide-react'
 import { UploadPanel } from '../UploadPanel'
 import { GeneratedImageCard } from '../GeneratedImageCard'
 import { ImageEditModal } from '../ImageEditor'
-import { useStudioCore } from '../../context/useStudio'
+import { EndFrameDialog } from './EndFrameDialog'
+import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useEditChat } from '../../context/EditChatProvider'
 import { normalizeCreativeDirection } from '../../constants/creative-direction-options'
+import { ANNOTATION_REFERENCE_PROMPT_NOTE, dataUrlToImageFile, imageUrlToImageFile } from '../../utils/annotation-reference'
 
 export function ResultsCanvas() {
   const {
@@ -27,9 +29,19 @@ export function ResultsCanvas() {
   } = useStudioCore()
   const {
     isGenerating, error, clearImages, downloadImage, removeBackground,
-    upscaleToFourK, getImageMetadata, applyEditedImage,
+    upscaleToFourK, getImageMetadata, applyEditedImage, createEndFrame,
   } = useImageGenerationEngine()
   const { startEditChat } = useEditChat()
+  const [endFrameIndex, setEndFrameIndex] = useState<number | null>(null)
+  const { setMode } = useStudioMode()
+
+  const handleAnimate = (index: number) => {
+    const url = state.generatedImages[index]?.url
+    if (!url) return
+    state.setVideoStartFrame(url)
+    state.setVideoEndFrame(null)
+    setMode('video')
+  }
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const { generatedImages } = state
@@ -133,6 +145,43 @@ export function ResultsCanvas() {
                 onUpscale={upscaleToFourK}
                 onEdit={() => setEditingIndex(i)}
                 onEditInChat={() => startEditChat(i, img.url)}
+                onCreateEndFrame={setEndFrameIndex}
+                onAnimate={handleAnimate}
+                onSaveAnnotated={async (index, dataUrl, instruction, maskDataUrl) => {
+                  const timestamp = Date.now()
+                  const source = generatedImages[index]
+                  state.setGeneratedImages(current => {
+                    const currentSource = current[index] || source
+                    return [
+                      ...current,
+                      {
+                        url: dataUrl,
+                        prompt: `${currentSource?.prompt || 'Image'} annotated`,
+                        timestamp,
+                      },
+                    ]
+                  })
+                  const sourceUrl = source?.url || dataUrl
+                  const [file, maskFile] = await Promise.all([
+                    imageUrlToImageFile(sourceUrl, `conjure-source-${timestamp}.png`),
+                    maskDataUrl ? dataUrlToImageFile(maskDataUrl, `conjure-edit-mask-${timestamp}.png`) : Promise.resolve(undefined),
+                  ])
+                  state.setReferenceImage({
+                    file,
+                    preview: sourceUrl,
+                    mode: 'inspire',
+                    source: 'annotation',
+                    instruction,
+                    maskFile,
+                    annotatedPreview: dataUrl,
+                  })
+                  if (!/annotated reference image/i.test(state.mainPrompt)) {
+                    const trimmed = state.mainPrompt.trim()
+                    state.setMainPrompt(
+                      trimmed ? `${trimmed}\n\n${ANNOTATION_REFERENCE_PROMPT_NOTE}` : ANNOTATION_REFERENCE_PROMPT_NOTE,
+                    )
+                  }
+                }}
               />
             ))}
           </div>
@@ -152,6 +201,15 @@ export function ResultsCanvas() {
           onClose={() => setEditingIndex(null)}
         />
       )}
+
+      <EndFrameDialog
+        isOpen={endFrameIndex !== null}
+        onOpenChange={(open) => { if (!open) setEndFrameIndex(null) }}
+        sourcePreview={endFrameIndex !== null ? generatedImages[endFrameIndex]?.url : undefined}
+        onConfirm={async (endPrompt) => {
+          if (endFrameIndex !== null) await createEndFrame(endFrameIndex, endPrompt)
+        }}
+      />
     </div>
   )
 }

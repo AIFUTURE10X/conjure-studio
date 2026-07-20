@@ -16,6 +16,8 @@ import { PromptDock } from './PromptDock'
 import { ProductMockupsPanel } from '../Logo/MockupPreview/ProductMockupsPanel'
 import { BackgroundRemoverPanel } from '../BackgroundRemover'
 import { ThumbnailCanvas } from '../Thumbnail'
+import { TranslateTextPanel } from '../TranslateText'
+import { VideoCanvas } from '../Video'
 import { useStudioMode } from '../../context/useStudio'
 
 export function CanvasPanel() {
@@ -27,6 +29,12 @@ export function CanvasPanel() {
       {mode === 'image' && <ResultsCanvas />}
       {mode === 'logo' && <LogoCanvas />}
       {mode === 'thumbnail' && <ThumbnailCanvas />}
+      {mode === 'translate' && <TranslateTextPanel />}
+
+      {/* Mounted-hidden so pending video jobs keep polling across mode switches. */}
+      <div className={`flex-1 min-h-0 flex-col ${mode === 'video' ? 'flex' : 'hidden'}`}>
+        <VideoCanvas />
+      </div>
 
       <Card
         className={`flex-1 min-h-0 m-3 bg-zinc-900/90 border border-zinc-800 overflow-clip ${

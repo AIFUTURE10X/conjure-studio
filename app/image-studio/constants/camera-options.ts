@@ -79,6 +79,7 @@ export const stylePresets: StylePreset[] = [
   { value: 'Disney Modern 3D', label: 'Disney Modern 3D', thumbnail: '/disney-3d-animation.jpg', description: 'High-finish animation, glossy' },
   { value: 'Sony Spider-Verse', label: 'Sony Spider-Verse', thumbnail: '/spider-verse-style.jpg', description: 'Mixed media, comic book look' },
   { value: 'Laika', label: 'Laika', thumbnail: '/laika-stop-motion.jpg', description: 'Handcrafted textures, moody' },
+  { value: 'Clay 3D', label: 'Clay 3D', thumbnail: '/clay-3d-style.svg', description: 'Molded clay, thumbprint texture' },
   { value: 'Cartoon Saloon', label: 'Cartoon Saloon', thumbnail: '/cartoon-saloon-style.jpg', description: 'Flat decorative, Celtic motifs' },
   { value: 'Studio Trigger', label: 'Studio Trigger', thumbnail: '/studio-trigger-anime.jpg', description: 'Neon palettes, explosive motion' },
   { value: 'Ufotable', label: 'Ufotable', thumbnail: '/ufotable-anime.jpg', description: 'Hyper-polished, VFX glow trails' },

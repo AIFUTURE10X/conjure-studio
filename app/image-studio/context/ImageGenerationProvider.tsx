@@ -18,6 +18,7 @@ import { useGenerationHistory } from '../hooks/useGenerationHistory'
 import { downloadImageAsFile } from '../utils/export-utils'
 import { buildFinalImagePrompt } from '../utils/build-image-prompt'
 import { getImageMetadata, type ImageMetadata } from '../utils/get-image-metadata'
+import { getAnnotationReferenceInstruction, imageUrlToImageFile } from '../utils/annotation-reference'
 import { normalizeCreativeDirection } from '../constants/creative-direction-options'
 import { useStudioCore } from './useStudio'
 
@@ -32,6 +33,8 @@ export interface ImageGenerationEngine {
   requestGenerate: () => void
   clearImages: () => void
   downloadImage: (url: string, index: number, prompt?: string) => Promise<void>
+  /** Generate a video end frame from a generated image (replicate-mode reference) and record the start/end pair. */
+  createEndFrame: (index: number, endPrompt: string) => Promise<void>
   removeBackground: (index: number) => Promise<void>
   upscaleToFourK: (index: number) => Promise<void>
   applyEditedImage: (index: number, url: string, editPrompt: string, expectedUrl?: string) => Promise<boolean>
@@ -48,8 +51,12 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
   const { uploadState, state, saveParameters, saveGenerateParams } = useStudioCore()
 
   const { combinedPrompt } = usePromptBuilder(uploadState.subjectImages, state.analysisResults)
+  const appendGeneratedImages = useCallback((images: Array<{ url: string; prompt: string; timestamp: number }>) => {
+    state.setGeneratedImages(current => [...current, ...images])
+  }, [state.setGeneratedImages])
+
   const { isGenerating, error, generateImages, clearImages, upscaleImage } = useImageGeneration(
-    state.setGeneratedImages,
+    appendGeneratedImages,
     (info) => toast.info(info.reason, { duration: 6000 }),
   )
   const { saveToHistory } = useGenerationHistory()
@@ -70,6 +77,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
 
   const generateNow = useCallback(async () => {
     const finalPrompt = state.mainPrompt.trim() || combinedPrompt.trim() || 'a beautiful scene'
+    const annotationInstruction = getAnnotationReferenceInstruction(state.referenceImage)
     const imageQuality = state.analysisMode === 'fast' ? 'low' : 'medium'
     const normalizedCreativeDirection = normalizeCreativeDirection(state.creativeDirection)
 
@@ -102,8 +110,12 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       creativeDirection: normalizedCreativeDirection,
     })
 
+    const generationPrompt = annotationInstruction
+      ? `${finalPrompt}. ${annotationInstruction}`
+      : finalPrompt
+
     const prompt = buildFinalImagePrompt({
-      basePrompt: finalPrompt,
+      basePrompt: generationPrompt,
       selectedStylePreset: state.selectedStylePreset,
       selectedCameraAngle: state.selectedCameraAngle,
       selectedCameraLens: state.selectedCameraLens,
@@ -120,6 +132,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         seed: state.seed,
         referenceImage: state.referenceImage?.file,
         referenceMode: state.referenceImage?.mode,
+        maskImage: state.referenceImage?.maskFile,
         model: state.selectedModel,
         imageSize: state.imageSize,
         imageQuality,
@@ -168,6 +181,39 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       toast.error('Download failed')
     }
   }, [])
+
+  const createEndFrame = useCallback(async (index: number, endPrompt: string) => {
+    const source = state.generatedImages[index]
+    if (!source?.url || !endPrompt.trim()) return
+    try {
+      const file = await imageUrlToImageFile(source.url, `end-frame-source-${Date.now()}.png`)
+      const prompt = `${endPrompt.trim()}. Keep the exact same scene, subject, framing, lighting, and style as the reference image — this is the final frame of a video whose first frame is the reference.`
+      const imgs = await generateImages({
+        prompt,
+        count: 1,
+        aspectRatio: state.aspectRatio,
+        referenceImage: file,
+        referenceMode: 'replicate',
+        model: state.selectedModel,
+        imageSize: state.imageSize,
+        imageQuality: 'medium',
+      })
+      const endUrl = imgs?.[0]?.url
+      if (!endUrl) throw new Error('No end frame returned')
+      state.setVideoStartFrame(source.url)
+      state.setVideoEndFrame(endUrl)
+      const m = await getImageMetadata(endUrl)
+      await saveToHistory(prompt, state.aspectRatio, [endUrl], {
+        style: state.selectedStylePreset,
+        dimensions: m.dimensions,
+        fileSize: m.fileSize,
+      })
+      toast.success('End frame created — start/end pair ready for video')
+    } catch (e) {
+      console.error('[v0] End frame error:', e)
+      toast.error(e instanceof Error ? e.message : 'Failed to create end frame')
+    }
+  }, [state, generateImages, saveToHistory])
 
   const removeBackground = useCallback(async (index: number) => {
     const img = state.generatedImages[index]
@@ -250,6 +296,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     requestGenerate,
     clearImages,
     downloadImage,
+    createEndFrame,
     removeBackground,
     upscaleToFourK,
     applyEditedImage,
@@ -260,8 +307,8 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     setImageBgRemovalMethod,
   }), [
     isGenerating, error, generateNow, requestGenerate, clearImages, downloadImage,
-    removeBackground, upscaleToFourK, applyEditedImage, photoRoomBgRemovalEnabled, setPhotoRoomBgRemovalEnabled,
-    imageBgRemovalMethod, setImageBgRemovalMethod,
+    createEndFrame, removeBackground, upscaleToFourK, applyEditedImage, photoRoomBgRemovalEnabled,
+    setPhotoRoomBgRemovalEnabled, imageBgRemovalMethod, setImageBgRemovalMethod,
   ])
 
   return (

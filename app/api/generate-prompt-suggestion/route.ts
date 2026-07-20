@@ -1767,7 +1767,7 @@ Format your response as JSON:
   ]
 }
 
-Available styles (MUST use exact values): Realistic, Cartoon Style, Pixar, PhotoReal, Anime, Oil Painting, Watercolor, 3D Render, Sketch, Comic Book, Studio Ghibli, Makoto Shinkai, Disney Modern 3D, Sony Spider-Verse, Laika Stop-Motion, Cartoon Saloon, Studio Trigger, Ufotable, Kyoto Animation
+Available styles (MUST use exact values): Realistic, Cartoon Style, Pixar, PhotoReal, Anime, Oil Painting, Watercolor, 3D Render, Sketch, Comic Book, Studio Ghibli, Makoto Shinkai, Disney Modern 3D, Sony Spider-Verse, Laika Stop-Motion, Clay 3D, Cartoon Saloon, Studio Trigger, Ufotable, Kyoto Animation
 Available camera angles: eye-level, high-angle, low-angle, birds-eye, overhead, dutch-angle, worms-eye, over-the-shoulder, point-of-view, None
 Available camera lenses: standard, wide-angle, telephoto, fisheye, macro, portrait, tilt-shift, None
 Available aspect ratios: 1:1, 16:9, 9:16, 4:3, 3:4, 21:9

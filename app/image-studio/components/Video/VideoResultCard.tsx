@@ -1,0 +1,86 @@
+"use client"
+
+import { Button } from '@/components/ui/button'
+import { Download, Loader2, TriangleAlert } from 'lucide-react'
+import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
+import type { VideoJob } from './useVideoGeneration'
+
+interface VideoResultCardProps {
+  job: VideoJob
+}
+
+function modelLabel(model: string): string {
+  return VIDEO_MODELS[model as VideoModelId]?.label ?? model
+}
+
+export function VideoResultCard({ job }: VideoResultCardProps) {
+  const handleDownload = async () => {
+    if (!job.videoUrl) return
+    const response = await fetch(job.videoUrl)
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `conjure-video-${job.jobId}.mp4`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden">
+      {job.status === 'completed' && job.videoUrl && (
+        <video
+          src={job.videoUrl}
+          controls
+          playsInline
+          preload="metadata"
+          poster={job.startImageUrl ?? undefined}
+          className="w-full max-h-[420px] bg-black"
+        />
+      )}
+
+      {job.status === 'pending' && (
+        <div className="relative">
+          {job.startImageUrl ? (
+            <img src={job.startImageUrl} alt="Start frame" className="w-full max-h-[420px] object-contain bg-black opacity-40" />
+          ) : (
+            <div className="h-40 bg-black" />
+          )}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-6 h-6 text-[#dbb56e] animate-spin" />
+            <p className="text-xs text-zinc-300">Generating video… this can take a few minutes</p>
+          </div>
+        </div>
+      )}
+
+      {job.status === 'failed' && (
+        <div className="p-4 flex items-start gap-2 bg-red-900/20">
+          <TriangleAlert className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm text-red-300 font-medium">Video generation failed</p>
+            <p className="text-xs text-red-400/80 mt-0.5">{job.error || 'Unknown error'}{job.error ? '' : ''} — any charged credits were refunded.</p>
+          </div>
+        </div>
+      )}
+
+      <div className="p-3 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs text-zinc-300 truncate" title={job.prompt}>{job.prompt}</p>
+          <p className="text-[10px] text-zinc-500 mt-0.5">
+            {modelLabel(job.model)} · {new Date(job.timestamp).toLocaleString()}
+          </p>
+        </div>
+        {job.status === 'completed' && job.videoUrl && (
+          <Button
+            onClick={handleDownload}
+            size="sm"
+            className="shrink-0 bg-[#c99850] text-black hover:bg-[#dbb56e]"
+          >
+            <Download className="w-3 h-3 mr-1" />
+            Download
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}

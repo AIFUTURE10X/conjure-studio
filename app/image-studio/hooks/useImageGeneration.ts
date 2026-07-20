@@ -14,6 +14,7 @@ export interface GenerationOptions {
   seed?: number | null
   referenceImage?: File
   referenceMode?: ReferenceMode
+  maskImage?: File
   imageSize?: ImageSize
   model?: GenerationModel
   imageQuality?: OpenAIImageQuality
@@ -28,6 +29,17 @@ export interface GeneratedImage {
 export interface FallbackInfo {
   used: true
   reason: string
+}
+
+/** Server-side cap in /api/generate-image; bigger batches split into parallel requests. */
+const MAX_COUNT_PER_REQUEST = 4
+
+/** Balanced split of a batch into request-sized chunks: 10 → [4, 3, 3], 6 → [3, 3]. */
+function splitCount(total: number): number[] {
+  const chunks = Math.ceil(total / MAX_COUNT_PER_REQUEST)
+  const base = Math.floor(total / chunks)
+  const remainder = total % chunks
+  return Array.from({ length: chunks }, (_, i) => base + (i < remainder ? 1 : 0))
 }
 
 export function useImageGeneration(
@@ -60,79 +72,113 @@ export function useImageGeneration(
     }
   }
 
+  const requestImages = async (
+    options: GenerationOptions,
+    count: number,
+  ): Promise<{ images: GeneratedImage[]; fallback?: FallbackInfo }> => {
+    const formData = new FormData()
+    formData.append('prompt', options.prompt)
+    formData.append('count', count.toString())
+    formData.append('aspectRatio', options.aspectRatio)
+
+    if (options.seed !== null && options.seed !== undefined) {
+      formData.append('seed', options.seed.toString())
+    }
+
+    if (options.referenceImage) {
+      formData.append('referenceImage', options.referenceImage)
+      if (options.referenceMode) {
+        formData.append('referenceMode', options.referenceMode)
+      }
+      if (options.maskImage) {
+        formData.append('maskImage', options.maskImage)
+      }
+    }
+
+    if (options.imageSize) {
+      formData.append('imageSize', options.imageSize)
+    }
+
+    if (options.model) {
+      formData.append('model', options.model)
+    }
+
+    if (options.imageQuality) {
+      formData.append('imageQuality', options.imageQuality)
+    }
+
+    const response = await fetch('/api/generate-image', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `Failed to generate images (${response.status})`)
+    }
+
+    const data = await response.json()
+
+    if (data.error) {
+      throw new Error(data.error)
+    }
+
+    if (!data.images || !Array.isArray(data.images) || data.images.length === 0) {
+      throw new Error('No images returned from API')
+    }
+
+    const images: GeneratedImage[] = data.images.map((img: any) => ({
+      url: typeof img === 'string' ? img : img.url,
+      prompt: options.prompt,
+      timestamp: Date.now()
+    }))
+
+    return { images, fallback: data.fallback as FallbackInfo | undefined }
+  }
+
   const generateImages = async (options: GenerationOptions) => {
     setIsGenerating(true)
     setError(null)
-    
+
     try {
-      const formData = new FormData()
-      formData.append('prompt', options.prompt)
-      formData.append('count', options.count.toString())
-      formData.append('aspectRatio', options.aspectRatio)
-      
-      if (options.seed !== null && options.seed !== undefined) {
-        formData.append('seed', options.seed.toString())
-      }
-      
-      if (options.referenceImage) {
-        formData.append('referenceImage', options.referenceImage)
-        if (options.referenceMode) {
-          formData.append('referenceMode', options.referenceMode)
+      // The server caps count at MAX_COUNT_PER_REQUEST; bigger batches run as
+      // balanced parallel requests (10 → 4+3+3). Each chunk lands in the grid
+      // via onImagesUpdate as soon as it resolves. Note: multi-chunk callers
+      // must pass an appending onImagesUpdate (the studio provider does);
+      // legacy panels only ever request ≤4, which is always a single chunk.
+      const counts = splitCount(Math.max(1, options.count))
+      let fallbackReported = false
+
+      const results = await Promise.all(counts.map(async (chunkCount) => {
+        try {
+          const { images, fallback } = await requestImages(options, chunkCount)
+          if (fallback?.used && !fallbackReported && onFallback) {
+            fallbackReported = true
+            onFallback(fallback)
+          }
+          onImagesUpdate?.(images)
+          return { images, failed: 0, message: undefined as string | undefined }
+        } catch (err) {
+          console.error('[v0] Generation chunk error:', err)
+          const message = err instanceof Error ? err.message : 'Failed to generate images'
+          return { images: [] as GeneratedImage[], failed: chunkCount, message }
         }
-      }
-
-      if (options.imageSize) {
-        formData.append('imageSize', options.imageSize)
-      }
-
-      if (options.model) {
-        formData.append('model', options.model)
-      }
-
-      if (options.imageQuality) {
-        formData.append('imageQuality', options.imageQuality)
-      }
-
-      const response = await fetch('/api/generate-image', {
-        method: 'POST',
-        body: formData
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to generate images (${response.status})`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.error) {
-        throw new Error(data.error)
-      }
-      
-      if (!data.images || !Array.isArray(data.images) || data.images.length === 0) {
-        throw new Error('No images returned from API')
-      }
-
-      const newImages: GeneratedImage[] = data.images.map((img: any) => ({
-        url: typeof img === 'string' ? img : img.url,
-        prompt: options.prompt,
-        timestamp: Date.now()
       }))
 
-      if (onImagesUpdate) {
-        onImagesUpdate(newImages)
+      const allImages = results.flatMap(r => r.images)
+      const failedCount = results.reduce((sum, r) => sum + r.failed, 0)
+
+      if (allImages.length === 0) {
+        const message = results.find(r => r.message)?.message || 'Failed to generate images'
+        setError(message)
+        throw new Error(message)
       }
 
-      if (data.fallback?.used && onFallback) {
-        onFallback(data.fallback as FallbackInfo)
+      if (failedCount > 0) {
+        setError(`${failedCount} of ${options.count} images failed to generate`)
       }
 
-      return newImages
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to generate images'
-      console.error('[v0] Generation error:', err)
-      setError(message)
-      throw err
+      return allImages
     } finally {
       setIsGenerating(false)
     }

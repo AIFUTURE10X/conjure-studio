@@ -70,6 +70,7 @@ async function handlePost(request: NextRequest) {
 
   try {
     const referenceImageFile = formData.get('referenceImage') as File | null
+    const maskImageFile = formData.get('maskImage') as File | null
 
     // Convert File to base64 if present
     let referenceImage: string | undefined
@@ -100,6 +101,7 @@ async function handlePost(request: NextRequest) {
             imageSize,
             imageQuality,
             referenceImageFile,
+            maskImageFile,
           })
           console.log(`[v0 SERVER] OpenAI image ${i + 1}/${count} generated successfully`, { size: result.size })
           return { ok: true as const, dataUrl: `data:image/png;base64,${result.imageBase64}` }

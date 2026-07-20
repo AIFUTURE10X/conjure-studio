@@ -44,3 +44,29 @@ export type TransformOperation = keyof typeof TRANSFORM_COSTS
 export function transformCost(operation: TransformOperation): number {
   return TRANSFORM_COSTS[operation]
 }
+
+/**
+ * Video credits per second, keyed by our model ids (lib/video/providers.ts).
+ * Anchored to fal's per-second pricing at ~2.5x retail: Kling $0.112–0.168/s,
+ * Veo $0.20–0.40/s, Seedance Fast ~$0.05/s, Seedance 2.0 mid-tier.
+ */
+const VIDEO_CREDITS_PER_SECOND: Record<string, { base: number; audio: number }> = {
+  'seedance-fast': { base: 3, audio: 3 },
+  'seedance-2': { base: 6, audio: 8 },
+  'kling-3': { base: 8, audio: 10 },
+  'veo-3.1': { base: 12, audio: 20 },
+}
+
+/** Cost of one video clip. Unknown models fall back to the most expensive rate so misconfig never undercharges. */
+export function videoGenerationCost(
+  model: string,
+  durationSeconds: number,
+  resolution: string,
+  withAudio: boolean,
+): number {
+  const rates = VIDEO_CREDITS_PER_SECOND[model] ?? { base: 20, audio: 20 }
+  const perSecond = withAudio ? rates.audio : rates.base
+  const seconds = Math.min(Math.max(Math.round(durationSeconds) || 5, 2), 15)
+  const resolutionMultiplier = resolution.toLowerCase() === '4k' ? 2 : 1
+  return Math.ceil(perSecond * seconds * resolutionMultiplier)
+}

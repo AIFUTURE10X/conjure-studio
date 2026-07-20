@@ -49,7 +49,7 @@ features we already shipped.**
 |---|---|---|
 | **Background removal** (PhotoRoom / imgly) | `/api/remove-background`, BG Remover mode | Cut out the creator's face/subject — the #1 thumbnail building block |
 | **Image generation** (Gemini 3.1 Flash / GPT-Image-2 / Gemini 3 Pro) | `/api/generate-image` | Generate or restyle the **background** from a prompt or reference |
-| **20 style presets** (Realistic→Spider-Verse) | `constants/camera-options.ts` | One-tap background styling (gaming → 3D Render, vlog → Realistic, etc.) |
+| **21 style presets** (Realistic→Spider-Verse) | `constants/camera-options.ts` | One-tap background styling (gaming → 3D Render, vlog → Realistic, etc.) |
 | **Text overlay editor** | `components/TextOverlayEditor` | The editable headline layer — outline/shadow/gradient text |
 | **Real font overlay** | `components/Logo/RealFontOverlay` | High-quality typographic headlines with real fonts |
 | **WYSIWYG export** (`html-to-image`) | `Logo/MockupPreview/generic/useGenericExport.ts` | Pixel-perfect **1280×720** export of the layered canvas (same engine as mockups) |

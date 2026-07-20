@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 import { apiError } from './http'
 import { getSessionUser } from '@/lib/auth'
 import { debitCredits, refundReservation, InsufficientCreditsError } from '@/lib/credits'
-import { imageGenerationCost, transformCost, TRANSFORM_COSTS, type TransformOperation } from '@/lib/credits/cost-map'
+import { imageGenerationCost, transformCost, videoGenerationCost, TRANSFORM_COSTS, type TransformOperation } from '@/lib/credits/cost-map'
 
 /**
  * Credit guard for the provider-billed generation/transform routes.
@@ -99,4 +99,14 @@ export async function editImageCost(request: NextRequest): Promise<number> {
   const variants = Number.parseInt((formData.get('variants') as string) || '1', 10) || 1
   const clamped = Math.min(Math.max(variants, 1), 3)
   return TRANSFORM_COSTS.imageEdit + (clamped - 1)
+}
+
+/** Cost from a generate-video multipart body (model + duration + resolution + audio). */
+export async function videoFormCost(request: NextRequest): Promise<number> {
+  const formData = await request.clone().formData()
+  const model = (formData.get('model') as string) || ''
+  const duration = Number.parseInt((formData.get('duration') as string) || '5', 10) || 5
+  const resolution = (formData.get('resolution') as string) || '1080p'
+  const withAudio = (formData.get('generateAudio') as string) === 'true'
+  return videoGenerationCost(model, duration, resolution, withAudio)
 }

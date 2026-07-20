@@ -72,6 +72,25 @@ export function getAllUserIds(): Record<string, string | null> {
 }
 
 /**
+ * Return every browser-side user id this install may have used.
+ *
+ * Older studio builds wrote favorites, image history, and logo history with
+ * different localStorage keys. Account claiming needs the full set, otherwise
+ * rows remain in Neon but are hidden behind a stale browser id.
+ */
+export function getKnownUserIds(): string[] {
+  if (typeof window === 'undefined') return []
+
+  const ids = [
+    getUserId(),
+    localStorage.getItem(USER_ID_KEY),
+    ...LEGACY_KEYS.map(key => localStorage.getItem(key)),
+  ]
+
+  return Array.from(new Set(ids.filter((id): id is string => Boolean(id))))
+}
+
+/**
  * Force set a specific user ID (for recovery purposes)
  */
 export function setUserId(userId: string): void {

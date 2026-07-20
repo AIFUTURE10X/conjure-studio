@@ -14,8 +14,10 @@ import { useMemo } from 'react'
 import type { AIHelperLatestOutputs, AIHelperPromptSettings } from '../components/AIHelper/useAIHelperChatController'
 import type { LogoOutputContext } from '../components/LogoPanel'
 import { useStudioCore, useStudioLogoState } from './useStudio'
+import { useImageGenerationEngine } from './ImageGenerationProvider'
 
 function formatBackgroundRemovalProvider(method: string) {
+  if (method === 'fal') return 'fal · BiRefNet'
   if (method === 'photoroom') return 'PhotoRoom'
   if (method === 'native-transparent') return 'Legacy transparent cleanup'
   if (method === 'none') return 'No background removal'
@@ -28,6 +30,7 @@ export function useStudioSnapshot(options?: { latestLogoOutput?: LogoOutputConte
 } {
   const { state } = useStudioCore()
   const logo = useStudioLogoState()
+  const { imageBgRemovalMethod } = useImageGenerationEngine()
   const latestLogoOutput = options?.latestLogoOutput ?? null
 
   const latestImageOutput = state.generatedImages.length > 0
@@ -48,10 +51,10 @@ export function useStudioSnapshot(options?: { latestLogoOutput?: LogoOutputConte
     imageCount: state.imageCount,
     seed: state.seed,
     analysisMode: state.analysisMode,
-    imageBgRemovalEnabled: state.useImageBgRemoval,
-    imageBgRemovalMethod: state.useImageBgRemoval && state.usePhotoRoomBgRemoval ? 'photoroom' : 'none',
-    imageBgRemovalProvider: state.useImageBgRemoval && state.usePhotoRoomBgRemoval ? 'PhotoRoom' : 'No background removal',
-    imagePhotoRoomBgRemovalEnabled: state.useImageBgRemoval && state.usePhotoRoomBgRemoval,
+    imageBgRemovalEnabled: imageBgRemovalMethod !== 'none',
+    imageBgRemovalMethod,
+    imageBgRemovalProvider: formatBackgroundRemovalProvider(imageBgRemovalMethod),
+    imagePhotoRoomBgRemovalEnabled: imageBgRemovalMethod === 'photoroom',
     logoBgRemovalEnabled: logo.bgRemovalMethod !== 'none',
     logoBgRemovalMethod: logo.bgRemovalMethod,
     logoBgRemovalProvider: formatBackgroundRemovalProvider(logo.bgRemovalMethod),
@@ -86,7 +89,7 @@ export function useStudioSnapshot(options?: { latestLogoOutput?: LogoOutputConte
       seed: latestLogoOutput.seed,
       style: latestLogoOutput.style,
     } : { hasOutput: false },
-  }), [state, logo, latestImageOutput, latestLogoOutput])
+  }), [state, logo, imageBgRemovalMethod, latestImageOutput, latestLogoOutput])
 
   const latestOutputs = useMemo<AIHelperLatestOutputs>(() => ({
     image: latestImageOutput,

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ChevronDown, ChevronUp, Loader2, Minus, Sparkles, Wand2, X } from 'lucide-react'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
+import { imageGenerationCost } from '@/lib/credits/cost-map'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
 import { useHelperBridge } from '../../context/HelperBridgeProvider'
@@ -139,10 +140,11 @@ export function PromptDock() {
           {!isLogoMode && (
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">Images:</span>
-              {[1, 2].map(count => (
+              {[1, 2, 4, 6, 10].map(count => (
                 <button
                   key={count}
                   onClick={() => state.setImageCount(count)}
+                  title={`${count} image${count > 1 ? 's' : ''} — ${imageGenerationCost(state.selectedModel, state.imageSize, count)} credits`}
                   className={`w-7 h-7 rounded-md text-xs font-bold transition-colors ${
                     state.imageCount === count
                       ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'

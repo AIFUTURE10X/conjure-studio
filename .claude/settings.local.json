@@ -18,23 +18,18 @@
       "PowerShell($shell = New-Object -ComObject WScript.Shell; $newArgs = \"--force-device-scale-factor=1.85 --window-size=1580,780 --window-position=0,0\"; foreach \\($p in @\\(\"C:\\\\Users\\\\philg\\\\AppData\\\\Roaming\\\\Microsoft\\\\Internet Explorer\\\\Quick Launch\\\\User Pinned\\\\TaskBar\\\\Google Chrome.lnk\", \"C:\\\\Users\\\\philg\\\\AppData\\\\Roaming\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Google Chrome.lnk\"\\)\\) { $l = $shell.CreateShortcut\\($p\\); $l.Arguments = $newArgs; $l.Save\\(\\) }; Write-Output \"Updated both shortcuts. New args:\"; Write-Output \"  $newArgs\")",
       "PowerShell($shell = New-Object -ComObject WScript.Shell; $newArgs = \"--force-device-scale-factor=1.85 --window-size=1300,780 --window-position=0,0\"; foreach \\($p in @\\(\"C:\\\\Users\\\\philg\\\\AppData\\\\Roaming\\\\Microsoft\\\\Internet Explorer\\\\Quick Launch\\\\User Pinned\\\\TaskBar\\\\Google Chrome.lnk\", \"C:\\\\Users\\\\philg\\\\AppData\\\\Roaming\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Google Chrome.lnk\"\\)\\) { $l = $shell.CreateShortcut\\($p\\); $l.Arguments = $newArgs; $l.Save\\(\\) }; Write-Output \"Updated. New args:\"; Write-Output \"  $newArgs\"; Write-Output \"\"; Write-Output \"Target: ~2400px physical width, ~1040px buffer on right.\")",
       "Skill(update-config)",
-      "PowerShell(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\(process.env.USERPROFILE + '/.claude/settings.json','utf8'\\)\\); console.log\\('valid JSON'\\)\")"
+      "PowerShell(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\(process.env.USERPROFILE + '/.claude/settings.json','utf8'\\)\\); console.log\\('valid JSON'\\)\")",
+      "PowerShell(npx tsc --noEmit; \"tsc: $LASTEXITCODE\"; npm run check:ai-helper-ui && npm run check:logo && npm run check:ai-helper-scenarios && npm run check:image-references && npm run build 2>&1 | Select-Object -Last 3)",
+      "PowerShell(npm run *)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "PowerShell(Get-NetTCPConnection *)"
     ],
     "deny": [],
     "ask": []
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd /c/Projects/v0promptsgenie 2>/dev/null && [ \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null)\" = \"master\" ] && ahead=$(git rev-list --count origin/master..HEAD 2>/dev/null || echo 0) && [ \"${ahead:-0}\" -gt 0 ] && { git push origin master:master >/dev/null 2>&1 && echo \"{\\\"systemMessage\\\":\\\"Auto-deploy: pushed $ahead commit(s) to Vercel\\\"}\"; } || true",
-            "timeout": 30,
-            "statusMessage": "Auto-pushing to Vercel..."
-          }
-        ]
-      }
-    ]
   }
 }

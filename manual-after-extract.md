@@ -1,0 +1,208 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Home" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+          - generic [ref=e11]: Home
+        - generic [ref=e12]:
+          - button "Image" [ref=e13]
+          - button "Logo" [ref=e14]
+          - button "Thumbnail" [ref=e15]
+          - button "Mockups" [ref=e16]
+          - button "BG Remover" [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - button "Zoom out interface" [ref=e20]:
+              - img [ref=e21]
+            - button "Reset interface zoom" [ref=e24]: 100%
+            - button "Zoom in interface" [ref=e25]:
+              - img [ref=e26]
+          - button "Studio settings" [ref=e29]:
+            - img [ref=e30]
+          - button "Account" [ref=e33]:
+            - img
+            - generic [ref=e34]: Account
+            - img
+          - link "Sign in" [ref=e35] [cursor=pointer]:
+            - /url: /sign-in
+            - img [ref=e36]
+            - generic [ref=e39]: Sign in
+    - generic [ref=e41]:
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e49]: AI Helper
+            - generic [ref=e50]: image
+          - generic [ref=e51]:
+            - button "Suggested prompts & preflight checks" [ref=e52]:
+              - img [ref=e53]
+            - button "Context & memory" [ref=e55]:
+              - img [ref=e56]
+            - button "Clear chat history" [ref=e58]:
+              - img [ref=e59]
+        - generic [ref=e62]:
+          - generic [ref=e64]:
+            - paragraph [ref=e65]: Hi! I'm your AI prompt assistant.
+            - paragraph [ref=e66]: Tell me what image you want to create and I'll help you craft the perfect prompt with optimal camera settings. You can also upload images to help me understand your vision better.
+          - generic [ref=e68]:
+            - button "Upload image" [ref=e69]:
+              - img [ref=e70]
+            - textbox "Describe prompt idea" [ref=e74]:
+              - /placeholder: Describe your image idea... (Shift+Enter for new line)
+            - button "Send" [disabled] [ref=e75]:
+              - img [ref=e76]
+      - separator [ref=e79]:
+        - img [ref=e81]
+      - generic [ref=e92]:
+        - generic [ref=e93]:
+          - heading "YouTube Thumbnail" [level=2] [ref=e94]
+          - paragraph [ref=e95]: 1280×720 · drag the headline and subject to position them, then export from the rail
+        - generic [ref=e98]:
+          - generic [ref=e99]: YOUR TITLE HERE
+          - generic [ref=e100]: NEW TEXT
+        - paragraph [ref=e101]: Use AI Generate in the rail to create a background, add your photo + headline, then export.
+      - separator [ref=e102]:
+        - img [ref=e104]
+      - generic [ref=e113]:
+        - button "Settings" [expanded] [ref=e114]:
+          - img [ref=e115]
+          - generic [ref=e116]: Settings
+          - img [ref=e117]
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - button "AI" [ref=e124]:
+              - img [ref=e125]
+              - text: AI
+            - button "Manual" [active] [pressed] [ref=e127]:
+              - img [ref=e128]
+              - text: Manual
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - heading "Template" [level=4] [ref=e179]
+              - button "Template" [ref=e180]:
+                - generic [ref=e181]: Text left · Face right
+                - img [ref=e182]
+            - generic [ref=e184]:
+              - generic [ref=e185]:
+                - heading "Styles" [level=4] [ref=e186]
+                - button "Shuffle" [ref=e187]:
+                  - img [ref=e188]
+                  - text: Shuffle
+              - generic [ref=e194]:
+                - button "Punch" [ref=e195]
+                - button "Cinematic" [ref=e196]
+                - button "Gaming" [ref=e197]
+                - button "Clean" [ref=e198]
+                - button "Sunset" [ref=e199]
+                - button "Mint" [ref=e200]
+              - paragraph [ref=e201]: Sets a palette + font + text style. Shuffle for instant variants.
+            - generic [ref=e202]:
+              - heading "Background" [level=4] [ref=e203]
+              - generic [ref=e204]:
+                - button "Gradient" [ref=e205]
+                - button "Solid" [ref=e206]
+                - button "Image" [ref=e207]
+              - generic [ref=e208]:
+                - generic [ref=e209]:
+                  - textbox "Gradient color 1" [ref=e210] [cursor=pointer]: "#7c3aed"
+                  - textbox "Gradient color 2" [ref=e211] [cursor=pointer]: "#db2777"
+                - generic [ref=e212]:
+                  - generic [ref=e213]
+                  - slider "Gradient angle 135°" [ref=e216]: "135"
+            - generic [ref=e217]:
+              - heading "Subject / Face" [level=4] [ref=e218]
+              - button "Upload photo" [ref=e219]:
+                - img [ref=e220]
+                - text: Upload photo
+            - generic [ref=e223]:
+              - heading "Text" [level=4] [ref=e224]
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - button "YOUR TITLE HERE" [ref=e227]
+                  - button "Delete text block" [ref=e228]
+                - generic [ref=e232]:
+                  - button "NEW TEXT" [ref=e233]
+                  - button "Delete text block" [ref=e234]
+              - button "Add text block" [ref=e238]:
+                - img [ref=e239]
+                - text: Add text block
+              - textbox "Your title here" [ref=e240]: YOUR TITLE HERE
+              - generic [ref=e241]:
+                - button "Pop" [ref=e242]
+                - button "Outline" [ref=e243]
+                - button "Shadow" [ref=e244]
+                - button "Block" [ref=e245]
+              - generic [ref=e246]:
+                - textbox "Headline color" [ref=e247] [cursor=pointer]: "#ffe14d"
+                - button "UPPERCASE" [ref=e248]
+              - generic [ref=e249]:
+                - text: Size
+                - slider "Size" [ref=e250]: "17"
+              - generic [ref=e251]:
+                - text: Tilt
+                - slider "Tilt" [ref=e252]: "0"
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - generic [ref=e255]: Letter spacing
+                  - generic [ref=e256]: "-1"
+                - slider "Letter spacing -1" [ref=e257]: "-1"
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - text: Font
+                  - button "Font" [ref=e260]
+                - generic [ref=e264]:
+                  - generic [ref=e265]
+                  - slider "Outline weight 50%" [ref=e268]: "50"
+                - button "Gradient fill" [ref=e270]:
+                  - generic [ref=e271]: Gradient fill
+                - button "Highlight box" [ref=e275]:
+                  - generic [ref=e276]: Highlight box
+            - generic [ref=e279]:
+              - heading "Stickers" [level=4] [ref=e280]
+              - button "Add sticker" [ref=e281]:
+                - generic [ref=e282]:
+                  - img [ref=e283]
+                  - text: Add sticker
+                - img [ref=e284]
+              - paragraph [ref=e286]: Click to add · drag on the canvas · click a sticker to select.
+            - generic [ref=e287]:
+              - heading "Arrange" [level=4] [ref=e288]
+              - paragraph [ref=e289]: Click a layer on the canvas (subject, text, or sticker) to align or nudge it.
+            - generic [ref=e290]:
+              - heading "Logo / Watermark" [level=4] [ref=e291]
+              - button "Upload logo" [ref=e292]:
+                - img [ref=e293]
+                - text: Upload logo
+              - paragraph [ref=e296]: Added as a draggable layer — select it to resize, rotate, or delete in Stickers.
+            - generic [ref=e297]:
+              - heading "Export" [level=4] [ref=e298]
+              - generic [ref=e299]:
+                - button "PNG" [ref=e300]
+                - button "JPG ≤2 MB" [ref=e301]
+              - button "Export PNG (1280×720)" [ref=e302]:
+                - img [ref=e303]
+                - text: Export PNG (1280×720)
+              - generic [ref=e306]:
+                - button "2K" [ref=e307]:
+                  - img [ref=e308]
+                  - text: 2K
+                - button "4K" [ref=e313]:
+                  - img [ref=e314]
+                  - text: 4K
+              - button "Preview at small sizes" [ref=e319]:
+                - img [ref=e320]
+                - text: Preview at small sizes
+              - button "Save to history" [ref=e322]:
+                - img [ref=e323]
+                - text: Save to history
+              - button "Clear all" [ref=e327]:
+                - img [ref=e328]
+                - text: Clear all
+            - generic [ref=e331]:
+              - heading "Saved thumbnails" [level=4] [ref=e332]
+              - paragraph [ref=e333]: Use “Save to history” to keep finished thumbnails here.
+  - region "Notifications alt+T"
+  - alert [ref=e1]

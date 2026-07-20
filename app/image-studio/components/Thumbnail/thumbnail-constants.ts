@@ -297,10 +297,13 @@ export interface ThumbnailAiStyle {
 export const THUMBNAIL_AI_STYLES: ThumbnailAiStyle[] = [
   { id: 'photo', label: 'Real Photo', prompt: 'photorealistic, dramatic studio lighting, sharp focus, shallow depth of field' },
   { id: '3d', label: '3D', prompt: 'glossy 3D render, vibrant, Pixar-like, soft global illumination' },
+  { id: 'clay', label: 'Clay 3D', prompt: 'claymation 3D render, soft matte modelling clay with thumbprint texture, chunky rounded forms, warm studio lighting' },
   { id: 'cinematic', label: 'Cinematic', prompt: 'cinematic film still, moody volumetric lighting, teal-and-orange color grade' },
   { id: 'comic', label: 'Comic', prompt: 'bold comic-book illustration, thick outlines, halftone shading, dynamic energy' },
   { id: 'vibrant', label: 'Vibrant', prompt: 'explosive vibrant gradient, neon accents, energetic abstract shapes' },
   { id: 'gaming', label: 'Gaming', prompt: 'epic gaming key art, intense action, glowing magical effects, high energy' },
+  { id: 'anime', label: 'Anime', prompt: 'bold anime key art, crisp cel shading, dramatic sky, speed lines, saturated color' },
+  { id: 'minimal', label: 'Minimal', prompt: 'clean minimal design, flat bold shapes, generous negative space, limited high-contrast palette' },
 ]
 
 export interface ThumbnailModelOption {

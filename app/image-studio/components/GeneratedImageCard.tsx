@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand, Wand2, MessagesSquare } from 'lucide-react'
+import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand, Wand2, MessagesSquare, Pencil, Film, Clapperboard } from 'lucide-react'
 import { FavoriteButton } from './SimpleFavorites'
+import { ImageAnnotationEditor } from './Annotation'
+
+type RestoreParameters = Record<string, unknown>
 
 interface GeneratedImageCardProps {
   imageUrl: string
@@ -16,22 +19,25 @@ interface GeneratedImageCardProps {
     dimensions: string
     fileSize?: string
   }
-  parameters?: any
+  parameters?: RestoreParameters
   isFavorite: boolean
   onToggleFavorite: () => void
   onDownload: () => void
   onOpenLightbox: () => void
-  onRestoreParameters?: (params: any) => void
+  onRestoreParameters?: (params: RestoreParameters) => void
   onRemoveBackground?: (index: number) => Promise<void>
   onUpscale?: (index: number) => Promise<void>
   onEdit?: () => void
   onEditInChat?: () => void
+  onSaveAnnotated?: (index: number, dataUrl: string, instruction?: string, maskDataUrl?: string) => void | Promise<void>
+  onCreateEndFrame?: (index: number) => void
+  onAnimate?: (index: number) => void
 }
 
 export function GeneratedImageCard({
   imageUrl,
   imagePrompt,
-  imageTimestamp,
+  imageTimestamp: _imageTimestamp,
   index,
   aspectRatio,
   selectedStylePreset,
@@ -46,10 +52,14 @@ export function GeneratedImageCard({
   onUpscale,
   onEdit,
   onEditInChat,
+  onSaveAnnotated,
+  onCreateEndFrame,
+  onAnimate,
 }: GeneratedImageCardProps) {
   const [metadata, setMetadata] = useState<{ dimensions: string; fileSize?: string } | null>(imageMetadata || null)
   const [isRemovingBg, setIsRemovingBg] = useState(false)
   const [isUpscaling, setIsUpscaling] = useState(false)
+  const [isAnnotating, setIsAnnotating] = useState(false)
 
   const handleRemoveBackground = async () => {
     if (!onRemoveBackground || isRemovingBg) return
@@ -183,21 +193,30 @@ export function GeneratedImageCard({
       </div>
       
       {/* Action buttons below image */}
-      <div className="flex gap-2 mt-2">
+      <div className="flex flex-wrap gap-2 mt-2">
         <Button
           onClick={onDownload}
           size="sm"
-          className="flex-1 bg-[#c99850] text-black hover:bg-[#dbb56e]"
+          className="min-w-[120px] flex-1 bg-[#c99850] text-black hover:bg-[#dbb56e]"
         >
           <Download className="w-3 h-3 mr-1" />
           Download
+        </Button>
+        <Button
+          onClick={() => setIsAnnotating(true)}
+          size="sm"
+          aria-label="Annotate image"
+          className="min-w-[120px] flex-1 bg-sky-600 text-white hover:bg-sky-500"
+        >
+          <Pencil className="w-3 h-3 mr-1" />
+          Annotate
         </Button>
         {onRemoveBackground && (
           <Button
             onClick={handleRemoveBackground}
             size="sm"
             disabled={isRemovingBg}
-            className="flex-1 bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50"
+            className="min-w-[120px] flex-1 bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50"
           >
             {isRemovingBg ? (
               <>
@@ -212,12 +231,34 @@ export function GeneratedImageCard({
             )}
           </Button>
         )}
+        {onAnimate && (
+          <Button
+            onClick={() => onAnimate(index)}
+            size="sm"
+            className="min-w-[120px] flex-1 bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850]"
+            title="Use this image as the start frame and open the video generator"
+          >
+            <Clapperboard className="w-3 h-3 mr-1" />
+            Animate
+          </Button>
+        )}
+        {onCreateEndFrame && (
+          <Button
+            onClick={() => onCreateEndFrame(index)}
+            size="sm"
+            className="min-w-[120px] flex-1 bg-emerald-600 text-white hover:bg-emerald-500"
+            title="Use this image as a video start frame and generate a matching end frame"
+          >
+            <Film className="w-3 h-3 mr-1" />
+            End Frame
+          </Button>
+        )}
         {onUpscale && (
           <Button
             onClick={handleUpscale}
             size="sm"
             disabled={isUpscaling}
-            className="flex-1 bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+            className="min-w-[120px] flex-1 bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
             title="AI-upscale this image to 4K via Real-ESRGAN"
           >
             {isUpscaling ? (
@@ -256,6 +297,13 @@ export function GeneratedImageCard({
           </Button>
         )}
       </div>
+      <ImageAnnotationEditor
+        imageUrl={imageUrl}
+        imagePrompt={imagePrompt}
+        isOpen={isAnnotating}
+        onOpenChange={setIsAnnotating}
+        onSaveCopy={onSaveAnnotated ? (dataUrl, instruction, maskDataUrl) => onSaveAnnotated(index, dataUrl, instruction, maskDataUrl) : undefined}
+      />
     </div>
   )
 }
