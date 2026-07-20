@@ -8,7 +8,7 @@
  * controls (audio, end frame, resolutions) disable themselves per model.
  */
 
-import { Film, Volume2, VolumeX, X } from 'lucide-react'
+import { Film, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
 import { VIDEO_MODELS, VIDEO_MODEL_IDS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
 import { videoGenerationCost } from '@/lib/credits/cost-map'
 
@@ -27,11 +27,19 @@ interface VideoSettingsProps {
   endFrameUrl: string | null
   onClearStartFrame: () => void
   onClearEndFrame: () => void
+  /** Shown in the empty end slot when a start frame is set: AI-generate a matching end frame. */
+  onGenerateEndFrame?: () => void
 }
 
 const ASPECT_RATIOS = ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9']
 
-function FrameSlot({ label, url, onClear }: { label: string; url: string | null; onClear: () => void }) {
+function FrameSlot({ label, hint, url, onClear, action }: {
+  label: string
+  hint: string
+  url: string | null
+  onClear: () => void
+  action?: { label: string; onClick: () => void }
+}) {
   return (
     <div className="flex-1 min-w-[120px]">
       <p className="text-xs text-zinc-400 mb-1">{label}</p>
@@ -47,10 +55,17 @@ function FrameSlot({ label, url, onClear }: { label: string; url: string | null;
           </button>
         </div>
       ) : (
-        <div className="h-20 rounded-md border border-dashed border-zinc-700 flex items-center justify-center">
-          <p className="text-[10px] text-zinc-600 text-center px-2 leading-4">
-            Use “Animate” or “End Frame” on a generated image
-          </p>
+        <div className="h-20 rounded-md border border-dashed border-zinc-700 flex flex-col items-center justify-center gap-1.5 px-2">
+          <p className="text-[10px] text-zinc-600 text-center leading-4">{hint}</p>
+          {action && (
+            <button
+              onClick={action.onClick}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors"
+            >
+              <Sparkles className="w-3 h-3" />
+              {action.label}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -58,7 +73,7 @@ function FrameSlot({ label, url, onClear }: { label: string; url: string | null;
 }
 
 export function VideoSettings({
-  value, onChange, startFrameUrl, endFrameUrl, onClearStartFrame, onClearEndFrame,
+  value, onChange, startFrameUrl, endFrameUrl, onClearStartFrame, onClearEndFrame, onGenerateEndFrame,
 }: VideoSettingsProps) {
   const model = VIDEO_MODELS[value.model]
   const caps = model.capabilities
@@ -193,11 +208,22 @@ export function VideoSettings({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <FrameSlot label="Start frame" url={startFrameUrl} onClear={onClearStartFrame} />
         <FrameSlot
-          label={caps.endFrame ? 'End frame' : `End frame (not supported by ${model.label})`}
+          label="Start frame"
+          hint="Press “Animate” on a generated image to set the opening frame — or leave empty for text-to-video"
+          url={startFrameUrl}
+          onClear={onClearStartFrame}
+        />
+        <FrameSlot
+          label={caps.endFrame ? 'End frame (optional)' : 'End frame'}
+          hint={caps.endFrame
+            ? 'Press “End Frame” on a generated image to set the closing frame the video moves toward'
+            : `${model.label} can’t use an end frame — switch to Seedance 2.0, Kling 3.0 Pro, or Veo 3.1`}
           url={caps.endFrame ? endFrameUrl : null}
           onClear={onClearEndFrame}
+          action={caps.endFrame && startFrameUrl && !endFrameUrl && onGenerateEndFrame
+            ? { label: 'Generate from start frame', onClick: onGenerateEndFrame }
+            : undefined}
         />
       </div>
 

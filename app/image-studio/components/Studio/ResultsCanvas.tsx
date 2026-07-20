@@ -9,13 +9,13 @@
  */
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ImageIcon } from 'lucide-react'
 import { UploadPanel } from '../UploadPanel'
 import { GeneratedImageCard } from '../GeneratedImageCard'
 import { ImageEditModal } from '../ImageEditor'
-import { EndFrameDialog } from './EndFrameDialog'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useEditChat } from '../../context/EditChatProvider'
@@ -29,18 +29,28 @@ export function ResultsCanvas() {
   } = useStudioCore()
   const {
     isGenerating, error, clearImages, downloadImage, removeBackground,
-    upscaleToFourK, getImageMetadata, applyEditedImage, createEndFrame,
+    upscaleToFourK, getImageMetadata, applyEditedImage,
   } = useImageGenerationEngine()
   const { startEditChat } = useEditChat()
-  const [endFrameIndex, setEndFrameIndex] = useState<number | null>(null)
   const { setMode } = useStudioMode()
 
   const handleAnimate = (index: number) => {
     const url = state.generatedImages[index]?.url
     if (!url) return
     state.setVideoStartFrame(url)
-    state.setVideoEndFrame(null)
+    if (state.videoEndFrame === url) state.setVideoEndFrame(null)
     setMode('video')
+  }
+
+  const handleSetEndFrame = (index: number) => {
+    const url = state.generatedImages[index]?.url
+    if (!url) return
+    state.setVideoEndFrame(url)
+    if (state.videoStartFrame) {
+      toast.success('End frame set — start/end pair ready in the Video tab')
+    } else {
+      toast.success('End frame set — now press "Animate" on your starting image')
+    }
   }
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -145,7 +155,7 @@ export function ResultsCanvas() {
                 onUpscale={upscaleToFourK}
                 onEdit={() => setEditingIndex(i)}
                 onEditInChat={() => startEditChat(i, img.url)}
-                onCreateEndFrame={setEndFrameIndex}
+                onSetEndFrame={handleSetEndFrame}
                 onAnimate={handleAnimate}
                 onSaveAnnotated={async (index, dataUrl, instruction, maskDataUrl) => {
                   const timestamp = Date.now()
@@ -201,15 +211,6 @@ export function ResultsCanvas() {
           onClose={() => setEditingIndex(null)}
         />
       )}
-
-      <EndFrameDialog
-        isOpen={endFrameIndex !== null}
-        onOpenChange={(open) => { if (!open) setEndFrameIndex(null) }}
-        sourcePreview={endFrameIndex !== null ? generatedImages[endFrameIndex]?.url : undefined}
-        onConfirm={async (endPrompt) => {
-          if (endFrameIndex !== null) await createEndFrame(endFrameIndex, endPrompt)
-        }}
-      />
     </div>
   )
 }

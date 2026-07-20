@@ -33,8 +33,8 @@ export interface ImageGenerationEngine {
   requestGenerate: () => void
   clearImages: () => void
   downloadImage: (url: string, index: number, prompt?: string) => Promise<void>
-  /** Generate a video end frame from a generated image (replicate-mode reference) and record the start/end pair. */
-  createEndFrame: (index: number, endPrompt: string) => Promise<void>
+  /** Generate a video end frame from a source image URL (replicate-mode reference) and record the start/end pair. */
+  createEndFrame: (sourceUrl: string, endPrompt: string) => Promise<void>
   removeBackground: (index: number) => Promise<void>
   upscaleToFourK: (index: number) => Promise<void>
   applyEditedImage: (index: number, url: string, editPrompt: string, expectedUrl?: string) => Promise<boolean>
@@ -182,11 +182,10 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const createEndFrame = useCallback(async (index: number, endPrompt: string) => {
-    const source = state.generatedImages[index]
-    if (!source?.url || !endPrompt.trim()) return
+  const createEndFrame = useCallback(async (sourceUrl: string, endPrompt: string) => {
+    if (!sourceUrl || !endPrompt.trim()) return
     try {
-      const file = await imageUrlToImageFile(source.url, `end-frame-source-${Date.now()}.png`)
+      const file = await imageUrlToImageFile(sourceUrl, `end-frame-source-${Date.now()}.png`)
       const prompt = `${endPrompt.trim()}. Keep the exact same scene, subject, framing, lighting, and style as the reference image — this is the final frame of a video whose first frame is the reference.`
       const imgs = await generateImages({
         prompt,
@@ -200,7 +199,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       })
       const endUrl = imgs?.[0]?.url
       if (!endUrl) throw new Error('No end frame returned')
-      state.setVideoStartFrame(source.url)
+      state.setVideoStartFrame(sourceUrl)
       state.setVideoEndFrame(endUrl)
       const m = await getImageMetadata(endUrl)
       await saveToHistory(prompt, state.aspectRatio, [endUrl], {

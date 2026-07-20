@@ -17,7 +17,9 @@ import { Clapperboard, Loader2 } from 'lucide-react'
 import { VideoSettings, type VideoSettingsValue } from './VideoSettings'
 import { VideoResultCard } from './VideoResultCard'
 import { useVideoGeneration } from './useVideoGeneration'
+import { EndFrameDialog } from '../Studio/EndFrameDialog'
 import { useStudioCore } from '../../context/useStudio'
+import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 
 const DEFAULT_SETTINGS: VideoSettingsValue = {
   model: 'seedance-fast',
@@ -29,9 +31,11 @@ const DEFAULT_SETTINGS: VideoSettingsValue = {
 
 export function VideoCanvas() {
   const { state } = useStudioCore()
+  const { createEndFrame } = useImageGenerationEngine()
   const { jobs, isSubmitting, historyLoaded, submitVideo, extendVideo } = useVideoGeneration()
   const [prompt, setPrompt] = useState('')
   const [settings, setSettings] = useState<VideoSettingsValue>(DEFAULT_SETTINGS)
+  const [showEndFrameDialog, setShowEndFrameDialog] = useState(false)
 
   const startFrameUrl = state.videoStartFrame
   const endFrameUrl = state.videoEndFrame
@@ -73,8 +77,9 @@ export function VideoCanvas() {
           onChange={setSettings}
           startFrameUrl={startFrameUrl}
           endFrameUrl={endFrameUrl}
-          onClearStartFrame={() => { state.setVideoStartFrame(null); state.setVideoEndFrame(null) }}
+          onClearStartFrame={() => state.setVideoStartFrame(null)}
           onClearEndFrame={() => state.setVideoEndFrame(null)}
+          onGenerateEndFrame={() => setShowEndFrameDialog(true)}
         />
 
         <Button
@@ -100,12 +105,21 @@ export function VideoCanvas() {
           </div>
           <p className="text-sm text-zinc-400">Generated videos appear here</p>
           <p className="text-xs text-zinc-600 max-w-sm leading-5">
-            Tip: generate an image first, then use its “Animate” button to use it
-            as the start frame — or “End Frame” to build a start/end pair for a
-            controlled transition.
+            Tip: generate images first, then press “Animate” on your opening
+            image and “End Frame” on your closing image — the video will move
+            from one to the other.
           </p>
         </div>
       )}
+
+      <EndFrameDialog
+        isOpen={showEndFrameDialog}
+        onOpenChange={setShowEndFrameDialog}
+        sourcePreview={startFrameUrl ?? undefined}
+        onConfirm={async (endPrompt) => {
+          if (startFrameUrl) await createEndFrame(startFrameUrl, endPrompt)
+        }}
+      />
 
       {jobs.length > 0 && (
         <Card className="bg-zinc-900 border-[#c99850]/30 p-4">

@@ -43,11 +43,11 @@ export function EndFrameDialog({ isOpen, onOpenChange, sourcePreview, onConfirm 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Film className="w-4 h-4 text-[#dbb56e]" />
-            Create end frame
+            Generate end frame
           </DialogTitle>
           <DialogDescription className="text-zinc-400">
-            This image becomes the video start frame. Describe how the scene
-            should look at the end — a matching end frame is generated from it.
+            Describe how the scene should look at the end of the video — a
+            matching end frame is generated from your start frame (shown below).
           </DialogDescription>
         </DialogHeader>
         {sourcePreview && (

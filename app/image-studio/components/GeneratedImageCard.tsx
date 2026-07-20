@@ -30,7 +30,7 @@ interface GeneratedImageCardProps {
   onEdit?: () => void
   onEditInChat?: () => void
   onSaveAnnotated?: (index: number, dataUrl: string, instruction?: string, maskDataUrl?: string) => void | Promise<void>
-  onCreateEndFrame?: (index: number) => void
+  onSetEndFrame?: (index: number) => void
   onAnimate?: (index: number) => void
 }
 
@@ -53,7 +53,7 @@ export function GeneratedImageCard({
   onEdit,
   onEditInChat,
   onSaveAnnotated,
-  onCreateEndFrame,
+  onSetEndFrame,
   onAnimate,
 }: GeneratedImageCardProps) {
   const [metadata, setMetadata] = useState<{ dimensions: string; fileSize?: string } | null>(imageMetadata || null)
@@ -236,18 +236,18 @@ export function GeneratedImageCard({
             onClick={() => onAnimate(index)}
             size="sm"
             className="min-w-[120px] flex-1 bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850]"
-            title="Use this image as the start frame and open the video generator"
+            title="Video: use this image as the START frame and open the video generator"
           >
             <Clapperboard className="w-3 h-3 mr-1" />
             Animate
           </Button>
         )}
-        {onCreateEndFrame && (
+        {onSetEndFrame && (
           <Button
-            onClick={() => onCreateEndFrame(index)}
+            onClick={() => onSetEndFrame(index)}
             size="sm"
             className="min-w-[120px] flex-1 bg-emerald-600 text-white hover:bg-emerald-500"
-            title="Use this image as a video start frame and generate a matching end frame"
+            title="Video: use this image as the END frame (pair it with a start frame set via Animate)"
           >
             <Film className="w-3 h-3 mr-1" />
             End Frame

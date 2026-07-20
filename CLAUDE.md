@@ -55,7 +55,7 @@ These MUST be set in Vercel → Settings → Environment Variables (for ALL envi
 - **Models**: config-driven registry in `lib/video/providers.ts` — Seedance Fast (draft), Seedance 2.0, Kling 3.0 Pro, Veo 3.1. Adding a model = new registry entry (endpoint resolver + input builder + capability flags).
 - **Flow**: `POST /api/generate-video` submits to the fal queue (credit-guarded via `videoFormCost`), inserts a `pending` row in `video_history` (migration `scripts/011_video_history.sql`); the client polls `GET /api/generate-video/status` every 5s. On completion the MP4 is copied to Vercel Blob (falls back to the fal URL if no `BLOB_READ_WRITE_TOKEN`); on failure the debit is refunded idempotently (job-scoped key).
 - **Costs**: `VIDEO_CREDITS_PER_SECOND` in `lib/credits/cost-map.ts` (audio + 4K multipliers).
-- **UI**: Video studio mode (`components/Video/` — VideoCanvas stays mounted-hidden so polling survives mode switches). Images feed video via the **Animate** button (start frame) and **End Frame** button (replicate-mode reference generates a matched end frame) on `GeneratedImageCard`.
+- **UI**: Video studio mode (`components/Video/` — VideoCanvas stays mounted-hidden so polling survives mode switches). Images feed video via the **Animate** button (sets start frame) and **End Frame** button (sets that image as the end frame) on `GeneratedImageCard`; the video panel's empty end slot offers "Generate from start frame" (replicate-mode reference) when only a start is set.
 - **Image batching**: the image API caps `count` at 4 per request; `useImageGeneration` splits bigger batches (up to 10) into parallel chunked requests that land in the grid progressively.
 
 ---
