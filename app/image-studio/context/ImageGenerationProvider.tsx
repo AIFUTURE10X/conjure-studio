@@ -35,6 +35,8 @@ export interface ImageGenerationEngine {
   downloadImage: (url: string, index: number, prompt?: string) => Promise<void>
   /** Generate a video end frame from a source image URL (replicate-mode reference) and record the start/end pair. */
   createEndFrame: (sourceUrl: string, endPrompt: string) => Promise<void>
+  /** "More Like This": one-click sibling variation of a generated image, appended to the grid. */
+  generateVariation: (index: number) => Promise<void>
   removeBackground: (index: number) => Promise<void>
   upscaleToFourK: (index: number) => Promise<void>
   applyEditedImage: (index: number, url: string, editPrompt: string, expectedUrl?: string) => Promise<boolean>
@@ -214,6 +216,39 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     }
   }, [state, generateImages, saveToHistory])
 
+  const generateVariation = useCallback(async (index: number) => {
+    const source = state.generatedImages[index]
+    if (!source?.url) return
+    try {
+      toast.loading('Creating a variation…', { id: `variation-${index}` })
+      const file = await imageUrlToImageFile(source.url, `variation-source-${Date.now()}.png`)
+      const basePrompt = source.prompt?.trim() || state.mainPrompt.trim() || 'the same concept'
+      const prompt = `${basePrompt}. Create a fresh variation of the reference image: keep the same subject, style, palette, and composition language, but vary the small details, pose, or arrangement so it reads as a sibling image, not a copy.`
+      const imgs = await generateImages({
+        prompt,
+        count: 1,
+        aspectRatio: state.aspectRatio,
+        referenceImage: file,
+        referenceMode: 'inspire',
+        model: state.selectedModel,
+        imageSize: state.imageSize,
+        imageQuality: 'medium',
+      })
+      const url = imgs?.[0]?.url
+      if (!url) throw new Error('No variation returned')
+      const m = await getImageMetadata(url)
+      await saveToHistory(`Variation: ${basePrompt}`, state.aspectRatio, [url], {
+        style: state.selectedStylePreset,
+        dimensions: m.dimensions,
+        fileSize: m.fileSize,
+      })
+      toast.success('Variation added to the grid', { id: `variation-${index}` })
+    } catch (e) {
+      console.error('[v0] Variation error:', e)
+      toast.error(e instanceof Error ? e.message : 'Variation failed', { id: `variation-${index}` })
+    }
+  }, [state, generateImages, saveToHistory])
+
   const removeBackground = useCallback(async (index: number) => {
     const img = state.generatedImages[index]
     if (!img?.url) return
@@ -296,6 +331,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     clearImages,
     downloadImage,
     createEndFrame,
+    generateVariation,
     removeBackground,
     upscaleToFourK,
     applyEditedImage,
@@ -306,7 +342,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     setImageBgRemovalMethod,
   }), [
     isGenerating, error, generateNow, requestGenerate, clearImages, downloadImage,
-    createEndFrame, removeBackground, upscaleToFourK, applyEditedImage, photoRoomBgRemovalEnabled,
+    createEndFrame, generateVariation, removeBackground, upscaleToFourK, applyEditedImage, photoRoomBgRemovalEnabled,
     setPhotoRoomBgRemovalEnabled, imageBgRemovalMethod, setImageBgRemovalMethod,
   ])
 

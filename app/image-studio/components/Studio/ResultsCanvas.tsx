@@ -29,7 +29,7 @@ export function ResultsCanvas() {
   } = useStudioCore()
   const {
     isGenerating, error, clearImages, downloadImage, removeBackground,
-    upscaleToFourK, getImageMetadata, applyEditedImage,
+    upscaleToFourK, getImageMetadata, applyEditedImage, generateVariation,
   } = useImageGenerationEngine()
   const { startEditChat } = useEditChat()
   const { setMode } = useStudioMode()
@@ -157,6 +157,7 @@ export function ResultsCanvas() {
                 onEditInChat={() => startEditChat(i, img.url)}
                 onSetEndFrame={handleSetEndFrame}
                 onAnimate={handleAnimate}
+                onMoreLikeThis={generateVariation}
                 onSaveAnnotated={async (index, dataUrl, instruction, maskDataUrl) => {
                   const timestamp = Date.now()
                   const source = generatedImages[index]

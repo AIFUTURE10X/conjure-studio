@@ -27,6 +27,7 @@ export interface VideoJob {
   resolution: string | null
   aspectRatio: string | null
   hasAudio: boolean
+  isFavorited?: boolean
 }
 
 export interface SubmitVideoOptions {
@@ -192,6 +193,18 @@ export function useVideoGeneration() {
     return submitVideo({ ...shared, duration: job.durationSeconds || 5, startFrameUrl: lastFrameDataUrl })
   }, [submitVideo])
 
+  const toggleFavorite = useCallback((job: VideoJob) => {
+    const next = !job.isFavorited
+    setJobs((current) => current.map((item) => (
+      item.jobId === job.jobId ? { ...item, isFavorited: next } : item
+    )))
+    void fetch('/api/video-history', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: getUserId(), jobId: job.jobId, isFavorited: next }),
+    }).catch((error) => console.error('[video] Favorite toggle failed:', error))
+  }, [])
+
   return {
     jobs,
     isSubmitting,
@@ -199,5 +212,6 @@ export function useVideoGeneration() {
     hasPendingJobs: pendingKey.length > 0,
     submitVideo,
     extendVideo,
+    toggleFavorite,
   }
 }

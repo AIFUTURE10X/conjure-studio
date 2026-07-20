@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand, Wand2, MessagesSquare, Pencil, Film, Clapperboard } from 'lucide-react'
+import { Download, RotateCcw, Maximize2, Eraser, Loader2, Expand, Wand2, MessagesSquare, Pencil, Film, Clapperboard, Shuffle } from 'lucide-react'
 import { FavoriteButton } from './SimpleFavorites'
 import { ImageAnnotationEditor } from './Annotation'
 
@@ -32,6 +32,7 @@ interface GeneratedImageCardProps {
   onSaveAnnotated?: (index: number, dataUrl: string, instruction?: string, maskDataUrl?: string) => void | Promise<void>
   onSetEndFrame?: (index: number) => void
   onAnimate?: (index: number) => void
+  onMoreLikeThis?: (index: number) => void
 }
 
 export function GeneratedImageCard({
@@ -55,6 +56,7 @@ export function GeneratedImageCard({
   onSaveAnnotated,
   onSetEndFrame,
   onAnimate,
+  onMoreLikeThis,
 }: GeneratedImageCardProps) {
   const [metadata, setMetadata] = useState<{ dimensions: string; fileSize?: string } | null>(imageMetadata || null)
   const [isRemovingBg, setIsRemovingBg] = useState(false)
@@ -251,6 +253,17 @@ export function GeneratedImageCard({
           >
             <Film className="w-3 h-3 mr-1" />
             End Frame
+          </Button>
+        )}
+        {onMoreLikeThis && (
+          <Button
+            onClick={() => onMoreLikeThis(index)}
+            size="sm"
+            className="min-w-[120px] flex-1 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+            title="Generate a sibling variation of this image — same subject and style, fresh details"
+          >
+            <Shuffle className="w-3 h-3 mr-1" />
+            More Like This
           </Button>
         )}
         {onUpscale && (

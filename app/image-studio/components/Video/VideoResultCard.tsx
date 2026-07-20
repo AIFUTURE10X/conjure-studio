@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Download, ListPlus, Loader2, TriangleAlert } from 'lucide-react'
+import { Download, Heart, ListPlus, Loader2, TriangleAlert } from 'lucide-react'
 import { ExtendVideoDialog } from './ExtendVideoDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
 import type { VideoJob } from './useVideoGeneration'
@@ -11,13 +11,14 @@ import type { VideoJob } from './useVideoGeneration'
 interface VideoResultCardProps {
   job: VideoJob
   onExtend?: (job: VideoJob, extensionPrompt: string, lastFrameDataUrl?: string) => Promise<boolean>
+  onToggleFavorite?: (job: VideoJob) => void
 }
 
 function modelLabel(model: string): string {
   return VIDEO_MODELS[model as VideoModelId]?.label ?? model
 }
 
-export function VideoResultCard({ job, onExtend }: VideoResultCardProps) {
+export function VideoResultCard({ job, onExtend, onToggleFavorite }: VideoResultCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [showExtend, setShowExtend] = useState(false)
   const model = VIDEO_MODELS[job.model as VideoModelId]
@@ -121,6 +122,19 @@ export function VideoResultCard({ job, onExtend }: VideoResultCardProps) {
         </div>
         {job.status === 'completed' && job.videoUrl && (
           <div className="flex gap-2 shrink-0">
+            {onToggleFavorite && (
+              <button
+                onClick={() => onToggleFavorite(job)}
+                title={job.isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
+                  job.isFavorited
+                    ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700'
+                }`}
+              >
+                <Heart className="w-3.5 h-3.5" fill={job.isFavorited ? 'currentColor' : 'none'} />
+              </button>
+            )}
             {onExtend && (
               <Button
                 onClick={() => setShowExtend(true)}

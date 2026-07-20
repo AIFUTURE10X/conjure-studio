@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 import { z } from "zod"
-import { apiError, parseParams } from '@/lib/api/http'
+import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
 
@@ -11,6 +11,11 @@ export const runtime = "nodejs"
 
 const getQuerySchema = z.object({ userId: userIdSchema })
 const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
+const patchBodySchema = z.object({
+  userId: userIdSchema,
+  jobId: z.number().int().positive(),
+  isFavorited: z.boolean(),
+})
 
 function getSQL() {
   const url = process.env.NEON_DATABASE_URL
@@ -27,7 +32,7 @@ export async function GET(request: NextRequest) {
     const sql = getSQL()
     const rows = await sql`
       SELECT id, status, prompt, model, video_url, error, start_image_url, created_at,
-             duration_seconds, resolution, aspect_ratio, has_audio
+             duration_seconds, resolution, aspect_ratio, has_audio, is_favorited
       FROM public.video_history
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
@@ -47,12 +52,32 @@ export async function GET(request: NextRequest) {
       resolution: (row.resolution as string | null) ?? null,
       aspectRatio: (row.aspect_ratio as string | null) ?? null,
       hasAudio: Boolean(row.has_audio),
+      isFavorited: Boolean(row.is_favorited),
     }))
 
     return NextResponse.json({ videos })
   } catch (error) {
     console.error('[video] History load failed:', error)
     return apiError(500, 'internal_error', 'Failed to load video history')
+  }
+}
+
+// PATCH /api/video-history — toggle favorite on a clip
+export async function PATCH(request: NextRequest) {
+  const parsed = await parseJson(request, patchBodySchema)
+  if (parsed.response) return parsed.response
+  const userId = await resolveUserId(request, parsed.data.userId)
+
+  try {
+    const sql = getSQL()
+    await sql`
+      UPDATE public.video_history SET is_favorited = ${parsed.data.isFavorited}
+      WHERE id = ${parsed.data.jobId} AND user_id = ${userId}
+    `
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[video] Favorite toggle failed:', error)
+    return apiError(500, 'internal_error', 'Failed to update favorite')
   }
 }
 
