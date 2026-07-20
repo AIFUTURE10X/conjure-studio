@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, Wand2 } from 'lucide-react'
 import { ExtendVideoDialog } from './ExtendVideoDialog'
-import { LipSyncDialog } from './LipSyncDialog'
+import { LipSyncDialog, type LipSyncPayload } from './LipSyncDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
 import type { VideoJob } from './useVideoGeneration'
 
@@ -13,7 +13,7 @@ interface VideoResultCardProps {
   job: VideoJob
   onExtend?: (job: VideoJob, extensionPrompt: string, lastFrameDataUrl?: string) => Promise<boolean>
   onToggleFavorite?: (job: VideoJob) => void
-  onLipSync?: (job: VideoJob, payload: { mode: 'text'; text: string; voiceId: string } | { mode: 'audio'; audioFile: File }) => Promise<boolean>
+  onLipSync?: (job: VideoJob, payload: LipSyncPayload) => Promise<boolean>
   onEnhance?: (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p') => Promise<boolean>
 }
 

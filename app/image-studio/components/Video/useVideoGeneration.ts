@@ -216,7 +216,7 @@ export function useVideoGeneration() {
 
   const submitLipSync = useCallback(async (
     job: VideoJob,
-    payload: { mode: 'text'; text: string; voiceId: string } | { mode: 'audio'; audioFile: File },
+    payload: { mode: 'text'; text: string; voiceId: string; voiceLanguage: 'en' | 'zh' } | { mode: 'audio'; audioFile: File },
   ): Promise<boolean> => {
     if (!job.videoUrl) return false
     try {
@@ -227,6 +227,7 @@ export function useVideoGeneration() {
       if (payload.mode === 'text') {
         formData.append('text', payload.text)
         formData.append('voiceId', payload.voiceId)
+        formData.append('voiceLanguage', payload.voiceLanguage)
       } else {
         formData.append('audio', payload.audioFile)
       }

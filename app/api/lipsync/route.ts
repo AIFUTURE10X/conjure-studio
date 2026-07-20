@@ -27,6 +27,7 @@ const formSchema = z.object({
   mode: z.enum(['text', 'audio']),
   text: z.string().trim().max(120).optional(),
   voiceId: z.string().trim().max(60).optional(),
+  voiceLanguage: z.enum(['en', 'zh']).default('en'),
   voiceSpeed: z.coerce.number().min(0.5).max(2).default(1),
 })
 
@@ -46,7 +47,7 @@ async function handlePost(request: NextRequest) {
 
   const parsedFields = parseFormFields(formData, formSchema)
   if (parsedFields.response) return parsedFields.response
-  const { videoUrl, mode, text, voiceId, voiceSpeed } = parsedFields.data
+  const { videoUrl, mode, text, voiceId, voiceLanguage, voiceSpeed } = parsedFields.data
   const userId = await resolveUserId(request, parsedFields.data.userId)
 
   try {
@@ -63,7 +64,7 @@ async function handlePost(request: NextRequest) {
         video_url: videoUrl,
         text,
         voice_id: voiceId,
-        voice_language: 'en',
+        voice_language: voiceLanguage,
         voice_speed: voiceSpeed,
       }
       promptLabel = `Lip sync: “${text}”`

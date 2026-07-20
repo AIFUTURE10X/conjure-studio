@@ -14,28 +14,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Mic, Upload } from 'lucide-react'
-
-const VOICES = [
-  { id: 'ai_kaiya', label: 'Kaiya (female)' },
-  { id: 'oversea_male1', label: 'Male narrator' },
-  { id: 'uk_boy1', label: 'UK young male' },
-  { id: 'uk_man2', label: 'UK male' },
-  { id: 'uk_oldman3', label: 'UK older male' },
-  { id: 'genshin_klee2', label: 'Playful child' },
-]
+import { ENGLISH_VOICES, CHINESE_VOICES, getVoiceById } from '../../constants/lipsync-voices'
 
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024
+
+export type LipSyncPayload =
+  | { mode: 'text'; text: string; voiceId: string; voiceLanguage: 'en' | 'zh' }
+  | { mode: 'audio'; audioFile: File }
 
 interface LipSyncDialogProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (payload: { mode: 'text'; text: string; voiceId: string } | { mode: 'audio'; audioFile: File }) => Promise<void>
+  onConfirm: (payload: LipSyncPayload) => Promise<void>
 }
 
 export function LipSyncDialog({ isOpen, onOpenChange, onConfirm }: LipSyncDialogProps) {
   const [mode, setMode] = useState<'text' | 'audio'>('text')
   const [text, setText] = useState('')
-  const [voiceId, setVoiceId] = useState(VOICES[0].id)
+  const [voiceId, setVoiceId] = useState(ENGLISH_VOICES[0].id)
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -47,7 +43,8 @@ export function LipSyncDialog({ isOpen, onOpenChange, onConfirm }: LipSyncDialog
     setIsSubmitting(true)
     try {
       if (mode === 'text') {
-        await onConfirm({ mode: 'text', text: text.trim().slice(0, 120), voiceId })
+        const voice = getVoiceById(voiceId) ?? ENGLISH_VOICES[0]
+        await onConfirm({ mode: 'text', text: text.trim().slice(0, 120), voiceId: voice.id, voiceLanguage: voice.language })
       } else if (audioFile) {
         await onConfirm({ mode: 'audio', audioFile })
       }
@@ -93,22 +90,25 @@ export function LipSyncDialog({ isOpen, onOpenChange, onConfirm }: LipSyncDialog
             />
             <p className="text-[10px] text-zinc-600 text-right">{text.length}/120</p>
             <div>
-              <p className="text-xs text-zinc-400 mb-1.5">Voice</p>
-              <div className="flex flex-wrap gap-1">
-                {VOICES.map((voice) => (
-                  <button
-                    key={voice.id}
-                    onClick={() => setVoiceId(voice.id)}
-                    className={`px-2 h-7 rounded-md text-xs transition-colors ${
-                      voiceId === voice.id
-                        ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black font-bold'
-                        : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
-                    }`}
-                  >
-                    {voice.label}
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs text-zinc-400 mb-1.5">
+                Voice <span className="text-zinc-600">({ENGLISH_VOICES.length + CHINESE_VOICES.length} available)</span>
+              </p>
+              <select
+                value={voiceId}
+                onChange={(e) => setVoiceId(e.target.value)}
+                className="w-full h-9 rounded-md bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 px-2 outline-none focus:border-[#c99850]"
+              >
+                <optgroup label="English">
+                  {ENGLISH_VOICES.map((voice) => (
+                    <option key={voice.id} value={voice.id}>{voice.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Chinese">
+                  {CHINESE_VOICES.map((voice) => (
+                    <option key={voice.id} value={voice.id}>{voice.label}</option>
+                  ))}
+                </optgroup>
+              </select>
             </div>
           </div>
         ) : (
