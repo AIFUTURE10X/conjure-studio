@@ -10,7 +10,7 @@ import {
   type CreativeDirectionState,
 } from '../constants/creative-direction-options'
 
-type ActiveTab = 'generate' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail' | 'translate' | 'guide'
+type ActiveTab = 'generate' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail' | 'translate' | 'guide' | 'analytics'
 
 // Read defaultTab from localStorage settings (called in useEffect to avoid hydration mismatch)
 function getStoredDefaultTab(): ActiveTab | null {

@@ -341,6 +341,13 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         ],
       },
       {
+        title: 'The Analytics tab',
+        paragraphs: [
+          'The Analytics tab in the top bar shows exactly where your credits go: total spend and job counts for the last 7 / 30 / 90 days, a per-category breakdown (image, video, lip sync, enhance, logos), a daily spend chart, and a per-job list with the individual cost of every generation.',
+          'Costs are computed from your history at current rates, so the numbers work even in free mode; failed video jobs show as refunded. When billing is enabled, actual recorded charges are shown too.',
+        ],
+      },
+      {
         title: 'Accounts & your data',
         paragraphs: [
           'Sign in (email or Google) from the account menu in the top bar. Your history, favorites, collections, prompts, and presets are stored in your account and follow you across devices.',

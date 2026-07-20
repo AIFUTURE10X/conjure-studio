@@ -29,6 +29,7 @@ const MODE_OPTIONS: Array<{ mode: StudioMode; label: string }> = [
   { mode: 'translate', label: 'Translate' },
   { mode: 'mockups', label: 'Mockups' },
   { mode: 'bg-remover', label: 'BG Remover' },
+  { mode: 'analytics', label: 'Analytics' },
   { mode: 'guide', label: 'Guide' },
 ]
 
