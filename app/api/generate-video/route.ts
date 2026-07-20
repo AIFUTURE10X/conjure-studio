@@ -61,6 +61,44 @@ async function handlePost(request: NextRequest) {
     : model.capabilities.resolutions[model.capabilities.resolutions.length - 1]
 
   try {
+    // Native extension path (Veo): append ~7s to an existing clip, same file.
+    const extendVideoUrl = (formData.get('extendVideoUrl') as string | null)?.trim() || null
+    if (extendVideoUrl) {
+      if (!extendVideoUrl.startsWith('https://')) {
+        return apiError(400, 'invalid_request', 'extendVideoUrl must be an https URL')
+      }
+      if (!model.buildExtend) {
+        return apiError(400, 'invalid_request', `${model.label} does not support native extension — continue from the last frame instead`)
+      }
+
+      const audio = generateAudio && model.capabilities.audio
+      const { endpoint, input, addedSeconds } = model.buildExtend({
+        prompt, videoUrl: extendVideoUrl, resolution, aspectRatio, generateAudio: audio,
+      })
+
+      console.log("[video] Submitting extend job:", { model: modelId, endpoint, addedSeconds })
+      const requestId = await submitVideoJob(endpoint, input)
+
+      const creditsCharged = isSaasEnforcementOn()
+        ? videoGenerationCost(modelId, addedSeconds, resolution, audio)
+        : 0
+
+      const sql = getSQL()
+      const rows = await sql`
+        INSERT INTO public.video_history (
+          user_id, prompt, model, fal_endpoint, fal_request_id, status,
+          start_image_url, end_image_url, duration_seconds, resolution,
+          aspect_ratio, has_audio, credits_charged
+        ) VALUES (
+          ${userId}, ${prompt}, ${modelId}, ${endpoint}, ${requestId}, 'pending',
+          NULL, NULL, ${addedSeconds}, ${resolution},
+          ${aspectRatio}, ${audio}, ${creditsCharged}
+        )
+        RETURNING id
+      `
+      return NextResponse.json({ jobId: rows[0].id as number, requestId, status: 'pending', model: modelId })
+    }
+
     const startFrameFile = formData.get('startFrame') as File | null
     const endFrameFile = formData.get('endFrame') as File | null
 

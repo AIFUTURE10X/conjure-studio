@@ -1,19 +1,28 @@
 "use client"
 
+import { useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Download, Loader2, TriangleAlert } from 'lucide-react'
+import { Download, ListPlus, Loader2, TriangleAlert } from 'lucide-react'
+import { ExtendVideoDialog } from './ExtendVideoDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
 import type { VideoJob } from './useVideoGeneration'
 
 interface VideoResultCardProps {
   job: VideoJob
+  onExtend?: (job: VideoJob, extensionPrompt: string, lastFrameDataUrl?: string) => Promise<boolean>
 }
 
 function modelLabel(model: string): string {
   return VIDEO_MODELS[model as VideoModelId]?.label ?? model
 }
 
-export function VideoResultCard({ job }: VideoResultCardProps) {
+export function VideoResultCard({ job, onExtend }: VideoResultCardProps) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [showExtend, setShowExtend] = useState(false)
+  const model = VIDEO_MODELS[job.model as VideoModelId]
+  const isNativeExtend = model?.extendMode === 'native'
+
   const handleDownload = async () => {
     if (!job.videoUrl) return
     const response = await fetch(job.videoUrl)
@@ -26,14 +35,53 @@ export function VideoResultCard({ job }: VideoResultCardProps) {
     URL.revokeObjectURL(url)
   }
 
+  /** Seek to the end and capture the final frame (needs crossOrigin on the video). */
+  const captureLastFrame = (): Promise<string> => new Promise((resolve, reject) => {
+    const video = videoRef.current
+    if (!video || !video.videoWidth) {
+      reject(new Error('Video not loaded yet — press play once, then try again'))
+      return
+    }
+    const onSeeked = () => {
+      video.removeEventListener('seeked', onSeeked)
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        canvas.getContext('2d')!.drawImage(video, 0, 0)
+        resolve(canvas.toDataURL('image/png'))
+      } catch (error) {
+        reject(new Error('Could not read video frame (cross-origin block)'))
+      }
+    }
+    video.addEventListener('seeked', onSeeked)
+    video.currentTime = Math.max(0, (video.duration || 0) - 0.05)
+  })
+
+  const handleExtendConfirm = async (extensionPrompt: string) => {
+    if (!onExtend) return
+    try {
+      if (isNativeExtend) {
+        await onExtend(job, extensionPrompt)
+      } else {
+        const frame = await captureLastFrame()
+        await onExtend(job, extensionPrompt, frame)
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to extend video')
+    }
+  }
+
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden">
       {job.status === 'completed' && job.videoUrl && (
         <video
+          ref={videoRef}
           src={job.videoUrl}
           controls
           playsInline
           preload="metadata"
+          crossOrigin="anonymous"
           poster={job.startImageUrl ?? undefined}
           className="w-full max-h-[420px] bg-black"
         />
@@ -58,7 +106,7 @@ export function VideoResultCard({ job }: VideoResultCardProps) {
           <TriangleAlert className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-sm text-red-300 font-medium">Video generation failed</p>
-            <p className="text-xs text-red-400/80 mt-0.5">{job.error || 'Unknown error'}{job.error ? '' : ''} — any charged credits were refunded.</p>
+            <p className="text-xs text-red-400/80 mt-0.5">{job.error || 'Unknown error'} — any charged credits were refunded.</p>
           </div>
         </div>
       )}
@@ -67,20 +115,44 @@ export function VideoResultCard({ job }: VideoResultCardProps) {
         <div className="min-w-0">
           <p className="text-xs text-zinc-300 truncate" title={job.prompt}>{job.prompt}</p>
           <p className="text-[10px] text-zinc-500 mt-0.5">
-            {modelLabel(job.model)} · {new Date(job.timestamp).toLocaleString()}
+            {modelLabel(job.model)}
+            {job.durationSeconds ? ` · ${job.durationSeconds}s` : ''} · {new Date(job.timestamp).toLocaleString()}
           </p>
         </div>
         {job.status === 'completed' && job.videoUrl && (
-          <Button
-            onClick={handleDownload}
-            size="sm"
-            className="shrink-0 bg-[#c99850] text-black hover:bg-[#dbb56e]"
-          >
-            <Download className="w-3 h-3 mr-1" />
-            Download
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            {onExtend && (
+              <Button
+                onClick={() => setShowExtend(true)}
+                size="sm"
+                className="bg-zinc-800 text-[#dbb56e] hover:bg-zinc-700"
+                title={isNativeExtend
+                  ? 'Append ~7s to this clip (same file) — repeat up to ~2 minutes'
+                  : 'Continue from the last frame as a new part'}
+              >
+                <ListPlus className="w-3 h-3 mr-1" />
+                Extend
+              </Button>
+            )}
+            <Button
+              onClick={handleDownload}
+              size="sm"
+              className="bg-[#c99850] text-black hover:bg-[#dbb56e]"
+            >
+              <Download className="w-3 h-3 mr-1" />
+              Download
+            </Button>
+          </div>
         )}
       </div>
+
+      <ExtendVideoDialog
+        isOpen={showExtend}
+        onOpenChange={setShowExtend}
+        isNativeExtend={isNativeExtend}
+        modelLabel={modelLabel(job.model)}
+        onConfirm={handleExtendConfirm}
+      />
     </div>
   )
 }

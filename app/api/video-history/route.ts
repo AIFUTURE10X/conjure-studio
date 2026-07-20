@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
   try {
     const sql = getSQL()
     const rows = await sql`
-      SELECT id, status, prompt, model, video_url, error, start_image_url, created_at
+      SELECT id, status, prompt, model, video_url, error, start_image_url, created_at,
+             duration_seconds, resolution, aspect_ratio, has_audio
       FROM public.video_history
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
@@ -42,6 +43,10 @@ export async function GET(request: NextRequest) {
       error: (row.error as string | null) ?? null,
       startImageUrl: (row.start_image_url as string | null) ?? null,
       timestamp: new Date(row.created_at as string).getTime(),
+      durationSeconds: (row.duration_seconds as number | null) ?? null,
+      resolution: (row.resolution as string | null) ?? null,
+      aspectRatio: (row.aspect_ratio as string | null) ?? null,
+      hasAudio: Boolean(row.has_audio),
     }))
 
     return NextResponse.json({ videos })

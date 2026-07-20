@@ -29,7 +29,7 @@ const DEFAULT_SETTINGS: VideoSettingsValue = {
 
 export function VideoCanvas() {
   const { state } = useStudioCore()
-  const { jobs, isSubmitting, historyLoaded, submitVideo } = useVideoGeneration()
+  const { jobs, isSubmitting, historyLoaded, submitVideo, extendVideo } = useVideoGeneration()
   const [prompt, setPrompt] = useState('')
   const [settings, setSettings] = useState<VideoSettingsValue>(DEFAULT_SETTINGS)
 
@@ -112,7 +112,11 @@ export function VideoCanvas() {
           <h3 className="text-lg font-bold text-white mb-4">Videos ({jobs.length})</h3>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {jobs.map((job) => (
-              <VideoResultCard key={job.jobId} job={job} />
+              <VideoResultCard
+                key={job.jobId}
+                job={job}
+                onExtend={async (source, extensionPrompt, lastFrame) => extendVideo(source, extensionPrompt, lastFrame)}
+              />
             ))}
           </div>
         </Card>

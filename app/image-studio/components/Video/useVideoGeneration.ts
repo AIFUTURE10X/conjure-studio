@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getUserId } from '@/lib/user-id'
 import { imageUrlToImageFile } from '../../utils/annotation-reference'
-import type { VideoModelId, VideoResolution } from '@/lib/video/providers'
+import { VIDEO_MODELS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
 
 /**
  * Video job state: submit to /api/generate-video, poll the status route
@@ -21,6 +21,11 @@ export interface VideoJob {
   error: string | null
   startImageUrl: string | null
   timestamp: number
+  // Clip settings, kept so Extend can reuse them.
+  durationSeconds: number | null
+  resolution: string | null
+  aspectRatio: string | null
+  hasAudio: boolean
 }
 
 export interface SubmitVideoOptions {
@@ -32,6 +37,8 @@ export interface SubmitVideoOptions {
   generateAudio: boolean
   startFrameUrl?: string | null
   endFrameUrl?: string | null
+  /** Native extension (Veo): existing clip URL to append to. */
+  extendVideoUrl?: string | null
 }
 
 const POLL_INTERVAL_MS = 5000
@@ -104,7 +111,9 @@ export function useVideoGeneration() {
       formData.append('aspectRatio', options.aspectRatio)
       formData.append('generateAudio', options.generateAudio ? 'true' : 'false')
 
-      if (options.startFrameUrl) {
+      if (options.extendVideoUrl) {
+        formData.append('extendVideoUrl', options.extendVideoUrl)
+      } else if (options.startFrameUrl) {
         formData.append('startFrame', await imageUrlToImageFile(options.startFrameUrl, `video-start-${Date.now()}.png`))
         if (options.endFrameUrl) {
           formData.append('endFrame', await imageUrlToImageFile(options.endFrameUrl, `video-end-${Date.now()}.png`))
@@ -127,6 +136,10 @@ export function useVideoGeneration() {
           error: null,
           startImageUrl: options.startFrameUrl ?? null,
           timestamp: Date.now(),
+          durationSeconds: options.duration,
+          resolution: options.resolution,
+          aspectRatio: options.aspectRatio,
+          hasAudio: options.generateAudio,
         },
         ...current,
       ])
@@ -141,11 +154,48 @@ export function useVideoGeneration() {
     }
   }, [])
 
+  /**
+   * Make a finished clip longer. Veo appends to the same file via its native
+   * extend endpoint (~+7s per pass); other models continue as a new clip
+   * whose start frame is the source clip's captured last frame.
+   */
+  const extendVideo = useCallback(async (
+    job: VideoJob,
+    extensionPrompt: string,
+    lastFrameDataUrl?: string,
+  ): Promise<boolean> => {
+    const model = VIDEO_MODELS[job.model as VideoModelId]
+    if (!model || !job.videoUrl) {
+      toast.error('This clip cannot be extended')
+      return false
+    }
+
+    const resolution = (job.resolution as VideoResolution) || '1080p'
+    const shared = {
+      prompt: extensionPrompt,
+      model: model.id,
+      resolution,
+      aspectRatio: job.aspectRatio || 'auto',
+      generateAudio: job.hasAudio,
+    }
+
+    if (model.extendMode === 'native') {
+      return submitVideo({ ...shared, duration: 7, extendVideoUrl: job.videoUrl })
+    }
+
+    if (!lastFrameDataUrl) {
+      toast.error('Could not capture the last frame of this clip')
+      return false
+    }
+    return submitVideo({ ...shared, duration: job.durationSeconds || 5, startFrameUrl: lastFrameDataUrl })
+  }, [submitVideo])
+
   return {
     jobs,
     isSubmitting,
     historyLoaded,
     hasPendingJobs: pendingKey.length > 0,
     submitVideo,
+    extendVideo,
   }
 }

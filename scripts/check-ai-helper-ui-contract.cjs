@@ -913,8 +913,8 @@ const checks = [
         /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval/.test(imageEngine) &&
         /formData\.append\('bgRemovalMethod', imageBgRemovalMethod\)/.test(imageEngine) &&
         /if \(imageBgRemovalMethod === 'none'\)/.test(imageEngine) &&
-        /imageBgRemovalEnabled: state\.useImageBgRemoval/.test(studioSnapshot) &&
-        /state\.useImageBgRemoval && state\.usePhotoRoomBgRemoval \? 'photoroom' : 'none'/.test(studioSnapshot) &&
+        /imageBgRemovalEnabled: imageBgRemovalMethod !== 'none'/.test(studioSnapshot) &&
+        /imageBgRemovalProvider: formatBackgroundRemovalProvider\(imageBgRemovalMethod\)/.test(studioSnapshot) &&
         /logoBgRemovalMethod: logo\.bgRemovalMethod/.test(studioSnapshot) &&
         /logoBgRemovalEnabled: logo\.bgRemovalMethod !== 'none'/.test(studioSnapshot) &&
         /logoBgRemovalMethod\?: string/.test(sidebar) &&

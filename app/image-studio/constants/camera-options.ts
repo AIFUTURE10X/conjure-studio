@@ -60,6 +60,13 @@ export interface StylePreset {
   label: string
   thumbnail: string
   description: string
+  /**
+   * Optional long-form text injected into the generation prompt in place of
+   * the label. Use for styles whose name alone is too weak or ambiguous a
+   * signal for the image model (e.g. "Clay 3D"). Omit it and the label is
+   * sent verbatim, unchanged from historical behavior.
+   */
+  promptHint?: string
 }
 
 export const stylePresets: StylePreset[] = [
@@ -79,7 +86,16 @@ export const stylePresets: StylePreset[] = [
   { value: 'Disney Modern 3D', label: 'Disney Modern 3D', thumbnail: '/disney-3d-animation.jpg', description: 'High-finish animation, glossy' },
   { value: 'Sony Spider-Verse', label: 'Sony Spider-Verse', thumbnail: '/spider-verse-style.jpg', description: 'Mixed media, comic book look' },
   { value: 'Laika', label: 'Laika', thumbnail: '/laika-stop-motion.jpg', description: 'Handcrafted textures, moody' },
-  { value: 'Clay 3D', label: 'Clay 3D', thumbnail: '/clay-3d-style.svg', description: 'Molded clay, thumbprint texture' },
+  {
+    value: 'Clay 3D',
+    label: 'Clay 3D',
+    thumbnail: '/clay-3d-style.svg',
+    description: 'Stop-motion clay, thumbprint texture',
+    // "Clay 3D"/"clay render" alone reads as untextured grey CGI to image
+    // models — spell out the stop-motion photography look instead.
+    promptHint:
+      'stop-motion claymation film still: handmade plasticine puppet characters with visible fingerprints and sculpting tool marks, miniature handcrafted set with real fabric and paper props, macro photograph, shallow depth of field, soft diffused studio lighting',
+  },
   { value: 'Cartoon Saloon', label: 'Cartoon Saloon', thumbnail: '/cartoon-saloon-style.jpg', description: 'Flat decorative, Celtic motifs' },
   { value: 'Studio Trigger', label: 'Studio Trigger', thumbnail: '/studio-trigger-anime.jpg', description: 'Neon palettes, explosive motion' },
   { value: 'Ufotable', label: 'Ufotable', thumbnail: '/ufotable-anime.jpg', description: 'Hyper-polished, VFX glow trails' },

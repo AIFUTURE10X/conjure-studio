@@ -24,6 +24,14 @@ export interface VideoGenerationParams {
   generateAudio: boolean
 }
 
+export interface VideoExtendParams {
+  prompt: string
+  videoUrl: string
+  resolution: VideoResolution
+  aspectRatio: string
+  generateAudio: boolean
+}
+
 export interface VideoModelConfig {
   id: VideoModelId
   label: string
@@ -38,6 +46,14 @@ export interface VideoModelConfig {
     /** Supported clip lengths in seconds (UI options; input is clamped to range). */
     durations: number[]
   }
+  /**
+   * How clips get longer than one pass allows: 'native' models extend the
+   * same file server-side (Veo, ~+7s per pass, up to ~148s total); the rest
+   * chain by using the last frame as the next clip's start frame.
+   */
+  extendMode: 'native' | 'frame-chain'
+  /** Native extension request (extendMode 'native' only). */
+  buildExtend?: (params: VideoExtendParams) => { endpoint: string; input: Record<string, unknown>; addedSeconds: number }
   endpoint: (params: VideoGenerationParams) => string
   buildInput: (params: VideoGenerationParams) => Record<string, unknown>
 }
@@ -60,8 +76,9 @@ export const VIDEO_MODELS: Record<VideoModelId, VideoModelConfig> = {
       endFrame: false,
       audio: false,
       resolutions: ['480p', '720p', '1080p'],
-      durations: [2, 3, 4, 5, 6, 8, 10, 12],
+      durations: [5, 6, 8, 10, 12],
     },
+    extendMode: 'frame-chain',
     endpoint: (p) =>
       p.startImageUrl
         ? 'fal-ai/bytedance/seedance/v1/pro/fast/image-to-video'
@@ -87,8 +104,9 @@ export const VIDEO_MODELS: Record<VideoModelId, VideoModelConfig> = {
       endFrame: true,
       audio: true,
       resolutions: ['480p', '720p', '1080p', '4k'],
-      durations: [4, 5, 6, 8, 10, 12, 15],
+      durations: [5, 6, 8, 10, 12, 15],
     },
+    extendMode: 'frame-chain',
     endpoint: (p) =>
       p.startImageUrl
         ? 'bytedance/seedance-2.0/image-to-video'
@@ -116,8 +134,9 @@ export const VIDEO_MODELS: Record<VideoModelId, VideoModelConfig> = {
       audio: true,
       // Kling v3 has no resolution input; shown as a single fixed option.
       resolutions: ['1080p'],
-      durations: [3, 4, 5, 6, 8, 10, 12, 15],
+      durations: [5, 6, 8, 10, 12, 15],
     },
+    extendMode: 'frame-chain',
     endpoint: (p) =>
       p.startImageUrl
         ? 'fal-ai/kling-video/v3/pro/image-to-video'
@@ -144,6 +163,20 @@ export const VIDEO_MODELS: Record<VideoModelId, VideoModelConfig> = {
       resolutions: ['720p', '1080p', '4k'],
       durations: [4, 6, 8],
     },
+    extendMode: 'native',
+    buildExtend: (p) => ({
+      endpoint: 'fal-ai/veo3.1/extend-video',
+      input: {
+        prompt: p.prompt,
+        video_url: p.videoUrl,
+        duration: '7s',
+        // extend-video supports 720p/1080p only
+        resolution: p.resolution === '1080p' || p.resolution === '4k' ? '1080p' : '720p',
+        aspect_ratio: p.aspectRatio === '16:9' || p.aspectRatio === '9:16' ? p.aspectRatio : 'auto',
+        generate_audio: p.generateAudio,
+      },
+      addedSeconds: 7,
+    }),
     endpoint: (p) => {
       if (p.startImageUrl && p.endImageUrl) return 'fal-ai/veo3.1/first-last-frame-to-video'
       if (p.startImageUrl) return 'fal-ai/veo3.1/image-to-video'

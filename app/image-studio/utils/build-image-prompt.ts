@@ -8,6 +8,12 @@ import {
   buildCreativeDirectionPrompt,
   type CreativeDirectionState,
 } from '../constants/creative-direction-options'
+import { stylePresets } from '../constants/camera-options'
+
+/** Presets with a promptHint send the hint; everything else sends the label verbatim. */
+function expandStyleForPrompt(styleValue: string): string {
+  return stylePresets.find((p) => p.value === styleValue)?.promptHint ?? styleValue
+}
 
 export interface BuildImagePromptOptions {
   basePrompt: string
@@ -29,7 +35,7 @@ export function buildFinalImagePrompt({
   negativePrompt,
 }: BuildImagePromptOptions): string {
   let prompt = basePrompt
-  if (selectedStylePreset !== 'Realistic') prompt += `. Style: ${selectedStylePreset}`
+  if (selectedStylePreset !== 'Realistic') prompt += `. Style: ${expandStyleForPrompt(selectedStylePreset)}`
   if (selectedCameraAngle) prompt += `. Camera angle: ${selectedCameraAngle}`
   if (selectedCameraLens) prompt += `. Camera lens: ${selectedCameraLens}`
   prompt += `. ${{ subtle: 'subtle', moderate: 'moderate', strong: 'strong' }[styleStrength]} style influence`

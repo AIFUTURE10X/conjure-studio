@@ -297,7 +297,7 @@ export interface ThumbnailAiStyle {
 export const THUMBNAIL_AI_STYLES: ThumbnailAiStyle[] = [
   { id: 'photo', label: 'Real Photo', prompt: 'photorealistic, dramatic studio lighting, sharp focus, shallow depth of field' },
   { id: '3d', label: '3D', prompt: 'glossy 3D render, vibrant, Pixar-like, soft global illumination' },
-  { id: 'clay', label: 'Clay 3D', prompt: 'claymation 3D render, soft matte modelling clay with thumbprint texture, chunky rounded forms, warm studio lighting' },
+  { id: 'clay', label: 'Clay 3D', prompt: 'stop-motion claymation film still, handmade plasticine characters with visible fingerprints, miniature handcrafted set, macro photo, soft diffused lighting' },
   { id: 'cinematic', label: 'Cinematic', prompt: 'cinematic film still, moody volumetric lighting, teal-and-orange color grade' },
   { id: 'comic', label: 'Comic', prompt: 'bold comic-book illustration, thick outlines, halftone shading, dynamic energy' },
   { id: 'vibrant', label: 'Vibrant', prompt: 'explosive vibrant gradient, neon accents, energetic abstract shapes' },
