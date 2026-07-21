@@ -10,8 +10,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Home, ImageIcon, Settings } from 'lucide-react'
+import { Home, ImageIcon, Settings, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { ConciergeDialog } from '../Concierge'
 import { HeaderContextButtons } from '../HeaderContextButtons'
 import { AccountManager } from '../AccountManager'
 import { AccountMenu } from './AccountMenu'
@@ -48,6 +49,7 @@ export function StudioTopBar() {
     deletePreset, updatePreset, clearAllPresets,
   } = useStudioCore()
   const [showSettings, setShowSettings] = useState(false)
+  const [showConcierge, setShowConcierge] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined' || SHOW_ACCOUNT_CONTROLS) return
@@ -116,6 +118,14 @@ export function StudioTopBar() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowConcierge(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 border border-[#c99850]/40 transition-colors"
+            title="Not sure where to start? Answer two questions and get a ready-made plan"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Help me start</span>
+          </button>
           {mode === 'image' && (
             <HeaderContextButtons
               favoritesCount={favorites.length}
@@ -151,6 +161,8 @@ export function StudioTopBar() {
           )}
         </div>
       </div>
+
+      <ConciergeDialog open={showConcierge} onOpenChange={setShowConcierge} />
 
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-zinc-950 border-zinc-800 p-0">

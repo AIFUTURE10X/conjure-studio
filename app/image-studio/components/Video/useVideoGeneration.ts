@@ -6,6 +6,7 @@ import { getUserId } from '@/lib/user-id'
 import { logPromptUse } from '@/lib/prompt-log'
 import { imageUrlToImageFile } from '../../utils/annotation-reference'
 import { VIDEO_MODELS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
+import { VIDEO_COMPLETED_EVENT } from '../../constants/concierge-tree'
 
 /**
  * Video job state: submit to /api/generate-video, poll the status route
@@ -88,6 +89,7 @@ export function useVideoGeneration() {
           )))
           if (data.status === 'completed') {
             toast.success('Video ready')
+            window.dispatchEvent(new CustomEvent(VIDEO_COMPLETED_EVENT))
           } else {
             toast.error(data.error || 'Video generation failed')
           }

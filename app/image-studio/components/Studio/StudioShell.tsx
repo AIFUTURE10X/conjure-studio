@@ -20,6 +20,7 @@ import {
 import { FavoritesModal } from '../SimpleFavorites'
 import { ParameterHistoryPanel } from '../ParameterHistoryPanel'
 import { MockupPhotoGenerator } from '../Logo/MockupPreview/MockupPhotoGenerator'
+import { ConciergeChecklist } from '../Concierge'
 import { StudioTopBar } from './StudioTopBar'
 import { HelperPanel } from './HelperPanel'
 import { CanvasPanel } from './CanvasPanel'
@@ -88,7 +89,7 @@ export function StudioShell() {
     >
       <StudioTopBar />
 
-      <div className="flex-1 min-h-0 flex flex-col">
+      <div className="relative flex-1 min-h-0 flex flex-col">
         <ImageGenerationProvider>
         <EditChatProvider>
         <LogoGenerationProvider>
@@ -123,6 +124,7 @@ export function StudioShell() {
         </LogoGenerationProvider>
         </EditChatProvider>
         </ImageGenerationProvider>
+        <ConciergeChecklist />
       </div>
 
       {state.showFavorites && (

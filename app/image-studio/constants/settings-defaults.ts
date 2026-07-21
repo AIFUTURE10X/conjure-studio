@@ -101,6 +101,10 @@ export interface SavedGenerateParams {
   creativeDirection?: CreativeDirectionState
   /** Present on presets saved from the video panel (source 'video'). */
   video?: VideoSettingsValue
+  /** User-defined template shelf (e.g. "Product Ads"). Lives in params so it syncs without a DB migration. */
+  category?: string
+  /** Template thumbnail (usually the clip's start frame). */
+  thumbnailUrl?: string
 }
 
 // ===== PRESETS STORAGE =====

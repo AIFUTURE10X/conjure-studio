@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ImageIcon } from 'lucide-react'
 import { UploadPanel } from '../UploadPanel'
+import { NextStepNudge } from '../Concierge'
 import { GeneratedImageCard } from '../GeneratedImageCard'
 import { ImageEditModal } from '../ImageEditor'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
@@ -126,6 +127,13 @@ export function ResultsCanvas() {
             >
               Clear All
             </Button>
+          </div>
+          <div className="mb-4">
+            <NextStepNudge nudgeKey="image-to-video">
+              Any image here can become a video: <span className="font-semibold text-[#dbb56e]">Animate</span> makes
+              it the start frame, <span className="font-semibold text-[#dbb56e]">End Frame</span> makes it where the
+              clip lands — set both and the video morphs between them.
+            </NextStepNudge>
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {generatedImages.map((img, i) => (
