@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, Wand2 } from 'lucide-react'
+import { BookmarkPlus, Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, Wand2 } from 'lucide-react'
 import { ExtendVideoDialog } from './ExtendVideoDialog'
 import { LipSyncDialog, type LipSyncPayload } from './LipSyncDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
@@ -15,6 +15,7 @@ interface VideoResultCardProps {
   onToggleFavorite?: (job: VideoJob) => void
   onLipSync?: (job: VideoJob, payload: LipSyncPayload) => Promise<boolean>
   onEnhance?: (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p') => Promise<boolean>
+  onSaveTemplate?: (job: VideoJob) => void
 }
 
 const TOOL_MODEL_LABELS: Record<string, string> = {
@@ -27,7 +28,7 @@ function modelLabel(model: string): string {
   return VIDEO_MODELS[model as VideoModelId]?.label ?? TOOL_MODEL_LABELS[model] ?? model
 }
 
-export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance }: VideoResultCardProps) {
+export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance, onSaveTemplate }: VideoResultCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [showExtend, setShowExtend] = useState(false)
   const [showLipSync, setShowLipSync] = useState(false)
@@ -145,6 +146,16 @@ export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, on
               >
                 <Heart className="w-3.5 h-3.5" fill={job.isFavorited ? 'currentColor' : 'none'} />
               </button>
+            )}
+            {onSaveTemplate && model && (
+              <Button
+                onClick={() => onSaveTemplate(job)}
+                size="sm"
+                className="bg-zinc-800 text-[#dbb56e] hover:bg-zinc-700 px-2"
+                title="Save as template — store this clip's exact prompt and settings as a proven recipe"
+              >
+                <BookmarkPlus className="w-3 h-3" />
+              </Button>
             )}
             {onLipSync && (
               <Button

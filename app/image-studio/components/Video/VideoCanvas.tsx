@@ -14,8 +14,10 @@ import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { BookmarkPlus, BookOpen, Clapperboard, Film, Loader2, Sparkles } from 'lucide-react'
+import { BookmarkPlus, BookOpen, Clapperboard, Film, LayoutTemplate, Loader2, Sparkles } from 'lucide-react'
 import { VideoSettings } from './VideoSettings'
+import { NextStepNudge } from '../Concierge'
+import { SaveTemplateDialog, VideoTemplatesDialog } from './Templates'
 import { AssembleFilmDialog } from './AssembleFilmDialog'
 import { StoryModeCard } from './StoryMode/StoryModeCard'
 import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
@@ -27,9 +29,12 @@ import { EndFrameDialog } from '../Studio/EndFrameDialog'
 import { useStudioCore } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useHelperBridge } from '../../context/HelperBridgeProvider'
+import { videoTemplateParams, VIDEO_STARTER_TEMPLATES } from '../../constants/video-starter-templates'
+import { VIDEO_MODELS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
+import type { VideoJob } from './useVideoGeneration'
 
 export function VideoCanvas() {
-  const { state, savePreset } = useStudioCore()
+  const { state, savePreset, presets, handleLoadPreset, updatePreset, deletePreset } = useStudioCore()
   const { createEndFrame } = useImageGenerationEngine()
   const { improveWithHelper } = useHelperBridge()
   const {
@@ -44,6 +49,36 @@ export function VideoCanvas() {
   const setSettings = state.setVideoSettings
   const [showEndFrameDialog, setShowEndFrameDialog] = useState(false)
   const [showLibrary, setShowLibrary] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [templateJob, setTemplateJob] = useState<VideoJob | null>(null)
+
+  // Category suggestions: the user's existing shelves + the starter shelves.
+  const templateCategories = [...new Set([
+    ...presets.filter((p) => p.source === 'video').map((p) => p.params.category?.trim()).filter((c): c is string => Boolean(c)),
+    ...VIDEO_STARTER_TEMPLATES.map((p) => p.params.category as string),
+  ])]
+
+  const handleSaveTemplate = (name: string, category: string) => {
+    if (!templateJob) return
+    const job = templateJob
+    savePreset(
+      name,
+      videoTemplateParams({
+        prompt: job.prompt,
+        video: {
+          model: (VIDEO_MODELS[job.model as VideoModelId] ? job.model : 'seedance-2') as VideoModelId,
+          duration: job.durationSeconds ?? 5,
+          resolution: (job.resolution ?? '1080p') as VideoResolution,
+          aspectRatio: job.aspectRatio ?? 'auto',
+          generateAudio: job.hasAudio,
+        },
+        category: category || undefined,
+        thumbnailUrl: job.startImageUrl ?? undefined,
+      }),
+      'video',
+    )
+    toast.success(`Template saved${category ? ` to ${category}` : ''} — find it under Templates`)
+  }
 
   const handleSavePreset = () => {
     savePreset(
@@ -98,6 +133,14 @@ export function VideoCanvas() {
           <Clapperboard className="w-4 h-4 text-[#dbb56e]" />
           <h3 className="text-sm font-bold text-white">Video Generator</h3>
           <div className="ml-auto flex items-center gap-1.5">
+            <button
+              onClick={() => setShowTemplates(true)}
+              title="Video templates — proven prompt + settings recipes, grouped by category"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors"
+            >
+              <LayoutTemplate className="w-3 h-3" />
+              Templates
+            </button>
             <button
               onClick={() => setShowLibrary(true)}
               title="Prompt Library — reuse, star, and search every prompt you've generated with"
@@ -210,6 +253,26 @@ export function VideoCanvas() {
         onUsePrompt={(libraryPrompt) => setPrompt(libraryPrompt)}
       />
 
+      <VideoTemplatesDialog
+        open={showTemplates}
+        onOpenChange={setShowTemplates}
+        presets={presets}
+        onLoad={(preset) => {
+          handleLoadPreset(preset)
+          toast.success(`"${preset.name}" loaded — prompt and settings applied`)
+        }}
+        onUpdate={updatePreset}
+        onDelete={deletePreset}
+      />
+
+      <SaveTemplateDialog
+        open={templateJob !== null}
+        onOpenChange={(dialogOpen) => { if (!dialogOpen) setTemplateJob(null) }}
+        defaultName={templateJob ? templateJob.prompt.slice(0, 48) : ''}
+        categories={templateCategories}
+        onConfirm={handleSaveTemplate}
+      />
+
       <EndFrameDialog
         isOpen={showEndFrameDialog}
         onOpenChange={setShowEndFrameDialog}
@@ -235,6 +298,16 @@ export function VideoCanvas() {
               </Button>
             )}
           </div>
+          {completedCount >= 1 && (
+            <div className="mb-4">
+              <NextStepNudge nudgeKey="clip-post-production">
+                Finished clips can keep growing: <span className="font-semibold text-[#dbb56e]">Extend</span> adds
+                more seconds, <span className="font-semibold text-[#dbb56e]">Lip Sync</span> makes it speak, and
+                two or more clips unlock <span className="font-semibold text-[#dbb56e]">Assemble Film</span> —
+                stitching, narration, and music in one pass.
+              </NextStepNudge>
+            </div>
+          )}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {jobs.map((job) => (
               <VideoResultCard
@@ -244,6 +317,7 @@ export function VideoCanvas() {
                 onToggleFavorite={toggleFavorite}
                 onLipSync={submitLipSync}
                 onEnhance={submitEnhance}
+                onSaveTemplate={setTemplateJob}
               />
             ))}
           </div>

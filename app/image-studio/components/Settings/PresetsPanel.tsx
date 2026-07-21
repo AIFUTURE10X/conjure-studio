@@ -134,6 +134,11 @@ export function PresetsPanel({
                           {SOURCE_LABELS[preset.source] || preset.source}
                         </span>
                       )}
+                      {preset.params.category && (
+                        <span className="px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded text-xs font-medium">
+                          {preset.params.category}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-zinc-500 mt-1">
                       Created {formatDate(preset.createdAt)}
