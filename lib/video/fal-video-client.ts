@@ -17,10 +17,49 @@ function configureFal(): void {
   fal.config({ credentials: apiKey })
 }
 
+/**
+ * fal's ApiError puts the real reason in body.detail and leaves message as
+ * the bare HTTP status text — so an exhausted account surfaced to users as
+ * just "Forbidden". Unwrap the detail so callers report something actionable.
+ */
+function falErrorMessage(error: unknown): string {
+  const status = (error as { status?: number })?.status
+  const detail = (error as { body?: { detail?: unknown } })?.body?.detail
+
+  let text: string
+  if (typeof detail === "string") {
+    text = detail
+  } else if (Array.isArray(detail)) {
+    // 422 validation errors arrive as [{ loc, msg, type }, ...]
+    text = detail
+      .map((item) => (item && typeof item === "object" && "msg" in item
+        ? String((item as { msg: unknown }).msg)
+        : String(item)))
+      .join("; ")
+  } else {
+    text = error instanceof Error ? error.message : String(error)
+  }
+
+  if (status === 403 && /exhausted balance|user is locked/i.test(text)) {
+    return "The video provider (fal.ai) is out of credit — top up at fal.ai/dashboard/billing, then try again."
+  }
+  return text
+}
+
+/** Run a fal call, replacing its opaque error with the underlying reason. */
+async function withFalErrors<T>(endpoint: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    console.error(`[fal] ${endpoint} failed:`, error)
+    throw new Error(falErrorMessage(error))
+  }
+}
+
 /** Upload a frame image to fal storage; returns a URL fal endpoints accept. */
 export async function uploadFrameToFal(file: File): Promise<string> {
   configureFal()
-  return await fal.storage.upload(file)
+  return await withFalErrors('storage.upload', () => fal.storage.upload(file))
 }
 
 /** Submit a video job to the fal queue; returns the request id for polling. */
@@ -29,7 +68,7 @@ export async function submitVideoJob(
   input: Record<string, unknown>,
 ): Promise<string> {
   configureFal()
-  const { request_id: requestId } = await fal.queue.submit(endpoint, { input })
+  const { request_id: requestId } = await withFalErrors(endpoint, () => fal.queue.submit(endpoint, { input }))
   if (!requestId) throw new Error("fal queue submit returned no request id")
   return requestId
 }
@@ -44,7 +83,7 @@ export async function runFalDirect(
   input: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   configureFal()
-  const result = await fal.subscribe(endpoint, { input, logs: false })
+  const result = await withFalErrors(endpoint, () => fal.subscribe(endpoint, { input, logs: false }))
   const data = (result as { data?: unknown })?.data ?? result
   if (!data || typeof data !== "object") {
     throw new Error(`fal ${endpoint} returned no data`)
@@ -75,7 +114,7 @@ export async function getVideoJobStatus(
   requestId: string,
 ): Promise<FalQueueStatus> {
   configureFal()
-  const status = await fal.queue.status(endpoint, { requestId, logs: false })
+  const status = await withFalErrors(endpoint, () => fal.queue.status(endpoint, { requestId, logs: false }))
   return status.status as FalQueueStatus
 }
 
@@ -88,7 +127,7 @@ export async function getVideoJobResult(
   requestId: string,
 ): Promise<{ videoUrl: string; contentType: string }> {
   configureFal()
-  const result = await fal.queue.result(endpoint, { requestId })
+  const result = await withFalErrors(endpoint, () => fal.queue.result(endpoint, { requestId }))
   const data = (result as { data?: unknown })?.data ?? result
 
   if (data && typeof data === "object") {
