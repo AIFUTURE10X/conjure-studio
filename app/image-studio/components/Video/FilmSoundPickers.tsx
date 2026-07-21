@@ -35,8 +35,8 @@ export function FilmSoundPickers({
   }
 
   return (
-    <div className="space-y-3">
-      <div>
+    <div className="space-y-3 min-w-0">
+      <div className="min-w-0">
         <p className="text-xs text-zinc-400 mb-1.5">Narration</p>
         <div className="flex gap-1 flex-wrap">
           {NARRATION_OPTIONS.map((option) => (
@@ -88,19 +88,19 @@ export function FilmSoundPickers({
 
       <div>
         <p className="text-xs text-zinc-400 mb-1.5">Background music</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+        <div className="grid grid-cols-2 gap-1">
           {MUSIC_STYLES.map((style) => (
             <button
               key={style.id}
               onClick={() => onMusicStyleId(style.id)}
               title={style.prompt || 'No background music'}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium text-left transition-colors ${
+              className={`flex items-center gap-1 min-w-0 px-2 py-1.5 rounded-md text-[11px] font-medium text-left transition-colors ${
                 musicStyleId === style.id
                   ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
                   : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
               }`}
             >
-              <span>{style.emoji}</span>
+              <span className="shrink-0">{style.emoji}</span>
               <span className="truncate">{style.label}</span>
             </button>
           ))}

@@ -118,7 +118,7 @@ export function AssembleFilmDialog({ isOpen, onOpenChange, jobs, onConfirm }: As
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[88vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl w-[95vw] bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
             <Film className="w-4 h-4 text-[#dbb56e]" />
@@ -126,86 +126,93 @@ export function AssembleFilmDialog({ isOpen, onOpenChange, jobs, onConfirm }: As
           </DialogTitle>
         </DialogHeader>
 
-        <div>
-          <p className="text-xs text-zinc-400 mb-1.5">
-            Clips — click to add in order ({selectedJobs.length} selected · ~{totalSeconds}s film)
-          </p>
-          <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
-            {completed.map((job) => {
-              const orderIndex = selectedIds.indexOf(job.jobId)
-              return (
-                <button
-                  key={job.jobId}
-                  onClick={() => toggleClip(job.jobId)}
-                  className={`w-full flex items-center gap-2 rounded-md border p-1.5 text-left transition-colors ${
-                    orderIndex >= 0 ? 'border-[#c99850]/60 bg-[#c99850]/10' : 'border-zinc-800 bg-zinc-950 hover:border-zinc-600'
-                  }`}
-                >
-                  <span className={`shrink-0 w-6 h-6 rounded-md text-[11px] font-bold flex items-center justify-center ${
-                    orderIndex >= 0 ? 'bg-[#c99850] text-black' : 'bg-zinc-800 text-zinc-500'
-                  }`}>
-                    {orderIndex >= 0 ? orderIndex + 1 : '+'}
-                  </span>
-                  {job.startImageUrl ? (
-                    <img src={job.startImageUrl} alt="" className="w-12 h-8 object-cover rounded shrink-0" />
-                  ) : (
-                    <span className="w-12 h-8 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-                      <Clapperboard className="w-3.5 h-3.5 text-zinc-600" />
+        {/* Two columns on wide screens: clips left, sound + script right. */}
+        <div className="grid lg:grid-cols-2 gap-4 min-w-0">
+          <div className="min-w-0">
+            <p className="text-xs text-zinc-400 mb-1.5">
+              Clips — click to add in order ({selectedJobs.length} selected · ~{totalSeconds}s film)
+            </p>
+            <div className="max-h-[46vh] overflow-y-auto overflow-x-hidden space-y-1 pr-1">
+              {completed.map((job) => {
+                const orderIndex = selectedIds.indexOf(job.jobId)
+                return (
+                  <button
+                    key={job.jobId}
+                    onClick={() => toggleClip(job.jobId)}
+                    className={`w-full min-w-0 flex items-center gap-2 overflow-hidden rounded-md border p-1.5 text-left transition-colors ${
+                      orderIndex >= 0 ? 'border-[#c99850]/60 bg-[#c99850]/10' : 'border-zinc-800 bg-zinc-950 hover:border-zinc-600'
+                    }`}
+                  >
+                    <span className={`shrink-0 w-6 h-6 rounded-md text-[11px] font-bold flex items-center justify-center ${
+                      orderIndex >= 0 ? 'bg-[#c99850] text-black' : 'bg-zinc-800 text-zinc-500'
+                    }`}>
+                      {orderIndex >= 0 ? orderIndex + 1 : '+'}
                     </span>
-                  )}
-                  <span className="flex-1 min-w-0 text-[11px] text-zinc-300 truncate">{job.prompt}</span>
-                  <span className="shrink-0 text-[10px] text-zinc-600">{job.durationSeconds ?? 5}s</span>
-                </button>
-              )
-            })}
+                    {job.startImageUrl ? (
+                      <img src={job.startImageUrl} alt="" className="w-12 h-8 object-cover rounded shrink-0" />
+                    ) : (
+                      <span className="w-12 h-8 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+                        <Clapperboard className="w-3.5 h-3.5 text-zinc-600" />
+                      </span>
+                    )}
+                    <span className="flex-1 min-w-0 text-[11px] text-zinc-300 truncate">{job.prompt}</span>
+                    <span className="shrink-0 text-[10px] text-zinc-600">{job.durationSeconds ?? 5}s</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="min-w-0 space-y-3">
+            <FilmSoundPickers
+              narrationChoice={narrationChoice}
+              onNarrationChoice={setNarrationChoice}
+              voiceId={voiceId}
+              onVoiceId={setVoiceId}
+              musicStyleId={musicStyleId}
+              onMusicStyleId={setMusicStyleId}
+            />
+
+            {narrationChoice !== 'none' && (
+              <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-zinc-400">Narration script</p>
+                  <button
+                    onClick={handleWriteNarration}
+                    disabled={selectedJobs.length < 2 || isWriting}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    {isWriting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    {isWriting ? 'Writing…' : 'Write with AI'}
+                  </button>
+                </div>
+                <Textarea
+                  value={narrationText}
+                  onChange={(e) => setNarrationText(e.target.value.slice(0, 1500))}
+                  placeholder={`What the narrator says over the film (~${Math.round(totalSeconds * 1.8)} words fits ${totalSeconds}s)…`}
+                  className="min-h-[110px] w-full bg-zinc-950 border-zinc-800 text-sm text-zinc-200 placeholder:text-zinc-600 resize-y"
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        <FilmSoundPickers
-          narrationChoice={narrationChoice}
-          onNarrationChoice={setNarrationChoice}
-          voiceId={voiceId}
-          onVoiceId={setVoiceId}
-          musicStyleId={musicStyleId}
-          onMusicStyleId={setMusicStyleId}
-        />
-
-        {narrationChoice !== 'none' && (
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-xs text-zinc-400">Narration script</p>
-              <button
-                onClick={handleWriteNarration}
-                disabled={selectedJobs.length < 2 || isWriting}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors disabled:opacity-50"
-              >
-                {isWriting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                {isWriting ? 'Writing…' : 'Write with AI'}
-              </button>
-            </div>
-            <Textarea
-              value={narrationText}
-              onChange={(e) => setNarrationText(e.target.value.slice(0, 1500))}
-              placeholder={`What the narrator says over the film (~${Math.round(totalSeconds * 1.8)} words fits ${totalSeconds}s)…`}
-              className="min-h-[90px] bg-zinc-950 border-zinc-800 text-sm text-zinc-200 placeholder:text-zinc-600 resize-y"
-            />
-          </div>
-        )}
-
-        <Button
-          onClick={handleAssemble}
-          disabled={selectedJobs.length < 2 || isSubmitting}
-          className="w-full font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] disabled:opacity-50"
-        >
-          {isSubmitting ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Preparing narration & music…</>
-          ) : (
-            <>Assemble film ({selectedJobs.length} clips)</>
-          )}
-        </Button>
-        <p className="text-[10px] text-zinc-600 -mt-2">
-          The finished film appears in the Videos list like any clip — download, Enhance, or favorite it. Failed assemblies auto-refund.
-        </p>
+        <div className="space-y-1.5">
+          <Button
+            onClick={handleAssemble}
+            disabled={selectedJobs.length < 2 || isSubmitting}
+            className="w-full font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Preparing narration & music…</>
+            ) : (
+              <>Assemble film ({selectedJobs.length} clips)</>
+            )}
+          </Button>
+          <p className="text-[10px] text-zinc-600">
+            The finished film appears in the Videos list like any clip — download, Enhance, or favorite it. Failed assemblies auto-refund.
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   )
