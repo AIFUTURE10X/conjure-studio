@@ -25,6 +25,11 @@ export interface BuildImagePromptOptions {
   negativePrompt: string
 }
 
+/** Append a sentence fragment without doubling the punctuation ("lamp." + fragment → "lamp. …", not "lamp.. …"). */
+function appendClause(base: string, fragment: string): string {
+  return `${base.replace(/[.\s]+$/, '')}. ${fragment}`
+}
+
 export function buildFinalImagePrompt({
   basePrompt,
   selectedStylePreset,
@@ -35,12 +40,12 @@ export function buildFinalImagePrompt({
   negativePrompt,
 }: BuildImagePromptOptions): string {
   let prompt = basePrompt
-  if (selectedStylePreset !== 'Realistic') prompt += `. Style: ${expandStyleForPrompt(selectedStylePreset)}`
-  if (selectedCameraAngle) prompt += `. Camera angle: ${selectedCameraAngle}`
-  if (selectedCameraLens) prompt += `. Camera lens: ${selectedCameraLens}`
-  prompt += `. ${{ subtle: 'subtle', moderate: 'moderate', strong: 'strong' }[styleStrength]} style influence`
+  if (selectedStylePreset !== 'Realistic') prompt = appendClause(prompt, `Style: ${expandStyleForPrompt(selectedStylePreset)}`)
+  if (selectedCameraAngle) prompt = appendClause(prompt, `Camera angle: ${selectedCameraAngle}`)
+  if (selectedCameraLens) prompt = appendClause(prompt, `Camera lens: ${selectedCameraLens}`)
+  prompt = appendClause(prompt, `${styleStrength} style influence`)
   const creativePrompt = buildCreativeDirectionPrompt(creativeDirection)
-  if (creativePrompt) prompt += `. ${creativePrompt}`
+  if (creativePrompt) prompt = appendClause(prompt, creativePrompt)
   if (negativePrompt.trim()) prompt += `\n\nIMPORTANT: Do NOT include: ${negativePrompt.trim()}`
   return prompt
 }

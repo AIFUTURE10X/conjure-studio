@@ -21,6 +21,7 @@ import { getImageMetadata, type ImageMetadata } from '../utils/get-image-metadat
 import { getAnnotationReferenceInstruction, imageUrlToImageFile } from '../utils/annotation-reference'
 import { normalizeCreativeDirection } from '../constants/creative-direction-options'
 import { addToActiveCollection } from '@/lib/collections-client'
+import { getUserId } from '@/lib/user-id'
 import { useStudioCore } from './useStudio'
 
 export type ImageBgRemovalMethod = 'none' | 'photoroom' | 'fal'
@@ -63,6 +64,28 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     (info) => toast.info(info.reason, { duration: 6000 }),
   )
   const { saveToHistory } = useGenerationHistory()
+
+  // Hydrate the canvas with recent history on mount, matching the video
+  // panel (which restores its jobs from /api/video-history). Functional set
+  // so anything generated before the fetch resolves is never clobbered.
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/history?userId=${encodeURIComponent(getUserId())}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled || !Array.isArray(data?.history)) return
+        const restored = (data.history as Array<{ prompt?: string; imageUrls?: unknown; timestamp?: number }>)
+          .flatMap((item) => (Array.isArray(item.imageUrls) ? item.imageUrls : [])
+            .filter((url): url is string => typeof url === 'string' && url.length > 0)
+            .map((url) => ({ url, prompt: item.prompt ?? '', timestamp: item.timestamp ?? 0 })))
+          .slice(0, 12)
+        if (restored.length === 0) return
+        state.setGeneratedImages((current) => (current.length > 0 ? current : restored))
+      })
+      .catch((error) => console.error('[image] History hydrate failed:', error))
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const photoRoomBgRemovalEnabled = state.useImageBgRemoval && state.usePhotoRoomBgRemoval
   const setPhotoRoomBgRemovalEnabled = useCallback((enabled: boolean) => {
@@ -130,6 +153,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     try {
       const imgs = await generateImages({
         prompt,
+        displayPrompt: finalPrompt,
         count: state.imageCount,
         aspectRatio: state.aspectRatio,
         seed: state.seed,

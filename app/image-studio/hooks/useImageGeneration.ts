@@ -10,6 +10,12 @@ export type OpenAIImageQuality = "low" | "medium" | "high" | "auto"
 
 export interface GenerationOptions {
   prompt: string
+  /**
+   * What the user actually typed — shown on cards and logged to the Prompt
+   * Library instead of the assembled `prompt` (which carries style/camera
+   * clauses like "moderate style influence"). Falls back to `prompt`.
+   */
+  displayPrompt?: string
   count: number
   aspectRatio: string
   seed?: number | null
@@ -130,7 +136,7 @@ export function useImageGeneration(
 
     const images: GeneratedImage[] = data.images.map((img: any) => ({
       url: typeof img === 'string' ? img : img.url,
-      prompt: options.prompt,
+      prompt: options.displayPrompt ?? options.prompt,
       timestamp: Date.now()
     }))
 
@@ -179,7 +185,7 @@ export function useImageGeneration(
         setError(`${failedCount} of ${options.count} images failed to generate`)
       }
 
-      logPromptUse(options.prompt, 'image')
+      logPromptUse(options.displayPrompt ?? options.prompt, 'image')
       return allImages
     } finally {
       setIsGenerating(false)
