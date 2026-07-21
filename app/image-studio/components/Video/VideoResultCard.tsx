@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { BookmarkPlus, Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, Wand2 } from 'lucide-react'
+import { BookmarkPlus, Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, Wand2, X } from 'lucide-react'
 import { ExtendVideoDialog } from './ExtendVideoDialog'
 import { LipSyncDialog, type LipSyncPayload } from './LipSyncDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
@@ -16,6 +16,7 @@ interface VideoResultCardProps {
   onLipSync?: (job: VideoJob, payload: LipSyncPayload) => Promise<boolean>
   onEnhance?: (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p') => Promise<boolean>
   onSaveTemplate?: (job: VideoJob) => void
+  onCancel?: (job: VideoJob) => Promise<boolean>
 }
 
 const TOOL_MODEL_LABELS: Record<string, string> = {
@@ -28,11 +29,12 @@ function modelLabel(model: string): string {
   return VIDEO_MODELS[model as VideoModelId]?.label ?? TOOL_MODEL_LABELS[model] ?? model
 }
 
-export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance, onSaveTemplate }: VideoResultCardProps) {
+export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance, onSaveTemplate, onCancel }: VideoResultCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [showExtend, setShowExtend] = useState(false)
   const [showLipSync, setShowLipSync] = useState(false)
   const [showEnhanceMenu, setShowEnhanceMenu] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
   const model = VIDEO_MODELS[job.model as VideoModelId]
   const isNativeExtend = model?.extendMode === 'native'
 
@@ -110,6 +112,21 @@ export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, on
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-6 h-6 text-[#dbb56e] animate-spin" />
             <p className="text-xs text-zinc-300">Generating video… this can take a few minutes</p>
+            {onCancel && (
+              <button
+                onClick={async () => {
+                  if (isCanceling) return
+                  setIsCanceling(true)
+                  try { await onCancel(job) } finally { setIsCanceling(false) }
+                }}
+                disabled={isCanceling}
+                title="Cancel this generation — your credits are refunded (a render that already started may be too far along to stop)"
+                className="mt-1 flex items-center gap-1.5 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+              >
+                {isCanceling ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                {isCanceling ? 'Canceling…' : 'Cancel'}
+              </button>
+            )}
           </div>
         </div>
       )}

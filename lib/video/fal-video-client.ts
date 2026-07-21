@@ -106,6 +106,17 @@ export function extractMediaUrl(data: Record<string, unknown>): string {
   throw new Error("Could not extract a media URL from the fal response")
 }
 
+/**
+ * Ask the fal queue to cancel a submitted job. fal only guarantees
+ * cancellation while the job is still IN_QUEUE; an IN_PROGRESS render may
+ * finish anyway, so callers should treat success here as "stop billing the
+ * user", not "the GPU stopped".
+ */
+export async function cancelVideoJob(endpoint: string, requestId: string): Promise<void> {
+  configureFal()
+  await withFalErrors(endpoint, () => fal.queue.cancel(endpoint, { requestId }))
+}
+
 export type FalQueueStatus = "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED"
 
 /** Current queue status of a video job. Throws if fal reports the job as errored. */

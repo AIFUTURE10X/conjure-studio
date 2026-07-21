@@ -9,7 +9,7 @@
  * polling while the user works in other modes.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,11 +38,12 @@ export function VideoCanvas() {
   const { createEndFrame } = useImageGenerationEngine()
   const { improveWithHelper } = useHelperBridge()
   const {
-    jobs, isSubmitting, historyLoaded, submitVideo, extendVideo,
+    jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, cancelJob,
     toggleFavorite, submitLipSync, submitEnhance, submitAssembleFilm,
   } = useVideoGeneration()
   const [showAssemble, setShowAssemble] = useState(false)
   const completedCount = jobs.filter((job) => job.status === 'completed' && job.videoUrl).length
+  const pendingCount = jobs.filter((job) => job.status === 'pending').length
   const prompt = state.videoPrompt
   const setPrompt = state.setVideoPrompt
   const settings = state.videoSettings
@@ -105,8 +106,25 @@ export function VideoCanvas() {
   const { isSuggesting, suggestNow } = useMotionSuggestion({ startFrameUrl, prompt, setPrompt })
   const canGenerate = prompt.trim().length > 0 && !isSubmitting
 
+  // With a job already running, Generate needs a deliberate second click —
+  // parallel jobs stay possible, accidental double-charges don't.
+  const [confirmParallel, setConfirmParallel] = useState(false)
+  useEffect(() => {
+    if (!confirmParallel) return
+    const timer = setTimeout(() => setConfirmParallel(false), 5000)
+    return () => clearTimeout(timer)
+  }, [confirmParallel])
+  useEffect(() => {
+    if (pendingCount === 0) setConfirmParallel(false)
+  }, [pendingCount])
+
   const handleGenerate = async () => {
     if (!canGenerate) return
+    if (pendingCount > 0 && !confirmParallel) {
+      setConfirmParallel(true)
+      return
+    }
+    setConfirmParallel(false)
     await submitVideo({
       prompt: prompt.trim(),
       model: settings.model,
@@ -212,13 +230,24 @@ export function VideoCanvas() {
         <Button
           onClick={handleGenerate}
           disabled={!canGenerate}
-          className="w-full font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] disabled:opacity-50"
+          title={pendingCount > 0 && !confirmParallel
+            ? `${pendingCount} video${pendingCount > 1 ? 's are' : ' is'} still generating — starting another charges credits again`
+            : undefined}
+          className={`w-full font-medium disabled:opacity-50 ${
+            confirmParallel
+              ? 'bg-amber-600 text-black hover:bg-amber-500'
+              : 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850]'
+          }`}
         >
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Starting…
             </>
+          ) : confirmParallel ? (
+            `${pendingCount} still generating — click again to start another`
+          ) : pendingCount > 0 ? (
+            `Generate Video (${pendingCount} running)`
           ) : (
             'Generate Video'
           )}
@@ -318,6 +347,7 @@ export function VideoCanvas() {
                 onLipSync={submitLipSync}
                 onEnhance={submitEnhance}
                 onSaveTemplate={setTemplateJob}
+                onCancel={cancelJob}
               />
             ))}
           </div>

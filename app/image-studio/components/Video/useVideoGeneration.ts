@@ -306,6 +306,32 @@ export function useVideoGeneration() {
     }
   }, [addPendingJob])
 
+  const cancelJob = useCallback(async (job: VideoJob): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/generate-video/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: getUserId(), jobId: job.jobId }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        // 409 too_late: the clip finished — leave it pending so the next poll lands it.
+        throw new Error(data?.error?.message || data?.error || `Cancel failed (${response.status})`)
+      }
+      setJobs((current) => current.map((item) => (
+        item.jobId === job.jobId
+          ? { ...item, status: 'failed' as const, error: 'Canceled — credits refunded' }
+          : item
+      )))
+      toast.success('Generation canceled — credits refunded')
+      return true
+    } catch (error) {
+      console.error(`[video] Cancel failed for job ${job.jobId}:`, error)
+      toast.error(error instanceof Error ? error.message : 'Could not cancel the job')
+      return false
+    }
+  }, [])
+
   const toggleFavorite = useCallback((job: VideoJob) => {
     const next = !job.isFavorited
     setJobs((current) => current.map((item) => (
@@ -325,6 +351,7 @@ export function useVideoGeneration() {
     hasPendingJobs: pendingKey.length > 0,
     submitVideo,
     extendVideo,
+    cancelJob,
     toggleFavorite,
     submitLipSync,
     submitEnhance,
