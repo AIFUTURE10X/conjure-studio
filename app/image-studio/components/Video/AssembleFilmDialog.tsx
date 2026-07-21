@@ -51,7 +51,9 @@ export function AssembleFilmDialog({ isOpen, onOpenChange, jobs, onConfirm }: As
     [jobs],
   )
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [narrationChoice, setNarrationChoice] = useState<NarrationChoice>('elevenlabs')
+  // Narration is opt-in: defaulting to a voice engine blocked plain stitching
+  // behind a script nobody asked to write.
+  const [narrationChoice, setNarrationChoice] = useState<NarrationChoice>('none')
   const [voiceId, setVoiceId] = useState(ELEVENLABS_VOICES[0].id)
   const [narrationText, setNarrationText] = useState('')
   const [musicStyleId, setMusicStyleId] = useState('cinematic')
@@ -73,6 +75,8 @@ export function AssembleFilmDialog({ isOpen, onOpenChange, jobs, onConfirm }: As
     .map((id) => completed.find((job) => job.jobId === id))
     .filter((job): job is VideoJob => Boolean(job))
   const totalSeconds = selectedJobs.reduce((sum, job) => sum + (job.durationSeconds ?? 5), 0)
+  /** A voice is picked but there is nothing for it to say. */
+  const needsNarrationScript = narrationChoice !== 'none' && !narrationText.trim()
 
   const handleWriteNarration = async () => {
     if (selectedJobs.length < 2 || isWriting) return
@@ -200,7 +204,7 @@ export function AssembleFilmDialog({ isOpen, onOpenChange, jobs, onConfirm }: As
         <div className="space-y-1.5">
           <Button
             onClick={handleAssemble}
-            disabled={selectedJobs.length < 2 || isSubmitting}
+            disabled={selectedJobs.length < 2 || isSubmitting || needsNarrationScript}
             className="w-full font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] disabled:opacity-50"
           >
             {isSubmitting ? (
@@ -209,6 +213,11 @@ export function AssembleFilmDialog({ isOpen, onOpenChange, jobs, onConfirm }: As
               <>Assemble film ({selectedJobs.length} clips)</>
             )}
           </Button>
+          {needsNarrationScript && selectedJobs.length >= 2 && (
+            <p className="text-[10px] text-[#dbb56e]">
+              Write the narration above (or press “Write with AI”) — or pick “No narration” to assemble without a voice.
+            </p>
+          )}
           <p className="text-[10px] text-zinc-600">
             The finished film appears in the Videos list like any clip — download, Enhance, or favorite it. Failed assemblies auto-refund.
           </p>
