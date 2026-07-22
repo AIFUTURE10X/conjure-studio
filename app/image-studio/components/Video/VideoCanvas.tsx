@@ -150,6 +150,7 @@ export function VideoCanvas() {
       <BrollCard
         settings={settings}
         aspectRatio={settings.aspectRatio}
+        selectedModel={state.selectedModel}
         submitVideo={submitVideo}
         jobs={jobs}
       />

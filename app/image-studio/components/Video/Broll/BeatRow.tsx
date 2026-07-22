@@ -2,21 +2,29 @@
 
 /**
  * BeatRow — one editable B-roll moment: keyword, the transcript line it
- * covers, the cutaway prompt, and a per-beat duration.
+ * covers, the cutaway prompt, a per-beat duration, and a quick/hero mode
+ * toggle. Hero beats show their keyframe status + thumbnail.
  */
 
 import { Textarea } from '@/components/ui/textarea'
-import { Clapperboard, Quote, Trash2 } from 'lucide-react'
-import type { BrollBeat } from './useBrollPlan'
+import { Clapperboard, ImageIcon, Loader2, Quote, RotateCw, Trash2, Zap } from 'lucide-react'
+import type { BrollBeat, BrollMode } from './useBrollPlan'
 
 interface BeatRowProps {
   beat: BrollBeat
   totalBeats: number
   onUpdate: (id: number, patch: Partial<Pick<BrollBeat, 'keyword' | 'videoPrompt' | 'durationSeconds'>>) => void
+  onSetMode: (id: number, mode: BrollMode) => void
+  onGenerateFrame: (beat: BrollBeat) => void
   onRemove: (id: number) => void
 }
 
-export function BeatRow({ beat, totalBeats, onUpdate, onRemove }: BeatRowProps) {
+const MODES: Array<{ value: BrollMode; label: string; hint: string }> = [
+  { value: 'quick', label: 'Quick', hint: 'Direct text-to-video — cheapest, fastest' },
+  { value: 'hero', label: 'Hero', hint: 'Image-first — generate a keyframe, then animate it' },
+]
+
+export function BeatRow({ beat, totalBeats, onUpdate, onSetMode, onGenerateFrame, onRemove }: BeatRowProps) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 space-y-2">
       <div className="flex items-center gap-2">
@@ -64,6 +72,67 @@ export function BeatRow({ beat, totalBeats, onUpdate, onRemove }: BeatRowProps) 
         title="Text-to-video cutaway prompt"
         className="min-h-[44px] bg-zinc-900 border-zinc-800 text-[11px] leading-4 text-[#dbb56e]/90 resize-y p-1.5"
       />
+
+      <div className="flex items-center gap-2">
+        <div className="flex items-center rounded-md bg-zinc-900 border border-zinc-800 p-0.5 shrink-0">
+          {MODES.map(({ value, label, hint }) => (
+            <button
+              key={value}
+              onClick={() => onSetMode(beat.id, value)}
+              title={hint}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                beat.mode === value
+                  ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              {value === 'quick' ? <Zap className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {beat.mode === 'hero' && (
+          <HeroFrameStatus beat={beat} onGenerateFrame={onGenerateFrame} />
+        )}
+      </div>
     </div>
+  )
+}
+
+function HeroFrameStatus({ beat, onGenerateFrame }: { beat: BrollBeat; onGenerateFrame: (beat: BrollBeat) => void }) {
+  if (beat.frameStatus === 'generating') {
+    return (
+      <span className="flex items-center gap-1 text-[10px] text-zinc-400">
+        <Loader2 className="w-3 h-3 animate-spin" /> Framing…
+      </span>
+    )
+  }
+  if (beat.frameStatus === 'done' && beat.frameUrl) {
+    return (
+      <button
+        onClick={() => onGenerateFrame(beat)}
+        title="Regenerate this keyframe"
+        className="flex items-center gap-1.5 group"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={beat.frameUrl} alt="" className="h-10 rounded border border-zinc-700 object-cover" />
+        <RotateCw className="w-3 h-3 text-zinc-500 group-hover:text-white" />
+      </button>
+    )
+  }
+  return (
+    <button
+      onClick={() => onGenerateFrame(beat)}
+      title="Generate the keyframe image for this hero beat"
+      className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium ${
+        beat.frameStatus === 'failed'
+          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white'
+      }`}
+    >
+      <ImageIcon className="w-3 h-3" />
+      {beat.frameStatus === 'failed' ? 'Frame failed — retry' : 'Generate frame'}
+    </button>
   )
 }

@@ -62,6 +62,7 @@ export const VIDEO_TOOL_COSTS = {
   lipsync: 10,
   videoUpscale: 15,
   filmAssembly: 10,
+  transcribe: 2,
 } as const
 
 export type VideoToolOperation = keyof typeof VIDEO_TOOL_COSTS

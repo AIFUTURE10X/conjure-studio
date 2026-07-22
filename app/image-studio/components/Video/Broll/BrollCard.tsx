@@ -11,17 +11,22 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ChevronDown, ChevronUp, Clapperboard, Download, Film, Loader2, Sparkles, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Clapperboard, Download, Film, ImageIcon, Loader2, Sparkles, X } from 'lucide-react'
 import { BeatRow } from './BeatRow'
+import { BrollTranscribePanel } from './BrollTranscribePanel'
 import { useBrollPlan, BROLL_MODEL } from './useBrollPlan'
+import { useBrollTranscribe } from './useBrollTranscribe'
 import { buildBrollManifest, manifestToCsv, manifestToJson, downloadTextFile } from './broll-manifest'
 import type { SubmitVideoOptions, VideoJob } from '../useVideoGeneration'
 import type { VideoSettingsValue } from '../../../constants/video-settings-defaults'
-import { videoGenerationCost } from '@/lib/credits/cost-map'
+import type { GenerationModel } from '../../../hooks/useImageGeneration'
+import { videoGenerationCost, imageGenerationCost } from '@/lib/credits/cost-map'
 
 interface BrollCardProps {
   settings: VideoSettingsValue
   aspectRatio: string
+  /** Image model for hero-beat keyframes (mirrors Story Mode). */
+  selectedModel: GenerationModel
   submitVideo: (options: SubmitVideoOptions) => Promise<boolean>
   /** All video jobs — the manifest export joins beats to their finished clips. */
   jobs: VideoJob[]
@@ -29,14 +34,18 @@ interface BrollCardProps {
 
 const MOMENT_COUNTS = [5, 8, 12, 16]
 
-export function BrollCard({ settings, aspectRatio, submitVideo, jobs }: BrollCardProps) {
+export function BrollCard({ settings, aspectRatio, selectedModel, submitVideo, jobs }: BrollCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [beatCount, setBeatCount] = useState(8)
   const {
-    beats, isPlanning, isGenerating,
-    planBroll, updateBeat, removeBeat, clearPlan, generateAllClips,
-  } = useBrollPlan({ settings, aspectRatio, submitVideo })
+    beats, isPlanning, isFraming, isGenerating,
+    planBroll, updateBeat, setBeatMode, removeBeat, clearPlan,
+    generateFrameFor, generateAllFrames, generateAllClips,
+  } = useBrollPlan({ settings, aspectRatio, selectedModel, submitVideo })
+  // Transcription state lives here, above the collapse toggle, so a paid
+  // transcript isn't discarded when the card is collapsed.
+  const transcription = useBrollTranscribe(beats)
 
   const handleExportManifest = (format: 'json' | 'csv') => {
     const rows = buildBrollManifest(beats, jobs)
@@ -50,6 +59,15 @@ export function BrollCard({ settings, aspectRatio, submitVideo, jobs }: BrollCar
   }
 
   const pending = beats.filter((beat) => !beat.videoQueued)
+  // Hero beats need a keyframe before they can be animated; block "Generate clips"
+  // until every hero beat has one so the frames-first ordering is enforced (a
+  // still-generating frame counts here so it also blocks clips).
+  const heroNeedingFrames = beats.filter((beat) => beat.mode === 'hero' && beat.frameStatus !== 'done')
+  // What the "Generate frames" button acts on — excludes in-flight frames so a
+  // second click can't re-fire (and double-charge) a beat already generating.
+  const heroFramesToGenerate = beats.filter((beat) =>
+    beat.mode === 'hero' && (beat.frameStatus === 'none' || beat.frameStatus === 'failed'))
+  const frameCredits = heroFramesToGenerate.length * imageGenerationCost(selectedModel, '1K', 1)
   // Live estimate for the un-queued beats — mirrors what the hook submits
   // (Seedance Fast, silent, 1080p cap) so the button number matches the debit.
   const estResolution = settings.resolution === '4k' ? '1080p' : settings.resolution
@@ -130,7 +148,7 @@ export function BrollCard({ settings, aspectRatio, submitVideo, jobs }: BrollCar
                   </button>
                 ))}
                 <button
-                  onClick={clearPlan}
+                  onClick={() => { clearPlan(); transcription.clearTranscript() }}
                   title="Discard this B-roll plan"
                   className="p-1 rounded-md text-zinc-600 hover:text-red-400 shrink-0"
                 >
@@ -145,17 +163,37 @@ export function BrollCard({ settings, aspectRatio, submitVideo, jobs }: BrollCar
                     beat={beat}
                     totalBeats={beats.length}
                     onUpdate={updateBeat}
+                    onSetMode={setBeatMode}
+                    onGenerateFrame={generateFrameFor}
                     onRemove={removeBeat}
                   />
                 ))}
               </div>
 
+              {heroFramesToGenerate.length > 0 && (
+                <Button
+                  onClick={generateAllFrames}
+                  disabled={isFraming}
+                  size="sm"
+                  className="w-full bg-zinc-800 text-zinc-200 hover:bg-zinc-700 disabled:opacity-50"
+                  title="Generate the keyframe image for every hero beat that doesn't have one yet"
+                >
+                  {isFraming ? (
+                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Generating frames…</>
+                  ) : (
+                    <><ImageIcon className="w-3.5 h-3.5 mr-1.5" />Generate {heroFramesToGenerate.length} hero frame{heroFramesToGenerate.length === 1 ? '' : 's'} · ~{frameCredits} credits</>
+                  )}
+                </Button>
+              )}
+
               <Button
                 onClick={generateAllClips}
-                disabled={pending.length === 0 || isGenerating}
+                disabled={pending.length === 0 || isGenerating || heroNeedingFrames.length > 0}
                 size="sm"
                 className="w-full font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] disabled:opacity-50"
-                title="Queue a silent Seedance Fast clip for every beat that isn't queued yet"
+                title={heroNeedingFrames.length > 0
+                  ? 'Generate the hero keyframes first'
+                  : "Queue a silent Seedance Fast clip for every beat that isn't queued yet"}
               >
                 {isGenerating ? (
                   <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Queueing…</>
@@ -167,6 +205,8 @@ export function BrollCard({ settings, aspectRatio, submitVideo, jobs }: BrollCar
                 Clips render on Seedance Fast (silent, {estResolution}) at your current aspect ratio and land in the Videos
                 list below. B-roll is meant to be cut over your voiceover in your editor.
               </p>
+
+              <BrollTranscribePanel beats={beats} jobs={jobs} transcription={transcription} />
             </div>
           )}
         </>
