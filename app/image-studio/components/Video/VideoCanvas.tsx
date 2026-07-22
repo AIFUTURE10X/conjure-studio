@@ -20,6 +20,7 @@ import { NextStepNudge } from '../Concierge'
 import { SaveTemplateDialog, VideoTemplatesDialog } from './Templates'
 import { AssembleFilmDialog } from './AssembleFilmDialog'
 import { StoryModeCard } from './StoryMode/StoryModeCard'
+import { BrollCard } from './Broll/BrollCard'
 import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
 import { CameraMotionChips } from './CameraMotionChips'
 import { VideoResultCard } from './VideoResultCard'
@@ -143,6 +144,12 @@ export function VideoCanvas() {
         settings={settings}
         aspectRatio={settings.aspectRatio}
         selectedModel={state.selectedModel}
+        submitVideo={submitVideo}
+      />
+
+      <BrollCard
+        settings={settings}
+        aspectRatio={settings.aspectRatio}
         submitVideo={submitVideo}
       />
 
