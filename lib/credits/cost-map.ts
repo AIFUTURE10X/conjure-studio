@@ -62,6 +62,9 @@ export const VIDEO_TOOL_COSTS = {
   lipsync: 10,
   videoUpscale: 15,
   filmAssembly: 10,
+  // fal-ai/whisper bills ~$0.0005/audio-min, so a typical call costs a small
+  // fraction of 2 credits (~$0.05–0.09 retail); safe to ~50 audio-min per call.
+  // Only valid on fal-ai/whisper — the pricier fal-ai/speech-to-text (~$0.048/min) would need a higher charge.
   transcribe: 2,
 } as const
 
