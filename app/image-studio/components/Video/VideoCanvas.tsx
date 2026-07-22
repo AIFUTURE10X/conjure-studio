@@ -151,6 +151,7 @@ export function VideoCanvas() {
         settings={settings}
         aspectRatio={settings.aspectRatio}
         submitVideo={submitVideo}
+        jobs={jobs}
       />
 
       <Card className="bg-zinc-900 border-zinc-800 p-4 space-y-4">

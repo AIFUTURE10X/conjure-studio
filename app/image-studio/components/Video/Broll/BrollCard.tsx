@@ -11,10 +11,11 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ChevronDown, ChevronUp, Clapperboard, Film, Loader2, Sparkles, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Clapperboard, Download, Film, Loader2, Sparkles, X } from 'lucide-react'
 import { BeatRow } from './BeatRow'
 import { useBrollPlan, BROLL_MODEL } from './useBrollPlan'
-import type { SubmitVideoOptions } from '../useVideoGeneration'
+import { buildBrollManifest, manifestToCsv, manifestToJson, downloadTextFile } from './broll-manifest'
+import type { SubmitVideoOptions, VideoJob } from '../useVideoGeneration'
 import type { VideoSettingsValue } from '../../../constants/video-settings-defaults'
 import { videoGenerationCost } from '@/lib/credits/cost-map'
 
@@ -22,11 +23,13 @@ interface BrollCardProps {
   settings: VideoSettingsValue
   aspectRatio: string
   submitVideo: (options: SubmitVideoOptions) => Promise<boolean>
+  /** All video jobs — the manifest export joins beats to their finished clips. */
+  jobs: VideoJob[]
 }
 
 const MOMENT_COUNTS = [5, 8, 12, 16]
 
-export function BrollCard({ settings, aspectRatio, submitVideo }: BrollCardProps) {
+export function BrollCard({ settings, aspectRatio, submitVideo, jobs }: BrollCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [beatCount, setBeatCount] = useState(8)
@@ -34,6 +37,17 @@ export function BrollCard({ settings, aspectRatio, submitVideo }: BrollCardProps
     beats, isPlanning, isGenerating,
     planBroll, updateBeat, removeBeat, clearPlan, generateAllClips,
   } = useBrollPlan({ settings, aspectRatio, submitVideo })
+
+  const handleExportManifest = (format: 'json' | 'csv') => {
+    const rows = buildBrollManifest(beats, jobs)
+    const date = new Date().toISOString().slice(0, 10)
+    if (format === 'json') {
+      const resolution = settings.resolution === '4k' ? '1080p' : settings.resolution
+      downloadTextFile(`broll-manifest-${date}.json`, 'application/json', manifestToJson(rows, { resolution, aspectRatio }))
+    } else {
+      downloadTextFile(`broll-manifest-${date}.csv`, 'text/csv', manifestToCsv(rows))
+    }
+  }
 
   const pending = beats.filter((beat) => !beat.videoQueued)
   // Live estimate for the un-queued beats — mirrors what the hook submits
@@ -104,6 +118,17 @@ export function BrollCard({ settings, aspectRatio, submitVideo }: BrollCardProps
                 <p className="text-xs font-medium text-[#f0d49b] flex-1">
                   {beats.length} B-roll moment{beats.length === 1 ? '' : 's'}
                 </p>
+                {(['json', 'csv'] as const).map((format) => (
+                  <button
+                    key={format}
+                    onClick={() => handleExportManifest(format)}
+                    title={`Download the plan as ${format.toUpperCase()} — each beat with the transcript line it covers and its clip URL, for handoff to your editor`}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 shrink-0"
+                  >
+                    <Download className="w-3 h-3" />
+                    {format.toUpperCase()}
+                  </button>
+                ))}
                 <button
                   onClick={clearPlan}
                   title="Discard this B-roll plan"
