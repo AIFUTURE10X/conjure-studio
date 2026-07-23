@@ -76,6 +76,8 @@ export interface LogoGenerationOptions {
 
 export interface GeneratedLogo {
   url: string
+  /** Vercel Blob copy of `url` — preferred for history saves since a short URL always fits JSON body caps. */
+  blobUrl?: string
   originalUrl?: string
   prompt: string
   style: LogoStyle

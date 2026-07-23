@@ -14,6 +14,11 @@ import { getUserId, saveToLocal, saveToNeon } from './useLogoHistoryData'
 const LOCAL_STORAGE_KEY = 'logo-history-local'
 const DELETED_IDS_KEY = 'logo-history-deleted-ids'
 
+// Module-level guard: several components mount useLogoHistory at once, and
+// concurrent loadHistory calls used to re-post the same unsynced local items
+// in parallel — the source of the duplicate-row bursts in Neon.
+let syncInFlight = false
+
 // Track deleted IDs to prevent them from coming back
 function getDeletedIds(): Set<string> {
   try {
@@ -115,11 +120,26 @@ export function useLogoHistorySync({
       // Update localStorage with clean list (without deleted items)
       saveToLocal(mergedItems)
 
-      // Sync unsynced local items to Neon
-      if (unsynced.length > 0) {
-        console.log('[Logo History] Syncing', unsynced.length, 'local items to Neon')
-        for (const item of unsynced) {
-          await saveToNeon(item)
+      // Sync unsynced local items to Neon. Replace each local temp item with
+      // the returned server row (server id + blob URL) — otherwise the local
+      // copy never matches what GET returns and gets re-posted on every load,
+      // duplicating rows forever.
+      if (unsynced.length > 0 && !syncInFlight) {
+        syncInFlight = true
+        try {
+          console.log('[Logo History] Syncing', unsynced.length, 'local items to Neon')
+          for (const item of unsynced) {
+            const savedItem = await saveToNeon(item)
+            if (savedItem) {
+              setState(prev => {
+                const updatedItems = prev.items.map(i => (i.id === item.id ? savedItem : i))
+                saveToLocal(updatedItems)
+                return { ...prev, items: updatedItems }
+              })
+            }
+          }
+        } finally {
+          syncInFlight = false
         }
       }
     } catch (err) {

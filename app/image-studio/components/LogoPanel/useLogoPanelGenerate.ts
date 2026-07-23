@@ -31,7 +31,7 @@ interface UseLogoPanelGenerateConfig {
     getCombinedStyle: () => string
     setSeedValue: (seed: number) => void
   }
-  generateLogo: (options: LogoGenerationOptions) => Promise<{ url: string; seed?: number; bgRemovalMethod?: BgRemovalMethod }>
+  generateLogo: (options: LogoGenerationOptions) => Promise<{ url: string; blobUrl?: string; seed?: number; bgRemovalMethod?: BgRemovalMethod }>
   handleRemoveRefBackground: (ref: { file: File; preview: string }) => Promise<void>
   addToHistory: (item: Omit<LogoHistoryItem, 'id' | 'timestamp' | 'isFavorited'>) => void
   onLogoGenerated?: (url: string) => void
@@ -75,7 +75,9 @@ export function useLogoPanelGenerate(config: UseLogoPanelGenerateConfig) {
       if (logo.seed !== undefined) state.setSeedValue(logo.seed)
 
       addToHistory({
-        imageUrl: logo.url,
+        // Prefer the blob URL: a data URL here overruns the JSON body cap on
+        // save (silent 413) and the localStorage quota on backup.
+        imageUrl: logo.blobUrl || logo.url,
         prompt: state.prompt.trim() || (state.referenceImage ? '[Reference Image]' : effectivePrompt),
         negativePrompt: state.negativePrompt.trim() || undefined,
         seed: logo.seed,

@@ -153,7 +153,7 @@ export function LogoPanelModals({
       }
 
       addToHistory({
-        imageUrl: logo.url,
+        imageUrl: logo.blobUrl || logo.url,
         prompt: generatedPrompt,
         negativePrompt: generatedNegativePrompt,
         seed: logo.seed,
@@ -263,7 +263,7 @@ export function LogoPanelModals({
 
             // Save batch-generated logo to history
             addToHistory({
-              imageUrl: logo.url,
+              imageUrl: logo.blobUrl || logo.url,
               prompt: logo.prompt || batchOptions?.prompt || '',
               seed: logo.seed,
               style: logo.style || batchOptions?.style || '',

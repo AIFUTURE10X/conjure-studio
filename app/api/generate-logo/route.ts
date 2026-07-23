@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { put } from "@vercel/blob"
 import { withCreditGuard, imageFormCost } from '@/lib/api/guard'
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { parseLogoGenerationRequest } from "./logo-request"
@@ -82,9 +83,28 @@ async function handlePost(request: NextRequest) {
     const processedLogo = await removeLogoBackgroundIfNeeded(logoRequest, result.imageBase64)
     const finalBase64 = await upscaleLogoIfNeeded(logoRequest, processedLogo.imageBase64)
 
+    // Upload the final PNG to Blob while we still hold the bytes. The client
+    // saves history by URL, and a multi-MB base64 data URL in a JSON body
+    // overruns the platform request cap (silent 413 → logos missing from
+    // history). A short blob URL always fits; on failure we fall back to the
+    // data-URL-only behavior.
+    let blobUrl: string | null = null
+    try {
+      const filename = `logo-history/gen-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
+      const blobResult = await put(filename, Buffer.from(finalBase64, 'base64'), {
+        access: 'public',
+        contentType: 'image/png',
+      })
+      blobUrl = blobResult.url
+      console.log("[Logo API] Uploaded final logo to Blob:", blobUrl)
+    } catch (error) {
+      console.error("[Logo API] Blob upload failed (history will fall back to data URL):", error)
+    }
+
     return NextResponse.json({
       success: true,
       image: toPngDataUrl(finalBase64),
+      blobUrl,
       style: logoRequest.style,
       bgRemovalMethod: processedLogo.bgRemovalMethod,
       aspectRatio: logoRequest.aspectRatio,

@@ -120,41 +120,48 @@ export async function POST(request: NextRequest) {
     // (e.g. local dev without BLOB_READ_WRITE_TOKEN) we fall back to storing the
     // image/data URL directly in the DB so history still works.
     let blobUrl: string | null = null
-    try {
-      let imageBuffer: Buffer
+    if (/^https:\/\/[^/]+\.blob\.vercel-storage\.com\//.test(imageUrl)) {
+      // Already persisted on Blob (generate-logo uploads before responding) —
+      // reuse it instead of downloading and re-uploading a duplicate copy.
+      blobUrl = imageUrl
+      console.log('[Logo History] Reusing existing Blob URL:', imageUrl)
+    } else {
+      try {
+        let imageBuffer: Buffer
 
-      // Check if it's a base64 data URL (can't be fetched from Node.js)
-      if (imageUrl.startsWith('data:')) {
-        console.log('[Logo History] Converting base64 data URL to buffer...')
-        const base64Data = imageUrl.split(',')[1]
-        if (!base64Data) {
-          throw new Error('Invalid data URL format')
+        // Check if it's a base64 data URL (can't be fetched from Node.js)
+        if (imageUrl.startsWith('data:')) {
+          console.log('[Logo History] Converting base64 data URL to buffer...')
+          const base64Data = imageUrl.split(',')[1]
+          if (!base64Data) {
+            throw new Error('Invalid data URL format')
+          }
+          imageBuffer = Buffer.from(base64Data, 'base64')
+          console.log('[Logo History] Converted base64 to buffer, size:', imageBuffer.length, 'bytes')
+        } else {
+          // Regular URL - fetch it
+          console.log('[Logo History] Fetching image from URL...')
+          const response = await fetch(imageUrl)
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`)
+          }
+          const arrayBuffer = await response.arrayBuffer()
+          imageBuffer = Buffer.from(arrayBuffer)
+          console.log('[Logo History] Fetched image, size:', imageBuffer.length, 'bytes')
         }
-        imageBuffer = Buffer.from(base64Data, 'base64')
-        console.log('[Logo History] Converted base64 to buffer, size:', imageBuffer.length, 'bytes')
-      } else {
-        // Regular URL - fetch it
-        console.log('[Logo History] Fetching image from URL...')
-        const response = await fetch(imageUrl)
-        if (!response.ok) {
-          throw new Error(`Failed to fetch image: ${response.status}`)
-        }
-        const arrayBuffer = await response.arrayBuffer()
-        imageBuffer = Buffer.from(arrayBuffer)
-        console.log('[Logo History] Fetched image, size:', imageBuffer.length, 'bytes')
+
+        const fileName = `logo-history/${userId}-${Date.now()}.png`
+        const uploadResult = await put(fileName, imageBuffer, {
+          access: 'public',
+          contentType: 'image/png'
+        })
+
+        blobUrl = uploadResult.url
+        console.log('[Logo History] Uploaded to Blob:', blobUrl)
+      } catch (error) {
+        console.error('[Logo History] Blob upload failed, storing image directly:', error)
+        // Fall through — we store the full image/data URL in the DB below.
       }
-
-      const fileName = `logo-history/${userId}-${Date.now()}.png`
-      const uploadResult = await put(fileName, imageBuffer, {
-        access: 'public',
-        contentType: 'image/png'
-      })
-
-      blobUrl = uploadResult.url
-      console.log('[Logo History] Uploaded to Blob:', blobUrl)
-    } catch (error) {
-      console.error('[Logo History] Blob upload failed, storing image directly:', error)
-      // Fall through — we store the full image/data URL in the DB below.
     }
 
     const sql = getSQL()

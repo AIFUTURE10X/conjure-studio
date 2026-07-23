@@ -88,6 +88,7 @@ export function useLogoGeneration() {
 
       const logo: GeneratedLogo = {
         url: data.image,
+        blobUrl: data.blobUrl || undefined,
         prompt: options.prompt,
         style: options.style,
         aspectRatio: data.aspectRatio || options.aspectRatio || DEFAULT_LOGO_GENERATION_SETTINGS.aspectRatio,
