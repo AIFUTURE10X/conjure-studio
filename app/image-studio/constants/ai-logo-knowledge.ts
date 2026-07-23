@@ -35,6 +35,11 @@ import {
   ICON_STYLE_OPTIONS,
   INDUSTRY_PRESETS,
 } from './dot-matrix-config'
+import {
+  FANCY_FONT_STYLES,
+  FONT_CATEGORIES as FANCY_FONT_CATEGORY_CHIPS,
+  type FancyFontCategory,
+} from './fancy-fonts'
 
 // Material types from MaterialSelector component
 export const MATERIAL_TYPES = [
@@ -113,15 +118,32 @@ export const ICON_POSITION_OPTIONS = [
   { id: 'integrated', label: 'Integrated with Text' },
 ]
 
-// Fancy font categories
-export const FANCY_FONT_CATEGORIES = [
-  { id: 'display', label: 'Display', description: 'Bold, attention-grabbing fonts' },
-  { id: 'script', label: 'Script', description: 'Handwritten, elegant fonts' },
-  { id: 'serif', label: 'Serif', description: 'Classic, traditional fonts' },
-  { id: 'sans-serif', label: 'Sans-Serif', description: 'Clean, modern fonts' },
-  { id: 'decorative', label: 'Decorative', description: 'Unique, artistic fonts' },
-  { id: 'tech', label: 'Tech/Digital', description: 'Futuristic, digital fonts' },
-]
+// Fancy font categories.
+// Ids and labels are derived from the font grid's own category list so the two
+// can never drift apart. The Record type below is what enforces it: adding a
+// category to fancy-fonts.ts is a compile error until it gets a description here.
+const FANCY_FONT_CATEGORY_DESCRIPTIONS: Record<FancyFontCategory, string> = {
+  luxury: 'High-contrast fashion and premium serifs',
+  script: 'Flowing cursive and brush lettering',
+  calligraphy: 'Formal pen-drawn scripts with flourishes',
+  modern: 'Clean geometric sans-serifs',
+  retro: 'Vintage condensed and chunky slab faces',
+  display: 'Bold, attention-grabbing headline faces',
+  tech: 'Futuristic, digital, and monospace faces',
+  'art-deco': '1920s geometric and Roman-inspired faces',
+  gothic: 'Blackletter and ornate medieval faces',
+  grunge: 'Distressed, hand-drawn, and typewriter faces',
+  bold: 'Heavy condensed impact faces',
+  decorative: 'Ornate and novelty display faces',
+  elegant: 'Refined book and high-contrast serifs',
+  handwritten: 'Natural pen and pencil handwriting',
+}
+
+export const FANCY_FONT_CATEGORIES = FANCY_FONT_CATEGORY_CHIPS.map(({ id, label }) => ({
+  id,
+  label,
+  description: FANCY_FONT_CATEGORY_DESCRIPTIONS[id],
+}))
 
 /**
  * Prompt blueprint used by the AI Logo Designer and prompt enhancer.
@@ -184,6 +206,9 @@ Text Weights: ${TEXT_WEIGHT_OPTIONS.map(o => `"${o.value}"`).join(', ')}
 Letter Spacing: ${LETTER_SPACING_OPTIONS.map(o => `"${o.value}"`).join(', ')}
 Text Case: ${TEXT_CASE_OPTIONS.map(o => `"${o.value}"`).join(', ')}
 
+Fancy Fonts — set "fancyFontId" to one of these exact ids. A fancy font overrides Font Styles above:
+${FANCY_FONT_CATEGORIES.map(c => `${c.label} (${c.description}): ${FANCY_FONT_STYLES.filter(f => f.category === c.id).map(f => `"${f.id}"`).join(', ')}`).join('\n')}
+
 === MATERIALS ===
 Material Types: ${MATERIAL_TYPES.map(m => `"${m.id}" (${m.description})`).join(', ')}
 
@@ -235,7 +260,8 @@ When suggesting logo settings, ALWAYS respond with a JSON object in this format:
     "resolution": "1K"
   },
   "logoConfig": {
-    "brandName": "Exact brand name when available"
+    "brandName": "Exact brand name when available",
+    "fancyFontId": "Optional — an exact id from the Fancy Fonts list, only when a specific lettering style suits the brand"
   },
   "actions": [
     { "type": "apply_suggestions", "label": "Apply to Logo Generator", "description": "Use this prompt and settings" },
@@ -250,7 +276,9 @@ When suggesting logo settings, ALWAYS respond with a JSON object in this format:
 
 IMPORTANT:
 - For color values (dotColor, textColor, accentColor), use the ColorOption format: { "name": "...", "value": "...", "hex": "..." }
-- Return an empty logoConfig unless the user specifically asks for dot matrix, 3D configurator effects, material effects, glow, sparkle, icon presets, or another setting controlled by the configurator
+- Return an empty logoConfig unless the user specifically asks for dot matrix, 3D configurator effects, material effects, glow, sparkle, icon presets, a named lettering or font style, or another setting controlled by the configurator
+- Set fancyFontId only when the user asks for a particular lettering style, or a reference image clearly shows one; it must be copied verbatim from the Fancy Fonts list, never invented or guessed from a font's real-world name
+- A fancyFontId replaces fontStyle, so do not send both
 - Only include settings that are relevant to the user's request and never add dot matrix settings by default
 - The suggestions.prompt must be directly usable in the logo prompt box and should be 80-160 words
 - The suggestions.negativePrompt should be comma-separated and focused on preventing logo-specific failures

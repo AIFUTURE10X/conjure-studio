@@ -2,7 +2,7 @@
 // This file contains all font definitions for the FancyFontGrid component
 
 export type FancyFontCategory =
-  | 'luxury' | 'script' | 'modern' | 'retro'
+  | 'luxury' | 'script' | 'calligraphy' | 'modern' | 'retro'
   | 'display' | 'tech' | 'art-deco' | 'gothic'
   | 'grunge' | 'bold' | 'decorative' | 'elegant' | 'handwritten'
 
@@ -19,6 +19,7 @@ export interface FancyFontStyle {
 export const FONT_CATEGORIES: { id: FancyFontCategory; label: string; icon: string }[] = [
   { id: 'luxury', label: 'Luxury', icon: '👑' },
   { id: 'script', label: 'Script', icon: '✍️' },
+  { id: 'calligraphy', label: 'Calligraphy', icon: '✒️' },
   { id: 'modern', label: 'Modern', icon: '◼️' },
   { id: 'retro', label: 'Retro', icon: '📻' },
   { id: 'display', label: 'Display', icon: '🎨' },
@@ -42,12 +43,18 @@ export const FANCY_FONT_STYLES: FancyFontStyle[] = [
   { id: 'trajan', name: 'Trajan Pro', category: 'luxury', description: 'Premium cinematic serif', promptDescription: 'premium Trajan Pro Roman column-inspired capitals, movie poster style', fallbackPreview: "'Trajan Pro', 'Cinzel', serif", tags: ['cinematic', 'premium', 'movie', 'capitals'] },
 
   // SCRIPT
-  { id: 'great-vibes', name: 'Great Vibes', category: 'script', description: 'Flowing elegant script', promptDescription: 'flowing Great Vibes elegant cursive script with dramatic flourishes', fallbackPreview: "'Great Vibes', 'Brush Script MT', cursive", tags: ['flowing', 'elegant', 'cursive', 'flourishes'] },
+  { id: 'great-vibes', name: 'Great Vibes', category: 'script', description: 'Flowing elegant script', promptDescription: 'flowing Great Vibes elegant cursive script with dramatic flourishes', fallbackPreview: "'Great Vibes', 'Brush Script MT', cursive", tags: ['flowing', 'elegant', 'cursive', 'flourishes', 'calligraphy'] },
   { id: 'pacifico', name: 'Pacifico', category: 'script', description: 'Casual brush script', promptDescription: 'casual Pacifico retro brush script with friendly curves', fallbackPreview: "'Pacifico', 'Brush Script MT', cursive", tags: ['casual', 'brush', 'retro', 'friendly'] },
   { id: 'dancing-script', name: 'Dancing Script', category: 'script', description: 'Lively bouncy cursive', promptDescription: 'lively Dancing Script bouncy cursive with playful baseline', fallbackPreview: "'Dancing Script', cursive", tags: ['lively', 'bouncy', 'playful'] },
-  { id: 'alex-brush', name: 'Alex Brush', category: 'script', description: 'Romantic calligraphy', promptDescription: 'romantic Alex Brush flowing calligraphy script', fallbackPreview: "'Alex Brush', cursive", tags: ['romantic', 'calligraphy', 'wedding'] },
-  { id: 'allura', name: 'Allura', category: 'script', description: 'Wedding-style formal script', promptDescription: 'formal Allura wedding invitation calligraphy script', fallbackPreview: "'Allura', cursive", tags: ['formal', 'wedding', 'invitation'] },
   { id: 'sacramento', name: 'Sacramento', category: 'script', description: 'Thin elegant monoline script', promptDescription: 'thin Sacramento elegant monoline script with consistent stroke', fallbackPreview: "'Sacramento', cursive", tags: ['thin', 'monoline', 'elegant'] },
+
+  // CALLIGRAPHY
+  { id: 'alex-brush', name: 'Alex Brush', category: 'calligraphy', description: 'Romantic calligraphy', promptDescription: 'romantic Alex Brush flowing calligraphy script', fallbackPreview: "'Alex Brush', cursive", tags: ['romantic', 'calligraphy', 'wedding'] },
+  { id: 'allura', name: 'Allura', category: 'calligraphy', description: 'Wedding-style formal script', promptDescription: 'formal Allura wedding invitation calligraphy script', fallbackPreview: "'Allura', cursive", tags: ['formal', 'wedding', 'invitation', 'calligraphy'] },
+  { id: 'mr-de-haviland', name: 'Mr De Haviland', category: 'calligraphy', description: 'Sophisticated flourish', promptDescription: 'sophisticated Mr De Haviland flourished calligraphy script', fallbackPreview: "'Mr De Haviland', cursive", tags: ['flourish', 'sophisticated', 'calligraphy'] },
+  { id: 'tangerine', name: 'Tangerine', category: 'calligraphy', description: 'Refined calligraphy', promptDescription: 'refined Tangerine calligraphic elegant script', fallbackPreview: "'Tangerine', cursive", tags: ['calligraphy', 'refined', 'formal'] },
+  { id: 'italianno', name: 'Italianno', category: 'calligraphy', description: 'Flowing italic elegance', promptDescription: 'flowing Italianno elegant italic calligraphy script', fallbackPreview: "'Italianno', cursive", tags: ['italic', 'flowing', 'elegant', 'calligraphy'] },
+  { id: 'pinyon-script', name: 'Pinyon Script', category: 'calligraphy', description: 'Classic formal script', promptDescription: 'classic Pinyon Script formal elegant calligraphy', fallbackPreview: "'Pinyon Script', cursive", tags: ['formal', 'classic', 'wedding', 'calligraphy'] },
 
   // MODERN
   { id: 'montserrat', name: 'Montserrat', category: 'modern', description: 'Clean geometric sans-serif', promptDescription: 'clean Montserrat geometric sans-serif with urban modern feel', fallbackPreview: "'Montserrat', 'Arial', sans-serif", tags: ['clean', 'geometric', 'urban', 'versatile'] },
@@ -110,9 +117,6 @@ export const FANCY_FONT_STYLES: FancyFontStyle[] = [
   { id: 'rye', name: 'Rye', category: 'decorative', description: 'Western saloon style', promptDescription: 'bold Rye western saloon decorative slab serif', fallbackPreview: "'Rye', cursive", tags: ['western', 'saloon', 'vintage'] },
 
   // ELEGANT
-  { id: 'tangerine', name: 'Tangerine', category: 'elegant', description: 'Refined calligraphy', promptDescription: 'refined Tangerine calligraphic elegant script', fallbackPreview: "'Tangerine', cursive", tags: ['calligraphy', 'refined', 'formal'] },
-  { id: 'italianno', name: 'Italianno', category: 'elegant', description: 'Flowing italic elegance', promptDescription: 'flowing Italianno elegant italic calligraphy script', fallbackPreview: "'Italianno', cursive", tags: ['italic', 'flowing', 'elegant'] },
-  { id: 'pinyon-script', name: 'Pinyon Script', category: 'elegant', description: 'Classic formal script', promptDescription: 'classic Pinyon Script formal elegant calligraphy', fallbackPreview: "'Pinyon Script', cursive", tags: ['formal', 'classic', 'wedding'] },
   { id: 'rozha-one', name: 'Rozha One', category: 'elegant', description: 'Bold elegant serif', promptDescription: 'bold Rozha One elegant display serif with refined curves', fallbackPreview: "'Rozha One', serif", tags: ['bold', 'elegant', 'display'] },
   { id: 'libre-baskerville', name: 'Libre Baskerville', category: 'elegant', description: 'Classic book serif', promptDescription: 'classic Libre Baskerville refined book serif typography', fallbackPreview: "'Libre Baskerville', 'Georgia', serif", tags: ['classic', 'book', 'refined'] },
   { id: 'lora', name: 'Lora', category: 'elegant', description: 'Brushed modern serif', promptDescription: 'modern Lora elegant serif with brushed curves', fallbackPreview: "'Lora', 'Georgia', serif", tags: ['modern', 'brushed', 'elegant'] },
@@ -133,7 +137,6 @@ export const FANCY_FONT_STYLES: FancyFontStyle[] = [
   { id: 'marcellus', name: 'Marcellus', category: 'luxury', description: 'Classic roman capitals', promptDescription: 'classic Marcellus roman capital display serif', fallbackPreview: "'Marcellus', serif", tags: ['roman', 'classic', 'capitals'] },
 
   // Additional SCRIPT fonts
-  { id: 'mr-de-haviland', name: 'Mr De Haviland', category: 'script', description: 'Sophisticated flourish', promptDescription: 'sophisticated Mr De Haviland flourished calligraphy script', fallbackPreview: "'Mr De Haviland', cursive", tags: ['flourish', 'sophisticated', 'calligraphy'] },
   { id: 'meow-script', name: 'Meow Script', category: 'script', description: 'Bouncy playful script', promptDescription: 'bouncy Meow Script playful connected script', fallbackPreview: "'Meow Script', cursive", tags: ['bouncy', 'playful', 'connected'] },
 
   // Additional TECH fonts
