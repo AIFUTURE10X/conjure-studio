@@ -2,6 +2,7 @@
 
 import { Sparkles, Palette, Check } from 'lucide-react'
 import type { DotMatrixConfig } from '../../constants/dot-matrix-config'
+import { getFontById } from '../../constants/fancy-fonts'
 
 interface LogoConfigCardProps {
   logoConfig: Partial<DotMatrixConfig>
@@ -12,6 +13,8 @@ interface LogoConfigCardProps {
 export function LogoConfigCard({ logoConfig, isApplied, onApply }: LogoConfigCardProps) {
   if (!logoConfig || Object.keys(logoConfig).length === 0) return null
 
+  const fancyFont = logoConfig.fancyFontId ? getFontById(logoConfig.fancyFontId) : undefined
+
   return (
     <div className="mt-2 bg-zinc-800 border border-purple-500/30 rounded-lg p-3 space-y-2">
       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-purple-500/20">
@@ -21,6 +24,14 @@ export function LogoConfigCard({ logoConfig, isApplied, onApply }: LogoConfigCar
 
       {/* Display key config values */}
       <div className="grid grid-cols-2 gap-2 text-xs">
+        {fancyFont && (
+          <div>
+            <span className="text-zinc-500">Font:</span>
+            <span className="text-zinc-200 ml-1" style={{ fontFamily: fancyFont.fallbackPreview }}>
+              {fancyFont.name}
+            </span>
+          </div>
+        )}
         {logoConfig.dotSize && (
           <div>
             <span className="text-zinc-500">Dot Size:</span>

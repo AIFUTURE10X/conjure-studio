@@ -107,11 +107,12 @@ export function buildDotPatternDescription(config: DotMatrixConfig): string {
 export function buildTypographyDescription(config: DotMatrixConfig): string {
   const parts: string[] = []
 
-  if (config.fancyFontId) {
-    const fancyFont = getFontById(config.fancyFontId)
-    if (fancyFont) {
-      parts.push(fancyFont.promptDescription)
-    }
+  // An unresolvable id (the AI helper can suggest one) must fall through to
+  // fontStyle rather than leaving the prompt with no typography at all.
+  const fancyFont = config.fancyFontId ? getFontById(config.fancyFontId) : undefined
+
+  if (fancyFont) {
+    parts.push(fancyFont.promptDescription)
   } else if (config.fontStyle) {
     parts.push(fontStyleDescriptions[config.fontStyle])
   }
