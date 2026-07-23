@@ -52,3 +52,9 @@ NUL
 
 # Local history-recovery dump (contains private image URLs)
 scripts/history-recovery.json
+
+# Downloaded reference artwork for the title-logo library (13MB of third-party
+# studio logos). The app reads TMDB CDN urls from lib/logo-templates instead —
+# these local copies exist only for the offline gallery.
+assets/**/logos/
+assets/**/_to_delete/

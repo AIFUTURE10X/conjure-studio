@@ -2,6 +2,7 @@
 
 import { Wand2 } from 'lucide-react'
 import { LogoPresetSelector } from '../Logo/LogoPresetSelector'
+import { TitleStyleGallery } from '../Logo/TitleStyles'
 import type { LogoConcept, RenderStyle } from '../../constants/logo-constants'
 
 interface LogoModeSectionProps {
@@ -56,14 +57,20 @@ export function LogoModeSection({
     )
   }
 
-  // Expert Mode: Show preset selector
+  // Expert Mode: Show preset selector + the film/TV title-style library
   return (
-    <LogoPresetSelector
-      onApplyPreset={onApplyPreset}
-      onOpenDotMatrixConfigurator={onOpenDotMatrixConfigurator}
-      onOpenUnifiedConfigurator={onOpenUnifiedConfigurator}
-      onOpenUnifiedConfiguratorWithConfig={onOpenUnifiedConfiguratorWithConfig}
-      disabled={isGenerating || isRemovingRefBg}
-    />
+    <div className="space-y-2">
+      <LogoPresetSelector
+        onApplyPreset={onApplyPreset}
+        onOpenDotMatrixConfigurator={onOpenDotMatrixConfigurator}
+        onOpenUnifiedConfigurator={onOpenUnifiedConfigurator}
+        onOpenUnifiedConfiguratorWithConfig={onOpenUnifiedConfiguratorWithConfig}
+        disabled={isGenerating || isRemovingRefBg}
+      />
+      <TitleStyleGallery
+        onApplyPreset={onApplyPreset}
+        disabled={isGenerating || isRemovingRefBg}
+      />
+    </div>
   )
 }

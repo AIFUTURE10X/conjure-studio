@@ -5,6 +5,9 @@ export { LogoPreviewPanel } from './LogoPreviewPanel'
 export { LogoActionButtons } from './LogoActionButtons'
 export { EraserToolModal } from './EraserToolModal'
 
+// Film/TV title-style reference library
+export { TitleStyleGallery, useTitleStyles } from './TitleStyles'
+
 // Dot Matrix 3D Configurator and sub-components
 export { DotMatrixConfigurator } from './DotMatrixConfigurator'
 export { FancyFontGrid, getFontById, FANCY_FONT_STYLES, FONT_CATEGORIES } from './FancyFontGrid'

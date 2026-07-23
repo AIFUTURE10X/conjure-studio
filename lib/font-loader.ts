@@ -54,13 +54,15 @@ export async function loadGoogleFont(fontFamily: string): Promise<boolean> {
   // Start loading
   const loadPromise = (async () => {
     try {
-      // Find font config
+      // Find font config. Fonts outside LOGO_FONTS (e.g. the title-logo library's
+      // base fonts) get no wght axis at all — many are single-weight families and
+      // the css2 API 400s on a weight the family doesn't publish.
       const fontConfig = LOGO_FONTS.find(f => f.name === fontFamily)
-      const weights = fontConfig?.weight || '400;700'
 
       // Build Google Fonts URL
       const encodedFamily = encodeURIComponent(fontFamily)
-      const fontUrl = `https://fonts.googleapis.com/css2?family=${encodedFamily}:wght@${weights}&display=swap`
+      const axis = fontConfig ? `:wght@${fontConfig.weight}` : ''
+      const fontUrl = `https://fonts.googleapis.com/css2?family=${encodedFamily}${axis}&display=swap`
 
       // Create and append link element
       const link = document.createElement('link')

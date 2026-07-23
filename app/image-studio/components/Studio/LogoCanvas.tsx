@@ -137,10 +137,18 @@ export function LogoCanvas() {
               isRemovingRefBg={handlers.isRemovingRefBg}
               onOpenWizard={() => state.setShowLogoWizard(true)}
               onApplyPreset={(presetPrompt, presetNegative, concept, renderStyles) => {
+                // Write to both stores — the visible PromptDock reads coreState,
+                // the generator reads the logo state. Writing only one leaves the
+                // dock empty while generation still uses the preset.
+                coreState.setMainPrompt(presetPrompt)
                 state.setPrompt(presetPrompt)
-                if (presetNegative) state.setNegativePrompt(presetNegative)
+                if (presetNegative) {
+                  coreState.setNegativePrompt(presetNegative)
+                  state.setNegativePrompt(presetNegative)
+                }
                 state.setSelectedConcept(concept)
                 state.setSelectedRenders(renderStyles)
+                setPromptCollapsed(false)
               }}
               onOpenDotMatrixConfigurator={() => state.setShowDotMatrixConfigurator(true)}
               onOpenUnifiedConfigurator={(presetId) => {
