@@ -12,6 +12,7 @@
 import { useCallback, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { toast } from 'sonner'
 import { postGenerateImage, toDataUrl, type GenerateImageOptions } from './thumbnail-utils'
+import { readApiJson, toImageFile } from '../../utils/api-image-upload'
 import { type ThumbnailConfig } from './thumbnail-constants'
 
 type GenerateOptions = GenerateImageOptions
@@ -114,12 +115,15 @@ export function useThumbnailGenerate({ setConfig, configRef }: Deps) {
       }
       setIsRecoloring(true)
       try {
-        const res = await fetch('/api/recolor-logo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: bg.imageUrl, colors: colorNames.slice(0, 4), preserveMetallic: false }),
-        })
-        const data = (await res.json()) as { image?: string; error?: string }
+        // Multipart, not JSON: backgrounds are base64 data URLs and inlining one
+        // in a JSON body overruns the request-body cap (413, non-JSON response).
+        const form = new FormData()
+        form.append('image', await toImageFile(bg.imageUrl, 'background.png'))
+        colorNames.slice(0, 4).forEach((name) => form.append('colors', name))
+        form.append('preserveMetallic', 'false')
+
+        const res = await fetch('/api/recolor-logo', { method: 'POST', body: form })
+        const data = await readApiJson<{ image?: string; error?: string }>(res)
         if (!res.ok || !data.image) throw new Error(data.error || 'Recolor failed')
         const dataUrl = await toDataUrl(data.image)
         setBgVariations([])
@@ -127,7 +131,7 @@ export function useThumbnailGenerate({ setConfig, configRef }: Deps) {
         toast.success('Background recolored to brand colors')
       } catch (err) {
         console.error('[Thumbnail] recolor failed:', err)
-        toast.error('Recolor failed — try again')
+        toast.error(err instanceof Error ? err.message : 'Recolor failed — try again')
       } finally {
         setIsRecoloring(false)
       }

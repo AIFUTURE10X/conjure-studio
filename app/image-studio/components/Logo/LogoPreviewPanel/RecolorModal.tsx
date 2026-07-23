@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react'
 import { X, Loader2, Palette, Sparkles, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { readApiJson, toImageFile } from '../../../utils/api-image-upload'
 
 // Predefined color palette for quick selection
 const QUICK_COLORS = [
@@ -136,19 +137,17 @@ export function RecolorModal({ isOpen, onClose, logoUrl, onRecolored }: RecolorM
 
     setIsLoading(true)
     try {
-      const response = await fetch('/api/recolor-logo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl: logoUrl,
-          colors: colorNames.filter(c => c),
-          preserveMetallic,
-        }),
-      })
+      // Multipart, not JSON: the logo is a base64 data URL and inlining it in a
+      // JSON body overruns the request-body cap (413, non-JSON response).
+      const formData = new FormData()
+      formData.append('image', await toImageFile(logoUrl, 'logo.png'))
+      colorNames.filter(c => c).forEach((name) => formData.append('colors', name))
+      formData.append('preserveMetallic', preserveMetallic ? 'true' : 'false')
 
-      const data = await response.json()
+      const response = await fetch('/api/recolor-logo', { method: 'POST', body: formData })
+      const data = await readApiJson<{ image?: string; error?: string }>(response)
 
-      if (!response.ok) {
+      if (!response.ok || !data.image) {
         throw new Error(data.error || 'Failed to recolor logo')
       }
 
