@@ -11,12 +11,14 @@
  */
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChevronDown, ChevronUp, Clapperboard, ExternalLink, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Clapperboard, ExternalLink, Loader2, X } from 'lucide-react'
 import { TitleStyleCard } from './TitleStyleCard'
 import { TitleStyleFilters } from './TitleStyleFilters'
 import { useTitleStyles } from './useTitleStyles'
+import { fetchTitleStyleArtwork, type TitleStyleArtwork } from './titleStyleArtwork'
 import { applyTitleStyleTemplate } from '../../../constants/title-logo-presets'
 import { GOLD_GRADIENT, type LogoConcept, type RenderStyle } from '../../../constants/logo-constants'
 
@@ -27,20 +29,49 @@ interface TitleStyleGalleryProps {
     concept: LogoConcept,
     renderStyles: RenderStyle[]
   ) => void
+  /**
+   * Optional. When provided, the gallery offers to also load the reference
+   * artwork into the generator's reference slot. Always handed over in
+   * 'inspire' mode — 'replicate' would aim the model at the original wordmark.
+   */
+  onApplyReference?: (artwork: TitleStyleArtwork) => void
   disabled?: boolean
 }
 
-export function TitleStyleGallery({ onApplyPreset, disabled }: TitleStyleGalleryProps) {
+export function TitleStyleGallery({
+  onApplyPreset,
+  onApplyReference,
+  disabled,
+}: TitleStyleGalleryProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [brandName, setBrandName] = useState('')
+  const [useArtwork, setUseArtwork] = useState(false)
+  const [loadingArtwork, setLoadingArtwork] = useState(false)
   const styles = useTitleStyles()
 
   const { selected } = styles
   const accentFor = (categoryId: string) =>
     styles.approaches.find((a) => a.id === categoryId)?.color ?? '#71717a'
 
-  const handleApply = () => {
-    if (!selected || !brandName.trim()) return
+  const handleApply = async () => {
+    if (!selected || !brandName.trim() || loadingArtwork) return
+
+    // Pull the artwork first — if it fails we keep the panel open so the user
+    // can retry or apply without it, rather than silently dropping the option.
+    let artwork: TitleStyleArtwork | null = null
+    if (useArtwork && onApplyReference) {
+      setLoadingArtwork(true)
+      try {
+        artwork = await fetchTitleStyleArtwork(selected.id)
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Could not load reference artwork'
+        )
+        setLoadingArtwork(false)
+        return
+      }
+      setLoadingArtwork(false)
+    }
 
     onApplyPreset(
       applyTitleStyleTemplate(selected, brandName),
@@ -49,8 +80,14 @@ export function TitleStyleGallery({ onApplyPreset, disabled }: TitleStyleGallery
       selected.renderStyles
     )
 
+    if (artwork && onApplyReference) {
+      onApplyReference(artwork)
+      toast.success(`"${selected.sourceTitle}" applied with its artwork as inspiration.`)
+    }
+
     styles.selectStyle(null)
     setBrandName('')
+    setUseArtwork(false)
     setIsExpanded(false)
   }
 
@@ -150,19 +187,40 @@ export function TitleStyleGallery({ onApplyPreset, disabled }: TitleStyleGallery
                   onChange={(e) => setBrandName(e.target.value)}
                   className="h-8 flex-1 border-zinc-700 bg-zinc-900 text-sm text-white placeholder:text-zinc-500"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && brandName.trim()) handleApply()
+                    if (e.key === 'Enter' && brandName.trim()) void handleApply()
                   }}
                 />
                 <Button
-                  onClick={handleApply}
-                  disabled={!brandName.trim()}
+                  onClick={() => void handleApply()}
+                  disabled={!brandName.trim() || loadingArtwork}
                   size="sm"
                   className="h-8 px-4 text-xs font-semibold text-black disabled:opacity-50"
                   style={{ background: GOLD_GRADIENT }}
                 >
-                  Apply
+                  {loadingArtwork ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
                 </Button>
               </div>
+
+              {/* Opt-in: hand the artwork to the generator as visual inspiration */}
+              {onApplyReference && (
+                <label className="group flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={useArtwork}
+                    onChange={(e) => setUseArtwork(e.target.checked)}
+                    disabled={loadingArtwork}
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-zinc-600 bg-zinc-800 text-[#c99850] focus:ring-0 focus:ring-offset-0"
+                  />
+                  <span className="text-[10px] leading-relaxed text-zinc-400 transition-colors group-hover:text-zinc-300">
+                    Also load the artwork as a visual reference{' '}
+                    <span className="text-zinc-500">
+                      (Inspire mode — the model reads its shapes and finish, but still letters
+                      your brand name. Off by default; the written brief alone usually works
+                      better.)
+                    </span>
+                  </span>
+                </label>
+              )}
 
               <div className="flex flex-wrap items-center gap-2 text-[10px] text-zinc-500">
                 <span>Base font:</span>
@@ -182,8 +240,9 @@ export function TitleStyleGallery({ onApplyPreset, disabled }: TitleStyleGallery
           )}
 
           <p className="text-[10px] leading-relaxed text-zinc-600">
-            Reference artwork via TMDB, shown for selection only — it is never sent to the
-            generator. Applying a style writes an original brief for your brand name.
+            Reference artwork via TMDB, shown for selection. Applying a style writes an
+            original brief for your brand name; the artwork itself only reaches the generator
+            if you opt in above.
           </p>
         </div>
       )}

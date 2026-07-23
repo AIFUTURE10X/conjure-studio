@@ -49,6 +49,14 @@ export function LogoCanvas() {
     toast.success(`"${preset.name}" applied — tweak the prompt or hit Generate.`)
   }
 
+  // Load a title style's artwork into the reference slot. Always Inspire —
+  // Replicate would point the model at the original wordmark.
+  const applyTitleStyleArtwork = (artwork: { file: File; preview: string }) => {
+    if (state.referenceImage?.preview) URL.revokeObjectURL(state.referenceImage.preview)
+    state.setReferenceImage(artwork)
+    state.setReferenceMode('inspire')
+  }
+
   // History restores write the prompt to both stores so the shared
   // PromptDock reflects it and a follow-up generate uses it.
   const restorePrompts = (prompt: string, negativePrompt?: string) => {
@@ -150,6 +158,7 @@ export function LogoCanvas() {
                 state.setSelectedRenders(renderStyles)
                 setPromptCollapsed(false)
               }}
+              onApplyReference={applyTitleStyleArtwork}
               onOpenDotMatrixConfigurator={() => state.setShowDotMatrixConfigurator(true)}
               onOpenUnifiedConfigurator={(presetId) => {
                 state.setSelectedPresetId(presetId)

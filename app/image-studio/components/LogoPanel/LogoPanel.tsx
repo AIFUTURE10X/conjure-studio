@@ -363,6 +363,14 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
               state.setSelectedConcept(concept)
               state.setSelectedRenders(renderStyles)
             }}
+            onApplyReference={(artwork) => {
+              // Always Inspire — Replicate would aim the model at the original wordmark.
+              if (state.referenceImage?.preview) {
+                URL.revokeObjectURL(state.referenceImage.preview)
+              }
+              state.setReferenceImage(artwork)
+              state.setReferenceMode('inspire')
+            }}
             onOpenDotMatrixConfigurator={() => state.setShowDotMatrixConfigurator(true)}
             onOpenUnifiedConfigurator={(presetId) => {
               state.setSelectedPresetId(presetId)

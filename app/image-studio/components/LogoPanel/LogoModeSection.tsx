@@ -17,6 +17,8 @@ interface LogoModeSectionProps {
 
   // Preset handlers
   onApplyPreset: (prompt: string, negative: string | undefined, concept: LogoConcept, renders: RenderStyle[]) => void
+  /** Loads a title style's artwork into the reference slot (Inspire mode) */
+  onApplyReference?: (artwork: { file: File; preview: string }) => void
   onOpenDotMatrixConfigurator: () => void
   onOpenUnifiedConfigurator: (presetId: string) => void
   onOpenUnifiedConfiguratorWithConfig: (presetId: string, config: Record<string, any>) => void
@@ -30,6 +32,7 @@ export function LogoModeSection({
   isRemovingRefBg,
   onOpenWizard,
   onApplyPreset,
+  onApplyReference,
   onOpenDotMatrixConfigurator,
   onOpenUnifiedConfigurator,
   onOpenUnifiedConfiguratorWithConfig,
@@ -69,6 +72,7 @@ export function LogoModeSection({
       />
       <TitleStyleGallery
         onApplyPreset={onApplyPreset}
+        onApplyReference={onApplyReference}
         disabled={isGenerating || isRemovingRefBg}
       />
     </div>
