@@ -6,25 +6,25 @@
  *
  * Applying a style writes a prompt built from that title's recreation brief with
  * the user's brand name substituted in — the aesthetic transfers, the original
- * wordmark does not. Reference artwork is displayed for choosing only; it is
- * never sent to the generator.
+ * wordmark does not — and drives the settings rail (logo type, visual style,
+ * render treatment, typography) to match the design family.
  */
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ChevronDown, ChevronUp, Clapperboard, ExternalLink, Loader2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Clapperboard } from 'lucide-react'
 import { TitleStyleCard } from './TitleStyleCard'
 import { TitleStyleFilters } from './TitleStyleFilters'
+import { TitleStyleSelectedPanel } from './TitleStyleSelectedPanel'
 import { useTitleStyles } from './useTitleStyles'
 import { fetchTitleStyleArtwork, type TitleStyleArtwork } from './titleStyleArtwork'
 import {
   applyTitleStyleTemplate,
   TITLE_STYLE_BACKDROP_PROMPT,
   type TitleStylePreset,
+  type TitleStyleSettings,
 } from '../../../constants/title-logo-presets'
-import { GOLD_GRADIENT, type LogoConcept, type RenderStyle } from '../../../constants/logo-constants'
+import type { LogoConcept, RenderStyle } from '../../../constants/logo-constants'
 
 interface TitleStyleGalleryProps {
   onApplyPreset: (
@@ -45,6 +45,12 @@ interface TitleStyleGalleryProps {
    * survives the pipeline.
    */
   onKeepBackground?: () => void
+  /**
+   * Optional. Drives the settings rail to match the style's design family:
+   * logo type, visual style, render treatment, and typography. Typography
+   * arrives as 'reference-match' when the artwork is also loaded as reference.
+   */
+  onApplyStyleSettings?: (settings: TitleStyleSettings) => void
   disabled?: boolean
 }
 
@@ -52,6 +58,7 @@ export function TitleStyleGallery({
   onApplyPreset,
   onApplyReference,
   onKeepBackground,
+  onApplyStyleSettings,
   disabled,
 }: TitleStyleGalleryProps) {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -97,6 +104,14 @@ export function TitleStyleGallery({
       : applyTitleStyleTemplate(selected, brandName)
 
     onApplyPreset(prompt, selected.negativePrompt, selected.concept, selected.renderStyles)
+
+    // Drive the settings rail to match the design family. With the artwork
+    // loaded as reference, typography follows the reference instead.
+    onApplyStyleSettings?.(
+      artwork
+        ? { ...selected.settings, typography: 'reference-match' }
+        : selected.settings
+    )
 
     if (withBackdrop) {
       onKeepBackground!()
@@ -177,111 +192,21 @@ export function TitleStyleGallery({
             </p>
           )}
 
-          {/* Selected style + apply */}
           {selected && (
-            <div className="space-y-2 border-t border-zinc-700 pt-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-400">Selected:</span>
-                <span className="text-xs font-medium text-white">{selected.sourceTitle}</span>
-                <a
-                  href={selected.referenceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-[#dbb56e]"
-                >
-                  View original <ExternalLink className="h-2.5 w-2.5" />
-                </a>
-                <button
-                  type="button"
-                  onClick={() => handleSelect(null)}
-                  className="ml-auto rounded p-1 hover:bg-zinc-700"
-                >
-                  <X className="h-3 w-3 text-zinc-400" />
-                </button>
-              </div>
-
-              <div className="rounded bg-zinc-900/50 p-2 text-[10px] leading-relaxed text-zinc-500">
-                <span className="text-zinc-400">Brief:</span> {selected.signatureElement}.{' '}
-                {selected.traits.slice(0, 4).join(' · ')}
-              </div>
-
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter your brand name..."
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                  className="h-8 flex-1 border-zinc-700 bg-zinc-900 text-sm text-white placeholder:text-zinc-500"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && brandName.trim()) void handleApply()
-                  }}
-                />
-                <Button
-                  onClick={() => void handleApply()}
-                  disabled={!brandName.trim() || loadingArtwork}
-                  size="sm"
-                  className="h-8 px-4 text-xs font-semibold text-black disabled:opacity-50"
-                  style={{ background: GOLD_GRADIENT }}
-                >
-                  {loadingArtwork ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
-                </Button>
-              </div>
-
-              {/* Glow/neon looks need their dark backdrop — default on for those */}
-              {onKeepBackground && (
-                <label className="group flex cursor-pointer items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={keepBackdrop}
-                    onChange={(e) => setKeepBackdrop(e.target.checked)}
-                    disabled={loadingArtwork}
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-zinc-600 bg-zinc-800 text-[#c99850] focus:ring-0 focus:ring-offset-0"
-                  />
-                  <span className="text-[10px] leading-relaxed text-zinc-400 transition-colors group-hover:text-zinc-300">
-                    Keep the dark backdrop{' '}
-                    <span className="text-zinc-500">
-                      (turns background removal off — glow and atmosphere only survive on their
-                      background{selected.needsBackdrop ? '; recommended for this style' : ''})
-                    </span>
-                  </span>
-                </label>
-              )}
-
-              {/* Opt-in: hand the artwork to the generator as visual inspiration */}
-              {onApplyReference && (
-                <label className="group flex cursor-pointer items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={useArtwork}
-                    onChange={(e) => setUseArtwork(e.target.checked)}
-                    disabled={loadingArtwork}
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-zinc-600 bg-zinc-800 text-[#c99850] focus:ring-0 focus:ring-offset-0"
-                  />
-                  <span className="text-[10px] leading-relaxed text-zinc-400 transition-colors group-hover:text-zinc-300">
-                    Also load the artwork as a visual reference{' '}
-                    <span className="text-zinc-500">
-                      (Inspire mode — the model reads its shapes and finish, but still letters
-                      your brand name. Off by default; the written brief alone usually works
-                      better.)
-                    </span>
-                  </span>
-                </label>
-              )}
-
-              <div className="flex flex-wrap items-center gap-2 text-[10px] text-zinc-500">
-                <span>Base font:</span>
-                <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-zinc-300">
-                  {selected.fontStartingPoint}
-                </span>
-                <span className="rounded bg-zinc-700 px-1.5 py-0.5 capitalize text-zinc-300">
-                  {selected.concept}
-                </span>
-                {selected.renderStyles.map((style) => (
-                  <span key={style} className="rounded bg-zinc-700 px-1.5 py-0.5 text-zinc-300">
-                    {style}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <TitleStyleSelectedPanel
+              selected={selected}
+              brandName={brandName}
+              setBrandName={setBrandName}
+              keepBackdrop={keepBackdrop}
+              setKeepBackdrop={setKeepBackdrop}
+              useArtwork={useArtwork}
+              setUseArtwork={setUseArtwork}
+              loadingArtwork={loadingArtwork}
+              showBackdropOption={Boolean(onKeepBackground)}
+              showArtworkOption={Boolean(onApplyReference)}
+              onApply={() => void handleApply()}
+              onClear={() => handleSelect(null)}
+            />
           )}
 
           <p className="text-[10px] leading-relaxed text-zinc-600">

@@ -1,6 +1,7 @@
 export { TitleStyleGallery } from './TitleStyleGallery'
 export { TitleStyleCard } from './TitleStyleCard'
 export { TitleStyleFilters } from './TitleStyleFilters'
+export { TitleStyleSelectedPanel } from './TitleStyleSelectedPanel'
 export { useTitleStyles } from './useTitleStyles'
 export { useInViewOnce } from './useInViewOnce'
 export { fetchTitleStyleArtwork, type TitleStyleArtwork } from './titleStyleArtwork'

@@ -4,6 +4,7 @@ import { Wand2 } from 'lucide-react'
 import { LogoPresetSelector } from '../Logo/LogoPresetSelector'
 import { TitleStyleGallery } from '../Logo/TitleStyles'
 import type { LogoConcept, RenderStyle } from '../../constants/logo-constants'
+import type { TitleStyleSettings } from '../../constants/title-logo-presets'
 
 interface LogoModeSectionProps {
   logoMode: 'guided' | 'expert'
@@ -21,6 +22,8 @@ interface LogoModeSectionProps {
   onApplyReference?: (artwork: { file: File; preview: string }) => void
   /** Turns background removal off so a glow style's dark backdrop survives */
   onKeepBackground?: () => void
+  /** Drives the settings rail (logo type, visual style, render, typography) */
+  onApplyStyleSettings?: (settings: TitleStyleSettings) => void
   onOpenDotMatrixConfigurator: () => void
   onOpenUnifiedConfigurator: (presetId: string) => void
   onOpenUnifiedConfiguratorWithConfig: (presetId: string, config: Record<string, any>) => void
@@ -36,6 +39,7 @@ export function LogoModeSection({
   onApplyPreset,
   onApplyReference,
   onKeepBackground,
+  onApplyStyleSettings,
   onOpenDotMatrixConfigurator,
   onOpenUnifiedConfigurator,
   onOpenUnifiedConfiguratorWithConfig,
@@ -77,6 +81,7 @@ export function LogoModeSection({
         onApplyPreset={onApplyPreset}
         onApplyReference={onApplyReference}
         onKeepBackground={onKeepBackground}
+        onApplyStyleSettings={onApplyStyleSettings}
         disabled={isGenerating || isRemovingRefBg}
       />
     </div>

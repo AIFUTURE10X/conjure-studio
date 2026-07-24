@@ -160,6 +160,12 @@ export function LogoCanvas() {
               }}
               onApplyReference={applyTitleStyleArtwork}
               onKeepBackground={() => state.setBgRemovalMethod('none')}
+              onApplyStyleSettings={(s) => {
+                state.setLogoType(s.logoType)
+                state.setLogoVisualStyle(s.visualStyle)
+                state.setLogoRenderTreatment(s.renderTreatment)
+                state.setLogoTypographyDirection(s.typography)
+              }}
               onOpenDotMatrixConfigurator={() => state.setShowDotMatrixConfigurator(true)}
               onOpenUnifiedConfigurator={(presetId) => {
                 state.setSelectedPresetId(presetId)

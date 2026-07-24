@@ -19,7 +19,14 @@ import {
   type TitleLogo,
   type LogoDesignApproach,
 } from '@/lib/logo-templates/great-title-logos'
-import type { LogoConcept, RenderStyle } from './logo-constants'
+import type {
+  LogoConcept,
+  RenderStyle,
+  LogoType as LogoMarkType,
+  LogoVisualStyle,
+  LogoRenderTreatment,
+  LogoTypographyDirection,
+} from './logo-constants'
 
 export type TitleStyleCategory =
   | 'ornate-fantasy'
@@ -33,6 +40,14 @@ export type TitleStyleCategory =
   | 'hand-drawn'
 
 export type TitleStyleMedium = 'movie' | 'tv'
+
+/** The settings-rail values a title style drives (mirrors ConjureBrandPreset). */
+export interface TitleStyleSettings {
+  logoType: LogoMarkType
+  visualStyle: LogoVisualStyle
+  renderTreatment: LogoRenderTreatment
+  typography: LogoTypographyDirection
+}
 
 export interface TitleStylePreset {
   id: string
@@ -65,6 +80,8 @@ export interface TitleStylePreset {
    * and then background removal cuts off whatever survives.
    */
   needsBackdrop: boolean
+  /** Settings-rail values to apply alongside the prompt */
+  settings: TitleStyleSettings
 }
 
 interface ApproachMeta {
@@ -75,6 +92,7 @@ interface ApproachMeta {
   color: string
   concept: LogoConcept
   renderStyles: RenderStyle[]
+  settings: TitleStyleSettings
 }
 
 /**
@@ -90,6 +108,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#d4af37',
     concept: 'elegant',
     renderStyles: ['3d-metallic'],
+    settings: { logoType: 'wordmark', visualStyle: 'luxury', renderTreatment: 'metallic', typography: 'elegant-serif' },
   },
   {
     id: 'decorative-ornamental',
@@ -99,6 +118,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#c084fc',
     concept: 'elegant',
     renderStyles: ['flat', '3d'],
+    settings: { logoType: 'wordmark', visualStyle: 'boutique', renderTreatment: 'flat-vector', typography: 'elegant-serif' },
   },
   {
     id: 'art-deco-period',
@@ -108,6 +128,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#eab308',
     concept: 'vintage',
     renderStyles: ['flat', '3d-metallic'],
+    settings: { logoType: 'wordmark', visualStyle: 'vintage', renderTreatment: 'foil', typography: 'geometric' },
   },
   {
     id: 'custom-script',
@@ -117,6 +138,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#f472b6',
     concept: 'elegant',
     renderStyles: ['flat'],
+    settings: { logoType: 'wordmark', visualStyle: 'handcrafted', renderTreatment: 'flat-vector', typography: 'script' },
   },
   {
     id: 'scifi-tech',
@@ -126,6 +148,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#22d3ee',
     concept: 'modern',
     renderStyles: ['neon', '3d-gradient'],
+    settings: { logoType: 'wordmark', visualStyle: 'tech', renderTreatment: 'neon', typography: 'geometric' },
   },
   {
     id: 'horror-distressed',
@@ -135,6 +158,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#ef4444',
     concept: 'bold',
     renderStyles: ['flat', '3d'],
+    settings: { logoType: 'wordmark', visualStyle: 'handcrafted', renderTreatment: 'flat-vector', typography: 'bold-display' },
   },
   {
     id: 'emblem-motif',
@@ -144,6 +168,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#38bdf8',
     concept: 'bold',
     renderStyles: ['flat', '3d-metallic'],
+    settings: { logoType: 'emblem', visualStyle: 'vintage', renderTreatment: 'embossed', typography: 'bold-display' },
   },
   {
     id: 'metallic-3d',
@@ -153,6 +178,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#a1a1aa',
     concept: 'bold',
     renderStyles: ['3d-metallic', '3d-crystal'],
+    settings: { logoType: 'wordmark', visualStyle: 'modern', renderTreatment: 'metallic', typography: 'bold-display' },
   },
   {
     id: 'hand-drawn',
@@ -162,6 +188,7 @@ export const TITLE_STYLE_APPROACHES: ApproachMeta[] = [
     color: '#facc15',
     concept: 'playful',
     renderStyles: ['flat'],
+    settings: { logoType: 'wordmark', visualStyle: 'handcrafted', renderTreatment: 'flat-vector', typography: 'bold-display' },
   },
 ]
 
@@ -237,6 +264,7 @@ function toPreset(logo: TitleLogo): TitleStylePreset {
     referenceUrl: logo.referenceUrl,
     needsLightBackdrop: logo.darkLogo,
     needsBackdrop,
+    settings: approach.settings,
   }
 }
 
