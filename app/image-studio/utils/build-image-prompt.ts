@@ -23,7 +23,22 @@ export interface BuildImagePromptOptions {
   styleStrength: 'subtle' | 'moderate' | 'strong'
   creativeDirection: CreativeDirectionState
   negativePrompt: string
+  /**
+   * True when a reference photo is attached to the request. Adds an explicit
+   * likeness-lock so a heavy restyle (e.g. claymation) re-renders the SAME
+   * person instead of inventing a new one. Conditional phrasing ("if it shows
+   * a person") keeps it a no-op for style/scene references with no subject.
+   */
+  hasReferenceImage?: boolean
 }
+
+/**
+ * Likeness lock for image-to-image restyles. Without this the model treats the
+ * reference as loose inspiration and freely reinvents age/hair/beard — which is
+ * exactly how a bald, clean-shaven user came back as a young bearded stranger.
+ */
+const IDENTITY_PRESERVATION_CLAUSE =
+  'Use the attached reference image as the exact likeness of the subject: if it shows a person, keep it recognizably the SAME individual — preserve their facial structure and features, age, skin tone, head shape and hairline (including baldness), eyebrows, and facial hair — and only re-render them in the requested style, pose, and setting.'
 
 /** Append a sentence fragment without doubling the punctuation ("lamp." + fragment → "lamp. …", not "lamp.. …"). */
 function appendClause(base: string, fragment: string): string {
@@ -38,8 +53,11 @@ export function buildFinalImagePrompt({
   styleStrength,
   creativeDirection,
   negativePrompt,
+  hasReferenceImage = false,
 }: BuildImagePromptOptions): string {
   let prompt = basePrompt
+  // Identity lock goes first so the style clause that follows can't overpower it.
+  if (hasReferenceImage) prompt = appendClause(prompt, IDENTITY_PRESERVATION_CLAUSE)
   if (selectedStylePreset !== 'Realistic') prompt = appendClause(prompt, `Style: ${expandStyleForPrompt(selectedStylePreset)}`)
   if (selectedCameraAngle) prompt = appendClause(prompt, `Camera angle: ${selectedCameraAngle}`)
   if (selectedCameraLens) prompt = appendClause(prompt, `Camera lens: ${selectedCameraLens}`)

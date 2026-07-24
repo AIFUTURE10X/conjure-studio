@@ -9,9 +9,10 @@
  * settings rail via the pending-suggestion context.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BookOpen, Sparkles, Trash2, Wrench } from 'lucide-react'
 import type { AIHelperActiveTask } from '../../hooks/useAIHelper'
+import { dataUrlToImageFile } from '../../utils/annotation-reference'
 import { AIHelperChat } from '../AIHelper/AIHelperChat'
 import { ContextSnapshot } from '../AIHelper/ContextSnapshot'
 import { PromptSuggestionChips } from '../AIHelper/PromptSuggestionChips'
@@ -38,10 +39,35 @@ export function HelperPanel() {
     latestLogoOutput: logoEngine.latestLogoOutput,
   })
 
+  // A photo uploaded INSIDE the AI helper chat only ever became a text prompt —
+  // its pixels were dropped, so "make a claymation of me" generated a stranger.
+  // Carry that photo onto the board's reference slot when a helper suggestion is
+  // applied/generated, so the actual face reaches gpt-image-2's edit path. Refs
+  // let these callbacks (defined before the controller exists) read the latest
+  // uploaded images and current reference without stale closures.
+  const uploadedImagesRef = useRef<string[]>([])
+  const referenceImageRef = useRef<unknown>(state.referenceImage)
+  const ensureReferenceFromHelperUpload = useCallback(async () => {
+    if (referenceImageRef.current) return // never override an explicit board reference
+    const uploads = uploadedImagesRef.current
+    const dataUrl = uploads[uploads.length - 1]
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return
+    try {
+      const file = await dataUrlToImageFile(dataUrl, `ai-helper-reference-${Date.now()}.png`)
+      if (referenceImageRef.current) return // a board reference appeared while converting
+      state.setReferenceImage({ file, preview: dataUrl, mode: 'inspire', source: 'ai-helper' })
+    } catch (error) {
+      console.error('[AI Helper] Failed to carry uploaded photo to the reference slot:', error)
+    }
+  }, [state])
+
   const controller = useAIHelperChatController({
     currentPromptSettings,
     latestOutputs,
-    onApplySuggestions: handleApplyAISuggestions,
+    onApplySuggestions: (suggestions) => {
+      void ensureReferenceFromHelperUpload()
+      handleApplyAISuggestions(suggestions)
+    },
     // Logo applies route through the engine, which writes prompt/negative to
     // both the shared prompt and the lifted logo state in one batch.
     onApplyLogoSuggestions: (suggestions) => {
@@ -57,7 +83,9 @@ export function HelperPanel() {
       if (generateMode === 'image') {
         if (options?.imageCount) state.setImageCount(options.imageCount)
         setMode('image')
-        requestGenerate()
+        // Attach the helper's uploaded photo first, THEN generate — requestGenerate
+        // queues the run for the next render, so the reference is in place by then.
+        void ensureReferenceFromHelperUpload().finally(() => requestGenerate())
         return
       }
       setMode('logo')
@@ -71,6 +99,10 @@ export function HelperPanel() {
     activeTaskContext, forgetPreference,
   } = controller
   const [helperSection, setHelperSection] = useState<'chat' | 'tools' | 'context'>('chat')
+
+  // Keep the refs the apply/generate callbacks read in sync with live state.
+  useEffect(() => { uploadedImagesRef.current = uploadedImages }, [uploadedImages])
+  useEffect(() => { referenceImageRef.current = state.referenceImage }, [state.referenceImage])
 
   // Expose the prompt runner so the PromptDock's "Improve with AI" button can
   // hand the typed idea to the helper. In video mode the VideoHelperPanel

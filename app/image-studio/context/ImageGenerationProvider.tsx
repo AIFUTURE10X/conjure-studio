@@ -107,6 +107,16 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     const imageQuality = state.analysisMode === 'fast' ? 'low' : 'medium'
     const normalizedCreativeDirection = normalizeCreativeDirection(state.creativeDirection)
 
+    // The uploaded photo can live in the dedicated "Reference Image" slot OR in
+    // the prominent "Subject Images" grid — but only the former used to be sent
+    // as pixels, so a selfie dropped in the grid produced a stranger. Fall back
+    // to the selected/first subject image so the front-and-center upload also
+    // reaches gpt-image-2's identity-preserving edit path.
+    const subjectReferenceFile =
+      uploadState.subjectImages.find((img) => img.selected)?.file ?? uploadState.subjectImages[0]?.file
+    const referenceFile = state.referenceImage?.file ?? subjectReferenceFile
+    const referenceMode = state.referenceImage?.mode ?? (referenceFile ? 'inspire' : undefined)
+
     saveParameters({
       mainPrompt: finalPrompt,
       aspectRatio: state.aspectRatio,
@@ -148,6 +158,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       styleStrength: state.styleStrength,
       creativeDirection: normalizedCreativeDirection,
       negativePrompt: state.negativePrompt,
+      hasReferenceImage: Boolean(referenceFile),
     })
 
     try {
@@ -157,8 +168,8 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         count: state.imageCount,
         aspectRatio: state.aspectRatio,
         seed: state.seed,
-        referenceImage: state.referenceImage?.file,
-        referenceMode: state.referenceImage?.mode,
+        referenceImage: referenceFile,
+        referenceMode,
         maskImage: state.referenceImage?.maskFile,
         model: state.selectedModel,
         imageSize: state.imageSize,
@@ -184,7 +195,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error('[v0] Generation error:', e)
     }
-  }, [state, combinedPrompt, generateImages, saveParameters, saveGenerateParams, saveToHistory])
+  }, [state, uploadState, combinedPrompt, generateImages, saveParameters, saveGenerateParams, saveToHistory])
 
   // Queued generation: callers that just applied state changes (e.g. a
   // suggestion patch) request a generate; the effect runs it on the next

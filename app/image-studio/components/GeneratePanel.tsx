@@ -155,6 +155,13 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       onParametersSave?.({ mainPrompt: finalPrompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, seed: activeSeed, creativeDirection: normalizedCreativeDirection })
       onSaveGenerateParams?.({ mainPrompt: finalPrompt, negativePrompt, aspectRatio, selectedStylePreset, selectedCameraAngle, selectedCameraLens, styleStrength, imageSize, selectedModel, generationMode, creativeDirection: normalizedCreativeDirection })
 
+      // A selfie dropped in the "Subject Images" grid must reach the model as
+      // pixels too, not just the buried Reference Image slot — otherwise it only
+      // becomes text and the model invents a different person.
+      const subjectReferenceFile = subjectImages.find((i) => i.selected)?.file ?? subjectImages[0]?.file
+      const referenceFile = referenceImage?.file ?? subjectReferenceFile
+      const referenceMode = referenceImage?.mode ?? (referenceFile ? 'inspire' : undefined)
+
       const prompt = buildFinalImagePrompt({
         basePrompt: finalPrompt,
         selectedStylePreset,
@@ -163,10 +170,11 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
         styleStrength,
         creativeDirection: normalizedCreativeDirection,
         negativePrompt,
+        hasReferenceImage: Boolean(referenceFile),
       })
 
       try {
-        const imgs = await generateImages({ prompt, count: imageCount, aspectRatio, seed: activeSeed, referenceImage: referenceImage?.file, referenceMode: referenceImage?.mode, model: selectedModel, imageSize, imageQuality })
+        const imgs = await generateImages({ prompt, count: imageCount, aspectRatio, seed: activeSeed, referenceImage: referenceFile, referenceMode, model: selectedModel, imageSize, imageQuality })
         if (imgs?.length) { for (const img of imgs) { const m = await getImageMetadata(img.url); await saveToHistory(finalPrompt, aspectRatio, [img.url], { style: selectedStylePreset, dimensions: m.dimensions, fileSize: m.fileSize, creativeDirection: normalizedCreativeDirection }) } }
       } catch (e) { console.error('[v0] Generation error:', e) }
     }
