@@ -144,12 +144,14 @@ export function UploadPanel({
                           <TooltipContent side="right" className="max-w-xs bg-black border-[#c99850] text-[#c99850]">
                             <p className="text-sm">
                               Upload multiple subjects to combine them in your generation.
-                              Select which subjects to include by clicking on them.
+                              Select which subjects to include by clicking on them. A photo of a
+                              person is used as a visual likeness reference, so the result keeps
+                              their face and features.
                             </p>
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <p className="text-sm text-zinc-500">People, products, or objects to include</p>
+                      <p className="text-sm text-zinc-500">People, products, or objects to include — a person&apos;s photo keeps their likeness in the result</p>
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -185,6 +187,12 @@ export function UploadPanel({
                     onChange={handleSubjectFileInput}
                   />
                 </div>
+
+                <p className="mb-3 text-xs leading-4 text-[#dbb56e]/90">
+                  Making &ldquo;a stylized version of me&rdquo;? Drop your photo here — a person you add is
+                  used as the likeness reference, so the generated image keeps their face. No need to
+                  open Advanced settings.
+                </p>
 
                 {/* Drop Zone */}
                 <div

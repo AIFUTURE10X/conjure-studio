@@ -30,6 +30,24 @@ const checks = [
         !/grid md:grid-cols-2 gap-4/.test(panel)
     },
   },
+  {
+    name: 'subject panel tells users an uploaded person is used for likeness',
+    pass: () => /likeness/i.test(read('app/image-studio/components/UploadPanel/UploadPanel.tsx')),
+  },
+  {
+    name: 'subject panel surfaces the stylize-me capability without opening Advanced',
+    pass: () => {
+      const panel = read('app/image-studio/components/UploadPanel/UploadPanel.tsx')
+      return /stylized version/i.test(panel) && /Advanced/i.test(panel)
+    },
+  },
+  {
+    name: 'reference image control no longer reads as a rarely-needed optional extra',
+    pass: () => {
+      const ref = read('app/image-studio/components/GeneratePanel/ReferenceImageUpload.tsx')
+      return !/optional - for image-to-image generation/.test(ref) && /lock a specific/i.test(ref)
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
