@@ -19,7 +19,11 @@ import { TitleStyleCard } from './TitleStyleCard'
 import { TitleStyleFilters } from './TitleStyleFilters'
 import { useTitleStyles } from './useTitleStyles'
 import { fetchTitleStyleArtwork, type TitleStyleArtwork } from './titleStyleArtwork'
-import { applyTitleStyleTemplate } from '../../../constants/title-logo-presets'
+import {
+  applyTitleStyleTemplate,
+  TITLE_STYLE_BACKDROP_PROMPT,
+  type TitleStylePreset,
+} from '../../../constants/title-logo-presets'
 import { GOLD_GRADIENT, type LogoConcept, type RenderStyle } from '../../../constants/logo-constants'
 
 interface TitleStyleGalleryProps {
@@ -35,19 +39,33 @@ interface TitleStyleGalleryProps {
    * 'inspire' mode — 'replicate' would aim the model at the original wordmark.
    */
   onApplyReference?: (artwork: TitleStyleArtwork) => void
+  /**
+   * Optional. Called when the applied style keeps its dark backdrop (glow/neon
+   * looks) — the parent should turn background removal off so the atmosphere
+   * survives the pipeline.
+   */
+  onKeepBackground?: () => void
   disabled?: boolean
 }
 
 export function TitleStyleGallery({
   onApplyPreset,
   onApplyReference,
+  onKeepBackground,
   disabled,
 }: TitleStyleGalleryProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [brandName, setBrandName] = useState('')
   const [useArtwork, setUseArtwork] = useState(false)
+  const [keepBackdrop, setKeepBackdrop] = useState(false)
   const [loadingArtwork, setLoadingArtwork] = useState(false)
   const styles = useTitleStyles()
+
+  // Selecting a style defaults the backdrop choice from its atmosphere flag.
+  const handleSelect = (preset: TitleStylePreset | null) => {
+    styles.selectStyle(preset)
+    setKeepBackdrop(preset?.needsBackdrop ?? false)
+  }
 
   const { selected } = styles
   const accentFor = (categoryId: string) =>
@@ -73,19 +91,26 @@ export function TitleStyleGallery({
       setLoadingArtwork(false)
     }
 
-    onApplyPreset(
-      applyTitleStyleTemplate(selected, brandName),
-      selected.negativePrompt,
-      selected.concept,
-      selected.renderStyles
-    )
+    const withBackdrop = keepBackdrop && Boolean(onKeepBackground)
+    const prompt = withBackdrop
+      ? `${applyTitleStyleTemplate(selected, brandName)} ${TITLE_STYLE_BACKDROP_PROMPT}`
+      : applyTitleStyleTemplate(selected, brandName)
+
+    onApplyPreset(prompt, selected.negativePrompt, selected.concept, selected.renderStyles)
+
+    if (withBackdrop) {
+      onKeepBackground!()
+      toast.info(
+        'Background removal is off for this style — its glow lives on the dark backdrop. Re-enable it in Advanced settings.'
+      )
+    }
 
     if (artwork && onApplyReference) {
       onApplyReference(artwork)
       toast.success(`"${selected.sourceTitle}" applied with its artwork as inspiration.`)
     }
 
-    styles.selectStyle(null)
+    handleSelect(null)
     setBrandName('')
     setUseArtwork(false)
     setIsExpanded(false)
@@ -141,7 +166,7 @@ export function TitleStyleGallery({
                   key={preset.id}
                   preset={preset}
                   isSelected={selected?.id === preset.id}
-                  onSelect={styles.selectStyle}
+                  onSelect={handleSelect}
                   accentColor={accentFor(preset.category)}
                 />
               ))}
@@ -168,7 +193,7 @@ export function TitleStyleGallery({
                 </a>
                 <button
                   type="button"
-                  onClick={() => styles.selectStyle(null)}
+                  onClick={() => handleSelect(null)}
                   className="ml-auto rounded p-1 hover:bg-zinc-700"
                 >
                   <X className="h-3 w-3 text-zinc-400" />
@@ -200,6 +225,26 @@ export function TitleStyleGallery({
                   {loadingArtwork ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
                 </Button>
               </div>
+
+              {/* Glow/neon looks need their dark backdrop — default on for those */}
+              {onKeepBackground && (
+                <label className="group flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={keepBackdrop}
+                    onChange={(e) => setKeepBackdrop(e.target.checked)}
+                    disabled={loadingArtwork}
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-zinc-600 bg-zinc-800 text-[#c99850] focus:ring-0 focus:ring-offset-0"
+                  />
+                  <span className="text-[10px] leading-relaxed text-zinc-400 transition-colors group-hover:text-zinc-300">
+                    Keep the dark backdrop{' '}
+                    <span className="text-zinc-500">
+                      (turns background removal off — glow and atmosphere only survive on their
+                      background{selected.needsBackdrop ? '; recommended for this style' : ''})
+                    </span>
+                  </span>
+                </label>
+              )}
 
               {/* Opt-in: hand the artwork to the generator as visual inspiration */}
               {onApplyReference && (

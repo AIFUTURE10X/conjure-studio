@@ -159,6 +159,7 @@ export function LogoCanvas() {
                 setPromptCollapsed(false)
               }}
               onApplyReference={applyTitleStyleArtwork}
+              onKeepBackground={() => state.setBgRemovalMethod('none')}
               onOpenDotMatrixConfigurator={() => state.setShowDotMatrixConfigurator(true)}
               onOpenUnifiedConfigurator={(presetId) => {
                 state.setSelectedPresetId(presetId)

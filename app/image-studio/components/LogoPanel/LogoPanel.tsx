@@ -371,6 +371,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
               state.setReferenceImage(artwork)
               state.setReferenceMode('inspire')
             }}
+            onKeepBackground={() => state.setBgRemovalMethod('none')}
             onOpenDotMatrixConfigurator={() => state.setShowDotMatrixConfigurator(true)}
             onOpenUnifiedConfigurator={(presetId) => {
               state.setSelectedPresetId(presetId)

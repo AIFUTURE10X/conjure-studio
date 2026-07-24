@@ -58,6 +58,13 @@ export interface TitleStylePreset {
   referenceUrl: string
   /** Dark-inked artwork needs a light backdrop to be legible in the grid */
   needsLightBackdrop: boolean
+  /**
+   * The look depends on atmosphere (glow, neon, aura) that only exists against
+   * a dark backdrop. Applying such a style should keep the generated background
+   * — the default removable-background pipeline explicitly forbids glows/halos
+   * and then background removal cuts off whatever survives.
+   */
+  needsBackdrop: boolean
 }
 
 interface ApproachMeta {
@@ -167,6 +174,27 @@ const BASE_NEGATIVE =
   'movie poster, film still, existing franchise artwork, extra words, tagline, credits block, watermark, misspelled lettering'
 
 /**
+ * Looks that only read correctly with their atmosphere intact. Deliberately
+ * conservative — sparkle or metallic shine alone works fine on transparency;
+ * ambient light bleeding into the background does not.
+ */
+const ATMOSPHERE_PATTERN =
+  /\bglow(?:ing)?\b|\bneon\b(?!\s+colou?rs?\b)|\bluminous\b|\baura\b|\bbacklit\b|\bhalo\b/i
+
+function detectNeedsBackdrop(logo: TitleLogo): boolean {
+  const haystack = [logo.promptSnippet, logo.designBreakdown, ...logo.traits].join(' ')
+  return ATMOSPHERE_PATTERN.test(haystack)
+}
+
+/**
+ * Appended to the prompt when the user keeps the backdrop. Counters the
+ * removable-background guidance ("white background, no glows or halos") that
+ * otherwise suppresses the atmosphere before bg removal even runs.
+ */
+export const TITLE_STYLE_BACKDROP_PROMPT =
+  'Render on a deep black background with the glow and atmosphere radiating softly into it — the dark backdrop is part of the design, do not isolate the lettering on white.'
+
+/**
  * Build a prompt that transfers the treatment onto the user's brand name.
  * The closing clause keeps the model on {{BRAND_NAME}} rather than reproducing
  * the title the brief was derived from.
@@ -189,6 +217,8 @@ function toPreset(logo: TitleLogo): TitleStylePreset {
     )
   }
 
+  const needsBackdrop = detectNeedsBackdrop(logo)
+
   return {
     id: logo.id,
     sourceTitle: logo.title,
@@ -206,6 +236,7 @@ function toPreset(logo: TitleLogo): TitleStylePreset {
     artworkUrl: logo.logoUrl,
     referenceUrl: logo.referenceUrl,
     needsLightBackdrop: logo.darkLogo,
+    needsBackdrop,
   }
 }
 
