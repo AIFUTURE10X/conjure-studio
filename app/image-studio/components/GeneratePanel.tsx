@@ -20,7 +20,7 @@ import { PromptInputs } from './GeneratePanel/PromptInputs'
 import { PresetControls } from './GeneratePanel/PresetControls'
 import { scrollContainerToElement } from '../utils/scroll-utils'
 import { downloadImageAsFile } from '../utils/export-utils'
-import { buildFinalImagePrompt } from '../utils/build-image-prompt'
+import { buildFinalImagePrompt, mergePromptWithReferenceAnalysis } from '../utils/build-image-prompt'
 import {
   normalizeCreativeDirection,
   type CreativeDirectionState,
@@ -149,7 +149,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
     }
 
     const handleGenerate = async () => {
-      const finalPrompt = mainPrompt.trim() || combinedPrompt.trim() || 'a beautiful scene'
+      const finalPrompt = mergePromptWithReferenceAnalysis(mainPrompt, combinedPrompt)
       const imageQuality = generationMode === 'fast' ? 'low' : 'medium'
       const normalizedCreativeDirection = normalizeCreativeDirection(creativeDirection)
       onParametersSave?.({ mainPrompt: finalPrompt, aspectRatio, selectedStylePreset, imageCount, negativePrompt, selectedCameraAngle, selectedCameraLens, styleStrength, seed: activeSeed, creativeDirection: normalizedCreativeDirection })
