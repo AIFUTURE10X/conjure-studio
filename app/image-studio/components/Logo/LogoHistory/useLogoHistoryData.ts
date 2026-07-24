@@ -9,7 +9,7 @@
 
 import { useCallback } from 'react'
 import type { LogoHistoryItem, LogoHistoryState } from './types'
-import { addDeletedIds } from './useLogoHistorySync'
+import { addDeletedIds, getDeletedIds } from './useLogoHistorySync'
 import { getUserId } from '@/lib/user-id'
 
 // Re-export getUserId for backward compatibility
@@ -101,6 +101,17 @@ export function useLogoHistoryData({
     try {
       const savedItem = await saveToNeon(tempItem)
       if (savedItem) {
+        // The user may have deleted the item while the save was in flight —
+        // its tombstone only names the temp id, so the fresh server row would
+        // resurrect on the next sync. Delete it immediately instead.
+        if (getDeletedIds().has(tempItem.id)) {
+          addDeletedIds([savedItem.id])
+          void fetch(`/api/logo-history?id=${encodeURIComponent(savedItem.id)}&userId=${encodeURIComponent(getUserId())}`, {
+            method: 'DELETE'
+          }).catch(() => {})
+          console.log('[Logo History] Item deleted mid-save; removed fresh Neon row:', savedItem.id)
+          return tempItem.id
+        }
         setState(prev => {
           const updatedItems = prev.items.map(i => i.id === tempItem.id ? savedItem : i)
           saveToLocal(updatedItems)
@@ -169,6 +180,10 @@ export function useLogoHistoryData({
       return { ...prev, items: updatedItems }
     })
     setSelectedForComparison(prev => prev.filter(itemId => itemId !== id))
+
+    // temp-/local- ids don't exist in Neon (the DELETE would 400); if a save is
+    // in flight, addToHistory's tombstone check removes the fresh row itself.
+    if (!/^\d+$/.test(id)) return
 
     try {
       const response = await fetch(`/api/logo-history?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(getUserId())}`, {

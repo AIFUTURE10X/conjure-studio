@@ -97,7 +97,9 @@ export function useLogoHistory() {
 
     try {
       const userId = getUserId()
-      const deletePromises = idsToDelete.map(id =>
+      // temp-/local- ids don't exist in Neon; the mid-save tombstone check in
+      // addToHistory cleans those up if their save lands later.
+      const deletePromises = idsToDelete.filter(id => /^\d+$/.test(id)).map(id =>
         fetch(`/api/logo-history?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(userId)}`, {
           method: 'DELETE'
         }).then(res => {

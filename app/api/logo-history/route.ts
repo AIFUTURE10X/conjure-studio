@@ -31,6 +31,9 @@ function localOnlyResponse(body: Record<string, unknown> = {}, init?: ResponseIn
 
 const getQuerySchema = z.object({ userId: userIdSchema })
 
+/** Rows the app keeps per user (favorited rows are never pruned) — matches GET's LIMIT. */
+const RETENTION_LIMIT = 100
+
 const postBodySchema = z.object({
   userId: userIdSchema,
   imageUrl: urlOrDataUriSchema,
@@ -51,7 +54,11 @@ const patchBodySchema = z.object({
   rating: z.number().int().min(1).max(5).optional().nullable(),
 })
 
-const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
+const deleteQuerySchema = z.object({
+  id: numericIdSchema.optional(),
+  userId: userIdSchema,
+  all: z.literal('true').optional(),
+})
 
 // GET /api/logo-history?userId=xxx
 export async function GET(request: NextRequest) {
@@ -69,8 +76,16 @@ export async function GET(request: NextRequest) {
     await ensureLogoHistorySchema(sql)
     console.log('[Logo History] Loading history for user:', userId)
 
+    // No SELECT *: legacy rows can inline a multi-MB base64 data URI, and the
+    // Neon HTTP driver rejects responses over 64MB — enough of those rows in
+    // one page 500s the whole history. Resolve the display URL in SQL and drop
+    // data: URIs there so the response stays bounded.
     const result = await sql`
-      SELECT * FROM public.logo_history
+      SELECT id, prompt, negative_prompt, preset_id, seed, style, config,
+             is_favorited, rating, created_at,
+             CASE WHEN COALESCE(blob_url, image_url) LIKE 'data:%' THEN NULL
+                  ELSE COALESCE(blob_url, image_url) END AS url
+      FROM public.logo_history
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
       LIMIT 100
@@ -78,9 +93,11 @@ export async function GET(request: NextRequest) {
 
     console.log('[Logo History] Loaded from Neon:', result.length)
 
-    const history = result.map(item => ({
+    const history = result
+      .filter(item => typeof item.url === 'string' && item.url.length > 0)
+      .map(item => ({
       id: item.id.toString(),
-      imageUrl: item.blob_url || item.image_url,
+      imageUrl: item.url,
       prompt: item.prompt,
       negativePrompt: item.negative_prompt,
       presetId: item.preset_id,
@@ -190,6 +207,26 @@ export async function POST(request: NextRequest) {
 
     console.log('[Logo History] Saved to Neon with ID:', result[0].id)
 
+    // Enforce retention on write: everything past the newest RETENTION_LIMIT
+    // rows is invisible to the UI (GET LIMIT + client caches cap at 100) and
+    // only exists to resurrect "deleted" items on later syncs. Favorited rows
+    // are always kept. A prune failure must never fail the save.
+    try {
+      await sql`
+        DELETE FROM public.logo_history
+        WHERE user_id = ${userId}
+          AND is_favorited IS NOT TRUE
+          AND id NOT IN (
+            SELECT id FROM public.logo_history
+            WHERE user_id = ${userId}
+            ORDER BY created_at DESC, id DESC
+            LIMIT ${RETENTION_LIMIT}
+          )
+      `
+    } catch (pruneError) {
+      console.error('[Logo History] Retention prune failed:', pruneError)
+    }
+
     const historyItem = {
       id: result[0].id.toString(),
       imageUrl: result[0].blob_url || result[0].image_url,
@@ -251,7 +288,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// DELETE /api/logo-history?id=xxx&userId=xxx
+// DELETE /api/logo-history?userId=xxx&(id=xxx | all=true)
 export async function DELETE(request: NextRequest) {
   const parsedQuery = parseParams(Object.fromEntries(request.nextUrl.searchParams), deleteQuerySchema)
   if (parsedQuery.response) return parsedQuery.response
@@ -260,21 +297,37 @@ export async function DELETE(request: NextRequest) {
     return localOnlyResponse({ success: true })
   }
 
-  const { id } = parsedQuery.data
+  const { id, all } = parsedQuery.data
+  if (!all && id === undefined) {
+    return apiError(400, 'invalid_request', 'Provide id or all=true')
+  }
+
   const userId = await resolveUserId(request, parsedQuery.data.userId)
 
   try {
     const sql = getSQL()
     await ensureLogoHistorySchema(sql)
+
+    if (all) {
+      // True server-side wipe. The old client-side Clear All deleted only the
+      // ~100 visible items, so rows beyond the GET window survived and came
+      // back on the next sync.
+      const deleted = await sql`
+        DELETE FROM public.logo_history WHERE user_id = ${userId} RETURNING id
+      `
+      console.log('[Logo History] Cleared all for user:', userId, '—', deleted.length, 'rows')
+      return NextResponse.json({ success: true, deletedCount: deleted.length })
+    }
+
     console.log('[Logo History] Deleting item:', id)
 
-    await sql`
-      DELETE FROM public.logo_history WHERE id = ${id} AND user_id = ${userId}
+    const deleted = await sql`
+      DELETE FROM public.logo_history WHERE id = ${id} AND user_id = ${userId} RETURNING id
     `
 
-    console.log('[Logo History] Removed from Neon')
+    console.log('[Logo History] Removed from Neon:', deleted.length, 'row(s)')
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, deletedCount: deleted.length })
   } catch (error) {
     console.error('[Logo History] Delete failed:', error)
     return apiError(500, 'internal_error', 'Failed to delete history item')

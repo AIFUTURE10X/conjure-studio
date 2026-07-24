@@ -20,7 +20,7 @@ const DELETED_IDS_KEY = 'logo-history-deleted-ids'
 let syncInFlight = false
 
 // Track deleted IDs to prevent them from coming back
-function getDeletedIds(): Set<string> {
+export function getDeletedIds(): Set<string> {
   try {
     const data = localStorage.getItem(DELETED_IDS_KEY)
     const ids = data ? new Set<string>(JSON.parse(data)) : new Set<string>()
@@ -131,6 +131,16 @@ export function useLogoHistorySync({
           for (const item of unsynced) {
             const savedItem = await saveToNeon(item)
             if (savedItem) {
+              // Deleted while the save was in flight? Kill the fresh server row
+              // right away — otherwise it comes back on the next sync under an
+              // id no tombstone knows about.
+              if (getDeletedIds().has(item.id)) {
+                addDeletedIds([savedItem.id])
+                void fetch(`/api/logo-history?id=${encodeURIComponent(savedItem.id)}&userId=${encodeURIComponent(getUserId())}`, {
+                  method: 'DELETE'
+                }).catch(() => {})
+                continue
+              }
               setState(prev => {
                 const updatedItems = prev.items.map(i => (i.id === item.id ? savedItem : i))
                 saveToLocal(updatedItems)
@@ -180,24 +190,24 @@ export function useLogoHistorySync({
     // Track deleted IDs BEFORE making API calls to prevent race conditions
     addDeletedIds(idsToDelete)
 
+    // Clear the UI and local cache immediately; tombstones keep the wipe
+    // sticky even if the server call below fails.
+    localStorage.removeItem(LOCAL_STORAGE_KEY)
+    setState({ items: [], isLoading: false, isSyncing: false })
+    setSelectedForComparison([])
+
     try {
+      // One server-side wipe of ALL the user's rows. Deleting the visible
+      // items one by one left everything beyond the 100-item GET window in
+      // Neon, and those ghost rows are what kept coming back after a sync.
       const userId = getUserId()
-      const deletePromises = itemsToDelete.map(item =>
-        fetch(`/api/logo-history?id=${encodeURIComponent(item.id)}&userId=${encodeURIComponent(userId)}`, {
-          method: 'DELETE'
-        }).then(res => {
-          if (!res.ok) throw new Error(`Failed to delete ${item.id}`)
-          return item.id
-        })
-      )
+      const res = await fetch(`/api/logo-history?userId=${encodeURIComponent(userId)}&all=true`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) throw new Error(`Clear all failed: ${res.status}`)
 
-      await Promise.all(deletePromises)
       console.log('[Logo History] All items deleted from Neon')
-
-      localStorage.removeItem(LOCAL_STORAGE_KEY)
-      clearDeletedIds() // Clear tracking since DB is now clean
-      setState({ items: [], isLoading: false, isSyncing: false })
-      setSelectedForComparison([])
+      clearDeletedIds() // DB confirmed clean — tracking no longer needed
     } catch (err) {
       console.error('[Logo History] Failed to clear all:', err)
       // Keep deleted IDs tracked even on error to prevent items coming back

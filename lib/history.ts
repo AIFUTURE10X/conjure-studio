@@ -290,9 +290,11 @@ export async function deleteHistoryItem(id: string): Promise<void> {
     // back — the URL tombstone covers rows whose Neon id differs from the
     // cached id (legacy UUID entries) or whose Neon DELETE fails below.
     addDeletedId(id)
+    let cachedUrls: string[] = []
     try {
       const cached = (await getHistoryDurable()).find((item) => item.id === id)
         ?? getHistory().find((item) => item.id === id)
+      cachedUrls = cached?.imageUrls ?? []
       addDeletedUrls(cached?.imageUrls)
     } catch {
       // Tombstoning by id still applies.
@@ -308,11 +310,22 @@ export async function deleteHistoryItem(id: string): Promise<void> {
       // localStorage quota — the durable IndexedDB delete above is what matters.
     }
 
-    // Also delete from Neon database
+    // Also delete from Neon. Send the id only when it's a real Neon serial id
+    // (legacy cached items carry client UUIDs Neon has never heard of), and
+    // always send the item's image URLs — the server deletes any row holding
+    // them, so a mismatched id can no longer leave a resurrectable row behind.
     try {
-      const response = await fetch(`/api/history?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(getUserId())}`, {
-        method: 'DELETE'
-      })
+      const params = new URLSearchParams({ userId: getUserId() })
+      if (/^\d+$/.test(id)) params.set('id', id)
+      for (const url of cachedUrls.filter((u) => /^https?:\/\//.test(u)).slice(0, 10)) {
+        params.append('url', url)
+      }
+      if (!params.has('id') && !params.has('url')) {
+        console.log('[v0] Local-only history item, nothing to delete in Neon:', id)
+        return
+      }
+
+      const response = await fetch(`/api/history?${params.toString()}`, { method: 'DELETE' })
 
       if (response.ok) {
         console.log('[v0] Deleted from Neon:', id)
@@ -343,18 +356,19 @@ export async function clearHistory(): Promise<void> {
     await indexedDBHelper.clearAllHistory().catch(() => {})
     localStorage.removeItem(HISTORY_KEY)
 
-    // Delete each item from Neon
-    let allRemoteDeletesSucceeded = true
-    for (const item of history) {
-      try {
-        const response = await fetch(`/api/history?id=${encodeURIComponent(item.id)}&userId=${encodeURIComponent(getUserId())}`, {
-          method: 'DELETE'
-        })
-        if (!response.ok) allRemoteDeletesSucceeded = false
-      } catch (err) {
-        allRemoteDeletesSucceeded = false
-        console.error('[v0] Failed to delete item from Neon:', item.id, err)
-      }
+    // Wipe the user's rows server-side in one call. Per-item deletes only ever
+    // covered the ~100 cached items, so rows beyond the GET window survived
+    // and resurfaced on the next sync.
+    let allRemoteDeletesSucceeded = false
+    try {
+      const response = await fetch(
+        `/api/history?userId=${encodeURIComponent(getUserId())}&all=true`,
+        { method: 'DELETE' },
+      )
+      allRemoteDeletesSucceeded = response.ok
+      if (!response.ok) console.error('[v0] Neon clear-all failed:', response.status)
+    } catch (err) {
+      console.error('[v0] Neon clear-all failed:', err)
     }
 
     // Only drop the tombstones once the cloud is confirmed clean. Clearing
