@@ -87,7 +87,7 @@ export function PromptLibraryModal({ open, onOpenChange, onUsePrompt, defaultFil
       .catch(() => toast.error('Could not delete prompt'))
   }
 
-  const usePromptItem = (item: SavedPrompt) => {
+  const handleUsePrompt = (item: SavedPrompt) => {
     const kind: PromptKind = item.kind === 'video' ? 'video' : item.kind === 'logo' ? 'logo' : 'image'
     onUsePrompt(item.prompt, kind)
     onOpenChange(false)
@@ -161,7 +161,7 @@ export function PromptLibraryModal({ open, onOpenChange, onUsePrompt, defaultFil
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => usePromptItem(item)}
+                    onClick={() => handleUsePrompt(item)}
                     className="px-2 py-1 rounded-md text-[11px] font-medium bg-[#c99850]/10 text-[#dbb56e] hover:bg-[#c99850]/20 transition-colors"
                   >
                     Use

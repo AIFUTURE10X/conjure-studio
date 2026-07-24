@@ -115,7 +115,6 @@ function HeroFrameStatus({ beat, onGenerateFrame }: { beat: BrollBeat; onGenerat
         title="Regenerate this keyframe"
         className="flex items-center gap-1.5 group"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={beat.frameUrl} alt="" className="h-10 rounded border border-zinc-700 object-cover" />
         <RotateCw className="w-3 h-3 text-zinc-500 group-hover:text-white" />
       </button>
