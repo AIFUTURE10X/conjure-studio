@@ -258,17 +258,51 @@ BACKGROUND HANDLING:
 - Keep logo edges crisp and avoid background shadows, glows, halos, or textures that can be mistaken for part of the logo`
 }
 
+/**
+ * Replicate mode: the attached image outranks the typed style words for color,
+ * material, and effects. Style briefs are written by eye and drift (a "gold"
+ * description over silver-and-rust art) — when wording and pixels disagree,
+ * the pixels win. The typed prompt stays authoritative for the text to letter,
+ * the background choice, and explicit change requests.
+ */
+function getReplicateColorFidelityRequirements(sampledPalette?: string | null): string {
+  const paletteBlock = sampledPalette?.trim() ? `\n\n${sampledPalette.trim()}` : ''
+
+  return `
+COLOR & FINISH FIDELITY — THE ATTACHED IMAGE IS THE COLOR AUTHORITY:
+- Sample the actual colors from the attached reference and reproduce them zone by zone: the highlight tone, the midtone material, the shadow/recess tone, and the color and strength of any glow around the letters
+- If the reference mixes tones or metals (e.g. silver-white highlights over bronze with dark rust patina in the recesses), reproduce that exact mix — do NOT unify the lettering into one uniform metal such as all-gold or all-chrome
+- Match any glow to the reference: same hue, same softness, same intensity — do not substitute a brighter or warmer golden bloom
+- Match weathering: keep rust, patina, tarnish, grain, and texture at the same density and character as the reference
+- Add no sparkles, light rays, lens flares, or extra shine the reference does not show
+- Style adjectives in the USER REQUEST describe this same reference; wherever the wording and the image disagree about color or finish, FOLLOW THE IMAGE. Deviate only where the request explicitly asks for a change (e.g. "make it blue instead")${paletteBlock}`
+}
+
+function getReplicateUserPromptPriorityRequirements(): string {
+  return `
+USER PROMPT PRIORITY (REPLICATE MODE):
+- The typed prompt is the source of truth for the exact text to letter, the layout intent, and the background choice
+- The attached image is the source of truth for palette, materials, finish, and effects unless the typed prompt explicitly requests a change`
+}
+
 export function buildReferenceLogoPrompt(
   userPrompt: string,
   referenceMode: LogoReferenceMode = 'inspire',
   textMode: LogoTextMode = 'ai-text',
-  backgroundMode: LogoBackgroundMode = 'removable'
+  backgroundMode: LogoBackgroundMode = 'removable',
+  sampledPalette?: string | null
 ): string {
-  const modeGuidance = referenceMode === 'replicate'
+  const isReplicate = referenceMode === 'replicate'
+  const modeGuidance = isReplicate
     ? `- Replicate the attached reference as closely as possible
 - Copy the reference font/typeface, letter shapes, spacing, proportions, colors, layout, and effects unless the typed prompt requests a specific change`
     : `- Use the attached reference as the primary style guide
 - Preserve the reference typography direction, letterform character, stroke weight, spacing, alignment, palette, and composition while applying the typed changes`
+
+  const colorFidelity = isReplicate ? `\n${getReplicateColorFidelityRequirements(sampledPalette)}\n` : ''
+  const promptPriority = isReplicate
+    ? getReplicateUserPromptPriorityRequirements()
+    : getUserPromptPriorityRequirements()
 
   return `Create a professional logo using the attached reference image.
 
@@ -277,11 +311,11 @@ ${modeGuidance}
 - The reference image is the authority for typography and layout
 - Do not replace the reference font style with the app's default logo style
 - Do not add generic 3D metallic, dot matrix, neon, blue background, or dark presentation styling unless explicitly requested
-
+${colorFidelity}
 USER REQUEST:
 ${userPrompt}
 
-${getUserPromptPriorityRequirements()}
+${promptPriority}
 
 ${getReferenceTextHandlingRequirements(textMode)}
 

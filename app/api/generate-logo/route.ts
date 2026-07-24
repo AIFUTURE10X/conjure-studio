@@ -11,6 +11,7 @@ import {
   upscaleLogoIfNeeded,
 } from "./logo-image-pipeline"
 import { buildFreeFormLogoPrompt, buildLogoPrompt, buildReferenceLogoPrompt, type LogoBackgroundMode } from "./logo-prompts"
+import { sampleReferencePalette } from "./reference-palette"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -55,8 +56,14 @@ async function handlePost(request: NextRequest) {
       : logoRequest.bgRemovalMethod === 'none' || logoRequest.skipBgRemoval
         ? 'presentation'
         : 'removable'
+    // Replicate mode states the reference's measured colors in the prompt —
+    // explicit color words beat "copy the reference" when briefs drift.
+    const sampledPalette = logoRequest.referenceImage && logoRequest.referenceMode === 'replicate'
+      ? await sampleReferencePalette(logoRequest.referenceImage)
+      : null
+
     let enhancedPrompt = logoRequest.referenceImage
-      ? buildReferenceLogoPrompt(logoRequest.prompt, logoRequest.referenceMode, logoRequest.textMode, backgroundMode)
+      ? buildReferenceLogoPrompt(logoRequest.prompt, logoRequest.referenceMode, logoRequest.textMode, backgroundMode, sampledPalette)
       : useFreeFormPrompt
         ? buildFreeFormLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
         : buildLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
