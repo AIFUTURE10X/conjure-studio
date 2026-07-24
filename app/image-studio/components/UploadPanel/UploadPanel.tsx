@@ -145,13 +145,13 @@ export function UploadPanel({
                             <p className="text-sm">
                               Upload multiple subjects to combine them in your generation.
                               Select which subjects to include by clicking on them. A photo of a
-                              person is used as a visual likeness reference, so the result keeps
-                              their face and features.
+                              person is used as a visual likeness reference, so the result
+                              resembles them rather than an unrelated stranger.
                             </p>
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <p className="text-sm text-zinc-500">People, products, or objects to include — a person&apos;s photo keeps their likeness in the result</p>
+                      <p className="text-sm text-zinc-500">People, products, or objects to include — an uploaded person is used as a likeness reference</p>
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -190,7 +190,7 @@ export function UploadPanel({
 
                 <p className="mb-3 text-xs leading-4 text-[#dbb56e]/90">
                   Making &ldquo;a stylized version of me&rdquo;? Drop your photo here — a person you add is
-                  used as the likeness reference, so the generated image keeps their face. No need to
+                  used as a likeness reference, so the generated image resembles them. No need to
                   open Advanced settings.
                 </p>
 

@@ -63,7 +63,7 @@ export function ReferenceImageUpload({
   return (
     <div className="bg-zinc-800 rounded-lg p-3 border-2 border-[#c99850]/50">
       <label className="text-xs font-bold text-white mb-2 block">
-        Reference Image — lock a specific person or subject&apos;s exact appearance
+        Reference Image — steer the result toward a specific person or subject&apos;s likeness
       </label>
       {referenceImage ? (
         <div className="space-y-2">
@@ -127,7 +127,7 @@ export function ReferenceImageUpload({
           <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#c99850] to-[#dbb56e] border-2 border-[#f4d698] flex items-center justify-center mx-auto mb-2">
             <Upload className="w-6 h-6 text-black" />
           </div>
-          <p className="text-[10px] text-white/70">Click to upload a person or subject to keep their appearance</p>
+          <p className="text-[10px] text-white/70">Click to upload a person or subject to use as a likeness reference</p>
           <p className="text-[8px] text-white/60">JPEG, PNG, WebP (max 10MB)</p>
         </button>
       )}
