@@ -49,12 +49,15 @@ export function LogoCanvas() {
     toast.success(`"${preset.name}" applied — tweak the prompt or hit Generate.`)
   }
 
-  // Load a title style's artwork into the reference slot. Always Inspire —
-  // Replicate would point the model at the original wordmark.
-  const applyTitleStyleArtwork = (artwork: { file: File; preview: string }) => {
+  // Load a title style's artwork into the reference slot. Replicate copies its
+  // palette and finish; the prompt's exact-text clause keeps the brand name.
+  const applyTitleStyleArtwork = (
+    artwork: { file: File; preview: string },
+    mode: 'replicate' | 'inspire'
+  ) => {
     if (state.referenceImage?.preview) URL.revokeObjectURL(state.referenceImage.preview)
     state.setReferenceImage(artwork)
-    state.setReferenceMode('inspire')
+    state.setReferenceMode(mode)
   }
 
   // History restores write the prompt to both stores so the shared

@@ -363,13 +363,14 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
               state.setSelectedConcept(concept)
               state.setSelectedRenders(renderStyles)
             }}
-            onApplyReference={(artwork) => {
-              // Always Inspire — Replicate would aim the model at the original wordmark.
+            onApplyReference={(artwork, mode) => {
+              // Replicate copies the palette and finish; the prompt's exact-text
+              // clause keeps the lettering on the brand name.
               if (state.referenceImage?.preview) {
                 URL.revokeObjectURL(state.referenceImage.preview)
               }
               state.setReferenceImage(artwork)
-              state.setReferenceMode('inspire')
+              state.setReferenceMode(mode)
             }}
             onKeepBackground={() => state.setBgRemovalMethod('none')}
             onApplyStyleSettings={(s) => {

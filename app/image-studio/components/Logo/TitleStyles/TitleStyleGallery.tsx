@@ -35,10 +35,11 @@ interface TitleStyleGalleryProps {
   ) => void
   /**
    * Optional. When provided, the gallery offers to also load the reference
-   * artwork into the generator's reference slot. Always handed over in
-   * 'inspire' mode — 'replicate' would aim the model at the original wordmark.
+   * artwork into the generator's reference slot. 'replicate' copies the
+   * palette and finish closely (the prompt still letters the brand name);
+   * 'inspire' treats it as a looser style guide.
    */
-  onApplyReference?: (artwork: TitleStyleArtwork) => void
+  onApplyReference?: (artwork: TitleStyleArtwork, mode: 'replicate' | 'inspire') => void
   /**
    * Optional. Called when the applied style keeps its dark backdrop (glow/neon
    * looks) — the parent should turn background removal off so the atmosphere
@@ -64,6 +65,10 @@ export function TitleStyleGallery({
   const [isExpanded, setIsExpanded] = useState(false)
   const [brandName, setBrandName] = useState('')
   const [useArtwork, setUseArtwork] = useState(false)
+  // Replicate by default: it copies the reference palette and finish, which is
+  // what picking a specific title treatment asks for. The prompt's exact-text
+  // clause keeps the lettering on the user's brand name.
+  const [artworkMode, setArtworkMode] = useState<'replicate' | 'inspire'>('replicate')
   const [keepBackdrop, setKeepBackdrop] = useState(false)
   const [loadingArtwork, setLoadingArtwork] = useState(false)
   const styles = useTitleStyles()
@@ -121,8 +126,12 @@ export function TitleStyleGallery({
     }
 
     if (artwork && onApplyReference) {
-      onApplyReference(artwork)
-      toast.success(`"${selected.sourceTitle}" applied with its artwork as inspiration.`)
+      onApplyReference(artwork, artworkMode)
+      toast.success(
+        artworkMode === 'replicate'
+          ? `"${selected.sourceTitle}" applied — replicating its artwork with your brand name.`
+          : `"${selected.sourceTitle}" applied with its artwork as inspiration.`
+      )
     }
 
     handleSelect(null)
@@ -201,6 +210,8 @@ export function TitleStyleGallery({
               setKeepBackdrop={setKeepBackdrop}
               useArtwork={useArtwork}
               setUseArtwork={setUseArtwork}
+              artworkMode={artworkMode}
+              setArtworkMode={setArtworkMode}
               loadingArtwork={loadingArtwork}
               showBackdropOption={Boolean(onKeepBackground)}
               showArtworkOption={Boolean(onApplyReference)}

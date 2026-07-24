@@ -18,8 +18,11 @@ interface LogoModeSectionProps {
 
   // Preset handlers
   onApplyPreset: (prompt: string, negative: string | undefined, concept: LogoConcept, renders: RenderStyle[]) => void
-  /** Loads a title style's artwork into the reference slot (Inspire mode) */
-  onApplyReference?: (artwork: { file: File; preview: string }) => void
+  /** Loads a title style's artwork into the reference slot in the given mode */
+  onApplyReference?: (
+    artwork: { file: File; preview: string },
+    mode: 'replicate' | 'inspire'
+  ) => void
   /** Turns background removal off so a glow style's dark backdrop survives */
   onKeepBackground?: () => void
   /** Drives the settings rail (logo type, visual style, render, typography) */

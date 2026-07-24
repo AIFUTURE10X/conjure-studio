@@ -20,6 +20,8 @@ interface TitleStyleSelectedPanelProps {
   setKeepBackdrop: (value: boolean) => void
   useArtwork: boolean
   setUseArtwork: (value: boolean) => void
+  artworkMode: 'replicate' | 'inspire'
+  setArtworkMode: (value: 'replicate' | 'inspire') => void
   loadingArtwork: boolean
   showBackdropOption: boolean
   showArtworkOption: boolean
@@ -35,6 +37,8 @@ export function TitleStyleSelectedPanel({
   setKeepBackdrop,
   useArtwork,
   setUseArtwork,
+  artworkMode,
+  setArtworkMode,
   loadingArtwork,
   showBackdropOption,
   showArtworkOption,
@@ -118,11 +122,41 @@ export function TitleStyleSelectedPanel({
           <span className="text-[10px] leading-relaxed text-zinc-400 transition-colors group-hover:text-zinc-300">
             Also load the artwork as a visual reference{' '}
             <span className="text-zinc-500">
-              (Inspire mode — the model reads its shapes and finish, but still letters your
-              brand name. Sets Typography to Reference Match.)
+              (the model reads its palette, shapes and finish, but still letters your brand
+              name. Sets Typography to Reference Match.)
             </span>
           </span>
         </label>
+      )}
+
+      {/* How closely the reference is followed — only relevant once it's loaded */}
+      {showArtworkOption && useArtwork && (
+        <div className="ml-5 flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/50 p-1">
+          <button
+            type="button"
+            onClick={() => setArtworkMode('replicate')}
+            disabled={loadingArtwork}
+            className={`flex-1 rounded-md px-3 py-1 text-[10px] font-medium transition-all ${
+              artworkMode === 'replicate'
+                ? 'border border-purple-500/30 bg-purple-500/20 text-purple-400'
+                : 'text-zinc-400 hover:bg-zinc-700 hover:text-white'
+            }`}
+          >
+            Replicate — match its colors &amp; finish
+          </button>
+          <button
+            type="button"
+            onClick={() => setArtworkMode('inspire')}
+            disabled={loadingArtwork}
+            className={`flex-1 rounded-md px-3 py-1 text-[10px] font-medium transition-all ${
+              artworkMode === 'inspire'
+                ? 'border border-amber-500/30 bg-amber-500/20 text-amber-400'
+                : 'text-zinc-400 hover:bg-zinc-700 hover:text-white'
+            }`}
+          >
+            Inspire — looser style guide
+          </button>
+        </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2 text-[10px] text-zinc-500">
