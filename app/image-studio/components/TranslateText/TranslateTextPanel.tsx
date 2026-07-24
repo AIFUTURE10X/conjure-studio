@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Copy, FileText, Languages, Loader2, Upload, Wand2, X } from 'lucide-react'
-import { useStudioCore, useStudioMode } from '../../context/useStudio'
+import { useStudioCore, useStudioMode, useStudioReset } from '../../context/useStudio'
 
 type TargetLanguage = 'English' | 'Thai'
 
@@ -187,6 +187,28 @@ export function TranslateTextPanel() {
     setError(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
+
+  // Reset the Translate tab to defaults: drop the uploaded image (revoking its
+  // object URL), clear the translation result/error, return the target
+  // language to English, and reset the transient flags. All setters/refs are
+  // stable, so this closure never needs re-registering.
+  const { registerReset } = useStudioReset()
+  const handleResetTranslateTab = useCallback(() => {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current)
+      previewObjectUrlRef.current = null
+    }
+    setFile(null)
+    setPreviewUrl(null)
+    setResult(null)
+    setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setTargetLanguage('English')
+    setIsDragging(false)
+    setIsTranslating(false)
+    setCopiedKey(null)
+  }, [])
+  useEffect(() => registerReset('translate', handleResetTranslateTab), [registerReset, handleResetTranslateTab])
 
   return (
     <div className="h-full overflow-y-auto bg-zinc-950 px-4 py-4">

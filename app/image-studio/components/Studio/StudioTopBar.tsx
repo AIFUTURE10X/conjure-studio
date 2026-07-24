@@ -16,6 +16,7 @@ import { ConciergeDialog } from '../Concierge'
 import { HeaderContextButtons } from '../HeaderContextButtons'
 import { AccountManager } from '../AccountManager'
 import { AccountMenu } from './AccountMenu'
+import { StudioResetButton } from './StudioResetButton'
 import { UiZoomControl } from './UiZoomControl'
 import { SettingsPanel } from '../Settings'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
@@ -145,6 +146,7 @@ export function StudioTopBar() {
               <span className="hidden sm:inline">Product Photos</span>
             </button>
           )}
+          <StudioResetButton />
           <UiZoomControl />
           <button
             onClick={() => setShowSettings(true)}

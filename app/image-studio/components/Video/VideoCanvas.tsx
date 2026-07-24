@@ -9,7 +9,7 @@
  * polling while the user works in other modes.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,9 +27,10 @@ import { VideoResultCard } from './VideoResultCard'
 import { useVideoGeneration } from './useVideoGeneration'
 import { useMotionSuggestion } from './useMotionSuggestion'
 import { EndFrameDialog } from '../Studio/EndFrameDialog'
-import { useStudioCore } from '../../context/useStudio'
+import { useStudioCore, useStudioReset } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useHelperBridge } from '../../context/HelperBridgeProvider'
+import { DEFAULT_VIDEO_SETTINGS } from '../../constants/video-settings-defaults'
 import { videoTemplateParams, VIDEO_STARTER_TEMPLATES } from '../../constants/video-starter-templates'
 import { VIDEO_MODELS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
 import type { VideoJob } from './useVideoGeneration'
@@ -38,8 +39,9 @@ export function VideoCanvas() {
   const { state, savePreset, presets, handleLoadPreset, updatePreset, deletePreset } = useStudioCore()
   const { createEndFrame } = useImageGenerationEngine()
   const { improveWithHelper } = useHelperBridge()
+  const { registerReset } = useStudioReset()
   const {
-    jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, cancelJob,
+    jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, cancelJob, clearJobs,
     toggleFavorite, submitLipSync, submitEnhance, submitAssembleFilm,
   } = useVideoGeneration()
   const [showAssemble, setShowAssemble] = useState(false)
@@ -53,6 +55,23 @@ export function VideoCanvas() {
   const [showLibrary, setShowLibrary] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [templateJob, setTemplateJob] = useState<VideoJob | null>(null)
+
+  // Reset the Video tab to defaults: clear the prompt, restore default clip
+  // settings, drop the start/end frame pair, and clear the generated-video
+  // results from view. clearJobs is view-only — server history returns on a
+  // reload, mirroring the image grid. (confirmParallel self-clears once no
+  // jobs are pending.)
+  const handleResetVideoTab = useCallback(() => {
+    state.setVideoPrompt('')
+    state.setVideoSettings(DEFAULT_VIDEO_SETTINGS)
+    state.setVideoStartFrame(null)
+    state.setVideoEndFrame(null)
+    clearJobs()
+  }, [
+    state.setVideoPrompt, state.setVideoSettings,
+    state.setVideoStartFrame, state.setVideoEndFrame, clearJobs,
+  ])
+  useEffect(() => registerReset('video', handleResetVideoTab), [registerReset, handleResetVideoTab])
 
   // Category suggestions: the user's existing shelves + the starter shelves.
   const templateCategories = [...new Set([

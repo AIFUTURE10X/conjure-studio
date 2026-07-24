@@ -8,7 +8,7 @@
  * empty state, and generation errors.
  */
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ import { UploadPanel } from '../UploadPanel'
 import { NextStepNudge } from '../Concierge'
 import { GeneratedImageCard } from '../GeneratedImageCard'
 import { ImageEditModal } from '../ImageEditor'
-import { useStudioCore, useStudioMode } from '../../context/useStudio'
+import { useStudioCore, useStudioMode, useStudioReset } from '../../context/useStudio'
 import { useImageGenerationEngine } from '../../context/ImageGenerationProvider'
 import { useEditChat } from '../../context/EditChatProvider'
 import { normalizeCreativeDirection } from '../../constants/creative-direction-options'
@@ -31,9 +31,36 @@ export function ResultsCanvas() {
   const {
     isGenerating, error, clearImages, downloadImage, removeBackground,
     upscaleToFourK, getImageMetadata, applyEditedImage, generateVariation,
+    setImageBgRemovalMethod,
   } = useImageGenerationEngine()
   const { startEditChat } = useEditChat()
   const { setMode } = useStudioMode()
+  const { registerReset } = useStudioReset()
+
+  // Reset the Image tab to defaults. handleResetAll clears the prompt,
+  // negative prompt, settings, analysis results, and the generated-image grid
+  // (via setGeneratedImages([]) — note clearImages() is a no-op for the grid
+  // here because the studio wires an *appending* onImagesUpdate; we only use
+  // it to clear the error banner). We add what handleResetAll leaves untouched:
+  // uploads, the reference image (revoking its blob URL), analysis mode, and
+  // the background-removal method.
+  const handleResetImageTab = useCallback(() => {
+    handleResetAll()
+    uploadState.clearAllImages()
+    const refPreview = state.referenceImage?.preview
+    if (typeof refPreview === 'string' && refPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(refPreview)
+    }
+    state.setReferenceImage(null)
+    state.setAnalysisMode('fast')
+    setImageBgRemovalMethod('fal')
+    clearImages()
+  }, [
+    handleResetAll, uploadState.clearAllImages, state.referenceImage,
+    state.setReferenceImage, state.setAnalysisMode, setImageBgRemovalMethod, clearImages,
+  ])
+
+  useEffect(() => registerReset('image', handleResetImageTab), [registerReset, handleResetImageTab])
 
   const handleAnimate = (index: number) => {
     const url = state.generatedImages[index]?.url

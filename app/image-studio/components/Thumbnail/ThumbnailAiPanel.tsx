@@ -8,9 +8,10 @@
  * background directly. The headline always stays an editable overlay layer.
  */
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Lightbulb, Loader2, Sparkles, Trash2, Type, Upload, X } from 'lucide-react'
+import { useStudioReset } from '../../context/useStudio'
 import { useThumbnail } from './ThumbnailProvider'
 import { ThumbnailRecolor } from './ThumbnailRecolor'
 import {
@@ -51,6 +52,7 @@ export function ThumbnailAiPanel() {
     clearBackground,
     setHeadline,
     applyTemplate,
+    reset,
   } = useThumbnail()
   const [idea, setIdea] = useState('')
   const [styleId, setStyleId] = useState(THUMBNAIL_AI_STYLES[0].id)
@@ -60,6 +62,28 @@ export function ThumbnailAiPanel() {
   const [loadingConcepts, setLoadingConcepts] = useState(false)
   const [refImage, setRefImage] = useState<string | null>(null)
   const [refMode, setRefMode] = useState<'inspire' | 'replicate'>('inspire')
+
+  // The AI-input half of the Thumbnail reset: clear this panel's local inputs
+  // (prompt/concepts/reference and the selectors) back to defaults. The canvas
+  // itself is reset by ThumbnailCanvas (always mounted) via the same reset()
+  // — we also call it here so an open rail fully resets in one pass; reset()
+  // is idempotent. This panel only mounts while the settings rail is open, so
+  // registering here alone would miss a collapsed rail; hence the split.
+  const { registerReset } = useStudioReset()
+  const handleResetThumbnailAiInputs = useCallback(() => {
+    reset()
+    setIdea('')
+    setConcepts([])
+    setRefImage(null)
+    setStyleId(THUMBNAIL_AI_STYLES[0].id)
+    setModel(THUMBNAIL_MODELS[0].id)
+    setSize('1K')
+    setRefMode('inspire')
+  }, [reset])
+  useEffect(
+    () => registerReset('thumbnail', handleResetThumbnailAiInputs),
+    [registerReset, handleResetThumbnailAiInputs],
+  )
 
   const aiStyle = THUMBNAIL_AI_STYLES.find((s) => s.id === styleId) ?? THUMBNAIL_AI_STYLES[0]
   const hasAiBackground = config.background.kind === 'image' && !!config.background.imageUrl

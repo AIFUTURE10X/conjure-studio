@@ -332,6 +332,13 @@ export function useVideoGeneration() {
     }
   }, [])
 
+  /**
+   * Clear the job list from view (used by the tab Reset). View-only and
+   * non-destructive: the server-side video history is untouched and
+   * re-hydrates on a page reload, mirroring how the image grid clears.
+   */
+  const clearJobs = useCallback(() => setJobs([]), [])
+
   const toggleFavorite = useCallback((job: VideoJob) => {
     const next = !job.isFavorited
     setJobs((current) => current.map((item) => (
@@ -352,6 +359,7 @@ export function useVideoGeneration() {
     submitVideo,
     extendVideo,
     cancelJob,
+    clearJobs,
     toggleFavorite,
     submitLipSync,
     submitEnhance,

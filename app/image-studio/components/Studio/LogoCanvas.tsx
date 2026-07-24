@@ -10,7 +10,7 @@
  * LogoSettingsRail.
  */
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { LogoModeSection } from '../LogoPanel/LogoModeSection'
@@ -22,7 +22,7 @@ import { LogoHistoryModal } from '../Logo/LogoHistory/LogoHistoryModal'
 import { ConjureBrandPresets } from '../Logo/ConjureBrandPresets'
 import { LogoVariationsGenerator } from '../Logo/LogoVariations'
 import type { ConjureBrandPreset } from '../../constants/conjure-brand-presets'
-import { useStudioCore, useStudioLogoState, useStudioMode } from '../../context/useStudio'
+import { useStudioCore, useStudioLogoState, useStudioMode, useStudioReset } from '../../context/useStudio'
 import { useLogoGenerationEngine } from '../../context/LogoGenerationProvider'
 
 export function LogoCanvas() {
@@ -76,6 +76,26 @@ export function LogoCanvas() {
     handleLogoGenerated, recordLogoOutput, buildHistoryLogoOutputContext, handlers,
     handleToggleFavorite, isFavorite, isFavoriteToggling, applyLogoSettingsPatch,
   } = useLogoGenerationEngine()
+
+  // Reset the Logo tab to defaults: clear the generated logo, wipe the lifted
+  // logo state (prompt/negative/style chips/reference/seed → defaults via
+  // handleClearAll), and clear the shared prompt dock (the logo prompt lives
+  // in both stores). The reference image's blob preview is revoked first.
+  const { registerReset } = useStudioReset()
+  const handleResetLogoTab = useCallback(() => {
+    const refPreview = state.referenceImage?.preview
+    if (typeof refPreview === 'string' && refPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(refPreview)
+    }
+    state.handleClearAll()
+    clearLogo()
+    coreState.setMainPrompt('')
+    coreState.setNegativePrompt('')
+  }, [
+    state.referenceImage, state.handleClearAll, clearLogo,
+    coreState.setMainPrompt, coreState.setNegativePrompt,
+  ])
+  useEffect(() => registerReset('logo', handleResetLogoTab), [registerReset, handleResetLogoTab])
 
   // Apply an AI-generated variation patch, then reveal the dock to edit it.
   const applyVariationPatch = (patch: Parameters<typeof applyLogoSettingsPatch>[0]) => {

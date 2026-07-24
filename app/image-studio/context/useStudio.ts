@@ -15,10 +15,12 @@ import {
   StudioCoreContext,
   StudioLogoContext,
   StudioModeContext,
+  StudioResetContext,
   type PendingSuggestionValue,
   type StudioCore,
   type StudioLogoState,
   type StudioModeValue,
+  type StudioResetValue,
 } from './StudioProvider'
 
 function requireContext<T>(value: T | null, hook: string): T {
@@ -42,4 +44,8 @@ export function usePendingSuggestion(): PendingSuggestionValue {
 
 export function useStudioLogoState(): StudioLogoState {
   return requireContext(useContext(StudioLogoContext), 'useStudioLogoState')
+}
+
+export function useStudioReset(): StudioResetValue {
+  return requireContext(useContext(StudioResetContext), 'useStudioReset')
 }

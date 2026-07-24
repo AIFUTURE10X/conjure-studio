@@ -8,11 +8,12 @@
  * Refactored: SavePresetModal, LoadPresetDropdown, HistoryDropdown extracted
  */
 
-import { forwardRef, useImperativeHandle } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle } from 'react'
 import { Wand2, Maximize2, Upload, X, Package, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { GenericMockup } from './generic'
-import { getParentCategory } from './categories'
+import { DEFAULT_MOCKUP_ID, DEFAULT_SUB_CATEGORY_ID, getParentCategory } from './categories'
+import { useStudioReset } from '../../../context/useStudio'
 import { MockupControls } from './MockupControls'
 import { MockupPhotoGenerator } from './MockupPhotoGenerator'
 import { AddCustomProductModal } from './AddCustomProductModal'
@@ -54,6 +55,27 @@ export const ProductMockupsPanel = forwardRef<ProductMockupsPanelRef, ProductMoc
         toast.success('Mockup loaded from history!')
       }
     }), [state])
+
+    // Reset the Mockups tab to defaults: clear the inner canvas customizations
+    // (color/logo transform/brand text/view), drop the loaded logo image and
+    // its brand settings, return the product selection to the default t-shirt
+    // (not the empty "select a product" state), collapse fullscreen, and close
+    // any open modals/dropdowns. The saved-presets and custom-products
+    // libraries are persistent and intentionally left intact.
+    const { registerReset } = useStudioReset()
+    const handleResetMockupsTab = useCallback(() => {
+      state.controls?.handleReset()
+      state.clearLoadedMockup()
+      state.handleSelectSubCategory(DEFAULT_SUB_CATEGORY_ID, DEFAULT_MOCKUP_ID)
+      state.setIsExpanded(false)
+      state.setShowPhotoGenerator(false)
+      state.setShowAddProductModal(false)
+      ui.setShowSavedMockupsDropdown(false)
+      ui.setShowHistoryDropdown(false)
+      ui.setShowSavePresetModal(false)
+      ui.setPresetName('')
+    }, [state, ui])
+    useEffect(() => registerReset('mockups', handleResetMockupsTab), [registerReset, handleResetMockupsTab])
 
     const effectiveLogoUrl = state.loadedLogoUrl || logoUrl
 
