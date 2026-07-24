@@ -1,6 +1,6 @@
 "use client"
 
-import { Wand2 } from 'lucide-react'
+import { Wand2, Settings, ArrowLeft } from 'lucide-react'
 import { LogoPresetSelector } from '../Logo/LogoPresetSelector'
 import { TitleStyleGallery } from '../Logo/TitleStyles'
 import type { LogoConcept, RenderStyle } from '../../constants/logo-constants'
@@ -63,9 +63,15 @@ export function LogoModeSection({
           <span className="font-medium">Start Logo Wizard</span>
           <span className="text-xs text-zinc-400 ml-2">Answer questions to get personalized suggestions</span>
         </button>
-        <p className="text-[10px] text-zinc-500 text-center">
-          Or switch to <button onClick={() => setLogoMode('expert')} className="text-purple-400 hover:underline">Expert Mode</button> to access all presets directly
-        </p>
+        <button
+          onClick={() => setLogoMode('expert')}
+          disabled={isGenerating || isRemovingRefBg}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-800/70 border border-[#c99850]/40 rounded-lg text-sm font-semibold text-[#dbb56e] hover:bg-zinc-800 hover:border-[#c99850]/80 hover:text-[#f4d698] transition-all disabled:opacity-50"
+        >
+          <Settings className="w-4 h-4" />
+          Switch to Expert Mode
+          <span className="text-xs font-normal text-zinc-500">— all presets &amp; title styles</span>
+        </button>
       </div>
     )
   }
@@ -73,6 +79,15 @@ export function LogoModeSection({
   // Expert Mode: Show preset selector + the film/TV title-style library
   return (
     <div className="space-y-2">
+      <button
+        onClick={() => setLogoMode('guided')}
+        disabled={isGenerating || isRemovingRefBg}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-linear-to-r from-purple-500/15 to-pink-500/15 border border-purple-500/40 rounded-lg text-sm font-semibold text-purple-300 hover:from-purple-500/25 hover:to-pink-500/25 hover:border-purple-500/70 hover:text-white transition-all disabled:opacity-50"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <Wand2 className="w-4 h-4" />
+        Back to Logo Wizard
+      </button>
       <LogoPresetSelector
         onApplyPreset={onApplyPreset}
         onOpenDotMatrixConfigurator={onOpenDotMatrixConfigurator}
