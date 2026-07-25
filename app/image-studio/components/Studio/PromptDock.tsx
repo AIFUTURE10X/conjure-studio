@@ -87,13 +87,19 @@ export function PromptDock() {
         </button>
       </div>
 
+      {/*
+        The max-height has to clear the content-driven height (the Textarea base
+        sets field-sizing: content), or a long brief pins the box at the cap and
+        the resize-y handle has no travel left — it reads as "not draggable".
+        Viewport-relative keeps the canvas above usable at any window size.
+      */}
       <div className="relative">
         <Textarea
           id="studio-main-prompt"
           value={state.mainPrompt}
           onChange={(e) => state.setMainPrompt(e.target.value)}
           placeholder={placeholder}
-          className="min-h-[64px] max-h-40 bg-zinc-950 border-zinc-700 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y pr-9"
+          className="min-h-[64px] max-h-[45vh] bg-zinc-950 border-zinc-700 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y pr-9"
         />
         {hasPrompt && (
           <button
@@ -112,7 +118,7 @@ export function PromptDock() {
             value={state.negativePrompt}
             onChange={(e) => state.setNegativePrompt(e.target.value)}
             placeholder="Negative prompt — things to avoid…"
-            className="min-h-[40px] max-h-28 bg-zinc-950 border-zinc-800 text-xs text-zinc-300 placeholder:text-zinc-600 resize-y pr-9"
+            className="min-h-[40px] max-h-[25vh] bg-zinc-950 border-zinc-800 text-xs text-zinc-300 placeholder:text-zinc-600 resize-y pr-9"
           />
           {state.negativePrompt.trim().length > 0 && (
             <button
