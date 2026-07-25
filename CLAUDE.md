@@ -115,6 +115,58 @@ npm run build    # Production build (catches type errors)
 
 ---
 
+## ✅ CI & Contract Checks
+
+### What CI runs
+`.github/workflows/ci.yml` → the **`verify`** job, in order:
+`npm run lint` → `npx tsc --noEmit` → each named contract check → `npm run build`.
+A separate `e2e` workflow runs Playwright. All must pass before merge.
+
+### Contract checks
+Behavior we don't want silently regressed is pinned by a plain Node script in
+`scripts/check-*.cjs`, each with an npm alias:
+
+| Alias | Pins |
+|-------|------|
+| `check:logo` | Logo generator contract |
+| `check:ai-helper-ui` / `check:ai-helper-scenarios` | AI helper UI + behavior (protected surface) |
+| `check:image-references` | Subject/Reference upload copy |
+| `check:gemini-identity` | Gemini inspire-mode identity preservation |
+| `check:prompt-merge` | Typed prompt + reference-analysis merging |
+
+**Adding a check requires three edits** — the script, the `package.json` alias, and a step in
+`ci.yml`. Miss the third and it never runs in CI.
+
+> ⚠️ Adding a `ci.yml` step makes the PR unmergeable via `gh pr merge` (the CLI token lacks the
+> `workflow` OAuth scope). Merge that PR in the GitHub web UI instead.
+
+### Write checks that can actually fail
+Most older check scripts only regex the source. **That is not sufficient for new checks** — a
+regex-only contract keeps passing after the runtime behavior regresses, because dead code or a
+leftover matching string still satisfies it. (This was raised in code review on PR #21.)
+
+For a **pure** function, execute it. See `scripts/check-prompt-merge.cjs` as the reference:
+
+- Transpile with the repo's own `typescript` devDep (`ts.transpileModule`) — no new dependencies.
+- Evaluate via `new Function('exports','require','module', …)` with a stubbed `require`. Safe when
+  the target function doesn't touch the module's other imports; say so in a comment.
+- Assert real input→output cases and print `expected:` / `received:` on failure.
+- **Mutation-test the check itself** before trusting it: break the implementation and confirm the
+  check fails; then restore the matching text as dead code and confirm it *still* fails.
+- Fall back to source-level assertions only where execution is genuinely impossible (e.g. call
+  sites inside React components) — anchor those to the specific rendered element, not the whole
+  file, and note the limitation rather than implying full coverage.
+
+### Local lint noise — don't chase it
+`eslint .` may report ~1500 `Parsing error: No tsconfigRootDir was set …`. That comes from a second
+`tsconfig.json` inside `.claude/worktrees/**`; CI checks out clean and never sees it. To lint
+honestly, target files directly:
+```bash
+npx eslint --no-warn-ignored path/to/file.tsx
+```
+
+---
+
 ## 📝 Naming Conventions
 
 ### Files & Folders
