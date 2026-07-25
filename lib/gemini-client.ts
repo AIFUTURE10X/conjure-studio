@@ -167,9 +167,9 @@ export async function generateImageWithRetry({
           })
           console.log(`[v0 SERVER] REPLICATE mode: generating exact copy`)
         } else {
-          // INSPIRE MODE: Use as reference while incorporating user prompt
+          // INSPIRE MODE: apply the user's prompt while preserving the subject's identity
           contentParts.push({
-            text: `Using the provided image as reference, generate a new image that maintains the same subject/object appearance. ${prompt}`
+            text: `Using the provided image as a reference, generate a new image that applies this request: ${prompt}. If the reference shows a person, keep it recognizably the SAME individual — preserve their facial structure and features, age, skin tone, head shape and hairline (including baldness), eyebrows, and facial hair — and only re-render them in the requested style, pose, and setting. If the reference is not a person, maintain the same subject/object appearance while applying the request.`
           })
           console.log(`[v0 SERVER] INSPIRE mode: using image as reference for prompt`)
         }
