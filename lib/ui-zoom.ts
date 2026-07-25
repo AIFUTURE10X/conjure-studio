@@ -1,15 +1,18 @@
 /**
  * App-wide UI zoom (page scale) helpers.
  *
- * Installed/standalone app windows hide the browser's zoom controls, so we
- * provide our own: a persisted scale applied to the document root via the CSS
- * `zoom` property. Works identically in a browser tab and the installed app.
+ * A persisted scale applied to the document root via the CSS `zoom` property.
+ * This replaces browser zoom rather than supplementing it: installed/standalone
+ * windows hide the browser's zoom controls entirely, and in a normal tab the
+ * native ladder is too coarse (…100/110/125…) for a dense studio UI. Behaves
+ * identically in both.
  */
 
 export const UI_ZOOM_KEY = 'ui-zoom'
 export const UI_ZOOM_MIN = 0.5
 export const UI_ZOOM_MAX = 2
-export const UI_ZOOM_STEP = 0.1
+/** 5% — deliberately finer than Chrome's preset ladder (…100/110/125/150…). */
+export const UI_ZOOM_STEP = 0.05
 
 /** Fired on window whenever applyUiZoom changes the document zoom. */
 export const UI_ZOOM_EVENT = 'ui-zoom-change'
@@ -63,15 +66,4 @@ export function storeUiZoom(zoom: number): void {
   } catch {
     // Ignore storage failures (private mode, quota, etc.)
   }
-}
-
-/** True when running as an installed/standalone app (no browser zoom UI). */
-export function isStandaloneDisplay(): boolean {
-  if (typeof window === 'undefined') return false
-  return (
-    window.matchMedia?.('(display-mode: standalone)').matches ||
-    window.matchMedia?.('(display-mode: window-controls-overlay)').matches ||
-    // iOS Safari
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
 }

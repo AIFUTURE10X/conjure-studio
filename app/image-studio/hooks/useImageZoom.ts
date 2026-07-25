@@ -126,6 +126,10 @@ export function useImageZoom({ isActive, resetKey }: UseImageZoomOptions) {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
+      // While the viewer is open the wheel belongs to the image — keep Ctrl +
+      // wheel from also reaching UiZoomControl's window listener and scaling
+      // the whole interface underneath.
+      e.stopPropagation()
       const factor = Math.exp(-e.deltaY * 0.0015)
       const center = centerFromEvent(e.clientX, e.clientY)
       setView((p) => applyZoom(p, p.zoom * factor, center))

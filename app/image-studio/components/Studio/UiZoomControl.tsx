@@ -3,11 +3,11 @@
 /**
  * UiZoomControl
  *
- * Top-bar control that scales the whole interface. Installed/standalone app
- * windows hide the browser's zoom UI, so this gives reliable zoom in both the
- * browser and the installed app. The level is persisted across sessions, and
- * in standalone mode Ctrl/Cmd +/-/0 drive it too (in a normal tab those keys
- * are left to the browser's native zoom).
+ * Top-bar control that scales the whole interface. It replaces browser zoom
+ * everywhere: installed/standalone windows hide the browser's zoom UI, and in a
+ * normal tab Chrome's zoom only offers a coarse preset ladder (…100/110/125…).
+ * Ctrl/Cmd +/-/0 and Ctrl/Cmd + wheel are intercepted in both cases so zooming
+ * moves in even UI_ZOOM_STEP increments. The level persists across sessions.
  */
 
 import { useCallback, useEffect, useState } from 'react'
@@ -18,7 +18,6 @@ import {
   UI_ZOOM_STEP,
   applyUiZoom,
   clampUiZoom,
-  isStandaloneDisplay,
   readStoredUiZoom,
   storeUiZoom,
 } from '@/lib/ui-zoom'
@@ -37,12 +36,9 @@ export function UiZoomControl() {
   const zoomOut = useCallback(() => zoomBy(-UI_ZOOM_STEP), [zoomBy])
   const resetZoom = useCallback(() => setZoom(1), [])
 
-  // In the installed app the browser's own zoom (Ctrl +/- and Ctrl + wheel)
-  // is unavailable, so wire those gestures to the in-app zoom. Skipped in a
-  // normal browser tab, where native zoom already works.
+  // Own the zoom gestures in every context: unavailable in the installed app,
+  // and too coarse in a browser tab (Chrome's presets jump 100 → 110 → 125).
   useEffect(() => {
-    if (!isStandaloneDisplay()) return
-
     const handleKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
       if (e.key === '=' || e.key === '+') {
