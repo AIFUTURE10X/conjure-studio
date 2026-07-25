@@ -29,6 +29,9 @@ jobs:
       - name: Contract — logo generator
         run: npm run check:logo
 
+      - name: Contract — prompt merge
+        run: npm run check:prompt-merge
+
       - name: Contract — AI helper UI
         run: npm run check:ai-helper-ui
 

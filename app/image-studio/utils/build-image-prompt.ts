@@ -15,6 +15,17 @@ function expandStyleForPrompt(styleValue: string): string {
   return stylePresets.find((p) => p.value === styleValue)?.promptHint ?? styleValue
 }
 
+/**
+ * Combine the user's typed prompt with the analyzed reference descriptions
+ * (subject/scene/style captions). These used to be OR'd, so typing any prompt
+ * discarded the analysis entirely; joining keeps both signals. Falls back to a
+ * neutral scene only when neither is present. Used identically by both generate
+ * paths so they produce the same base prompt for the same inputs.
+ */
+export function mergePromptWithReferenceAnalysis(mainPrompt: string, referenceAnalysis: string): string {
+  return [mainPrompt.trim(), referenceAnalysis.trim()].filter(Boolean).join('. ') || 'a beautiful scene'
+}
+
 export interface BuildImagePromptOptions {
   basePrompt: string
   selectedStylePreset: string

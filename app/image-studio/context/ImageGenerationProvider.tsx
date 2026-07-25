@@ -16,7 +16,7 @@ import { usePromptBuilder } from '../hooks/usePromptBuilder'
 import { useImageGeneration } from '../hooks/useImageGeneration'
 import { useGenerationHistory } from '../hooks/useGenerationHistory'
 import { downloadImageAsFile } from '../utils/export-utils'
-import { buildFinalImagePrompt } from '../utils/build-image-prompt'
+import { buildFinalImagePrompt, mergePromptWithReferenceAnalysis } from '../utils/build-image-prompt'
 import { getImageMetadata, type ImageMetadata } from '../utils/get-image-metadata'
 import { getAnnotationReferenceInstruction, imageUrlToImageFile } from '../utils/annotation-reference'
 import { normalizeCreativeDirection } from '../constants/creative-direction-options'
@@ -102,7 +102,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
   }, [setPhotoRoomBgRemovalEnabled])
 
   const generateNow = useCallback(async () => {
-    const finalPrompt = state.mainPrompt.trim() || combinedPrompt.trim() || 'a beautiful scene'
+    const finalPrompt = mergePromptWithReferenceAnalysis(state.mainPrompt, combinedPrompt)
     const annotationInstruction = getAnnotationReferenceInstruction(state.referenceImage)
     const imageQuality = state.analysisMode === 'fast' ? 'low' : 'medium'
     const normalizedCreativeDirection = normalizeCreativeDirection(state.creativeDirection)
