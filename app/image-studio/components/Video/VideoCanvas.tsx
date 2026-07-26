@@ -24,6 +24,7 @@ import { BrollCard } from './Broll/BrollCard'
 import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
 import { CameraMotionChips } from './CameraMotionChips'
 import { VideoResultCard } from './VideoResultCard'
+import { VideoHistoryModal } from './VideoHistory'
 import { useVideoGeneration } from './useVideoGeneration'
 import { useMotionSuggestion } from './useMotionSuggestion'
 import { EndFrameDialog } from '../Studio/EndFrameDialog'
@@ -42,7 +43,7 @@ export function VideoCanvas() {
   const { registerReset } = useStudioReset()
   const {
     jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, cancelJob, clearJobs,
-    toggleFavorite, submitLipSync, submitEnhance, submitAssembleFilm,
+    toggleFavorite, setFavorite, submitLipSync, submitEnhance, submitAssembleFilm,
   } = useVideoGeneration()
   const [showAssemble, setShowAssemble] = useState(false)
   const completedCount = jobs.filter((job) => job.status === 'completed' && job.videoUrl).length
@@ -328,6 +329,14 @@ export function VideoCanvas() {
         defaultName={templateJob ? templateJob.prompt.slice(0, 48) : ''}
         categories={templateCategories}
         onConfirm={handleSaveTemplate}
+      />
+
+      {/* Opened from the top bar's Videos button; lives here so it shares the
+          job list the inline grid renders, keeping favorite hearts in step. */}
+      <VideoHistoryModal
+        isOpen={state.showVideoHistory}
+        onClose={() => state.setShowVideoHistory(false)}
+        onSetFavorite={setFavorite}
       />
 
       <EndFrameDialog

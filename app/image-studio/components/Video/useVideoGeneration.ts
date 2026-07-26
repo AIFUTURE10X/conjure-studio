@@ -339,17 +339,28 @@ export function useVideoGeneration() {
    */
   const clearJobs = useCallback(() => setJobs([]), [])
 
-  const toggleFavorite = useCallback((job: VideoJob) => {
-    const next = !job.isFavorited
+  /**
+   * Persist a clip's favorite state and mirror it into the job list.
+   *
+   * The history modal browses rows this hook may never have loaded, so the local
+   * update is a no-op map rather than a lookup — a clip that isn't on screen just
+   * gets persisted. Keeping both surfaces on this one writer is what stops the
+   * grid and the modal disagreeing about a heart.
+   */
+  const setFavorite = useCallback((jobId: number, isFavorited: boolean) => {
     setJobs((current) => current.map((item) => (
-      item.jobId === job.jobId ? { ...item, isFavorited: next } : item
+      item.jobId === jobId ? { ...item, isFavorited } : item
     )))
     void fetch('/api/video-history', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: getUserId(), jobId: job.jobId, isFavorited: next }),
+      body: JSON.stringify({ userId: getUserId(), jobId, isFavorited }),
     }).catch((error) => console.error('[video] Favorite toggle failed:', error))
   }, [])
+
+  const toggleFavorite = useCallback((job: VideoJob) => {
+    setFavorite(job.jobId, !job.isFavorited)
+  }, [setFavorite])
 
   return {
     jobs,
@@ -361,6 +372,7 @@ export function useVideoGeneration() {
     cancelJob,
     clearJobs,
     toggleFavorite,
+    setFavorite,
     submitLipSync,
     submitEnhance,
     submitAssembleFilm,

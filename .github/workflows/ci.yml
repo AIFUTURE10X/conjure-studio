@@ -44,5 +44,8 @@ jobs:
       - name: Contract — gemini inspire identity
         run: npm run check:gemini-identity
 
+      - name: Contract — video history query
+        run: npm run check:video-history-query
+
       - name: Build
         run: npm run build

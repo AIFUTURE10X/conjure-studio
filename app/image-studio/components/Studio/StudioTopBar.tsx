@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Home, ImageIcon, Settings, Sparkles } from 'lucide-react'
+import { Clapperboard, Home, ImageIcon, Settings, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { ConciergeDialog } from '../Concierge'
 import { HeaderContextButtons } from '../HeaderContextButtons'
@@ -135,6 +135,16 @@ export function StudioTopBar() {
               onRestoreParameters={handleRestoreParameters}
               onShowFavorites={() => state.setShowFavorites(true)}
             />
+          )}
+          {mode === 'video' && (
+            <button
+              onClick={() => state.setShowVideoHistory(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors"
+              title="Browse every clip you have generated, and your favorites"
+            >
+              <Clapperboard className="w-3.5 h-3.5 text-[#dbb56e]" />
+              <span className="hidden sm:inline">Videos</span>
+            </button>
           )}
           {mode === 'logo' && (
             <button

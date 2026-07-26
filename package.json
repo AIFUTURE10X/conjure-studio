@@ -16,6 +16,7 @@
     "check:persistence-identity": "node scripts/check-persistence-identity.cjs",
     "check:prompt-merge": "node scripts/check-prompt-merge.cjs",
     "check:translation-tool": "node scripts/check-translation-tool.cjs",
+    "check:video-history-query": "node scripts/check-video-history-query.cjs",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",

@@ -47,6 +47,9 @@ export interface ImageStudioState {
   setShowFavorites: (show: boolean) => void
   showParameterHistory: boolean
   setShowParameterHistory: (show: boolean) => void
+  /** Video mode's archive modal; rendered by VideoCanvas, opened from the top bar. */
+  showVideoHistory: boolean
+  setShowVideoHistory: (show: boolean) => void
 
   // Analysis results
   analysisResults: AnalysisResultsState
@@ -127,6 +130,7 @@ export function useImageStudioState(): ImageStudioState {
   // Favorites & History UI
   const [showFavorites, setShowFavorites] = useState(false)
   const [showParameterHistory, setShowParameterHistory] = useState(false)
+  const [showVideoHistory, setShowVideoHistory] = useState(false)
 
   // Analysis results
   const [analysisResults, setAnalysisResults] = useState<AnalysisResultsState>({
@@ -214,6 +218,7 @@ export function useImageStudioState(): ImageStudioState {
     // Favorites & History UI
     showFavorites, setShowFavorites,
     showParameterHistory, setShowParameterHistory,
+    showVideoHistory, setShowVideoHistory,
 
     // Analysis results
     analysisResults, setAnalysisResults,
