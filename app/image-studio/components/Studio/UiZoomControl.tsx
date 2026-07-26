@@ -10,7 +10,7 @@
  * moves in even UI_ZOOM_STEP increments. The level persists across sessions.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ZoomIn, ZoomOut } from 'lucide-react'
 import {
   UI_ZOOM_MIN,
@@ -22,8 +22,18 @@ import {
   storeUiZoom,
 } from '@/lib/ui-zoom'
 
+/**
+ * How much wheel delta makes up one detent, per WheelEvent.deltaMode
+ * (0 = pixels, 1 = lines, 2 = pages). One detent = one UI_ZOOM_STEP, so a
+ * mouse notch still moves exactly 5% whether the browser reports it in pixels
+ * (Chrome: 100) or lines (Firefox: 3).
+ */
+const DELTA_PER_DETENT = [100, 3, 1]
+
 export function UiZoomControl() {
   const [zoom, setZoom] = useState<number>(() => readStoredUiZoom())
+  // Sub-detent wheel delta carried between events (see handleWheel).
+  const pendingDetents = useRef(0)
 
   // Keep the DOM scale and stored value in sync with state.
   useEffect(() => {
@@ -52,10 +62,25 @@ export function UiZoomControl() {
         resetZoom()
       }
     }
+    // A trackpad pinch arrives as a fast burst of ctrl+wheel events with small
+    // deltas, so stepping per event would run the zoom to its limit in one
+    // gesture. Accumulate the delta instead and spend it a whole detent at a
+    // time; a mouse notch still lands exactly one step because it reports a
+    // full detent in a single event.
     const handleWheel = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return
       e.preventDefault()
-      zoomBy(e.deltaY < 0 ? UI_ZOOM_STEP : -UI_ZOOM_STEP)
+
+      const detents = e.deltaY / (DELTA_PER_DETENT[e.deltaMode] ?? DELTA_PER_DETENT[0])
+      // Reversing direction should respond immediately, not first pay off the
+      // leftover charge built up going the other way.
+      if (detents * pendingDetents.current < 0) pendingDetents.current = 0
+      pendingDetents.current += detents
+
+      const steps = Math.trunc(pendingDetents.current)
+      if (steps === 0) return
+      pendingDetents.current -= steps
+      zoomBy(-steps * UI_ZOOM_STEP)
     }
 
     window.addEventListener('keydown', handleKey)
