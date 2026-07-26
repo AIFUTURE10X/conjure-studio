@@ -175,6 +175,39 @@ const checks = [
         /LIMIT \$\{pageFetchLimit\(limit\)\} OFFSET \$\{offset\}/.test(route)
     },
   },
+  {
+    // The route's SQL lives in a template literal, so the ESCAPE character is
+    // subject to JS escaping before Postgres ever sees it. A source-level
+    // `ESCAPE '\'` cooks to `ESCAPE ''`, which Postgres reads as "no escape
+    // character" — silently disabling buildPromptSearchPattern's work. Assert
+    // the COOKED value, since matching the source text cannot tell the two apart.
+    name: 'wiring — the ILIKE escape character survives JS cooking as a real backslash',
+    pass: () => {
+      const route = read(ROUTE_PATH)
+      const match = route.match(/ESCAPE '(.*?)'/)
+      if (!match) {
+        console.error('    no ESCAPE clause found in the route')
+        return false
+      }
+      // Cook the captured fragment exactly as the JS engine would in a template
+      // literal. A lone backslash fails to parse here for the same reason it
+      // misbehaves in the route — it escapes the character that follows it.
+      let cooked
+      try {
+        cooked = eval('`' + match[1] + '`')
+      } catch {
+        console.error(`    the escape fragment ${JSON.stringify(match[1])} does not survive JS cooking`)
+        console.error("    use two backslashes in source so one reaches Postgres: ESCAPE '\\\\'")
+        return false
+      }
+      if (cooked !== '\\') {
+        console.error(`    expected the cooked escape char: ${JSON.stringify('\\')}`)
+        console.error(`    received: ${JSON.stringify(cooked)} (source: ${JSON.stringify(match[1])})`)
+        return false
+      }
+      return true
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

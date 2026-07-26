@@ -106,25 +106,16 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHisto
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {error && (
-            <div className="text-center py-8">
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          )}
-
-          {!error && isLoading && (
+          {/* Clips already on screen survive a failed page fetch — losing them
+              would strand the user with no list and no way to retry. Only a
+              failed FIRST page (nothing loaded) takes over the whole panel. */}
+          {isLoading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 text-[#dbb56e] animate-spin" />
             </div>
           )}
 
-          {!error && !isLoading && clips.length === 0 && (
-            <div className="text-center py-12">
-              <EmptyState tab={tab} isSearching={isSearching} />
-            </div>
-          )}
-
-          {!error && !isLoading && clips.length > 0 && (
+          {!isLoading && clips.length > 0 && (
             <div className="flex flex-col gap-3">
               {clips.map((clip) => (
                 <VideoHistoryCard key={clip.jobId} clip={clip} onToggleFavorite={handleToggleFavorite} />
@@ -132,7 +123,27 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHisto
             </div>
           )}
 
-          {!error && hasMore && !isLoading && (
+          {!isLoading && clips.length === 0 && (
+            <div className="text-center py-12">
+              {error ? <p className="text-red-400 text-sm">{error}</p> : <EmptyState tab={tab} isSearching={isSearching} />}
+            </div>
+          )}
+
+          {!isLoading && (error && clips.length > 0 ? (
+            <div className="flex flex-col items-center gap-2 pt-4">
+              <p className="text-red-400 text-xs">{error}</p>
+              <Button
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                size="sm"
+                variant="ghost"
+                className="text-zinc-300 hover:text-white border border-zinc-800 disabled:opacity-50"
+              >
+                {isLoadingMore ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Retry
+              </Button>
+            </div>
+          ) : hasMore ? (
             <div className="flex justify-center pt-4">
               <Button
                 onClick={loadMore}
@@ -145,7 +156,7 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHisto
                 Load more
               </Button>
             </div>
-          )}
+          ) : null)}
         </div>
       </Card>
     </div>

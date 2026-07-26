@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       FROM public.video_history
       WHERE user_id = ${userId}
         AND (${favoritesOnly}::boolean = false OR is_favorited = true)
-        AND (${searchPattern}::text IS NULL OR prompt ILIKE ${searchPattern} ESCAPE '\')
+        AND (${searchPattern}::text IS NULL OR prompt ILIKE ${searchPattern} ESCAPE '\\')
       ORDER BY created_at DESC
       LIMIT ${pageFetchLimit(limit)} OFFSET ${offset}
     `

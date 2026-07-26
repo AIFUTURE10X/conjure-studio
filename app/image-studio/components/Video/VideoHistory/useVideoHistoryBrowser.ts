@@ -64,8 +64,13 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     } catch (fetchError) {
       if (seq !== requestSeq.current) return
       setError(fetchError instanceof Error ? fetchError.message : 'Failed to load video history')
-      if (offset === 0) setClips([])
-      setHasMore(false)
+      // A failed first page has nothing to show. A failed later page keeps both
+      // the loaded clips and `hasMore`, so the modal can offer a working Retry —
+      // clearing hasMore here would make loadMore's guard reject that retry.
+      if (offset === 0) {
+        setClips([])
+        setHasMore(false)
+      }
     } finally {
       if (seq === requestSeq.current) {
         setIsLoading(false)
