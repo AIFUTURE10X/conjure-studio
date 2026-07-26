@@ -4,12 +4,24 @@ import { z } from "zod"
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
+import {
+  buildPromptSearchPattern,
+  pageFetchLimit,
+  splitPage,
+  videoHistoryListParamsSchema,
+} from '@/lib/video/history-query'
 
 export const runtime = "nodejs"
 
-/** GET /api/video-history?userId=xxx — recent video jobs (newest first). */
+/**
+ * GET /api/video-history?userId=xxx — video jobs, newest first.
+ *
+ * Optional `limit` / `offset` / `search` / `favoritesOnly` page and filter the
+ * list. Filtering is deliberately server-side: narrowing an already-fetched page
+ * on the client would hide favorites that sit beyond it.
+ */
 
-const getQuerySchema = z.object({ userId: userIdSchema })
+const getQuerySchema = videoHistoryListParamsSchema.extend({ userId: userIdSchema })
 const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
 const patchBodySchema = z.object({
   userId: userIdSchema,
@@ -27,19 +39,28 @@ export async function GET(request: NextRequest) {
   const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
   if (parsed.response) return parsed.response
   const userId = await resolveUserId(request, parsed.data.userId)
+  const { limit, offset, search, favoritesOnly } = parsed.data
+  const searchPattern = search ? buildPromptSearchPattern(search) : null
 
   try {
     const sql = getSQL()
+    // Both filters are expressed as no-op comparisons rather than composed SQL
+    // fragments, so this stays a single tagged template the driver parameterizes.
+    // One extra row is fetched to derive `hasMore` without a second COUNT.
     const rows = await sql`
       SELECT id, status, prompt, model, video_url, error, start_image_url, created_at,
              duration_seconds, resolution, aspect_ratio, has_audio, is_favorited
       FROM public.video_history
       WHERE user_id = ${userId}
+        AND (${favoritesOnly}::boolean = false OR is_favorited = true)
+        AND (${searchPattern}::text IS NULL OR prompt ILIKE ${searchPattern} ESCAPE '\\')
       ORDER BY created_at DESC
-      LIMIT 50
+      LIMIT ${pageFetchLimit(limit)} OFFSET ${offset}
     `
 
-    const videos = rows.map((row) => ({
+    const { page, hasMore } = splitPage(rows, limit)
+
+    const videos = page.map((row) => ({
       jobId: row.id as number,
       status: row.status as string,
       prompt: row.prompt as string,
@@ -55,7 +76,7 @@ export async function GET(request: NextRequest) {
       isFavorited: Boolean(row.is_favorited),
     }))
 
-    return NextResponse.json({ videos })
+    return NextResponse.json({ videos, hasMore })
   } catch (error) {
     console.error('[video] History load failed:', error)
     return apiError(500, 'internal_error', 'Failed to load video history')

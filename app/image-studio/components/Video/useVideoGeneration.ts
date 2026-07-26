@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { getUserId } from '@/lib/user-id'
 import { logPromptUse } from '@/lib/prompt-log'
@@ -50,6 +50,10 @@ export function useVideoGeneration() {
   const [jobs, setJobs] = useState<VideoJob[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  /** In-flight favorite write per clip, so repeat clicks serialize behind it. */
+  const favoriteRuns = useRef<Map<number, Promise<boolean>>>(new Map())
+  /** Newest requested state for a clip whose write hasn't finished yet. */
+  const favoriteQueue = useRef<Map<number, boolean>>(new Map())
 
   // Hydrate recent jobs once; pending rows resume polling automatically.
   useEffect(() => {
@@ -339,17 +343,88 @@ export function useVideoGeneration() {
    */
   const clearJobs = useCallback(() => setJobs([]), [])
 
-  const toggleFavorite = useCallback((job: VideoJob) => {
-    const next = !job.isFavorited
-    setJobs((current) => current.map((item) => (
-      item.jobId === job.jobId ? { ...item, isFavorited: next } : item
-    )))
-    void fetch('/api/video-history', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: getUserId(), jobId: job.jobId, isFavorited: next }),
-    }).catch((error) => console.error('[video] Favorite toggle failed:', error))
+  /**
+   * Persist a clip's favorite state and mirror it into the job list.
+   *
+   * The history modal browses rows this hook may never have loaded, so the local
+   * update is a no-op map rather than a lookup — a clip that isn't on screen just
+   * gets persisted. Keeping both surfaces on this one writer is what stops the
+   * grid and the modal disagreeing about a heart.
+   *
+   * The update is optimistic but not blind: a rejected write reverts the heart
+   * here and reports `false` so the caller can undo its own copy, rather than
+   * leaving the UI claiming a star the database never took.
+   */
+
+  /**
+   * Drive one clip's writes to completion, newest intent last.
+   *
+   * Writes are serialized rather than fired in parallel because the UPDATE has
+   * no ordering guard — two in-flight requests would let the earlier click win
+   * in the database while both reported success. After each write it picks up
+   * whatever the user asked for meanwhile, so a burst of clicks costs at most
+   * two requests and settles on the last one.
+   */
+  const runFavoriteWrites = useCallback(async (jobId: number, desired: boolean): Promise<boolean> => {
+    // What the row is believed to hold: the toggle's starting point, then each
+    // value confirmed written. A failure reverts to this, not to the caller's
+    // guess, so an earlier successful write in the same burst is not undone.
+    let persisted = !desired
+    let target = desired
+
+    try {
+      for (;;) {
+        const response = await fetch('/api/video-history', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: getUserId(), jobId, isFavorited: target }),
+        })
+        if (!response.ok) {
+          const data = await response.json().catch(() => null)
+          throw new Error(data?.error || 'Could not update favorite')
+        }
+        persisted = target
+
+        const queued = favoriteQueue.current.get(jobId)
+        favoriteQueue.current.delete(jobId)
+        if (queued === undefined || queued === persisted) return true
+        target = queued
+      }
+    } catch (error) {
+      favoriteQueue.current.delete(jobId)
+      setJobs((current) => current.map((item) => (
+        item.jobId === jobId ? { ...item, isFavorited: persisted } : item
+      )))
+      toast.error(error instanceof Error ? error.message : 'Could not update favorite')
+      console.error('[video] Favorite toggle failed:', error)
+      return false
+    } finally {
+      favoriteRuns.current.delete(jobId)
+    }
   }, [])
+
+  const setFavorite = useCallback((jobId: number, isFavorited: boolean): Promise<boolean> => {
+    setJobs((current) => current.map((item) => (
+      item.jobId === jobId ? { ...item, isFavorited } : item
+    )))
+
+    // A write for this clip is already running: hand it the newer intent instead
+    // of dropping the click, and return that run so every caller in the burst
+    // learns the same settled outcome.
+    const running = favoriteRuns.current.get(jobId)
+    if (running) {
+      favoriteQueue.current.set(jobId, isFavorited)
+      return running
+    }
+
+    const run = runFavoriteWrites(jobId, isFavorited)
+    favoriteRuns.current.set(jobId, run)
+    return run
+  }, [runFavoriteWrites])
+
+  const toggleFavorite = useCallback((job: VideoJob) => {
+    void setFavorite(job.jobId, !job.isFavorited)
+  }, [setFavorite])
 
   return {
     jobs,
@@ -361,6 +436,7 @@ export function useVideoGeneration() {
     cancelJob,
     clearJobs,
     toggleFavorite,
+    setFavorite,
     submitLipSync,
     submitEnhance,
     submitAssembleFilm,

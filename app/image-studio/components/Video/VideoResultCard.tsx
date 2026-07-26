@@ -7,6 +7,7 @@ import { BookmarkPlus, Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, W
 import { ExtendVideoDialog } from './ExtendVideoDialog'
 import { LipSyncDialog, type LipSyncPayload } from './LipSyncDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
+import { downloadClip, modelLabel } from './video-clip-utils'
 import type { VideoJob } from './useVideoGeneration'
 
 interface VideoResultCardProps {
@@ -17,16 +18,6 @@ interface VideoResultCardProps {
   onEnhance?: (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p') => Promise<boolean>
   onSaveTemplate?: (job: VideoJob) => void
   onCancel?: (job: VideoJob) => Promise<boolean>
-}
-
-const TOOL_MODEL_LABELS: Record<string, string> = {
-  'kling-lipsync': 'Kling Lip Sync',
-  'seedvr-upscale': 'SeedVR2 Enhance',
-  'film-assembly': 'Film Assembly',
-}
-
-function modelLabel(model: string): string {
-  return VIDEO_MODELS[model as VideoModelId]?.label ?? TOOL_MODEL_LABELS[model] ?? model
 }
 
 export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance, onSaveTemplate, onCancel }: VideoResultCardProps) {
@@ -40,14 +31,7 @@ export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, on
 
   const handleDownload = async () => {
     if (!job.videoUrl) return
-    const response = await fetch(job.videoUrl)
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `conjure-video-${job.jobId}.mp4`
-    link.click()
-    URL.revokeObjectURL(url)
+    await downloadClip(job.videoUrl, job.jobId)
   }
 
   /** Seek to the end and capture the final frame (needs crossOrigin on the video). */
