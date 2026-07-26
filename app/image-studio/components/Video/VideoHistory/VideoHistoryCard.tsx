@@ -8,7 +8,7 @@ import type { VideoJob } from '../useVideoGeneration'
 
 interface VideoHistoryCardProps {
   clip: VideoJob
-  onToggleFavorite: (clip: VideoJob) => void
+  onToggleFavorite: (clip: VideoJob) => void | Promise<void>
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -73,7 +73,7 @@ export function VideoHistoryCard({ clip, onToggleFavorite }: VideoHistoryCardPro
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              onClick={() => onToggleFavorite(clip)}
+              onClick={() => void onToggleFavorite(clip)}
               size="sm"
               variant="ghost"
               className={`h-8 w-8 p-0 ${clip.isFavorited ? 'text-[#dbb56e] hover:text-[#c99850]' : 'text-zinc-500 hover:text-white'}`}

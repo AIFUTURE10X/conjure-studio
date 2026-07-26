@@ -102,6 +102,22 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     })
   }, [tab])
 
+  /**
+   * Undo an `applyFavorite` the server rejected. A clip still in the list just
+   * gets its original flag back; one that was dropped from the Favorites tab is
+   * re-inserted where it sat, so a failed write doesn't silently reorder the list.
+   */
+  const restoreClip = useCallback((clip: VideoJob, index: number) => {
+    setClips((current) => {
+      if (current.some((item) => item.jobId === clip.jobId)) {
+        return current.map((item) => (item.jobId === clip.jobId ? clip : item))
+      }
+      const next = [...current]
+      next.splice(Math.max(0, Math.min(index, next.length)), 0, clip)
+      return next
+    })
+  }, [])
+
   return {
     tab,
     setTab,
@@ -114,6 +130,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     error,
     loadMore,
     applyFavorite,
+    restoreClip,
     isSearching: debouncedSearch.length > 0,
   }
 }

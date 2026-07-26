@@ -11,8 +11,11 @@ import type { VideoJob } from '../useVideoGeneration'
 interface VideoHistoryModalProps {
   isOpen: boolean
   onClose: () => void
-  /** Persists the star and mirrors it into the inline grid's job list. */
-  onSetFavorite: (jobId: number, isFavorited: boolean) => void
+  /**
+   * Persists the star and mirrors it into the inline grid's job list.
+   * Resolves false when the write was rejected, so the modal can undo its own copy.
+   */
+  onSetFavorite: (jobId: number, isFavorited: boolean) => Promise<boolean>
 }
 
 const TABS: Array<{ id: VideoHistoryTab; label: string }> = [
@@ -52,15 +55,18 @@ function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: b
 export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHistoryModalProps) {
   const {
     tab, setTab, search, setSearch, clips, hasMore,
-    isLoading, isLoadingMore, error, loadMore, applyFavorite, isSearching,
+    isLoading, isLoadingMore, error, loadMore, applyFavorite, restoreClip, isSearching,
   } = useVideoHistoryBrowser(isOpen)
 
   if (!isOpen) return null
 
-  const handleToggleFavorite = (clip: VideoJob) => {
-    const next = !clip.isFavorited
-    applyFavorite(clip.jobId, next)
-    onSetFavorite(clip.jobId, next)
+  const handleToggleFavorite = async (clip: VideoJob) => {
+    // Remember where it sat: on the Favorites tab an unstar removes it outright,
+    // so a rejected write has to put it back rather than just re-flag it.
+    const index = clips.findIndex((item) => item.jobId === clip.jobId)
+    applyFavorite(clip.jobId, !clip.isFavorited)
+    const persisted = await onSetFavorite(clip.jobId, !clip.isFavorited)
+    if (!persisted) restoreClip(clip, index)
   }
 
   return (

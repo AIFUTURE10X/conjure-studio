@@ -346,20 +346,38 @@ export function useVideoGeneration() {
    * update is a no-op map rather than a lookup — a clip that isn't on screen just
    * gets persisted. Keeping both surfaces on this one writer is what stops the
    * grid and the modal disagreeing about a heart.
+   *
+   * The update is optimistic but not blind: a rejected write reverts the heart
+   * here and reports `false` so the caller can undo its own copy, rather than
+   * leaving the UI claiming a star the database never took.
    */
-  const setFavorite = useCallback((jobId: number, isFavorited: boolean) => {
+  const setFavorite = useCallback(async (jobId: number, isFavorited: boolean): Promise<boolean> => {
     setJobs((current) => current.map((item) => (
       item.jobId === jobId ? { ...item, isFavorited } : item
     )))
-    void fetch('/api/video-history', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: getUserId(), jobId, isFavorited }),
-    }).catch((error) => console.error('[video] Favorite toggle failed:', error))
+    try {
+      const response = await fetch('/api/video-history', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: getUserId(), jobId, isFavorited }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || 'Could not update favorite')
+      }
+      return true
+    } catch (error) {
+      setJobs((current) => current.map((item) => (
+        item.jobId === jobId ? { ...item, isFavorited: !isFavorited } : item
+      )))
+      toast.error(error instanceof Error ? error.message : 'Could not update favorite')
+      console.error('[video] Favorite toggle failed:', error)
+      return false
+    }
   }, [])
 
   const toggleFavorite = useCallback((job: VideoJob) => {
-    setFavorite(job.jobId, !job.isFavorited)
+    void setFavorite(job.jobId, !job.isFavorited)
   }, [setFavorite])
 
   return {
