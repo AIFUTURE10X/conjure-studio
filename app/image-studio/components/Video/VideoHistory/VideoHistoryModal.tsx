@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from 'react'
 import { Clapperboard, Heart, Loader2, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -16,8 +17,6 @@ interface VideoHistoryModalProps {
    * Resolves false when the write was rejected, so the modal can undo its own copy.
    */
   onSetFavorite: (jobId: number, isFavorited: boolean) => Promise<boolean>
-  /** True while a write for this clip is already in flight; the click is dropped. */
-  isFavoriteBusy: (jobId: number) => boolean
 }
 
 const TABS: Array<{ id: VideoHistoryTab; label: string }> = [
@@ -54,7 +53,12 @@ function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: b
   )
 }
 
-export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, isFavoriteBusy }: VideoHistoryModalProps) {
+export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHistoryModalProps) {
+  // Every click in a burst awaits the same settled write, so without this only
+  // the newest one may undo itself — otherwise two reverts stack and land on the
+  // state before the first click rather than before the last.
+  const toggleTokens = useRef<Map<number, number>>(new Map())
+
   const {
     tab, setTab, search, setSearch, clips, hasMore,
     isLoading, isLoadingMore, error, loadMore, applyFavorite, restoreClip,
@@ -64,22 +68,22 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, isFavoriteBu
   if (!isOpen) return null
 
   const handleToggleFavorite = async (clip: VideoJob) => {
-    // Drop the click outright while a write for this clip is still going. Applying
-    // an optimistic flip first and undoing it later cannot work: the undo would
-    // restore this clip's pre-click state and so silently reverse the write
-    // already in flight, leaving the list contradicting the database.
-    if (isFavoriteBusy(clip.jobId)) return
-
     // Remember where it sat: on the Favorites tab an unstar removes it outright,
     // so a rejected write has to put it back rather than just re-flag it.
     const index = clips.findIndex((item) => item.jobId === clip.jobId)
     const generation = getListGeneration()
+    const token = (toggleTokens.current.get(clip.jobId) ?? 0) + 1
+    toggleTokens.current.set(clip.jobId, token)
+
     applyFavorite(clip.jobId, !clip.isFavorited)
 
     const persisted = await onSetFavorite(clip.jobId, !clip.isFavorited)
-    // A tab switch, search or reopen during the write replaces the list with
-    // server truth — reverting into that newer list would fight it.
-    if (!persisted && getListGeneration() === generation) restoreClip(clip, index)
+    if (persisted) return
+    // Only the newest click undoes itself, and only if the list underneath is
+    // still the one it acted on — a tab switch, search or reopen replaces it
+    // with server truth, which a revert would fight.
+    if (toggleTokens.current.get(clip.jobId) !== token) return
+    if (getListGeneration() === generation) restoreClip(clip, index)
   }
 
   return (
