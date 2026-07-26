@@ -16,6 +16,8 @@ interface VideoHistoryModalProps {
    * Resolves false when the write was rejected, so the modal can undo its own copy.
    */
   onSetFavorite: (jobId: number, isFavorited: boolean) => Promise<boolean>
+  /** True while a write for this clip is already in flight; the click is dropped. */
+  isFavoriteBusy: (jobId: number) => boolean
 }
 
 const TABS: Array<{ id: VideoHistoryTab; label: string }> = [
@@ -52,21 +54,32 @@ function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: b
   )
 }
 
-export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHistoryModalProps) {
+export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, isFavoriteBusy }: VideoHistoryModalProps) {
   const {
     tab, setTab, search, setSearch, clips, hasMore,
-    isLoading, isLoadingMore, error, loadMore, applyFavorite, restoreClip, isSearching,
+    isLoading, isLoadingMore, error, loadMore, applyFavorite, restoreClip,
+    getListGeneration, isSearching,
   } = useVideoHistoryBrowser(isOpen)
 
   if (!isOpen) return null
 
   const handleToggleFavorite = async (clip: VideoJob) => {
+    // Drop the click outright while a write for this clip is still going. Applying
+    // an optimistic flip first and undoing it later cannot work: the undo would
+    // restore this clip's pre-click state and so silently reverse the write
+    // already in flight, leaving the list contradicting the database.
+    if (isFavoriteBusy(clip.jobId)) return
+
     // Remember where it sat: on the Favorites tab an unstar removes it outright,
     // so a rejected write has to put it back rather than just re-flag it.
     const index = clips.findIndex((item) => item.jobId === clip.jobId)
+    const generation = getListGeneration()
     applyFavorite(clip.jobId, !clip.isFavorited)
+
     const persisted = await onSetFavorite(clip.jobId, !clip.isFavorited)
-    if (!persisted) restoreClip(clip, index)
+    // A tab switch, search or reopen during the write replaces the list with
+    // server truth — reverting into that newer list would fight it.
+    if (!persisted && getListGeneration() === generation) restoreClip(clip, index)
   }
 
   return (

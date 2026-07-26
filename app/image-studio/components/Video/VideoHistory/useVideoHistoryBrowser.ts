@@ -103,20 +103,31 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
   }, [tab])
 
   /**
-   * Undo an `applyFavorite` the server rejected. A clip still in the list just
-   * gets its original flag back; one that was dropped from the Favorites tab is
-   * re-inserted where it sat, so a failed write doesn't silently reorder the list.
+   * Undo an `applyFavorite` the server rejected. A clip still in the list gets
+   * only its favorite flag put back — replacing the whole row would stomp
+   * anything fresher the list has since learned. One that was dropped from the
+   * Favorites tab is re-inserted where it sat, so a failed write doesn't
+   * silently reorder the list.
    */
   const restoreClip = useCallback((clip: VideoJob, index: number) => {
     setClips((current) => {
       if (current.some((item) => item.jobId === clip.jobId)) {
-        return current.map((item) => (item.jobId === clip.jobId ? clip : item))
+        return current.map((item) => (
+          item.jobId === clip.jobId ? { ...item, isFavorited: clip.isFavorited } : item
+        ))
       }
       const next = [...current]
       next.splice(Math.max(0, Math.min(index, next.length)), 0, clip)
       return next
     })
   }, [])
+
+  /**
+   * Identifies the current list. A revert captured against an older list must be
+   * dropped rather than applied: once a real fetch has landed, the server's data
+   * is authoritative and re-inserting a stale row would fight it.
+   */
+  const getListGeneration = useCallback(() => requestSeq.current, [])
 
   return {
     tab,
@@ -131,6 +142,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     loadMore,
     applyFavorite,
     restoreClip,
+    getListGeneration,
     isSearching: debouncedSearch.length > 0,
   }
 }

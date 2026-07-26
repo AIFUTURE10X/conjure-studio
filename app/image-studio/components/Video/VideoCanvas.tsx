@@ -43,7 +43,7 @@ export function VideoCanvas() {
   const { registerReset } = useStudioReset()
   const {
     jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, cancelJob, clearJobs,
-    toggleFavorite, setFavorite, submitLipSync, submitEnhance, submitAssembleFilm,
+    toggleFavorite, setFavorite, isFavoriteBusy, submitLipSync, submitEnhance, submitAssembleFilm,
   } = useVideoGeneration()
   const [showAssemble, setShowAssemble] = useState(false)
   const completedCount = jobs.filter((job) => job.status === 'completed' && job.videoUrl).length
@@ -337,6 +337,7 @@ export function VideoCanvas() {
         isOpen={state.showVideoHistory}
         onClose={() => state.setShowVideoHistory(false)}
         onSetFavorite={setFavorite}
+        isFavoriteBusy={isFavoriteBusy}
       />
 
       <EndFrameDialog

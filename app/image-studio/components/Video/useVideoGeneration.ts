@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { getUserId } from '@/lib/user-id'
 import { logPromptUse } from '@/lib/prompt-log'
@@ -50,6 +50,8 @@ export function useVideoGeneration() {
   const [jobs, setJobs] = useState<VideoJob[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  /** Clip ids with a favorite write in flight, so a second click can't race it. */
+  const favoriteWrites = useRef<Set<number>>(new Set())
 
   // Hydrate recent jobs once; pending rows resume polling automatically.
   useEffect(() => {
@@ -352,6 +354,15 @@ export function useVideoGeneration() {
    * leaving the UI claiming a star the database never took.
    */
   const setFavorite = useCallback(async (jobId: number, isFavorited: boolean): Promise<boolean> => {
+    // Two writes for the same clip in flight at once would race in the database
+    // — the UPDATE has no ordering guard, so the later click can lose while both
+    // requests still report success. Callers are expected to check
+    // `isFavoriteBusy` first; this is the backstop for the fire-and-forget grid
+    // path. It reports false, so a caller that skipped the check does not treat
+    // a dropped click as a saved one.
+    if (favoriteWrites.current.has(jobId)) return false
+    favoriteWrites.current.add(jobId)
+
     setJobs((current) => current.map((item) => (
       item.jobId === jobId ? { ...item, isFavorited } : item
     )))
@@ -373,8 +384,13 @@ export function useVideoGeneration() {
       toast.error(error instanceof Error ? error.message : 'Could not update favorite')
       console.error('[video] Favorite toggle failed:', error)
       return false
+    } finally {
+      favoriteWrites.current.delete(jobId)
     }
   }, [])
+
+  /** True while a favorite write for this clip is still in flight. */
+  const isFavoriteBusy = useCallback((jobId: number) => favoriteWrites.current.has(jobId), [])
 
   const toggleFavorite = useCallback((job: VideoJob) => {
     void setFavorite(job.jobId, !job.isFavorited)
@@ -391,6 +407,7 @@ export function useVideoGeneration() {
     clearJobs,
     toggleFavorite,
     setFavorite,
+    isFavoriteBusy,
     submitLipSync,
     submitEnhance,
     submitAssembleFilm,
