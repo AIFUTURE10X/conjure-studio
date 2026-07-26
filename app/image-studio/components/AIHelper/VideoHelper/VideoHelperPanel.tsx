@@ -130,6 +130,14 @@ export function VideoHelperPanel() {
             </button>
           ))}
         </div>
+        {/*
+          The cap has to clear the content-driven height (the Textarea base sets
+          field-sizing: content) or resize-y has no travel left — the same defect
+          the prompt dock had. The / var(--ui-zoom) divisor matches PromptDock:
+          viewport units compute off the unzoomed viewport and are then scaled by
+          the interface zoom (CSS `zoom` on <html>, lib/ui-zoom.ts). 30dvh rather
+          than the dock's 45dvh, since the chat log above has to stay readable.
+        */}
         <div className="flex gap-2 items-end">
           <Textarea
             value={input}
@@ -141,7 +149,7 @@ export function VideoHelperPanel() {
               }
             }}
             placeholder="Ask about prompts, models, story plans…"
-            className="min-h-[44px] max-h-28 bg-zinc-900 border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600 resize-y"
+            className="min-h-[44px] max-h-[calc(30dvh/var(--ui-zoom,1))] bg-zinc-900 border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600 resize-y"
           />
           <button
             onClick={() => void send(input)}
