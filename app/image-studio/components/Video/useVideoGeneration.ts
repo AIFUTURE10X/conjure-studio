@@ -31,6 +31,12 @@ export interface VideoJob {
   isFavorited?: boolean
 }
 
+/** Outcome of a favorite write: whether it landed, and what the row now holds. */
+export interface FavoriteWriteResult {
+  ok: boolean
+  isFavorited: boolean
+}
+
 export interface SubmitVideoOptions {
   prompt: string
   model: VideoModelId
@@ -51,9 +57,18 @@ export function useVideoGeneration() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   /** In-flight favorite write per clip, so repeat clicks serialize behind it. */
-  const favoriteRuns = useRef<Map<number, Promise<boolean>>>(new Map())
+  const favoriteRuns = useRef<Map<number, Promise<FavoriteWriteResult>>>(new Map())
   /** Newest requested state for a clip whose write hasn't finished yet. */
   const favoriteQueue = useRef<Map<number, boolean>>(new Map())
+  /**
+   * Best known favorite state per clip, ahead of any re-render.
+   *
+   * Rendered props lag a click by a render, so two clicks in the same tick both
+   * read the pre-click value and ask for the same thing — a double-click lands
+   * as one toggle. This is the authority for "what did the user last want",
+   * updated on the click rather than on the paint.
+   */
+  const favoriteIntent = useRef<Map<number, boolean>>(new Map())
 
   // Hydrate recent jobs once; pending rows resume polling automatically.
   useEffect(() => {
@@ -365,7 +380,7 @@ export function useVideoGeneration() {
    * whatever the user asked for meanwhile, so a burst of clicks costs at most
    * two requests and settles on the last one.
    */
-  const runFavoriteWrites = useCallback(async (jobId: number, desired: boolean): Promise<boolean> => {
+  const runFavoriteWrites = useCallback(async (jobId: number, desired: boolean): Promise<FavoriteWriteResult> => {
     // What the row is believed to hold: the toggle's starting point, then each
     // value confirmed written. A failure reverts to this, not to the caller's
     // guess, so an earlier successful write in the same burst is not undone.
@@ -387,23 +402,30 @@ export function useVideoGeneration() {
 
         const queued = favoriteQueue.current.get(jobId)
         favoriteQueue.current.delete(jobId)
-        if (queued === undefined || queued === persisted) return true
+        if (queued === undefined || queued === persisted) {
+          favoriteIntent.current.set(jobId, persisted)
+          return { ok: true, isFavorited: persisted }
+        }
         target = queued
       }
     } catch (error) {
       favoriteQueue.current.delete(jobId)
+      // Settle every surface on what the row actually holds — the last value
+      // confirmed written, which may be mid-burst rather than the start of it.
+      favoriteIntent.current.set(jobId, persisted)
       setJobs((current) => current.map((item) => (
         item.jobId === jobId ? { ...item, isFavorited: persisted } : item
       )))
       toast.error(error instanceof Error ? error.message : 'Could not update favorite')
       console.error('[video] Favorite toggle failed:', error)
-      return false
+      return { ok: false, isFavorited: persisted }
     } finally {
       favoriteRuns.current.delete(jobId)
     }
   }, [])
 
-  const setFavorite = useCallback((jobId: number, isFavorited: boolean): Promise<boolean> => {
+  const setFavorite = useCallback((jobId: number, isFavorited: boolean): Promise<FavoriteWriteResult> => {
+    favoriteIntent.current.set(jobId, isFavorited)
     setJobs((current) => current.map((item) => (
       item.jobId === jobId ? { ...item, isFavorited } : item
     )))
@@ -422,9 +444,20 @@ export function useVideoGeneration() {
     return run
   }, [runFavoriteWrites])
 
+  /**
+   * What a click on this clip's heart should ask for.
+   *
+   * Prefers the intent recorded by an earlier click over `rendered`, which is a
+   * paint behind. `rendered` seeds it for clips this hook has never written —
+   * the modal browses archive rows that were never in `jobs`.
+   */
+  const resolveNextFavorite = useCallback((jobId: number, rendered: boolean) => (
+    !(favoriteIntent.current.get(jobId) ?? rendered)
+  ), [])
+
   const toggleFavorite = useCallback((job: VideoJob) => {
-    void setFavorite(job.jobId, !job.isFavorited)
-  }, [setFavorite])
+    void setFavorite(job.jobId, resolveNextFavorite(job.jobId, Boolean(job.isFavorited)))
+  }, [resolveNextFavorite, setFavorite])
 
   return {
     jobs,
@@ -437,6 +470,7 @@ export function useVideoGeneration() {
     clearJobs,
     toggleFavorite,
     setFavorite,
+    resolveNextFavorite,
     submitLipSync,
     submitEnhance,
     submitAssembleFilm,
