@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getUserId } from '@/lib/user-id'
 import { logPromptUse } from '@/lib/prompt-log'
