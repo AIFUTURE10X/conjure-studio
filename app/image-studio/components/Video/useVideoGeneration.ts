@@ -61,12 +61,15 @@ export function useVideoGeneration() {
   /** Newest requested state for a clip whose write hasn't finished yet. */
   const favoriteQueue = useRef<Map<number, boolean>>(new Map())
   /**
-   * Best known favorite state per clip, ahead of any re-render.
+   * What the user last asked for, for clips with a write still settling.
    *
    * Rendered props lag a click by a render, so two clicks in the same tick both
    * read the pre-click value and ask for the same thing — a double-click lands
-   * as one toggle. This is the authority for "what did the user last want",
-   * updated on the click rather than on the paint.
+   * as one toggle. This covers that gap, and only that gap: entries are dropped
+   * once the write settles, by which point the optimistic update has painted and
+   * the rendered value is authoritative again. Keeping them longer would let a
+   * stale local guess outlive a change made in another tab or session, turning
+   * the next click into a silent no-op.
    */
   const favoriteIntent = useRef<Map<number, boolean>>(new Map())
 
@@ -403,7 +406,6 @@ export function useVideoGeneration() {
         const queued = favoriteQueue.current.get(jobId)
         favoriteQueue.current.delete(jobId)
         if (queued === undefined || queued === persisted) {
-          favoriteIntent.current.set(jobId, persisted)
           return { ok: true, isFavorited: persisted }
         }
         target = queued
@@ -412,7 +414,6 @@ export function useVideoGeneration() {
       favoriteQueue.current.delete(jobId)
       // Settle every surface on what the row actually holds — the last value
       // confirmed written, which may be mid-burst rather than the start of it.
-      favoriteIntent.current.set(jobId, persisted)
       setJobs((current) => current.map((item) => (
         item.jobId === jobId ? { ...item, isFavorited: persisted } : item
       )))
@@ -421,6 +422,9 @@ export function useVideoGeneration() {
       return { ok: false, isFavorited: persisted }
     } finally {
       favoriteRuns.current.delete(jobId)
+      // The optimistic update has painted by now, so the rendered value is the
+      // authority again — and a fresh GET may legitimately contradict this guess.
+      favoriteIntent.current.delete(jobId)
     }
   }, [])
 
@@ -447,9 +451,9 @@ export function useVideoGeneration() {
   /**
    * What a click on this clip's heart should ask for.
    *
-   * Prefers the intent recorded by an earlier click over `rendered`, which is a
-   * paint behind. `rendered` seeds it for clips this hook has never written —
-   * the modal browses archive rows that were never in `jobs`.
+   * Prefers the intent of a click whose write is still settling over `rendered`,
+   * which is a paint behind. Falls back to `rendered` once nothing is pending —
+   * and for archive rows the modal browses that were never in `jobs`.
    */
   const resolveNextFavorite = useCallback((jobId: number, rendered: boolean) => (
     !(favoriteIntent.current.get(jobId) ?? rendered)
