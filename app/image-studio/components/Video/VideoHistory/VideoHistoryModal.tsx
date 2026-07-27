@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { VideoHistoryCard } from './VideoHistoryCard'
 import { useVideoHistoryBrowser, type VideoHistoryTab } from './useVideoHistoryBrowser'
-import type { FavoriteWriteResult, VideoJob } from '../useVideoGeneration'
+import type { FavoriteWriteResult } from '../useVideoFavorites'
+import type { VideoJob } from '../useVideoGeneration'
 
 interface VideoHistoryModalProps {
   isOpen: boolean
