@@ -46,6 +46,21 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
   // which counts every fetch: `loadMore` appends without disturbing the rows a
   // pending revert may be targeting, so it must not invalidate that revert.
   const listGeneration = useRef(0)
+  /**
+   * Rows the server confirmed deleted, so a pending favorite revert can never
+   * re-insert one.
+   *
+   * This is deliberately per-row rather than another `listGeneration` bump.
+   * Bumping the generation on delete also works — it makes the revert give up —
+   * but it is far too coarse: it discards reverts for *every* clip, so deleting
+   * one clip while an unrelated favorite write is settling silently drops that
+   * unrelated revert and leaves the other row wrong until the next refetch.
+   *
+   * Cleared whenever the list is replaced wholesale, because a fresh fetch is
+   * server truth and simply will not contain the deleted rows — which also keeps
+   * this bounded to the lifetime of one list rather than the session.
+   */
+  const deletedIds = useRef<Set<number>>(new Set())
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
@@ -55,6 +70,15 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
   // Re-sync the mirror after every commit, so it also tracks list changes that
   // did not come through removeClips (fetches, favorite drops on the Favorites tab).
   useEffect(() => { clipsRef.current = clips }, [clips])
+
+  /**
+   * Mark the list as replaced wholesale: invalidate pending reverts and drop the
+   * delete tombstones, since the rows arriving now are server truth.
+   */
+  const beginNewList = useCallback(() => {
+    listGeneration.current += 1
+    deletedIds.current.clear()
+  }, [])
 
   const fetchPage = useCallback(async ({ tab: activeTab, search: term, offset }: FetchOptions) => {
     const seq = ++requestSeq.current
@@ -77,7 +101,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
       if (seq !== requestSeq.current) return
 
       const videos = Array.isArray(data?.videos) ? (data.videos as VideoJob[]) : []
-      if (offset === 0) listGeneration.current += 1
+      if (offset === 0) beginNewList()
       setClips((current) => (offset === 0 ? videos : [...current, ...videos]))
       setHasMore(Boolean(data?.hasMore))
     } catch (fetchError) {
@@ -87,7 +111,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
       // the loaded clips and `hasMore`, so the modal can offer a working Retry —
       // clearing hasMore here would make loadMore's guard reject that retry.
       if (offset === 0) {
-        listGeneration.current += 1
+        beginNewList()
         setClips([])
         setHasMore(false)
       }
@@ -97,7 +121,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
         setIsLoadingMore(false)
       }
     }
-  }, [])
+  }, [beginNewList])
 
   // Refetch from the top whenever the modal opens or the tab/search changes, so
   // stars toggled on the inline grid are reflected without a page reload.
@@ -130,6 +154,9 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
    * silently reorder the list.
    */
   const restoreClip = useCallback((clip: VideoJob, index: number) => {
+    // A deleted row is gone for good. This is the guard that makes the narrow
+    // tombstone safe enough to replace a whole-list generation bump.
+    if (deletedIds.current.has(clip.jobId)) return
     setClips((current) => {
       if (current.some((item) => item.jobId === clip.jobId)) {
         return current.map((item) => (
@@ -155,10 +182,12 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
    * Only confirmed ids are passed in, so this never removes a clip the database
    * still holds.
    *
-   * `listGeneration` is bumped because a delete genuinely replaces the list.
-   * Without it, a favorite write that fails AFTER a delete still passes
-   * `handleToggleFavorite`'s generation guard, and `restoreClip` splices the
-   * just-deleted row back in — resurrecting a clip the database no longer has.
+   * Each id is tombstoned rather than invalidating the whole list. A favorite
+   * write that fails AFTER a delete would otherwise pass
+   * `handleToggleFavorite`'s generation guard and let `restoreClip` splice the
+   * just-deleted row back in, resurrecting a clip the database no longer has —
+   * but bumping `listGeneration` to prevent that also cancels reverts for every
+   * *other* clip, so an unrelated delete would leave a different row wrong.
    *
    * The count comes from `clipsRef`, not from the updater: React may run the
    * updater after this returns (and twice under StrictMode), and the caller's own
@@ -166,9 +195,9 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
    */
   const removeClips = useCallback((jobIds: number[]): number => {
     const goneIds = new Set(jobIds)
+    for (const jobId of jobIds) deletedIds.current.add(jobId)
     const remaining = clipsRef.current.filter((clip) => !goneIds.has(clip.jobId))
     clipsRef.current = remaining
-    listGeneration.current += 1
     setClips((current) => current.filter((clip) => !goneIds.has(clip.jobId)))
     return remaining.length
   }, [])

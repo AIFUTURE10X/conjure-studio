@@ -20,6 +20,7 @@ const readCode = (relativePath) => read(relativePath)
 
 const QUERY_PATH = 'lib/video/history-query.ts'
 const ROUTE_PATH = 'app/api/video-history/route.ts'
+const BROWSER_PATH = 'app/image-studio/components/Video/VideoHistory/useVideoHistoryBrowser.ts'
 
 /**
  * Load and EXECUTE the real query contract.
@@ -309,6 +310,45 @@ const checks = [
       if (!usesOutcome) console.error('    the route does not call resolveVideoDeleteOutcome(deleted.length)')
       if (!branches) console.error('    the route does not turn a non-ok outcome into its apiError status/code')
       return hasGuard && returnsIds && usesOutcome && branches
+    },
+  },
+  {
+    /*
+      Regression guard for a deleted clip coming back.
+
+      A favorite write that fails AFTER a delete used to pass the modal's
+      generation guard, and restoreClip's not-found branch spliced the deleted row
+      straight back in — the UI then asserted a clip existed that the database had
+      dropped. The fix is a per-row tombstone that restoreClip consults.
+
+      This also pins the SHAPE of the fix, not just its presence. Bumping
+      listGeneration inside removeClips prevents resurrection too, but by
+      discarding reverts for every other clip as well, so an unrelated delete
+      leaves a different row wrong. Both halves are asserted: the tombstone must
+      exist, and the coarse bump must not come back.
+
+      Source-level because this is React hook state, not a pure function — read
+      from comment-stripped source so a commented-out guard cannot satisfy it.
+    */
+    name: 'wiring — a deleted clip is tombstoned, and restoreClip refuses to resurrect it',
+    pass: () => {
+      const browser = readCode(BROWSER_PATH)
+      const removeBody = browser.match(/const removeClips = useCallback\([\s\S]*?\n  \}, \[/)
+      const restoreBody = browser.match(/const restoreClip = useCallback\([\s\S]*?\n  \}, \[/)
+      if (!removeBody || !restoreBody) {
+        console.error('    could not locate removeClips / restoreClip — the check needs updating alongside the refactor')
+        return false
+      }
+      const tombstones = /deletedIds\.current\.add\(/.test(removeBody[0])
+      const consults = /deletedIds\.current\.has\([\s\S]*?return/.test(restoreBody[0])
+      // The coarse alternative, which this fix deliberately replaced.
+      const bumpsGeneration = /listGeneration\.current\s*\+=/.test(removeBody[0])
+      if (!tombstones) console.error('    removeClips does not tombstone the deleted ids')
+      if (!consults) console.error('    restoreClip does not check the tombstones before re-inserting a row')
+      if (bumpsGeneration) {
+        console.error('    removeClips bumps listGeneration — too coarse; it also cancels reverts for unrelated clips')
+      }
+      return tombstones && consults && !bumpsGeneration
     },
   },
 ]
