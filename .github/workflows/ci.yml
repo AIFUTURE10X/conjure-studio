@@ -47,5 +47,8 @@ jobs:
       - name: Contract — video history query
         run: npm run check:video-history-query
 
+      - name: Contract — logo 3D extrude params
+        run: npm run check:logo-3d
+
       - name: Build
         run: npm run build

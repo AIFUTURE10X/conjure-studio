@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { GeneratedLogo } from '../../hooks/useLogoGeneration'
 import { BrandKitButton } from './BrandKitButton'
+import { LogoSpin3DButton } from './LogoSpin3D/LogoSpin3DButton'
 
 interface LogoActionButtonsProps {
   generatedLogo: GeneratedLogo
@@ -260,6 +261,7 @@ export function LogoActionButtons({
             Preview on Mockups
           </Button>
         )}
+        <LogoSpin3DButton logoUrl={generatedLogo.url} />
       </div>
     </div>
   )
