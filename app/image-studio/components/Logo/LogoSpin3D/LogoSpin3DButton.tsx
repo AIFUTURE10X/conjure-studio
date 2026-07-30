@@ -17,7 +17,7 @@ import { LogoSpin3DModal } from './LogoSpin3DModal'
  *
  * Only three.js is code-split (inside the modal's scene); this wrapper is tiny.
  */
-export function LogoSpin3DButton({ logoUrl }: { logoUrl: string }) {
+export function LogoSpin3DButton({ logoUrl, logoPrompt }: { logoUrl: string; logoPrompt?: string }) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -38,7 +38,7 @@ export function LogoSpin3DButton({ logoUrl }: { logoUrl: string }) {
         </TooltipContent>
       </Tooltip>
 
-      <LogoSpin3DModal isOpen={isOpen} onClose={() => setIsOpen(false)} logoUrl={logoUrl} />
+      <LogoSpin3DModal isOpen={isOpen} onClose={() => setIsOpen(false)} logoUrl={logoUrl} logoPrompt={logoPrompt} />
     </>
   )
 }

@@ -50,5 +50,8 @@ jobs:
       - name: Contract — logo 3D extrude params
         run: npm run check:logo-3d
 
+      - name: Contract — logo 3D export maths
+        run: npm run check:logo-3d-export
+
       - name: Build
         run: npm run build

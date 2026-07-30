@@ -261,7 +261,7 @@ export function LogoActionButtons({
             Preview on Mockups
           </Button>
         )}
-        <LogoSpin3DButton logoUrl={generatedLogo.url} />
+        <LogoSpin3DButton logoUrl={generatedLogo.url} logoPrompt={generatedLogo.prompt} />
       </div>
     </div>
   )
