@@ -62,10 +62,21 @@ export function useVideoHistorySelection(clips: VideoJob[], tab: string, search:
   }, [selectableIds])
 
   /**
-   * Narrow the selection to the ids a delete could not remove, so a partial
-   * failure leaves exactly the failed rows checked and ready to retry.
+   * Uncheck specific ids — the rows a delete actually removed.
+   *
+   * Subtractive rather than a wholesale replace: replacing the set meant a single
+   * card's delete wiped an unrelated multi-select, and it made two overlapping
+   * deletes stomp each other's retry selection. Removing only what went also
+   * leaves refused rows checked and ready to retry for free.
    */
-  const keepOnly = useCallback((jobIds: number[]) => setSelectedIds(new Set(jobIds)), [])
+  const deselect = useCallback((jobIds: number[]) => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      let changed = false
+      for (const id of jobIds) changed = next.delete(id) || changed
+      return changed ? next : current
+    })
+  }, [])
 
   return {
     selectedIds,
@@ -75,6 +86,6 @@ export function useVideoHistorySelection(clips: VideoJob[], tab: string, search:
     toggle,
     toggleAll,
     clear,
-    keepOnly,
+    deselect,
   }
 }

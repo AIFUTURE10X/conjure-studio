@@ -27,12 +27,37 @@ export interface DeleteResult {
   failed: number[]
 }
 
+/**
+ * A delete that never settles must not wedge the UI.
+ *
+ * The modal is mounted for the whole session (VideoCanvas renders it
+ * unconditionally and `isOpen` only gates its JSX), so the in-flight set that
+ * disables the delete controls is never cleared by a remount. Without a bound
+ * here, one hung socket disables deleting until the page is reloaded.
+ */
+const DELETE_TIMEOUT_MS = 15_000
+
 async function deleteRow(jobId: number): Promise<void> {
   const params = new URLSearchParams({ id: String(jobId), userId: getUserId() })
-  const response = await fetch(`/api/video-history?${params.toString()}`, { method: 'DELETE' })
-  if (!response.ok) {
-    const data = await response.json().catch(() => null)
-    throw new Error(data?.error || 'Could not delete clip')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), DELETE_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(`/api/video-history?${params.toString()}`, {
+      method: 'DELETE',
+      signal: controller.signal,
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => null)
+      throw new Error(data?.error || 'Could not delete clip')
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Deleting timed out — the clip was left in place. Check your connection and try again.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -58,7 +83,9 @@ export function useVideoDelete(setJobs: Dispatch<SetStateAction<VideoJob[]>>) {
       } catch (error) {
         failed.push(jobId)
         lastError = error instanceof Error ? error.message : 'Could not delete clip'
-        console.error('[video] History delete failed:', error)
+        // The id matters: a partial batch failure is otherwise a wall of identical
+        // lines with no way to correlate which rows the server refused.
+        console.error(`[video] History delete failed for job ${jobId}:`, error)
       }
     }
 

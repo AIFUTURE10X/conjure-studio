@@ -32,6 +32,16 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
 
   // Guards against a slow first page overwriting a newer tab/search result.
   const requestSeq = useRef(0)
+  /**
+   * Mirrors `clips` so a delete can report the remaining count synchronously.
+   *
+   * The caller cannot compute this from its own `clips` closure: under two
+   * overlapping deletes both closures capture the same pre-delete snapshot, so
+   * the second one miscounts and the "list just emptied" refetch never fires.
+   * Updated eagerly by `removeClips` as well as on commit, so back-to-back calls
+   * in one tick each see the previous one's result.
+   */
+  const clipsRef = useRef<VideoJob[]>([])
   // Bumped only when the list is REPLACED wholesale. Distinct from requestSeq,
   // which counts every fetch: `loadMore` appends without disturbing the rows a
   // pending revert may be targeting, so it must not invalidate that revert.
@@ -41,6 +51,10 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
     return () => clearTimeout(timer)
   }, [search])
+
+  // Re-sync the mirror after every commit, so it also tracks list changes that
+  // did not come through removeClips (fetches, favorite drops on the Favorites tab).
+  useEffect(() => { clipsRef.current = clips }, [clips])
 
   const fetchPage = useCallback(async ({ tab: activeTab, search: term, offset }: FetchOptions) => {
     const seq = ++requestSeq.current
@@ -136,16 +150,27 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
   const getListGeneration = useCallback(() => listGeneration.current, [])
 
   /**
-   * Drop rows the server confirmed deleted. Only confirmed ids are passed in, so
-   * this never removes a clip the database still holds.
+   * Drop rows the server confirmed deleted, and report how many are left.
    *
-   * Deliberately returns nothing: the remaining count cannot be read out of the
-   * updater, which React may run after this returns (and twice under StrictMode).
-   * The caller already holds `clips` and computes that itself.
+   * Only confirmed ids are passed in, so this never removes a clip the database
+   * still holds.
+   *
+   * `listGeneration` is bumped because a delete genuinely replaces the list.
+   * Without it, a favorite write that fails AFTER a delete still passes
+   * `handleToggleFavorite`'s generation guard, and `restoreClip` splices the
+   * just-deleted row back in — resurrecting a clip the database no longer has.
+   *
+   * The count comes from `clipsRef`, not from the updater: React may run the
+   * updater after this returns (and twice under StrictMode), and the caller's own
+   * `clips` closure is stale once two deletes overlap.
    */
-  const removeClips = useCallback((jobIds: number[]) => {
+  const removeClips = useCallback((jobIds: number[]): number => {
     const goneIds = new Set(jobIds)
+    const remaining = clipsRef.current.filter((clip) => !goneIds.has(clip.jobId))
+    clipsRef.current = remaining
+    listGeneration.current += 1
     setClips((current) => current.filter((clip) => !goneIds.has(clip.jobId)))
+    return remaining.length
   }, [])
 
   /**

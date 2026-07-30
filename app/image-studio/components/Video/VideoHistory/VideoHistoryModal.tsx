@@ -93,18 +93,27 @@ export function VideoHistoryModal({
    */
   const runDelete = async (jobIds: number[]) => {
     if (jobIds.length === 0) return
-    setDeletingIds(new Set(jobIds))
+    // Merged, not replaced: replacing the set let a second delete clear the
+    // first's marks, re-enabling a row whose DELETE was still outstanding.
+    setDeletingIds((current) => new Set([...current, ...jobIds]))
     try {
-      const { deleted, failed } = await onDeleteClips(jobIds)
-      if (deleted.length > 0) removeClips(deleted)
-      // Leave exactly the refused rows checked so the batch can be retried.
-      selection.keepOnly(failed)
-
-      const goneIds = new Set(deleted)
-      const remaining = clips.filter((clip) => !goneIds.has(clip.jobId)).length
-      if (remaining === 0 && hasMore) refresh()
+      const { deleted } = await onDeleteClips(jobIds)
+      if (deleted.length > 0) {
+        // removeClips reports the remaining count itself — deriving it from this
+        // closure's `clips` miscounts as soon as two deletes overlap, which would
+        // skip the refetch and leave a false "no videos" empty state.
+        const remaining = removeClips(deleted)
+        // Refused rows stay checked and ready to retry; only what went is unchecked.
+        selection.deselect(deleted)
+        if (remaining === 0 && hasMore) refresh()
+      }
     } finally {
-      setDeletingIds(new Set())
+      // Clear only this batch, so a concurrent one keeps its own rows marked.
+      setDeletingIds((current) => {
+        const next = new Set(current)
+        for (const id of jobIds) next.delete(id)
+        return next
+      })
     }
   }
 
