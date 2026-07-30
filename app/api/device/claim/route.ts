@@ -11,6 +11,13 @@ const bodySchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  // Trust model: in anonymous mode the device id IS the credential — every
+  // ID-addressed data route (read, write, delete-all) already trusts bare
+  // possession of the id, so this route grants no capability the caller
+  // doesn't already have; it moves rows between ids the caller supplies.
+  // Real ownership checks require accounts: with SAAS_ENFORCEMENT=on this
+  // endpoint is disabled (403 below) and claiming goes through the
+  // session-authenticated /api/account/claim instead.
   if (isSaasEnforcementOn()) {
     return apiError(403, 'saas_mode_enabled', 'Anonymous device claiming is disabled when accounts are enabled')
   }
@@ -33,6 +40,9 @@ export async function POST(request: NextRequest) {
     // favorites — UNIQUE(user_id, image_url): drop legacy rows the target
     // already has, then collapse duplicates within the legacy set (keep the
     // newest; tie-break on id) so re-keying can't violate the constraint.
+    // created_at has no NOT NULL constraint, so COALESCE to the epoch —
+    // a NULL on both sides would otherwise make each comparison unknown,
+    // skip both deletes, and abort the whole claim on the unique index.
     await client.query(
       `DELETE FROM favorites f
        WHERE f.user_id = ANY($1::text[])
@@ -46,7 +56,13 @@ export async function POST(request: NextRequest) {
            SELECT 1 FROM favorites keep
            WHERE keep.user_id = ANY($1::text[]) AND keep.id <> f.id
              AND keep.image_url = f.image_url
-             AND (keep.created_at > f.created_at OR (keep.created_at = f.created_at AND keep.id > f.id))
+             AND (
+               COALESCE(keep.created_at, 'epoch'::timestamp) > COALESCE(f.created_at, 'epoch'::timestamp)
+               OR (
+                 COALESCE(keep.created_at, 'epoch'::timestamp) = COALESCE(f.created_at, 'epoch'::timestamp)
+                 AND keep.id > f.id
+               )
+             )
          )`,
       [legacyUserIds],
     )
@@ -101,19 +117,25 @@ export async function POST(request: NextRequest) {
 
     // collections — UNIQUE(user_id, name): rename incoming collections whose
     // name is already taken (by the target or another legacy row) instead of
-    // silently merging their contents; the serial id keeps the new name
-    // unique. collection_items rows carry their own user_id and are re-keyed
-    // explicitly below.
-    await client.query(
-      `UPDATE collections c SET name = c.name || ' #' || c.id
-       WHERE c.user_id = ANY($1::text[])
-         AND EXISTS (
-           SELECT 1 FROM collections o
-           WHERE o.id <> c.id AND o.name = c.name
-             AND (o.user_id = $2 OR o.user_id = ANY($1::text[]))
-         )`,
-      [legacyUserIds, targetUserId],
-    )
+    // silently merging their contents; the serial id makes the new name
+    // unique among the renamed rows, but a pre-existing collection could
+    // already use the generated name — so repeat until a pass renames
+    // nothing (names grow strictly each pass, so this converges; in
+    // practice one pass suffices). collection_items rows carry their own
+    // user_id and are re-keyed explicitly below.
+    for (let pass = 0; pass < 8; pass++) {
+      const renamed = await client.query(
+        `UPDATE collections c SET name = c.name || ' #' || c.id
+         WHERE c.user_id = ANY($1::text[])
+           AND EXISTS (
+             SELECT 1 FROM collections o
+             WHERE o.id <> c.id AND o.name = c.name
+               AND (o.user_id = $2 OR o.user_id = ANY($1::text[]))
+           )`,
+        [legacyUserIds, targetUserId],
+      )
+      if ((renamed.rowCount ?? 0) === 0) break
+    }
     const collections = await client.query('UPDATE collections SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, targetUserId])
     await client.query('UPDATE collection_items SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, targetUserId])
 
