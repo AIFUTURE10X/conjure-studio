@@ -46,6 +46,44 @@ export const videoHistoryListParamsSchema = z.object({
 export type VideoHistoryListParams = z.output<typeof videoHistoryListParamsSchema>
 
 /**
+ * Row identifier for DELETE /api/video-history.
+ *
+ * `id` mirrors `numericIdSchema` rather than importing it, for the same reason
+ * this module composes `userId` at the route: importing the shared validation
+ * barrel would drag the logo contract in and cost this module its zod-only
+ * property, which is what lets the contract check execute it headlessly.
+ *
+ * Coercion is deliberate — the id arrives as a query-string value — but a
+ * missing, blank, fractional or non-numeric id must fail rather than coerce to
+ * something that would target the wrong row (or every row).
+ */
+export const videoHistoryDeleteParamsSchema = z.object({
+  id: z.coerce.number().int().positive(),
+})
+
+export type VideoHistoryDeleteParams = z.output<typeof videoHistoryDeleteParamsSchema>
+
+export type VideoDeleteOutcome =
+  | { ok: true }
+  | { ok: false; status: 404; code: 'not_found' }
+
+/**
+ * Decide what a DELETE that matched `deletedRowCount` rows should answer.
+ *
+ * Lives here, as a pure function, so the contract check can EXECUTE it — the
+ * route body needs a live Neon connection and cannot be run headlessly. Keeping
+ * the decision out of the handler is what makes "a no-op must not report success"
+ * a testable claim rather than a regex over source that a comment can satisfy.
+ *
+ * Zero rows is the interesting case: the WHERE clause refuses another user's row
+ * and any still-pending job, so a caller can legitimately hit it. Reporting
+ * success there would make the client drop a row the database still holds.
+ */
+export function resolveVideoDeleteOutcome(deletedRowCount: number): VideoDeleteOutcome {
+  return deletedRowCount > 0 ? { ok: true } : { ok: false, status: 404, code: 'not_found' }
+}
+
+/**
  * Wrap a user's search term for ILIKE, escaping the wildcards first.
  *
  * Without this a prompt search for "50%" matches every row, and "_" matches any

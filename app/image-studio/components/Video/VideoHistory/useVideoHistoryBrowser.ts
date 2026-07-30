@@ -135,6 +135,29 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
    */
   const getListGeneration = useCallback(() => listGeneration.current, [])
 
+  /**
+   * Drop rows the server confirmed deleted. Only confirmed ids are passed in, so
+   * this never removes a clip the database still holds.
+   *
+   * Deliberately returns nothing: the remaining count cannot be read out of the
+   * updater, which React may run after this returns (and twice under StrictMode).
+   * The caller already holds `clips` and computes that itself.
+   */
+  const removeClips = useCallback((jobIds: number[]) => {
+    const goneIds = new Set(jobIds)
+    setClips((current) => current.filter((clip) => !goneIds.has(clip.jobId)))
+  }, [])
+
+  /**
+   * Refetch the first page. Used after a delete empties the visible list while
+   * the archive still holds more: offset paging stays consistent (both sides
+   * shrank), but an empty screen with unfetched rows behind it would read as
+   * "you have no videos", which is a lie.
+   */
+  const refresh = useCallback(() => {
+    void fetchPage({ tab, search: debouncedSearch, offset: 0 })
+  }, [debouncedSearch, fetchPage, tab])
+
   return {
     tab,
     setTab,
@@ -148,6 +171,8 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     loadMore,
     applyFavorite,
     restoreClip,
+    removeClips,
+    refresh,
     getListGeneration,
     isSearching: debouncedSearch.length > 0,
   }

@@ -7,6 +7,7 @@ import { logPromptUse } from '@/lib/prompt-log'
 import { imageUrlToImageFile } from '../../utils/annotation-reference'
 import { VIDEO_MODELS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
 import { VIDEO_COMPLETED_EVENT } from '../../constants/concierge-tree'
+import { useVideoDelete } from './useVideoDelete'
 import { useVideoFavorites } from './useVideoFavorites'
 import { useVideoPostProduction } from './useVideoPostProduction'
 
@@ -53,6 +54,7 @@ export function useVideoGeneration() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const { setFavorite, toggleFavorite, resolveNextFavorite } = useVideoFavorites(setJobs)
+  const { deleteClip, deleteClips } = useVideoDelete(setJobs)
 
   // Hydrate recent jobs once; pending rows resume polling automatically.
   useEffect(() => {
@@ -266,6 +268,8 @@ export function useVideoGeneration() {
     toggleFavorite,
     setFavorite,
     resolveNextFavorite,
+    deleteClip,
+    deleteClips,
     submitLipSync,
     submitEnhance,
     submitAssembleFilm,

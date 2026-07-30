@@ -1,13 +1,16 @@
 "use client"
 
-import { useRef } from 'react'
-import { Clapperboard, Heart, Loader2, Search, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Clapperboard, Heart, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { VideoHistoryCard } from './VideoHistoryCard'
+import { VideoHistoryHeader } from './VideoHistoryHeader'
 import { useVideoHistoryBrowser, type VideoHistoryTab } from './useVideoHistoryBrowser'
+import { useVideoHistorySelection } from './useVideoHistorySelection'
 import type { FavoriteWriteResult } from '../useVideoFavorites'
+import type { DeleteResult } from '../useVideoDelete'
 import type { VideoJob } from '../useVideoGeneration'
 
 interface VideoHistoryModalProps {
@@ -20,12 +23,19 @@ interface VideoHistoryModalProps {
   onSetFavorite: (jobId: number, isFavorited: boolean) => Promise<FavoriteWriteResult>
   /** Next value a click should request, ahead of the rendered prop. */
   resolveNextFavorite: (jobId: number, rendered: boolean) => boolean
+  /**
+   * Deletes rows and reconciles the inline grid. Reports which ids actually went,
+   * so the modal drops only those and leaves anything the server kept on screen.
+   */
+  onDeleteClips: (jobIds: number[]) => Promise<DeleteResult>
 }
 
-const TABS: Array<{ id: VideoHistoryTab; label: string }> = [
-  { id: 'all', label: 'All' },
-  { id: 'favorites', label: 'Favorites' },
-]
+/** Trimmed prompt for a confirm dialog, so the user sees what they are deleting. */
+function clipLabel(clip: VideoJob): string {
+  const prompt = clip.prompt.trim()
+  if (!prompt) return `clip #${clip.jobId}`
+  return prompt.length > 80 ? `${prompt.slice(0, 80)}…` : prompt
+}
 
 /** Empty-state copy differs per cause so a filtered view never reads as "you have nothing". */
 function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: boolean }) {
@@ -56,7 +66,9 @@ function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: b
   )
 }
 
-export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, resolveNextFavorite }: VideoHistoryModalProps) {
+export function VideoHistoryModal({
+  isOpen, onClose, onSetFavorite, resolveNextFavorite, onDeleteClips,
+}: VideoHistoryModalProps) {
   // Every click in a burst awaits the same settled write, so without this only
   // the newest one may undo itself — otherwise two reverts stack and land on the
   // state before the first click rather than before the last.
@@ -65,8 +77,49 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, resolveNextF
   const {
     tab, setTab, search, setSearch, clips, hasMore,
     isLoading, isLoadingMore, error, loadMore, applyFavorite, restoreClip,
-    getListGeneration, isSearching,
+    removeClips, refresh, getListGeneration, isSearching,
   } = useVideoHistoryBrowser(isOpen)
+
+  const selection = useVideoHistorySelection(clips, tab, search, isOpen)
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
+
+  /**
+   * Delete a batch and reconcile the list.
+   *
+   * Only ids the server confirmed are dropped, so a refused row (AC-5) stays
+   * visible with its error surfaced by the delete hook. When the visible list
+   * empties while the archive still holds rows, the first page is refetched
+   * rather than leaving a false "no videos" empty state behind.
+   */
+  const runDelete = async (jobIds: number[]) => {
+    if (jobIds.length === 0) return
+    setDeletingIds(new Set(jobIds))
+    try {
+      const { deleted, failed } = await onDeleteClips(jobIds)
+      if (deleted.length > 0) removeClips(deleted)
+      // Leave exactly the refused rows checked so the batch can be retried.
+      selection.keepOnly(failed)
+
+      const goneIds = new Set(deleted)
+      const remaining = clips.filter((clip) => !goneIds.has(clip.jobId)).length
+      if (remaining === 0 && hasMore) refresh()
+    } finally {
+      setDeletingIds(new Set())
+    }
+  }
+
+  const handleDeleteClip = async (clip: VideoJob) => {
+    if (!confirm(`Delete this clip?\n\n"${clipLabel(clip)}"\n\nThis cannot be undone.`)) return
+    await runDelete([clip.jobId])
+  }
+
+  const handleDeleteSelected = async () => {
+    const ids = [...selection.selectedIds]
+    if (ids.length === 0) return
+    const noun = ids.length === 1 ? 'clip' : 'clips'
+    if (!confirm(`Delete ${ids.length} selected ${noun}?\n\nThis cannot be undone.`)) return
+    await runDelete(ids)
+  }
 
   if (!isOpen) return null
 
@@ -100,32 +153,17 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, resolveNextF
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
       <Card className="bg-zinc-900 border-[#c99850]/30 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between gap-4 p-4 border-b border-zinc-800">
-          <div>
-            <h2 className="text-xl font-bold text-white">Videos</h2>
-            <p className="text-xs text-zinc-400">Every clip you have generated</p>
-          </div>
-
-          <div className="flex items-center gap-1 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
-            {TABS.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setTab(option.id)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  tab === option.id
-                    ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
-          <Button onClick={onClose} size="sm" variant="ghost" className="text-zinc-400 hover:text-white" title="Close">
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+        <VideoHistoryHeader
+          tab={tab}
+          onTabChange={setTab}
+          selectedCount={selection.selectedCount}
+          hasSelectableClips={selection.hasSelectableClips}
+          isAllSelected={selection.isAllSelected}
+          onToggleAll={selection.toggleAll}
+          onDeleteSelected={() => void handleDeleteSelected()}
+          isDeleting={deletingIds.size > 0}
+          onClose={onClose}
+        />
 
         <div className="p-4 pb-2">
           <div className="relative">
@@ -152,7 +190,15 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, resolveNextF
           {!isLoading && clips.length > 0 && (
             <div className="flex flex-col gap-3">
               {clips.map((clip) => (
-                <VideoHistoryCard key={clip.jobId} clip={clip} onToggleFavorite={handleToggleFavorite} />
+                <VideoHistoryCard
+                  key={clip.jobId}
+                  clip={clip}
+                  onToggleFavorite={handleToggleFavorite}
+                  isSelected={selection.selectedIds.has(clip.jobId)}
+                  onToggleSelect={selection.toggle}
+                  onDelete={handleDeleteClip}
+                  isDeleting={deletingIds.has(clip.jobId)}
+                />
               ))}
             </div>
           )}
