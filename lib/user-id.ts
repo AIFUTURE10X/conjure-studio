@@ -99,6 +99,105 @@ export function setUserId(userId: string): void {
   console.log(`[User ID] Manually set user ID: ${userId}`)
 }
 
+// Transient ids whose /api/device/claim sweep failed — retried on later boots
+// so a claim outage can't strand the few rows written under a fresh id.
+const UNCLAIMED_IDS_KEY = 'genie-unclaimed-ids'
+
+function readUnclaimedIds(): string[] {
+  try {
+    const raw = localStorage.getItem(UNCLAIMED_IDS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeUnclaimedIds(ids: string[]): void {
+  try {
+    if (ids.length === 0) localStorage.removeItem(UNCLAIMED_IDS_KEY)
+    else localStorage.setItem(UNCLAIMED_IDS_KEY, JSON.stringify(ids.slice(0, 20)))
+  } catch {
+    // Best effort — losing the retry list only skips a re-claim attempt.
+  }
+}
+
+export type DurableIdentityResult = {
+  /** True when the durable cookie id replaced a different localStorage id. */
+  adopted: boolean
+  /** Rows moved by the transient-id sweep (0 when nothing needed claiming). */
+  moved: number
+}
+
+/**
+ * Restore the durable device identity from the server-side cookie backup.
+ *
+ * The anonymous id used to live only in localStorage, so any storage
+ * eviction (browser cleanup, Safari ITP, "clear site data") minted a fresh
+ * id and orphaned every server-side row — history and favorites looked
+ * permanently lost. The handshake mirrors the id into a 400-day httpOnly
+ * cookie; when localStorage and cookie disagree, the cookie wins: rows
+ * written under the transient localStorage id are swept into the durable id
+ * via /api/device/claim, then the durable id is adopted locally.
+ *
+ * Call once per page load, before treating locally-fetched data as complete.
+ */
+export async function restoreDurableIdentity(): Promise<DurableIdentityResult> {
+  if (typeof window === 'undefined') return { adopted: false, moved: 0 }
+
+  // Ask the browser to exempt this origin's storage from automatic eviction.
+  try {
+    void navigator.storage?.persist?.()
+  } catch {
+    // Optional API — unsupported browsers just keep the cookie safety net.
+  }
+
+  const localId = getUserId()
+  const response = await fetch('/api/device', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: localId }),
+  })
+  if (!response.ok) throw new Error(`Device handshake failed (${response.status})`)
+  const deviceId = ((await response.json()) as { deviceId?: string }).deviceId
+  if (!deviceId) throw new Error('Device handshake returned no id')
+
+  // Sweep only the transient id (when one was minted) plus any earlier
+  // failed sweeps. Legacy localStorage keys are claimed once, marker-gated,
+  // by StudioTopBar — re-claiming them here on every boot would be a wasted
+  // round-trip per page load.
+  const adopted = deviceId !== localId
+  const legacyUserIds = Array.from(
+    new Set([...(adopted ? [localId] : []), ...readUnclaimedIds()]),
+  ).filter((id) => id !== deviceId)
+
+  let moved = 0
+  if (legacyUserIds.length > 0) {
+    try {
+      const claim = await fetch('/api/device/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: deviceId, legacyUserIds: legacyUserIds.slice(0, 20) }),
+      })
+      if (!claim.ok) throw new Error(`Device claim failed (${claim.status})`)
+      const claimData = (await claim.json().catch(() => null)) as { moved?: number } | null
+      moved = typeof claimData?.moved === 'number' ? claimData.moved : 0
+      writeUnclaimedIds([])
+    } catch (error) {
+      // Still adopt the durable id — but remember the transient ids so a
+      // later boot can finish the sweep.
+      writeUnclaimedIds(Array.from(new Set([...readUnclaimedIds(), ...legacyUserIds])))
+      console.error('[User ID] Transient-id claim failed (will retry next visit):', error)
+    }
+  }
+
+  if (adopted) {
+    setUserId(deviceId)
+    console.log(`[User ID] Restored durable device id from cookie: ${deviceId}`)
+  }
+  return { adopted, moved }
+}
+
 /**
  * Fetch all user accounts from the database with their logo counts
  */
