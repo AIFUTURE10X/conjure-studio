@@ -3,11 +3,13 @@ import { neon } from "@neondatabase/serverless"
 import { z } from "zod"
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
-import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
+import { userIdSchema } from '@/lib/validation/common'
 import {
   buildPromptSearchPattern,
   pageFetchLimit,
+  resolveVideoDeleteOutcome,
   splitPage,
+  videoHistoryDeleteParamsSchema,
   videoHistoryListParamsSchema,
 } from '@/lib/video/history-query'
 
@@ -22,7 +24,7 @@ export const runtime = "nodejs"
  */
 
 const getQuerySchema = videoHistoryListParamsSchema.extend({ userId: userIdSchema })
-const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
+const deleteQuerySchema = videoHistoryDeleteParamsSchema.extend({ userId: userIdSchema })
 const patchBodySchema = z.object({
   userId: userIdSchema,
   jobId: z.number().int().positive(),
@@ -110,10 +112,20 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const sql = getSQL()
-    await sql`
+    // RETURNING makes the outcome observable: the WHERE clause deliberately
+    // refuses another user's row and any still-pending job (which is still
+    // polling and still holds a credit reservation). Without this the handler
+    // reported success for a delete it never performed, and the client would
+    // drop a row the database still holds.
+    const deleted = await sql`
       DELETE FROM public.video_history
       WHERE id = ${parsed.data.id} AND user_id = ${userId} AND status != 'pending'
+      RETURNING id
     `
+    const outcome = resolveVideoDeleteOutcome(deleted.length)
+    if (!outcome.ok) {
+      return apiError(outcome.status, outcome.code, 'That clip could not be deleted — it may still be generating, or it is already gone.')
+    }
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[video] History delete failed:', error)
