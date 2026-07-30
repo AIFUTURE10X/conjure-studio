@@ -146,7 +146,10 @@ export function ResultsCanvas() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-white">Generated Images ({generatedImages.length})</h3>
             <Button
-              onClick={() => { clearImages(); state.setMainPrompt('') }}
+              // clearImages() only clears the error banner here (the studio
+              // wires an appending onImagesUpdate) — the grid itself must be
+              // emptied through the state setter, same as handleResetAll.
+              onClick={() => { clearImages(); state.setGeneratedImages([]); state.setMainPrompt('') }}
               variant="ghost"
               size="sm"
               className="bg-zinc-800 text-[#c99850]"

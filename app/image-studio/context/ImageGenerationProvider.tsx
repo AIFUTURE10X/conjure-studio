@@ -62,6 +62,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
   const { isGenerating, error, generateImages, clearImages, upscaleImage } = useImageGeneration(
     appendGeneratedImages,
     (info) => toast.info(info.reason, { duration: 6000 }),
+    () => toast.error('Image generated, but saving to history failed'),
   )
   const { saveToHistory } = useGenerationHistory()
 
@@ -162,6 +163,8 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     })
 
     try {
+      // History is saved server-side by /api/generate-image (identity comes
+      // from the device cookie / userId field) — no client re-POST of base64.
       const imgs = await generateImages({
         prompt,
         displayPrompt: finalPrompt,
@@ -174,28 +177,16 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         model: state.selectedModel,
         imageSize: state.imageSize,
         imageQuality,
+        stylePreset: state.selectedStylePreset,
+        creativeDirection: normalizedCreativeDirection,
       })
       if (imgs?.length) {
         addToActiveCollection(imgs.map((img) => img.url), finalPrompt)
-        let historySaveFailed = false
-        for (const img of imgs) {
-          const m = await getImageMetadata(img.url)
-          const saved = await saveToHistory(finalPrompt, state.aspectRatio, [img.url], {
-            style: state.selectedStylePreset,
-            dimensions: m.dimensions,
-            fileSize: m.fileSize,
-            creativeDirection: normalizedCreativeDirection,
-          })
-          if (!saved) historySaveFailed = true
-        }
-        if (historySaveFailed) {
-          toast.error('Image generated, but saving to history failed')
-        }
       }
     } catch (e) {
       console.error('[v0] Generation error:', e)
     }
-  }, [state, uploadState, combinedPrompt, generateImages, saveParameters, saveGenerateParams, saveToHistory])
+  }, [state, uploadState, combinedPrompt, generateImages, saveParameters, saveGenerateParams])
 
   // Queued generation: callers that just applied state changes (e.g. a
   // suggestion patch) request a generate; the effect runs it on the next
@@ -235,23 +226,18 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         model: state.selectedModel,
         imageSize: state.imageSize,
         imageQuality: 'medium',
+        stylePreset: state.selectedStylePreset,
       })
       const endUrl = imgs?.[0]?.url
       if (!endUrl) throw new Error('No end frame returned')
       state.setVideoStartFrame(sourceUrl)
       state.setVideoEndFrame(endUrl)
-      const m = await getImageMetadata(endUrl)
-      await saveToHistory(prompt, state.aspectRatio, [endUrl], {
-        style: state.selectedStylePreset,
-        dimensions: m.dimensions,
-        fileSize: m.fileSize,
-      })
       toast.success('End frame created — start/end pair ready for video')
     } catch (e) {
       console.error('[v0] End frame error:', e)
       toast.error(e instanceof Error ? e.message : 'Failed to create end frame')
     }
-  }, [state, generateImages, saveToHistory])
+  }, [state, generateImages])
 
   const generateVariation = useCallback(async (index: number) => {
     const source = state.generatedImages[index]
@@ -263,6 +249,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       const prompt = `${basePrompt}. Create a fresh variation of the reference image: keep the same subject, style, palette, and composition language, but vary the small details, pose, or arrangement so it reads as a sibling image, not a copy.`
       const imgs = await generateImages({
         prompt,
+        displayPrompt: `Variation: ${basePrompt}`,
         count: 1,
         aspectRatio: state.aspectRatio,
         referenceImage: file,
@@ -270,21 +257,16 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         model: state.selectedModel,
         imageSize: state.imageSize,
         imageQuality: 'medium',
+        stylePreset: state.selectedStylePreset,
       })
       const url = imgs?.[0]?.url
       if (!url) throw new Error('No variation returned')
-      const m = await getImageMetadata(url)
-      await saveToHistory(`Variation: ${basePrompt}`, state.aspectRatio, [url], {
-        style: state.selectedStylePreset,
-        dimensions: m.dimensions,
-        fileSize: m.fileSize,
-      })
       toast.success('Variation added to the grid', { id: `variation-${index}` })
     } catch (e) {
       console.error('[v0] Variation error:', e)
       toast.error(e instanceof Error ? e.message : 'Variation failed', { id: `variation-${index}` })
     }
-  }, [state, generateImages, saveToHistory])
+  }, [state, generateImages])
 
   const removeBackground = useCallback(async (index: number) => {
     const img = state.generatedImages[index]

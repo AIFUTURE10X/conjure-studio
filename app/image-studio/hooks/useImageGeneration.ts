@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { logPromptUse } from '@/lib/prompt-log'
+import { getUserId } from '@/lib/user-id'
 
 import { urlToBase64 } from '../utils/export-utils'
 
@@ -25,6 +26,9 @@ export interface GenerationOptions {
   imageSize?: ImageSize
   model?: GenerationModel
   imageQuality?: OpenAIImageQuality
+  /** Style/creative context forwarded so the server-side history save can store it. */
+  stylePreset?: string
+  creativeDirection?: unknown
 }
 
 export interface GeneratedImage {
@@ -52,6 +56,7 @@ function splitCount(total: number): number[] {
 export function useImageGeneration(
   onImagesUpdate?: (images: GeneratedImage[]) => void,
   onFallback?: (info: FallbackInfo) => void,
+  onHistorySaveFailed?: () => void,
 ) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,11 +87,30 @@ export function useImageGeneration(
   const requestImages = async (
     options: GenerationOptions,
     count: number,
-  ): Promise<{ images: GeneratedImage[]; fallback?: FallbackInfo }> => {
+  ): Promise<{ images: GeneratedImage[]; fallback?: FallbackInfo; historySaved?: boolean }> => {
     const formData = new FormData()
     formData.append('prompt', options.prompt)
     formData.append('count', count.toString())
     formData.append('aspectRatio', options.aspectRatio)
+
+    // History is saved server-side inside /api/generate-image (the old
+    // client-side re-POST of base64 bodies 413'd on large images and failed
+    // silently). Send the identity + display context the save needs; the
+    // durable genie-device-id cookie rides along automatically as a backstop.
+    formData.append('userId', getUserId())
+    if (options.displayPrompt) {
+      formData.append('displayPrompt', options.displayPrompt)
+    }
+    if (options.stylePreset) {
+      formData.append('stylePreset', options.stylePreset)
+    }
+    if (options.creativeDirection !== undefined) {
+      try {
+        formData.append('creativeDirection', JSON.stringify(options.creativeDirection))
+      } catch {
+        // Unserializable creative direction only costs history metadata.
+      }
+    }
 
     if (options.seed !== null && options.seed !== undefined) {
       formData.append('seed', options.seed.toString())
@@ -140,7 +164,11 @@ export function useImageGeneration(
       timestamp: Date.now()
     }))
 
-    return { images, fallback: data.fallback as FallbackInfo | undefined }
+    return {
+      images,
+      fallback: data.fallback as FallbackInfo | undefined,
+      historySaved: data.historySaved as boolean | undefined,
+    }
   }
 
   const generateImages = async (options: GenerationOptions) => {
@@ -155,13 +183,18 @@ export function useImageGeneration(
       // legacy panels only ever request ≤4, which is always a single chunk.
       const counts = splitCount(Math.max(1, options.count))
       let fallbackReported = false
+      let saveFailureReported = false
 
       const results = await Promise.all(counts.map(async (chunkCount) => {
         try {
-          const { images, fallback } = await requestImages(options, chunkCount)
+          const { images, fallback, historySaved } = await requestImages(options, chunkCount)
           if (fallback?.used && !fallbackReported && onFallback) {
             fallbackReported = true
             onFallback(fallback)
+          }
+          if (historySaved === false && !saveFailureReported && onHistorySaveFailed) {
+            saveFailureReported = true
+            onHistorySaveFailed()
           }
           onImagesUpdate?.(images)
           return { images, failed: 0, message: undefined as string | undefined }

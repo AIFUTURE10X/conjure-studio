@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { DEVICE_COOKIE } from '@/lib/api/device-cookie'
 import { parseJson } from '@/lib/api/http'
 import { userIdSchema } from '@/lib/validation/common'
-
-const DEVICE_COOKIE = 'genie-device-id'
 
 // Browsers cap script-set cookie lifetimes far lower than server-set ones;
 // 400 days is Chrome's hard ceiling. The handshake refreshes the cookie on
