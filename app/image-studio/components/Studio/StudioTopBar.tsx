@@ -20,7 +20,7 @@ import { StudioResetButton } from './StudioResetButton'
 import { UiZoomControl } from './UiZoomControl'
 import { SettingsPanel } from '../Settings'
 import { useStudioCore, useStudioMode } from '../../context/useStudio'
-import { getKnownUserIds, getUserId } from '@/lib/user-id'
+import { getKnownUserIds, getUserId, restoreDurableIdentity } from '@/lib/user-id'
 import type { StudioMode } from '../../context/studio-types'
 
 const MODE_OPTIONS: Array<{ mode: StudioMode; label: string }> = [
@@ -55,32 +55,52 @@ export function StudioTopBar() {
   useEffect(() => {
     if (typeof window === 'undefined' || SHOW_ACCOUNT_CONTROLS) return
 
-    const targetUserId = getUserId()
-    const knownIds = getKnownUserIds()
-    const legacyUserIds = knownIds.filter((id) => id !== targetUserId)
-    if (legacyUserIds.length === 0) return
+    const claimLegacyKeyIds = () => {
+      const targetUserId = getUserId()
+      const knownIds = getKnownUserIds()
+      const legacyUserIds = knownIds.filter((id) => id !== targetUserId)
+      if (legacyUserIds.length === 0) return
 
-    const markerKey = deviceClaimMarkerKey(targetUserId, knownIds)
-    if (localStorage.getItem(markerKey)) return
+      const markerKey = deviceClaimMarkerKey(targetUserId, knownIds)
+      if (localStorage.getItem(markerKey)) return
 
-    localStorage.setItem(markerKey, 'pending')
+      localStorage.setItem(markerKey, 'pending')
 
-    fetch('/api/device/claim', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetUserId, legacyUserIds }),
-    })
-      .then(async (res) => {
-        const data = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(data?.error || 'Device claim failed')
-        localStorage.setItem(markerKey, '1')
-        if (typeof data?.moved === 'number' && data.moved > 0) {
+      fetch('/api/device/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId, legacyUserIds }),
+      })
+        .then(async (res) => {
+          const data = await res.json().catch(() => null)
+          if (!res.ok) throw new Error(data?.error || 'Device claim failed')
+          localStorage.setItem(markerKey, '1')
+          if (typeof data?.moved === 'number' && data.moved > 0) {
+            window.location.reload()
+          }
+        })
+        .catch((error) => {
+          localStorage.removeItem(markerKey)
+          console.error('[StudioTopBar] Anonymous device claim failed:', error)
+        })
+    }
+
+    // Cookie handshake FIRST: if localStorage was wiped, this swaps the
+    // freshly minted id for the durable cookie id (sweeping any rows the
+    // fresh id wrote) and reloads so every panel refetches under the id
+    // that actually owns the data. The legacy-key claim runs after — under
+    // the restored id when one was adopted.
+    restoreDurableIdentity()
+      .then(({ adopted }) => {
+        if (adopted) {
           window.location.reload()
+          return
         }
+        claimLegacyKeyIds()
       })
       .catch((error) => {
-        localStorage.removeItem(markerKey)
-        console.error('[StudioTopBar] Anonymous device claim failed:', error)
+        console.error('[StudioTopBar] Device handshake failed:', error)
+        claimLegacyKeyIds()
       })
   }, [])
 

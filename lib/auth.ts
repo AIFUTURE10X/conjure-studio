@@ -45,11 +45,21 @@ const trustedOrigins = resolveTrustedOrigins()
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 
+// Studio sessions last 90 days (Better Auth defaults to 7), refreshed daily
+// while the app is in use — a returning creator should never find themselves
+// silently signed out with their workspace looking empty.
+const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 90
+const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24
+
 export const auth = betterAuth({
   database: pgPool,
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: resolveBaseURL(),
   ...(trustedOrigins.length ? { trustedOrigins } : {}),
+  session: {
+    expiresIn: SESSION_EXPIRES_IN_SECONDS,
+    updateAge: SESSION_UPDATE_AGE_SECONDS,
+  },
   emailAndPassword: {
     enabled: true,
   },
