@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { VideoHistoryCard } from './VideoHistoryCard'
 import { useVideoHistoryBrowser, type VideoHistoryTab } from './useVideoHistoryBrowser'
+import type { FavoriteWriteResult } from '../useVideoFavorites'
 import type { VideoJob } from '../useVideoGeneration'
 
 interface VideoHistoryModalProps {
@@ -16,7 +17,9 @@ interface VideoHistoryModalProps {
    * Persists the star and mirrors it into the inline grid's job list.
    * Resolves false when the write was rejected, so the modal can undo its own copy.
    */
-  onSetFavorite: (jobId: number, isFavorited: boolean) => Promise<boolean>
+  onSetFavorite: (jobId: number, isFavorited: boolean) => Promise<FavoriteWriteResult>
+  /** Next value a click should request, ahead of the rendered prop. */
+  resolveNextFavorite: (jobId: number, rendered: boolean) => boolean
 }
 
 const TABS: Array<{ id: VideoHistoryTab; label: string }> = [
@@ -53,7 +56,7 @@ function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: b
   )
 }
 
-export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHistoryModalProps) {
+export function VideoHistoryModal({ isOpen, onClose, onSetFavorite, resolveNextFavorite }: VideoHistoryModalProps) {
   // Every click in a burst awaits the same settled write, so without this only
   // the newest one may undo itself — otherwise two reverts stack and land on the
   // state before the first click rather than before the last.
@@ -75,15 +78,23 @@ export function VideoHistoryModal({ isOpen, onClose, onSetFavorite }: VideoHisto
     const token = (toggleTokens.current.get(clip.jobId) ?? 0) + 1
     toggleTokens.current.set(clip.jobId, token)
 
-    applyFavorite(clip.jobId, !clip.isFavorited)
+    // Not `!clip.isFavorited`: the prop is a render behind, so a second click in
+    // the same tick would re-request the first click's value instead of undoing it.
+    const next = resolveNextFavorite(clip.jobId, Boolean(clip.isFavorited))
+    applyFavorite(clip.jobId, next)
 
-    const persisted = await onSetFavorite(clip.jobId, !clip.isFavorited)
-    if (persisted) return
-    // Only the newest click undoes itself, and only if the list underneath is
-    // still the one it acted on — a tab switch, search or reopen replaces it
-    // with server truth, which a revert would fight.
+    const result = await onSetFavorite(clip.jobId, next)
+    if (result.ok) return
+    // Only the newest click reconciles, and only if the list underneath is still
+    // the one it acted on — a tab switch, search or reopen replaces it with
+    // server truth, which this would fight.
     if (toggleTokens.current.get(clip.jobId) !== token) return
-    if (getListGeneration() === generation) restoreClip(clip, index)
+    if (getListGeneration() !== generation) return
+
+    // Settle on what the row actually holds rather than this click's snapshot:
+    // mid-burst, an earlier write in the same sequence may have landed.
+    if (result.isFavorited) restoreClip({ ...clip, isFavorited: true }, index)
+    else applyFavorite(clip.jobId, false)
   }
 
   return (

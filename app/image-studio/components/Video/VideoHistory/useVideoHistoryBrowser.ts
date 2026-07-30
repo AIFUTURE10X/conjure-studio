@@ -32,6 +32,10 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
 
   // Guards against a slow first page overwriting a newer tab/search result.
   const requestSeq = useRef(0)
+  // Bumped only when the list is REPLACED wholesale. Distinct from requestSeq,
+  // which counts every fetch: `loadMore` appends without disturbing the rows a
+  // pending revert may be targeting, so it must not invalidate that revert.
+  const listGeneration = useRef(0)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
@@ -59,6 +63,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
       if (seq !== requestSeq.current) return
 
       const videos = Array.isArray(data?.videos) ? (data.videos as VideoJob[]) : []
+      if (offset === 0) listGeneration.current += 1
       setClips((current) => (offset === 0 ? videos : [...current, ...videos]))
       setHasMore(Boolean(data?.hasMore))
     } catch (fetchError) {
@@ -68,6 +73,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
       // the loaded clips and `hasMore`, so the modal can offer a working Retry —
       // clearing hasMore here would make loadMore's guard reject that retry.
       if (offset === 0) {
+        listGeneration.current += 1
         setClips([])
         setHasMore(false)
       }
@@ -127,7 +133,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
    * dropped rather than applied: once a real fetch has landed, the server's data
    * is authoritative and re-inserting a stale row would fight it.
    */
-  const getListGeneration = useCallback(() => requestSeq.current, [])
+  const getListGeneration = useCallback(() => listGeneration.current, [])
 
   return {
     tab,
