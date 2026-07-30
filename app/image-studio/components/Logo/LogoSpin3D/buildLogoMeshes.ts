@@ -86,6 +86,15 @@ export function buildLogoMeshes(
 
   const bounds = measureShapes(allShapes)
   if (!bounds || perPath.length === 0) {
+    // Logged, not just surfaced to the user: this is a 200 OK from the vectorizer
+    // that happens to contain nothing extrudable. Without a log line, a vectorizer
+    // regression producing empty output across many logos would show up only as
+    // user reports, with no signal to find it by.
+    console.error('[logo-3d] Vectorized SVG contained no extrudable shapes', {
+      svgLength: svg.length,
+      parsedPaths: paths.length,
+      shapesFound: allShapes.length,
+    })
     return { meshes: [], scale: 1, center: { x: 0, y: 0 }, depth: 0 }
   }
 

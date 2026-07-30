@@ -112,8 +112,18 @@ export default function LogoSpinScene({
       camera={{ position: [0, 0, 2.4], fov: 45 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: background === null }}
-      style={background === null ? undefined : { background }}
     >
+      {/*
+        The colour has to be the SCENE's background, not CSS on the element.
+        r3f spreads its `style` prop onto the wrapper <div> and gives the <canvas>
+        only `display: block`, so with an opaque context (alpha false, which is
+        what picking a solid colour selects) three clears to its default black
+        every frame and paints straight over any CSS background behind it. That
+        rendered every swatch as a black rectangle; only Dark looked right, and
+        only because it is nearly black already.
+      */}
+      {background !== null && <color attach="background" args={[background]} />}
+
       <ambientLight intensity={0.7} />
       <directionalLight position={[3, 4, 5]} intensity={1.5} />
       {/* Rim light so the extruded sides read against a dark backdrop as the logo turns away. */}

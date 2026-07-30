@@ -314,6 +314,34 @@ const checks = [
       return usesExtrude && usesMaterial && usesRotation && scalesDepth
     },
   },
+  {
+    /*
+      Regression guard for a bug that shipped to review.
+      r3f spreads its `style` prop onto the wrapper <div> and gives the <canvas>
+      only `display: block`. With an opaque context — which is exactly what
+      choosing a solid colour selects — three clears to its default black every
+      frame and paints over any CSS background behind it, so every swatch
+      rendered as a black rectangle. The colour must be the SCENE's background.
+
+      Source-level (a WebGL context cannot run in CI) but read from
+      comment-stripped source, so a commented-out attach cannot satisfy it.
+    */
+    name: 'background — the chosen colour is set as the scene background, not CSS behind an opaque canvas',
+    pass: () => {
+      const scene = readCode(SCENE_PATH)
+      const setsSceneBackground = /<color\s+attach=(["'])background\1/.test(scene)
+      // A `style` carrying the background is the broken pattern, not just dead weight.
+      const stylesTheWrapper = /style=\{[^}]*background/.test(scene)
+      if (!setsSceneBackground) {
+        console.error('    the scene never attaches a background colour to the scene')
+        console.error('    CSS on the Canvas element cannot show through an opaque WebGL context')
+      }
+      if (stylesTheWrapper) {
+        console.error('    the scene passes background via Canvas `style`, which r3f puts on the wrapper div')
+      }
+      return setsSceneBackground && !stylesTheWrapper
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {

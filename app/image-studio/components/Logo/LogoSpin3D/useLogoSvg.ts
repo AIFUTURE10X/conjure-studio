@@ -23,8 +23,26 @@ import { svgLooksDrawable } from './spin-3d-params'
  * Only the two genuinely asynchronous outcomes are state.
  */
 
-/** Keyed by logo URL. Values are the SVG markup. */
+/**
+ * Keyed by logo URL. Values are the SVG markup.
+ *
+ * Capped and evicted oldest-first. Growth is already gated — each entry costs a
+ * credit-gated vectorize call on a distinct logo — but an unbounded module-level
+ * cache of multi-KB strings has no business living for the whole session.
+ */
+const SVG_CACHE_LIMIT = 24
 const svgCache = new Map<string, string>()
+
+function cacheSvg(logoUrl: string, svg: string): void {
+  // Re-inserting moves the key to the end, so recently used entries survive.
+  svgCache.delete(logoUrl)
+  svgCache.set(logoUrl, svg)
+  while (svgCache.size > SVG_CACHE_LIMIT) {
+    const oldest = svgCache.keys().next().value
+    if (oldest === undefined) break
+    svgCache.delete(oldest)
+  }
+}
 
 /** Requests in flight, so two mounts for one logo share a single vectorize. */
 const inFlight = new Map<string, Promise<string>>()
@@ -101,7 +119,7 @@ export function useLogoSvg(logoUrl: string | null, isActive: boolean): LogoSvgSt
 
     request
       .then((result) => {
-        svgCache.set(logoUrl, result)
+        cacheSvg(logoUrl, result)
         if (!cancelled) setFetched({ url: logoUrl, svg: result })
       })
       .catch((fetchError: unknown) => {
