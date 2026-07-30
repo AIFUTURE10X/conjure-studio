@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getUserId } from '@/lib/user-id'
 import { logPromptUse } from '@/lib/prompt-log'
 import { imageUrlToImageFile } from '../../utils/annotation-reference'
 import { VIDEO_MODELS, type VideoModelId, type VideoResolution } from '@/lib/video/providers'
 import { VIDEO_COMPLETED_EVENT } from '../../constants/concierge-tree'
+import { useVideoFavorites } from './useVideoFavorites'
+import { useVideoPostProduction } from './useVideoPostProduction'
 
 /**
  * Video job state: submit to /api/generate-video, poll the status route
@@ -31,12 +33,6 @@ export interface VideoJob {
   isFavorited?: boolean
 }
 
-/** Outcome of a favorite write: whether it landed, and what the row now holds. */
-export interface FavoriteWriteResult {
-  ok: boolean
-  isFavorited: boolean
-}
-
 export interface SubmitVideoOptions {
   prompt: string
   model: VideoModelId
@@ -56,22 +52,7 @@ export function useVideoGeneration() {
   const [jobs, setJobs] = useState<VideoJob[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
-  /** In-flight favorite write per clip, so repeat clicks serialize behind it. */
-  const favoriteRuns = useRef<Map<number, Promise<FavoriteWriteResult>>>(new Map())
-  /** Newest requested state for a clip whose write hasn't finished yet. */
-  const favoriteQueue = useRef<Map<number, boolean>>(new Map())
-  /**
-   * What the user last asked for, for clips with a write still settling.
-   *
-   * Rendered props lag a click by a render, so two clicks in the same tick both
-   * read the pre-click value and ask for the same thing — a double-click lands
-   * as one toggle. This covers that gap, and only that gap: entries are dropped
-   * once the write settles, by which point the optimistic update has painted and
-   * the rendered value is authoritative again. Keeping them longer would let a
-   * stale local guess outlive a change made in another tab or session, turning
-   * the next click into a silent no-op.
-   */
-  const favoriteIntent = useRef<Map<number, boolean>>(new Map())
+  const { setFavorite, toggleFavorite, resolveNextFavorite } = useVideoFavorites(setJobs)
 
   // Hydrate recent jobs once; pending rows resume polling automatically.
   useEffect(() => {
@@ -238,95 +219,7 @@ export function useVideoGeneration() {
     ])
   }, [])
 
-  const submitLipSync = useCallback(async (
-    job: VideoJob,
-    payload: { mode: 'text'; text: string; voiceId: string; voiceLanguage: 'en' | 'zh' } | { mode: 'audio'; audioFile: File },
-  ): Promise<boolean> => {
-    if (!job.videoUrl) return false
-    try {
-      const formData = new FormData()
-      formData.append('userId', getUserId())
-      formData.append('videoUrl', job.videoUrl)
-      formData.append('mode', payload.mode)
-      if (payload.mode === 'text') {
-        formData.append('text', payload.text)
-        formData.append('voiceId', payload.voiceId)
-        formData.append('voiceLanguage', payload.voiceLanguage)
-      } else {
-        formData.append('audio', payload.audioFile)
-      }
-      const response = await fetch('/api/lipsync', { method: 'POST', body: formData })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || `Lip sync failed (${response.status})`)
-      addPendingJob(data.jobId as number, payload.mode === 'text' ? `Lip sync: “${payload.text}”` : 'Lip sync (uploaded audio)', 'kling-lipsync', job)
-      toast.success('Lip sync started — this can take a few minutes')
-      return true
-    } catch (error) {
-      console.error('[video] Lip sync failed:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to start lip sync')
-      return false
-    }
-  }, [addPendingJob])
-
-  const submitEnhance = useCallback(async (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p'): Promise<boolean> => {
-    if (!job.videoUrl) return false
-    try {
-      const response = await fetch('/api/enhance-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: getUserId(), videoUrl: job.videoUrl, targetResolution }),
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || `Enhance failed (${response.status})`)
-      addPendingJob(data.jobId as number, `Enhanced (upscaled to ${targetResolution})`, 'seedvr-upscale', job)
-      toast.success('Enhance started — this can take a few minutes')
-      return true
-    } catch (error) {
-      console.error('[video] Enhance failed:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to start enhance')
-      return false
-    }
-  }, [addPendingJob])
-
-  const submitAssembleFilm = useCallback(async (
-    selectedJobs: VideoJob[],
-    options: {
-      narration?: { text: string; engine: 'elevenlabs' | 'kling'; voiceId: string }
-      musicStyleId?: string
-    },
-  ): Promise<boolean> => {
-    const clips = selectedJobs
-      .filter((job) => job.videoUrl)
-      .map((job) => ({ url: job.videoUrl as string, durationSeconds: job.durationSeconds ?? 5 }))
-    if (clips.length < 2) {
-      toast.error('Pick at least two finished clips')
-      return false
-    }
-    try {
-      const response = await fetch('/api/assemble-film', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: getUserId(),
-          clips,
-          narration: options.narration,
-          music: options.musicStyleId ? { styleId: options.musicStyleId } : undefined,
-        }),
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || `Film assembly failed (${response.status})`)
-      const label = `Film: ${clips.length} clips` +
-        (options.narration ? ' · narrated' : '') +
-        (options.musicStyleId && options.musicStyleId !== 'none' ? ' · music' : '')
-      addPendingJob(data.jobId as number, label, 'film-assembly', selectedJobs[0])
-      toast.success('Assembling your film — narration and music are being generated')
-      return true
-    } catch (error) {
-      console.error('[video] Film assembly failed:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to assemble film')
-      return false
-    }
-  }, [addPendingJob])
+  const { submitLipSync, submitEnhance, submitAssembleFilm } = useVideoPostProduction(addPendingJob)
 
   const cancelJob = useCallback(async (job: VideoJob): Promise<boolean> => {
     try {
@@ -360,108 +253,6 @@ export function useVideoGeneration() {
    * re-hydrates on a page reload, mirroring how the image grid clears.
    */
   const clearJobs = useCallback(() => setJobs([]), [])
-
-  /**
-   * Persist a clip's favorite state and mirror it into the job list.
-   *
-   * The history modal browses rows this hook may never have loaded, so the local
-   * update is a no-op map rather than a lookup — a clip that isn't on screen just
-   * gets persisted. Keeping both surfaces on this one writer is what stops the
-   * grid and the modal disagreeing about a heart.
-   *
-   * The update is optimistic but not blind: a rejected write reverts the heart
-   * here and reports `false` so the caller can undo its own copy, rather than
-   * leaving the UI claiming a star the database never took.
-   */
-
-  /**
-   * Drive one clip's writes to completion, newest intent last.
-   *
-   * Writes are serialized rather than fired in parallel because the UPDATE has
-   * no ordering guard — two in-flight requests would let the earlier click win
-   * in the database while both reported success. After each write it picks up
-   * whatever the user asked for meanwhile, so a burst of clicks costs at most
-   * two requests and settles on the last one.
-   */
-  const runFavoriteWrites = useCallback(async (jobId: number, desired: boolean): Promise<FavoriteWriteResult> => {
-    // What the row is believed to hold: the toggle's starting point, then each
-    // value confirmed written. A failure reverts to this, not to the caller's
-    // guess, so an earlier successful write in the same burst is not undone.
-    let persisted = !desired
-    let target = desired
-
-    try {
-      for (;;) {
-        const response = await fetch('/api/video-history', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: getUserId(), jobId, isFavorited: target }),
-        })
-        if (!response.ok) {
-          const data = await response.json().catch(() => null)
-          throw new Error(data?.error || 'Could not update favorite')
-        }
-        persisted = target
-
-        const queued = favoriteQueue.current.get(jobId)
-        favoriteQueue.current.delete(jobId)
-        if (queued === undefined || queued === persisted) {
-          return { ok: true, isFavorited: persisted }
-        }
-        target = queued
-      }
-    } catch (error) {
-      favoriteQueue.current.delete(jobId)
-      // Settle every surface on what the row actually holds — the last value
-      // confirmed written, which may be mid-burst rather than the start of it.
-      setJobs((current) => current.map((item) => (
-        item.jobId === jobId ? { ...item, isFavorited: persisted } : item
-      )))
-      toast.error(error instanceof Error ? error.message : 'Could not update favorite')
-      console.error('[video] Favorite toggle failed:', error)
-      return { ok: false, isFavorited: persisted }
-    } finally {
-      favoriteRuns.current.delete(jobId)
-      // The optimistic update has painted by now, so the rendered value is the
-      // authority again — and a fresh GET may legitimately contradict this guess.
-      favoriteIntent.current.delete(jobId)
-    }
-  }, [])
-
-  const setFavorite = useCallback((jobId: number, isFavorited: boolean): Promise<FavoriteWriteResult> => {
-    favoriteIntent.current.set(jobId, isFavorited)
-    setJobs((current) => current.map((item) => (
-      item.jobId === jobId ? { ...item, isFavorited } : item
-    )))
-
-    // A write for this clip is already running: hand it the newer intent instead
-    // of dropping the click, and return that run so every caller in the burst
-    // learns the same settled outcome.
-    const running = favoriteRuns.current.get(jobId)
-    if (running) {
-      favoriteQueue.current.set(jobId, isFavorited)
-      return running
-    }
-
-    const run = runFavoriteWrites(jobId, isFavorited)
-    favoriteRuns.current.set(jobId, run)
-    return run
-  }, [runFavoriteWrites])
-
-  /**
-   * What a click on this clip's heart should ask for.
-   *
-   * Prefers the intent of a click whose write is still settling over `rendered`,
-   * which is a paint behind. Falls back to `rendered` once nothing is pending —
-   * and for archive rows the modal browses that were never in `jobs`.
-   */
-  const resolveNextFavorite = useCallback((jobId: number, rendered: boolean) => (
-    !(favoriteIntent.current.get(jobId) ?? rendered)
-  ), [])
-
-  const toggleFavorite = useCallback((job: VideoJob) => {
-    void setFavorite(job.jobId, resolveNextFavorite(job.jobId, Boolean(job.isFavorited)))
-  }, [resolveNextFavorite, setFavorite])
 
   return {
     jobs,
