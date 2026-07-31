@@ -56,7 +56,7 @@ try {
 const {
   EXPORT_RESOLUTIONS, EXPORT_FPS_OPTIONS, EXPORT_MIN_SECONDS, EXPORT_MAX_SECONDS,
   clampDuration, frameCountFor, frameTurns, frameTimestamp, frameDuration, clipDurationFor,
-  cameraDistanceFor, formatSupportsAlpha, alphaConflict, bitrateFor, exportFilename,
+  cameraDistanceFor, formatSupportsAlpha, alphaConflict, bitrateFor, exportFilename, tumbleTiltTurns,
 } = maths
 
 const near = (a, b, tolerance = 1e-9) => Math.abs(a - b) < tolerance
@@ -144,6 +144,47 @@ const checks = [
       if (!near(wrap, revolutions)) { console.error(`    ${revolutions} revolutions: expected ${revolutions}, received ${wrap}`); return false }
       return true
     }),
+  },
+  {
+    /*
+      Regression guard for a seam that shipped to review.
+
+      Tumble rotates two axes. The spin axis lands on a whole turn by
+      construction, but the tilt originally derived as a fixed 0.4x fraction of
+      it, which only closes when the spin count is a multiple of 5. Across the
+      whole UI range that was ONE combination (10s at 3x) — every other setting,
+      including the defaults, ended mid-tilt and snapped at the loop point.
+
+      The earlier checks missed it because they exercised frameTurns alone and
+      never composed it with the rotation. This one composes both, exactly as the
+      encoder does.
+    */
+    name: 'loop — a tumble clip closes on BOTH axes, not just the spin',
+    pass: () => {
+      const combos = [[2, 24], [3, 30], [4, 30], [6, 24], [8, 60], [10, 60]]
+      const speeds = [0.2, 0.5, 1, 1.5, 2, 3]
+      for (const [duration, fps] of combos) {
+        for (const speed of speeds) {
+          const frameCount = frameCountFor(duration, fps)
+          const revolutions = Math.max(1, Math.round((duration * speed) / 6))
+          const tilt = tumbleTiltTurns(revolutions)
+          if (!Number.isInteger(tilt) || tilt < 1) {
+            console.error(`    ${duration}s @ ${fps}fps speed ${speed}: tilt turns ${tilt} is not a positive whole number`)
+            return false
+          }
+          // The frame after the last rendered one must return BOTH axes to their
+          // starting orientation, i.e. both land on whole turns.
+          const spinAtWrap = frameTurns(frameCount, frameCount, revolutions)
+          const tiltAtWrap = frameTurns(frameCount, frameCount, tilt)
+          if (!near(spinAtWrap % 1, 0) || !near(tiltAtWrap % 1, 0)) {
+            console.error(`    ${duration}s @ ${fps}fps speed ${speed}: spin=${spinAtWrap} tilt=${tiltAtWrap}`)
+            console.error('    both must be whole turns or the tumble seam snaps')
+            return false
+          }
+        }
+      }
+      return true
+    },
   },
   {
     name: 'timing — frame timestamps are contiguous and the clip is exactly as long as requested',
@@ -263,12 +304,16 @@ const checks = [
       const usesFrameTurns = /frameTurns\(/.test(engine)
       const usesTimestamps = /frameTimestamp\(/.test(engine) && /frameDuration\(/.test(engine)
       const usesFrameCount = /frameCountFor\(/.test(engine)
+      // Tumble needs a whole-turn tilt derived independently of the spin; deriving
+      // it as a fraction inside the rotation is what snapped the seam.
+      const usesWholeTilt = /tumbleTiltTurns\(/.test(engine) && /rotationForAxisTurns\(/.test(engine)
       const realtime = /MediaRecorder|captureStream\(/.test(engine)
+      if (!usesWholeTilt) console.error('    the encoder does not derive a whole-turn tumble tilt (tumbleTiltTurns + rotationForAxisTurns)')
       if (!usesFrameTurns) console.error('    the encoder does not use frameTurns — the loop seam is not the pinned one')
       if (!usesTimestamps) console.error('    the encoder does not use frameTimestamp/frameDuration for sample timing')
       if (!usesFrameCount) console.error('    the encoder does not use frameCountFor')
       if (realtime) console.error('    the encoder references MediaRecorder/captureStream — that timestamps by wall clock and breaks the duration guarantee')
-      return usesFrameTurns && usesTimestamps && usesFrameCount && !realtime
+      return usesFrameTurns && usesTimestamps && usesFrameCount && usesWholeTilt && !realtime
     },
   },
 ]

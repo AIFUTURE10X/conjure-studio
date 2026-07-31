@@ -59,6 +59,25 @@ export function frameTurns(frameIndex: number, frameCount: number, revolutions =
   return (frameIndex / frameCount) * revolutions
 }
 
+/**
+ * How many whole turns the tumble tilt makes across a clip.
+ *
+ * Tumble rotates two axes at once. The spin axis lands on a whole turn by
+ * construction, but the tilt axis only closes if IT also completes a whole number
+ * of turns — otherwise the clip ends mid-tilt and the loop snaps, which is the
+ * one thing AC-3 forbids.
+ *
+ * Rounding the tilt to a whole number keeps roughly the intended slow-tilt ratio
+ * while guaranteeing closure at any duration and speed. `max(1, …)` because a
+ * tilt of zero turns would make tumble indistinguishable from a plain spin.
+ */
+export const TUMBLE_TILT_RATIO = 0.4
+
+export function tumbleTiltTurns(revolutions: number): number {
+  const safe = Number.isFinite(revolutions) && revolutions > 0 ? revolutions : 1
+  return Math.max(1, Math.round(safe * TUMBLE_TILT_RATIO))
+}
+
 /** Presentation timestamp, in seconds, for a frame. */
 export function frameTimestamp(frameIndex: number, fps: number): number {
   const safeFps = Number.isFinite(fps) && fps > 0 ? fps : 30

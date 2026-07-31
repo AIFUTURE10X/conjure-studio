@@ -4,11 +4,11 @@ import {
 } from 'three'
 import { buildLogoMeshes, disposeLogoMeshes } from './buildLogoMeshes'
 import {
-  SPIN_BASE_PERIOD_SECONDS, SPIN_CAMERA_FOV, SPIN_LIGHTS, materialParamsFor, rotationForTurns,
+  SPIN_BASE_PERIOD_SECONDS, SPIN_CAMERA_FOV, SPIN_LIGHTS, materialParamsFor, rotationForAxisTurns,
   type SpinAxis, type SpinDepthLevel, type SpinMaterial,
 } from './spin-3d-params'
 import {
-  bitrateFor, cameraDistanceFor, frameCountFor, frameDuration, frameTimestamp, frameTurns,
+  bitrateFor, cameraDistanceFor, frameCountFor, frameDuration, frameTimestamp, frameTurns, tumbleTiltTurns,
   type ExportFormat,
 } from './spin-export-math'
 
@@ -58,6 +58,21 @@ export class ExportCancelledError extends Error {
     super('Export cancelled')
     this.name = 'ExportCancelledError'
   }
+}
+
+/** Frames between real yields. Often enough to stay responsive, rare enough not to slow the encode. */
+const YIELD_EVERY_FRAMES = 4
+
+/**
+ * Hand control back to the browser for a paint and an input turn.
+ *
+ * `setTimeout(0)` rather than `await Promise.resolve()`: a microtask does not let
+ * the browser repaint or dispatch a queued click, which is the whole point. Falls
+ * back cleanly when rAF is unavailable (a hidden tab never fires it, and an export
+ * must still finish there).
+ */
+function yieldToBrowser(): Promise<void> {
+  return new Promise((resolve) => { setTimeout(resolve, 0) })
 }
 
 /** Codec support has to be known BEFORE a long encode, not discovered at the end. */
@@ -158,65 +173,80 @@ export async function exportSpinVideo(
     Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource,
   } = await import('mediabunny')
 
-  const built = buildScene(request)
-  if (!built) throw new Error('This logo produced no 3D shapes to export.')
-
-  const canvas = document.createElement('canvas')
-  canvas.width = request.width
-  canvas.height = request.height
-
-  const renderer = new WebGLRenderer({
-    canvas,
-    antialias: true,
-    // Alpha only for a transparent export; an opaque one clears to the scene background.
-    alpha: request.background === null,
-    preserveDrawingBuffer: true,
-  })
-  renderer.setSize(request.width, request.height, false)
-  renderer.setPixelRatio(1)
-  if (request.background === null) renderer.setClearAlpha(0)
-
-  const isWebm = request.format === 'webm'
-  const target = new BufferTarget()
-  const output = new Output({
-    format: isWebm ? new WebMOutputFormat() : new Mp4OutputFormat(),
-    target,
-  })
-
-  const source = new CanvasSource(canvas, {
-    codec: isWebm ? 'vp9' : 'avc',
-    bitrate: bitrateFor(request.width, request.height, request.fps),
-    // VP9 emits alpha as packet side data, which WebM carries; H.264 cannot.
-    alpha: isWebm && request.background === null ? 'keep' : 'discard',
-    keyFrameInterval: 1,
-  })
-  output.addVideoTrack(source, { frameRate: request.fps })
-
-  const frameCount = frameCountFor(request.durationSeconds, request.fps)
-  const step = frameDuration(request.fps)
-  // The preview's speed decides how many turns the clip covers; rounded to a whole
-  // number so the clip still ends where it began and loops cleanly.
-  const revolutions = Math.max(1, Math.round((request.durationSeconds * request.speed) / SPIN_BASE_PERIOD_SECONDS))
-
-  const cleanUp = () => {
-    built.dispose()
-    renderer.dispose()
-  }
+  let built: BuiltScene | null = null
+  let renderer: WebGLRenderer | null = null
+  let output: InstanceType<typeof Output> | null = null
 
   try {
+    // Geometry building is synchronous and can take a while on a complex logo, so
+    // give the abort a chance to land and the Cancel button a chance to paint
+    // before committing to it — otherwise Cancel is on screen but inert.
+    await yieldToBrowser()
+    if (signal.aborted) throw new ExportCancelledError()
+
+    built = buildScene(request)
+    if (!built) throw new Error('This logo produced no 3D shapes to export.')
+    if (signal.aborted) throw new ExportCancelledError()
+
+    const canvas = document.createElement('canvas')
+    canvas.width = request.width
+    canvas.height = request.height
+
+    renderer = new WebGLRenderer({
+      canvas,
+      antialias: true,
+      // Alpha only for a transparent export; an opaque one clears to the scene background.
+      alpha: request.background === null,
+      preserveDrawingBuffer: true,
+    })
+    renderer.setSize(request.width, request.height, false)
+    renderer.setPixelRatio(1)
+    if (request.background === null) renderer.setClearAlpha(0)
+
+    const isWebm = request.format === 'webm'
+    const target = new BufferTarget()
+    output = new Output({
+      format: isWebm ? new WebMOutputFormat() : new Mp4OutputFormat(),
+      target,
+    })
+
+    const source = new CanvasSource(canvas, {
+      codec: isWebm ? 'vp9' : 'avc',
+      bitrate: bitrateFor(request.width, request.height, request.fps),
+      // VP9 emits alpha as packet side data, which WebM carries; H.264 cannot.
+      alpha: isWebm && request.background === null ? 'keep' : 'discard',
+      keyFrameInterval: 1,
+    })
+    output.addVideoTrack(source, { frameRate: request.fps })
+
+    const frameCount = frameCountFor(request.durationSeconds, request.fps)
+    const step = frameDuration(request.fps)
+    // How many whole turns the clip covers, from the preview's speed. Whole, so the
+    // clip ends where it began.
+    const revolutions = Math.max(1, Math.round((request.durationSeconds * request.speed) / SPIN_BASE_PERIOD_SECONDS))
+    // Tumble tilts a second axis, which has to land on a whole turn too or the seam
+    // snaps — see tumbleTiltTurns.
+    const tiltTurns = tumbleTiltTurns(revolutions)
+
     await output.start()
 
     for (let index = 0; index < frameCount; index += 1) {
       if (signal.aborted) throw new ExportCancelledError()
 
-      const rotation = rotationForTurns(request.axis, frameTurns(index, frameCount, revolutions))
+      const spin = frameTurns(index, frameCount, revolutions)
+      const tilt = frameTurns(index, frameCount, tiltTurns)
+      const rotation = rotationForAxisTurns(request.axis, spin, tilt)
       built.spinGroup.rotation.set(rotation.x, rotation.y, rotation.z)
       renderer.render(built.scene, built.camera)
 
-      // Awaited so encoder and writer backpressure is respected; this is also what
-      // yields to the event loop, keeping the UI responsive during a long encode.
+      // Awaited for encoder and writer backpressure.
       await source.add(frameTimestamp(index, request.fps), step)
       onProgress((index + 1) / frameCount)
+
+      // `source.add` usually resolves as a microtask, which does NOT return control
+      // to the browser — without this the whole loop runs as one synchronous burst,
+      // so the progress bar never paints and a Cancel click is never processed.
+      if ((index + 1) % YIELD_EVERY_FRAMES === 0) await yieldToBrowser()
     }
 
     await output.finalize()
@@ -230,9 +260,17 @@ export async function exportSpinVideo(
     }
   } catch (error) {
     // Discard the partial file rather than leaving a truncated video behind.
-    await output.cancel().catch(() => {})
+    await output?.cancel().catch(() => {})
     throw error
   } finally {
-    cleanUp()
+    built?.dispose()
+    if (renderer) {
+      // dispose() alone does NOT release the WebGL context — a known three.js
+      // gotcha. Browsers cap live contexts (~16) and evict the OLDEST when the cap
+      // is hit, which would be the panel's own preview canvas, blanking it
+      // mid-export. Every export must hand its context back.
+      renderer.forceContextLoss()
+      renderer.dispose()
+    }
   }
 }

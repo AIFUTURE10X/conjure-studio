@@ -168,8 +168,29 @@ export function rotationFor(axis: SpinAxis, elapsedSeconds: number, speed: numbe
  */
 export function rotationForTurns(axis: SpinAxis, turns: number): Rotation {
   const safeTurns = Number.isFinite(turns) ? turns : 0
-  const angle = safeTurns * Math.PI * 2
-  if (axis === 'x') return { x: angle, y: 0, z: 0 }
-  if (axis === 'tumble') return { x: angle * 0.4, y: angle, z: 0 }
-  return { x: 0, y: angle, z: 0 }
+  // The live preview runs forever, so its tumble tilt can be a plain fraction of
+  // the spin — nothing has to close. An export does, which is why it uses
+  // rotationForAxisTurns with an independently whole tilt instead.
+  return rotationForAxisTurns(axis, safeTurns, safeTurns * PREVIEW_TUMBLE_TILT_RATIO)
+}
+
+/** Preview-only tilt ratio; exports derive their tilt from `tumbleTiltTurns`. */
+const PREVIEW_TUMBLE_TILT_RATIO = 0.4
+
+/**
+ * Rotation from explicit per-axis turn counts.
+ *
+ * Exists because tumble has two independent rotations, and an exported clip only
+ * loops if BOTH land on a whole turn. Deriving the tilt as a fixed fraction of the
+ * spin — the obvious approach — closes only when the spin count happens to be a
+ * multiple of 1/ratio, so almost every export would snap at the seam.
+ */
+export function rotationForAxisTurns(axis: SpinAxis, spinTurns: number, tiltTurns: number): Rotation {
+  const safeSpin = Number.isFinite(spinTurns) ? spinTurns : 0
+  const safeTilt = Number.isFinite(tiltTurns) ? tiltTurns : 0
+  const spinAngle = safeSpin * Math.PI * 2
+  const tiltAngle = safeTilt * Math.PI * 2
+  if (axis === 'x') return { x: spinAngle, y: 0, z: 0 }
+  if (axis === 'tumble') return { x: tiltAngle, y: spinAngle, z: 0 }
+  return { x: 0, y: spinAngle, z: 0 }
 }
