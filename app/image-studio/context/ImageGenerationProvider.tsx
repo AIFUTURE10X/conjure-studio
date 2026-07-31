@@ -27,6 +27,10 @@ import { useStudioCore } from './useStudio'
 export type ImageBgRemovalMethod = 'none' | 'photoroom' | 'fal'
 export type { ImageMetadata } from '../utils/get-image-metadata'
 
+// Keep client-side history requests below Vercel's request cap when Blob is
+// unavailable and an edit is still represented as a data URI.
+export const MAX_INLINE_HISTORY_DATA_URI_LENGTH = 3_500_000
+
 export interface ImageGenerationEngine {
   isGenerating: boolean
   error: string | null
@@ -327,6 +331,11 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     updated[index] = { ...original, url }
     state.setGeneratedImages(updated)
     toast.success('AI edit applied')
+
+    if (url.startsWith('data:') && url.length > MAX_INLINE_HISTORY_DATA_URI_LENGTH) {
+      toast.error('Edit applied, but it couldn\'t be stored in history (image too large to upload)')
+      return true
+    }
 
     const historyPrompt = editPrompt ? `AI edit: ${editPrompt}` : 'AI edit: erase'
     try {

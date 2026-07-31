@@ -32,6 +32,9 @@ jobs:
       - name: Contract — prompt merge
         run: npm run check:prompt-merge
 
+      - name: Contract — applied edit history
+        run: npm run check:applied-edit-history
+
       - name: Contract — AI helper UI
         run: npm run check:ai-helper-ui
 

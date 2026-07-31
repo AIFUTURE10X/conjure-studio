@@ -10,18 +10,36 @@
 
 import { put } from "@vercel/blob"
 
+const MAX_BLOB_UPLOAD_ATTEMPTS = 3
+const BLOB_RETRY_BASE_DELAY_MS = 50
+
 export async function uploadEditImage(buffer: Buffer): Promise<string> {
   let imageUrl = `data:image/png;base64,${buffer.toString("base64")}`
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const uploaded = await put(
-        `edits/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`,
-        buffer,
-        { access: "public", contentType: "image/png" },
-      )
-      imageUrl = uploaded.url
-    } catch (error) {
-      console.error("[edit-upload] Blob upload failed; falling back to data URI:", error)
+    const pathname = `edits/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
+    for (let attempt = 0; attempt < MAX_BLOB_UPLOAD_ATTEMPTS; attempt += 1) {
+      try {
+        const uploaded = await put(pathname, buffer, {
+          access: "public",
+          contentType: "image/png",
+        })
+        imageUrl = uploaded.url
+        break
+      } catch (error) {
+        if (attempt === MAX_BLOB_UPLOAD_ATTEMPTS - 1) {
+          console.error(
+            "[edit-upload] Blob upload retries exhausted; falling back to data URI:",
+            error,
+          )
+          break
+        }
+        const delayMs = BLOB_RETRY_BASE_DELAY_MS * 2 ** attempt
+        console.warn(
+          `[edit-upload] Blob upload attempt ${attempt + 1} failed; retrying in ${delayMs}ms`,
+          error,
+        )
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
     }
   }
   return imageUrl
