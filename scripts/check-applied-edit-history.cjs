@@ -60,13 +60,16 @@ async function run() {
 
   process.env.BLOB_READ_WRITE_TOKEN = 'contract-test-token'
   let attempts = 0
-  const uploadEditImage = loadUploadModule(async () => {
+  let uploadOptions
+  const uploadEditImage = loadUploadModule(async (_pathname, _body, options) => {
     attempts += 1
+    uploadOptions = options
     if (attempts < 3) throw new Error(`transient-${attempts}`)
     return { url: 'https://blob.example/edit.png' }
   }).uploadEditImage
   const retried = await uploadEditImage(Buffer.from('image'))
   assert(attempts === 3, `expected three attempts, got ${attempts}`)
+  assert(uploadOptions.allowOverwrite === true, 'retries must allow overwriting the stable pathname')
   assert(retried === 'https://blob.example/edit.png', 'retry success must return the Blob URL')
 
   attempts = 0

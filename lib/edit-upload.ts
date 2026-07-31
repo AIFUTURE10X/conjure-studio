@@ -21,6 +21,7 @@ export async function uploadEditImage(buffer: Buffer): Promise<string> {
       try {
         const uploaded = await put(pathname, buffer, {
           access: "public",
+          allowOverwrite: true,
           contentType: "image/png",
         })
         imageUrl = uploaded.url
