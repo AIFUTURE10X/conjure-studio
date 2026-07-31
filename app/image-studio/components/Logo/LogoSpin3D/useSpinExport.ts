@@ -17,7 +17,7 @@ import type { SpinExportRequest } from './spin-export-engine'
 export interface ExportSupport {
   mp4: boolean
   webm: boolean
-  /** Null until the probe resolves; the UI shows a neutral state meanwhile. */
+  /** False until the probe resolves; the UI shows a neutral state meanwhile. */
   probed: boolean
 }
 
@@ -42,6 +42,10 @@ export function useSpinExport(isActive: boolean) {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // Ref mirror of isExporting: two clicks inside one React commit would both
+  // read the STATE as false and start twin encodes racing over abortRef.
+  const exportingRef = useRef(false)
+  const lastPercentRef = useRef(-1)
 
   useEffect(() => {
     if (!isActive || support.probed) return
@@ -49,9 +53,14 @@ export function useSpinExport(isActive: boolean) {
     void (async () => {
       const { probeExportSupport } = await import('./spin-export-engine')
       const result = await probeExportSupport()
-      if (!cancelled) setSupport({ ...result, probed: true })
+      if (cancelled) return
+      // A null probe (the engine could not even be asked — e.g. a lazy chunk
+      // failed to load) is NOT "this browser has no encoders". Leaving probed
+      // false lets the next open retry instead of locking the panel into
+      // "cannot encode video" for the rest of the page session.
+      setSupport(result ? { ...result, probed: true } : { mp4: false, webm: false, probed: false })
     })().catch(() => {
-      if (!cancelled) setSupport({ mp4: false, webm: false, probed: true })
+      if (!cancelled) setSupport({ mp4: false, webm: false, probed: false })
     })
     return () => { cancelled = true }
   }, [isActive, support.probed])
@@ -61,18 +70,28 @@ export function useSpinExport(isActive: boolean) {
   }, [])
 
   const runExport = useCallback(async (request: SpinExportRequest, prompt: string) => {
-    if (isExporting) return
+    if (exportingRef.current) return
+    exportingRef.current = true
 
     const controller = new AbortController()
     abortRef.current = controller
     setIsExporting(true)
     setProgress(0)
     setError(null)
+    lastPercentRef.current = -1
 
     try {
       const { exportSpinVideo, ExportCancelledError } = await import('./spin-export-engine')
       try {
-        const result = await exportSpinVideo(request, setProgress, controller.signal)
+        const result = await exportSpinVideo(request, (fraction) => {
+          // One state update per visible percent, not per frame: a 600-frame
+          // encode would otherwise re-render the modal subtree 600 times for a
+          // bar that only ever displays whole percents.
+          const percent = Math.round(fraction * 100)
+          if (percent === lastPercentRef.current) return
+          lastPercentRef.current = percent
+          setProgress(fraction)
+        }, controller.signal)
         download(result.blob, exportFilename(prompt, request.format))
         toast.success(`Exported ${result.frameCount} frames (${result.durationSeconds.toFixed(1)}s)`)
       } catch (exportError) {
@@ -89,19 +108,29 @@ export function useSpinExport(isActive: boolean) {
       // Always cleared, so a failed or cancelled export cannot leave the controls
       // permanently disabled.
       abortRef.current = null
+      exportingRef.current = false
       setIsExporting(false)
       setProgress(0)
     }
-  }, [isExporting])
+  }, [])
 
-  /** Abort an in-flight export if the panel closes underneath it. */
+  /**
+   * Abort an in-flight export if the panel closes underneath it — and, via the
+   * cleanup, if the whole subtree unmounts mid-encode (e.g. navigating away
+   * from the logo panel), which would otherwise keep rendering frames and
+   * holding a WebGL context until the encode ran to completion.
+   */
   useEffect(() => {
     if (!isActive) abortRef.current?.abort()
+    return () => { abortRef.current?.abort() }
   }, [isActive])
+
+  /** Forget a failure reason once the user changes the settings it applied to. */
+  const clearError = useCallback(() => { setError(null) }, [])
 
   const canExport = useCallback((format: ExportFormat) => (
     !support.probed ? false : format === 'mp4' ? support.mp4 : support.webm
   ), [support])
 
-  return { support, isExporting, progress, error, runExport, cancel, canExport }
+  return { support, isExporting, progress, error, runExport, cancel, canExport, clearError }
 }

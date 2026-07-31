@@ -8,9 +8,9 @@ import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { BACKGROUND_OPTIONS, LogoSpin3DControls, type SpinSettings } from './LogoSpin3DControls'
 import { LogoSpinExportControls, type ExportSettings } from './LogoSpinExportControls'
-import { EXPORT_RESOLUTIONS } from './spin-export-math'
 import { useLogoSvg } from './useLogoSvg'
 import { useSpinExport } from './useSpinExport'
+import { EXPORT_RESOLUTIONS } from './spin-export-math'
 
 /**
  * 3D spin preview for a generated logo.
@@ -60,14 +60,31 @@ interface LogoSpin3DModalProps {
 export function LogoSpin3DModal({ isOpen, onClose, logoUrl, logoPrompt }: LogoSpin3DModalProps) {
   const [settings, setSettings] = useState<SpinSettings>(DEFAULT_SETTINGS)
   const [exportSettings, setExportSettings] = useState<ExportSettings>(DEFAULT_EXPORT)
+  // Null = the scene has not reported yet (treated as renderable so Export does
+  // not flash disabled); 0 = the SVG parsed but yielded nothing extrudable, in
+  // which case Export must be dead rather than failing with a toast after a
+  // pointless second geometry build.
+  const [meshCount, setMeshCount] = useState<number | null>(null)
   const { svg, isLoading, error, retry } = useLogoSvg(logoUrl, isOpen)
   const spinExport = useSpinExport(isOpen)
+
+  // Render-phase reset, not an effect: a new SVG's mesh count is unknown until
+  // the scene reports it, and the previous logo's count must not gate Export.
+  const [countedSvg, setCountedSvg] = useState<string | null>(svg)
+  if (svg !== countedSvg) {
+    setCountedSvg(svg)
+    setMeshCount(null)
+  }
 
   if (!isOpen) return null
 
   const background = BACKGROUND_OPTIONS.find((option) => option.id === settings.backgroundId)?.value ?? null
   const patchSettings = (patch: Partial<SpinSettings>) => setSettings((current) => ({ ...current, ...patch }))
-  const patchExport = (patch: Partial<ExportSettings>) => setExportSettings((current) => ({ ...current, ...patch }))
+  const patchExport = (patch: Partial<ExportSettings>) => {
+    // A failure reason for settings the user has since changed is stale noise.
+    spinExport.clearError()
+    setExportSettings((current) => ({ ...current, ...patch }))
+  }
 
   const handleExport = () => {
     if (!svg) return
@@ -151,6 +168,7 @@ export function LogoSpin3DModal({ isOpen, onClose, logoUrl, logoPrompt }: LogoSp
                 axis={settings.axis}
                 speed={settings.speed}
                 background={background}
+                onMeshesChange={setMeshCount}
               />
             )}
 
@@ -174,7 +192,7 @@ export function LogoSpin3DModal({ isOpen, onClose, logoUrl, logoPrompt }: LogoSp
               error={spinExport.error}
               onExport={handleExport}
               onCancel={spinExport.cancel}
-              canRender={Boolean(svg) && !isLoading && !error}
+              canRender={Boolean(svg) && !isLoading && !error && meshCount !== 0}
             />
           </div>
         </div>

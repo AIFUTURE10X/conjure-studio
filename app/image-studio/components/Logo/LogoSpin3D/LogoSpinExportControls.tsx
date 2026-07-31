@@ -3,12 +3,12 @@
 import { Download, Loader2, TriangleAlert, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import type { ExportSupport } from './useSpinExport'
 import { SPIN_BASE_PERIOD_SECONDS } from './spin-3d-params'
 import {
   EXPORT_FPS_OPTIONS, EXPORT_MAX_SECONDS, EXPORT_MIN_SECONDS, EXPORT_RESOLUTIONS,
   alphaConflict, clipDurationFor, exportRevolutions, frameCountFor, type ExportFormat,
 } from './spin-export-math'
-import type { ExportSupport } from './useSpinExport'
 
 /**
  * Export panel for the 3D spin: format, length, frame rate, resolution.
@@ -46,7 +46,7 @@ function Pills<T extends string | number>({ options, value, onChange }: PillsPro
             key={String(option.id)}
             onClick={() => onChange(option.id)}
             disabled={option.disabled}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 ${
               value === option.id
                 ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
                 : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
@@ -58,7 +58,16 @@ function Pills<T extends string | number>({ options, value, onChange }: PillsPro
         if (!option.hint) return button
         return (
           <Tooltip key={String(option.id)}>
-            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            {/*
+              A disabled button swallows pointer events, which would make the
+              hint unreachable exactly when it explains WHY the option is dead
+              (e.g. which codec this browser lacks) — the span receives the
+              hover instead. Enabled buttons stay the trigger themselves so
+              keyboard focus keeps showing the tooltip.
+            */}
+            <TooltipTrigger asChild>
+              {option.disabled ? <span className="inline-flex">{button}</span> : button}
+            </TooltipTrigger>
             <TooltipContent side="bottom">{option.hint}</TooltipContent>
           </Tooltip>
         )

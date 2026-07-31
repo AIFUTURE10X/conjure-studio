@@ -1,6 +1,6 @@
 import {
-  Color, DoubleSide, Group, Mesh, MeshStandardMaterial,
-  AmbientLight, DirectionalLight, PerspectiveCamera, Scene, WebGLRenderer,
+  ACESFilmicToneMapping, Color, DoubleSide, Group, Mesh, MeshStandardMaterial,
+  AmbientLight, DirectionalLight, PerspectiveCamera, Scene, SRGBColorSpace, WebGLRenderer,
 } from 'three'
 import { buildLogoMeshes, disposeLogoMeshes } from './buildLogoMeshes'
 import {
@@ -8,8 +8,8 @@ import {
   type SpinAxis, type SpinDepthLevel, type SpinMaterial,
 } from './spin-3d-params'
 import {
-  bitrateFor, cameraDistanceFor, exportRevolutions, frameCountFor, frameDuration, frameTimestamp, frameTurns,
-  tumbleTiltTurns, type ExportFormat,
+  bitrateFor, cameraDistanceFor, exportRevolutions, fitSizeFor, frameCountFor, frameDuration, frameTimestamp,
+  frameTurns, tumbleTiltTurns, type ExportFormat,
 } from './spin-export-math'
 
 /**
@@ -64,19 +64,43 @@ export class ExportCancelledError extends Error {
 const YIELD_EVERY_FRAMES = 4
 
 /**
- * Hand control back to the browser for a paint and an input turn.
+ * Hand control back to the browser between frames.
  *
- * `setTimeout(0)` rather than `await Promise.resolve()`: a microtask does not let
- * the browser repaint or dispatch a queued click, which is the whole point. Falls
- * back cleanly when rAF is unavailable (a hidden tab never fires it, and an export
- * must still finish there).
+ * Visible tab: `setTimeout(0)` — a macrotask boundary lets the browser repaint
+ * the progress bar and dispatch a queued Cancel click, which a microtask
+ * (`await Promise.resolve()`) does not.
+ *
+ * Hidden tab: `setTimeout` is throttled to at most once a second — and to
+ * roughly once a MINUTE once the page has been hidden a few minutes — which
+ * would stretch a 600-frame export's 150 yields from milliseconds to hours.
+ * There is nothing to repaint while hidden, but macrotasks must still turn
+ * over or the queued visibilitychange/click events could never run when the
+ * user comes back; a MessageChannel post is the standard unthrottled macrotask
+ * (the same trick React's scheduler uses for exactly this reason).
  */
 function yieldToBrowser(): Promise<void> {
-  return new Promise((resolve) => { setTimeout(resolve, 0) })
+  if (typeof MessageChannel === 'undefined' || document.visibilityState === 'visible') {
+    return new Promise((resolve) => { setTimeout(resolve, 0) })
+  }
+  return new Promise((resolve) => {
+    const channel = new MessageChannel()
+    channel.port1.onmessage = () => {
+      channel.port1.close()
+      resolve()
+    }
+    channel.port2.postMessage(null)
+  })
 }
 
-/** Codec support has to be known BEFORE a long encode, not discovered at the end. */
-export async function probeExportSupport(): Promise<{ mp4: boolean; webm: boolean }> {
+/**
+ * Codec support has to be known BEFORE a long encode, not discovered at the end.
+ *
+ * Returns null when the probe itself failed (e.g. the muxer chunk did not load
+ * over a flaky connection) — that is NOT the same answer as "this browser has
+ * no encoders", and the caller should treat it as retryable rather than locking
+ * the panel into "cannot encode video" for the rest of the page session.
+ */
+export async function probeExportSupport(): Promise<{ mp4: boolean; webm: boolean } | null> {
   try {
     const { canEncodeVideo } = await import('mediabunny')
     const [mp4, webm] = await Promise.all([
@@ -85,7 +109,7 @@ export async function probeExportSupport(): Promise<{ mp4: boolean; webm: boolea
     ])
     return { mp4, webm }
   } catch {
-    return { mp4: false, webm: false }
+    return null
   }
 }
 
@@ -143,7 +167,15 @@ function buildScene(request: SpinExportRequest): BuiltScene | null {
   scene.add(spinGroup)
 
   const camera = new PerspectiveCamera(SPIN_CAMERA_FOV, request.width / request.height, 0.1, 100)
-  camera.position.set(0, 0, cameraDistanceFor(request.width / request.height, SPIN_CAMERA_FOV))
+  // Fit the ROTATING solid, not a flat unit square: a deep square logo sweeps a
+  // 0.75 corner radius under tumble, past the old fixed budget — see fitSizeFor.
+  const fitSize = fitSizeFor(
+    request.axis,
+    build.size.x * build.scale,
+    build.size.y * build.scale,
+    build.depth * build.scale,
+  )
+  camera.position.set(0, 0, cameraDistanceFor(request.width / request.height, SPIN_CAMERA_FOV, fitSize))
   camera.lookAt(0, 0, 0)
 
   return {
@@ -197,8 +229,18 @@ export async function exportSpinVideo(
       antialias: true,
       // Alpha only for a transparent export; an opaque one clears to the scene background.
       alpha: request.background === null,
+      // Straight alpha: this canvas is never composited into the page, and the
+      // VideoFrames the encoder reads from it should carry unpremultiplied RGBA
+      // so VP9's alpha channel doesn't pick up dark fringes at soft edges.
+      premultipliedAlpha: false,
       preserveDrawingBuffer: true,
     })
+    // r3f gives the preview ACES filmic tone mapping and sRGB output by default;
+    // a bare WebGLRenderer defaults to NoToneMapping, which clips the highlights
+    // the preview rolls off — the one renderer setting that made exports come
+    // out brighter and more contrasty than the spin the user approved.
+    renderer.toneMapping = ACESFilmicToneMapping
+    renderer.outputColorSpace = SRGBColorSpace
     renderer.setSize(request.width, request.height, false)
     renderer.setPixelRatio(1)
     if (request.background === null) renderer.setClearAlpha(0)
@@ -260,7 +302,10 @@ export async function exportSpinVideo(
     }
   } catch (error) {
     // Discard the partial file rather than leaving a truncated video behind.
-    await output?.cancel().catch(() => {})
+    // try/catch rather than .catch(): cancelling an output that already
+    // finalized (the no-buffer path above) can throw synchronously, which
+    // would replace the real failure with a state error.
+    try { await output?.cancel() } catch {}
     throw error
   } finally {
     built?.dispose()

@@ -1,11 +1,14 @@
+import type { SpinAxis } from './spin-3d-params'
+
 /**
  * Pure timing, framing and naming maths for the 3D spin export.
  *
- * Import-free on purpose so `scripts/check-logo-3d-export.cjs` can transpile and
- * EXECUTE it. Encoding needs WebCodecs and rendering needs a GPU, neither of
- * which exists in CI — so every decision that can be gotten wrong silently
- * (frame counts, loop seam, camera framing) lives here instead of inline in the
- * encoder.
+ * Runtime-import-free on purpose so `scripts/check-logo-3d-export.cjs` can
+ * transpile and EXECUTE it (the one `import type` above is erased by
+ * transpilation). Encoding needs WebCodecs and rendering needs a GPU, neither
+ * of which exists in CI — so every decision that can be gotten wrong silently
+ * (frame counts, loop seam, camera framing) lives here instead of inline in
+ * the encoder.
  */
 
 export type ExportFormat = 'mp4' | 'webm'
@@ -143,6 +146,30 @@ export function cameraDistanceFor(aspect: number, fovDegrees: number, size = 1, 
   return Math.max(forVertical, forHorizontal)
 }
 
+/**
+ * The size (in model units) the camera must fit for a logo that ROTATES.
+ *
+ * `cameraDistanceFor` fits a static square of the given size, but a spinning
+ * solid sweeps more room than its rest pose: a square logo at extreme depth has
+ * half-extents (0.5, 0.5, 0.25), and under a tumble its corner — radius
+ * √(0.5²+0.5²+0.25²) = 0.75 — can be carried onto the vertical axis, past the
+ * 0.675 half-extent the old flat-unit-square assumption budgeted. That clipped
+ * corners in the preview AND the export.
+ *
+ * Per axis, the swept extent is exact, not worst-case-sphere everywhere: a Y
+ * spin never changes the vertical extent and an X spin never changes the
+ * horizontal one, so thin logos keep today's framing and only shapes that
+ * genuinely swing wide push the camera back.
+ */
+export function fitSizeFor(axis: SpinAxis, width: number, height: number, depth: number): number {
+  const hx = (Number.isFinite(width) && width > 0 ? width : 1) / 2
+  const hy = (Number.isFinite(height) && height > 0 ? height : 1) / 2
+  const hd = (Number.isFinite(depth) && depth > 0 ? depth : 0) / 2
+  if (axis === 'tumble') return 2 * Math.hypot(hx, hy, hd)
+  if (axis === 'x') return 2 * Math.max(hx, Math.hypot(hy, hd))
+  return 2 * Math.max(hy, Math.hypot(hx, hd))
+}
+
 /** H.264 cannot carry an alpha channel; VP9-in-WebM can. */
 export function formatSupportsAlpha(format: ExportFormat): boolean {
   return format === 'webm'
@@ -170,10 +197,13 @@ export function bitrateFor(width: number, height: number, fps: number): number {
  * exports is navigable, rather than a pile of `download.mp4`.
  */
 export function exportFilename(prompt: string, format: ExportFormat): string {
+  // Trailing hyphens are stripped AFTER the length cap: a prompt cut mid-word
+  // separator would otherwise yield `some-prompt--3d-spin.mp4`.
   const slug = (prompt || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/^-+/, '')
     .slice(0, 40)
+    .replace(/-+$/, '')
   return `${slug || 'logo'}-3d-spin.${format}`
 }

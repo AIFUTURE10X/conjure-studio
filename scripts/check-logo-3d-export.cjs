@@ -16,40 +16,45 @@ const readCode = (relativePath) => read(relativePath)
   .replace(/(^|[^:])\/\/.*$/gm, '$1')
 
 const MATH_PATH = 'app/image-studio/components/Logo/LogoSpin3D/spin-export-math.ts'
+const PARAMS_PATH = 'app/image-studio/components/Logo/LogoSpin3D/spin-3d-params.ts'
 const ENGINE_PATH = 'app/image-studio/components/Logo/LogoSpin3D/spin-export-engine.ts'
+const SCENE_PATH = 'app/image-studio/components/Logo/LogoSpin3D/LogoSpinScene.tsx'
 
 /**
- * Load and EXECUTE the real export maths.
+ * Load and EXECUTE a real module.
  *
  * Encoding needs WebCodecs and rendering needs a GPU, so the encoder itself
  * cannot run in CI. The decisions that can silently be wrong were extracted into
- * an import-free module; `require` throws rather than stubbing, so pulling a
- * dependency in here fails loudly instead of degrading this to a source match.
- * (An import the module never *uses* is elided by the transpiler and slips
- * through, which is harmless — what is caught is any import actually used.)
+ * runtime-import-free modules; `require` throws rather than stubbing, so pulling
+ * a dependency in fails loudly instead of degrading this to a source match.
+ * (A type-only import — or one the module never uses — is elided by the
+ * transpiler and slips through, which is harmless — what is caught is any
+ * import actually used at runtime.)
  */
-function loadMathModule() {
-  const { outputText } = ts.transpileModule(read(MATH_PATH), {
+function loadModule(relativePath) {
+  const { outputText } = ts.transpileModule(read(relativePath), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName: MATH_PATH,
+    fileName: relativePath,
   })
   const mod = { exports: {} }
   const noImports = (id) => {
-    throw new Error(`${MATH_PATH} must stay import-free so this check can execute it; got: ${id}`)
+    throw new Error(`${relativePath} must stay runtime-import-free so this check can execute it; got: ${id}`)
   }
   new Function('exports', 'require', 'module', '__filename', '__dirname', outputText)(
-    mod.exports, noImports, mod, MATH_PATH, path.dirname(MATH_PATH),
+    mod.exports, noImports, mod, relativePath, path.dirname(relativePath),
   )
   return mod.exports
 }
 
 let maths
+let params
 try {
-  maths = loadMathModule()
+  maths = loadModule(MATH_PATH)
+  params = loadModule(PARAMS_PATH)
 } catch (error) {
-  console.error('Logo 3D export checks failed: could not execute the export maths module')
+  console.error('Logo 3D export checks failed: could not execute the maths modules')
   console.error(`  ${error && error.message}`)
-  console.error(`  ${MATH_PATH} must stay dependency-free so CI can run these assertions headlessly.`)
+  console.error(`  ${MATH_PATH} and ${PARAMS_PATH} must stay dependency-free so CI can run these assertions headlessly.`)
   process.exit(1)
 }
 
@@ -57,8 +62,11 @@ const {
   EXPORT_RESOLUTIONS, EXPORT_FPS_OPTIONS, EXPORT_MIN_SECONDS, EXPORT_MAX_SECONDS,
   clampDuration, frameCountFor, frameTurns, frameTimestamp, frameDuration, clipDurationFor,
   cameraDistanceFor, formatSupportsAlpha, alphaConflict, bitrateFor, exportFilename, tumbleTiltTurns,
-  exportRevolutions,
+  exportRevolutions, fitSizeFor, TUMBLE_TILT_RATIO,
 } = maths
+const { rotationForAxisTurns, rotationForTurns } = params
+
+const TAU = Math.PI * 2
 
 const near = (a, b, tolerance = 1e-9) => Math.abs(a - b) < tolerance
 
@@ -223,6 +231,101 @@ const checks = [
     },
   },
   {
+    /*
+      The promise the seam checks actually rest on, executed end-to-end: the
+      ORIENTATION at the wrap point must be congruent (mod 360° per axis) to
+      frame 0's, through the same rotation mapping the encoder uses. The scalar
+      whole-turn checks above cannot catch a regression inside
+      rotationForAxisTurns itself — e.g. tumble reverting to a fractional tilt
+      derived from the spin — because they never compose turns into angles.
+    */
+    name: 'loop — the wrap orientation equals frame 0 on every axis',
+    pass: () => {
+      const axes = ['y', 'x', 'tumble']
+      const combos = [[2, 0.2], [2, 1], [4, 1], [6, 1], [8, 1.5], [10, 0.2], [10, 3]]
+      const congruent = (radians) => {
+        const turns = radians / TAU
+        return near(turns - Math.round(turns), 0)
+      }
+      for (const axis of axes) {
+        for (const [duration, speed] of combos) {
+          const revolutions = exportRevolutions(duration, speed, 6)
+          const tilt = tumbleTiltTurns(revolutions)
+          const wrap = rotationForAxisTurns(axis, revolutions, tilt)
+          const start = rotationForAxisTurns(axis, 0, 0)
+          if (!near(start.x, 0) || !near(start.y, 0) || !near(start.z, 0)) {
+            console.error(`    ${axis}: frame 0 is not the identity orientation`)
+            return false
+          }
+          if (!congruent(wrap.x) || !congruent(wrap.y) || !congruent(wrap.z)) {
+            console.error(`    ${axis} ${duration}s @ ${speed}x: wrap rotation (${wrap.x}, ${wrap.y}, ${wrap.z}) rad is not congruent to frame 0`)
+            return false
+          }
+        }
+      }
+      return true
+    },
+  },
+  {
+    /*
+      The preview's tumble ratio lives in spin-3d-params and the export's in
+      spin-export-math, duplicated because the maths module must stay
+      runtime-import-free for this script. Executing both sides pins them
+      together: rotationForTurns applies the preview ratio to the tilt, so if
+      either 0.4 drifts alone, the export's tilt stops approximating the
+      preview's motion and this fails.
+    */
+    name: 'tumble — preview and export derive the tilt from the same ratio',
+    pass: () => {
+      const previewTilt = rotationForTurns('tumble', 1).x
+      const exported = TAU * TUMBLE_TILT_RATIO
+      if (!near(previewTilt, exported)) {
+        console.error(`    preview tilts ${previewTilt} rad per spin turn, export ratio implies ${exported}`)
+        console.error('    PREVIEW_TUMBLE_TILT_RATIO and TUMBLE_TILT_RATIO have drifted apart')
+        return false
+      }
+      return true
+    },
+  },
+  {
+    /*
+      Rotation-swept framing. A square logo at extreme depth has half-extents
+      (0.5, 0.5, 0.25); under tumble its corner radius is exactly 0.75, which
+      the old flat-unit-square assumption (0.675 budget) clipped. Per-axis the
+      swept extent is exact: a Y spin never grows vertically, an X spin never
+      grows horizontally, so thin logos keep their framing.
+    */
+    name: 'framing — fit size covers the rotation-swept solid on every axis',
+    pass: () => {
+      const cornerRadius = Math.hypot(0.5, 0.5, 0.25)
+      const cases = [
+        ['tumble', 1, 1, 0.5, 2 * cornerRadius],
+        ['y', 1, 1, 0.5, 2 * Math.hypot(0.5, 0.25)],
+        ['x', 0.3, 1, 0.5, 2 * Math.hypot(0.5, 0.25)],
+        ['y', 1, 0.3, 0.02, 2 * Math.hypot(0.5, 0.01)],
+      ]
+      for (const [axis, w, h, d, want] of cases) {
+        const got = fitSizeFor(axis, w, h, d)
+        if (!near(got, want)) { console.error(`    ${axis} ${w}x${h}x${d}: expected ${want}, received ${got}`); return false }
+      }
+      const flatY = fitSizeFor('y', 1, 0.3, 0.02)
+      if (!(Math.abs(flatY - 1) < 0.001)) {
+        console.error(`    a thin wide logo on Y should keep ~unit framing, received ${flatY}`)
+        return false
+      }
+      const tumble = fitSizeFor('tumble', 1, 1, 0.5)
+      if (!(tumble / 2 >= cornerRadius)) {
+        console.error(`    tumble fit ${tumble / 2} does not cover the swept corner radius ${cornerRadius}`)
+        return false
+      }
+      return [fitSizeFor('y', NaN, -1, NaN), fitSizeFor('x', 0, 0, 0), fitSizeFor('tumble', Infinity, 1, 1)]
+        .every((v) => {
+          if (!(Number.isFinite(v) && v > 0)) { console.error(`    junk dims produced ${v}`); return false }
+          return true
+        })
+    },
+  },
+  {
     name: 'timing — frame timestamps are contiguous and the clip is exactly as long as requested',
     pass: () => {
       const fps = 30
@@ -305,6 +408,8 @@ const checks = [
         ['Bold Geometric Monogram', 'webm', 'bold-geometric-monogram-3d-spin.webm'],
         ['  !!! ', 'mp4', 'logo-3d-spin.mp4'],
         ['', 'mp4', 'logo-3d-spin.mp4'],
+        // The 40-char cap can cut mid-separator; the stray hyphen must go.
+        [`${'a'.repeat(39)} bcd`, 'mp4', `${'a'.repeat(39)}-3d-spin.mp4`],
       ]
       return cases.every(([prompt, format, want]) => {
         const got = exportFilename(prompt, format)
@@ -329,12 +434,43 @@ const checks = [
   },
   {
     /*
+      Colour parity, source-level because both sides need a GPU to execute.
+      r3f gives the preview ACES filmic tone mapping + sRGB output implicitly
+      (unless the Canvas is `flat`); sharing geometry, lights and camera is not
+      enough — a bare WebGLRenderer defaults to NoToneMapping and exports came
+      out brighter than the approved preview. Both files must also frame via
+      fitSizeFor or deep tumbling logos clip at the edges.
+    */
+    name: 'parity — export renderer matches the preview colour pipeline and framing',
+    sourceLevel: true,
+    pass: () => {
+      const engine = readCode(ENGINE_PATH)
+      const scene = readCode(SCENE_PATH)
+      const tone = /toneMapping = ACESFilmicToneMapping/.test(engine)
+      const colour = /outputColorSpace = SRGBColorSpace/.test(engine)
+      const straightAlpha = /premultipliedAlpha: false/.test(engine)
+      // Only the <Canvas> opening tag matters — "flat" can legitimately appear
+      // in user-facing copy elsewhere in the file.
+      const canvasTag = (scene.match(/<Canvas[\s\S]*?>/) || [''])[0]
+      const sceneNotFlat = canvasTag.length > 0 && !/\bflat\b/.test(canvasTag)
+      const bothFit = /fitSizeFor\(/.test(scene) && /fitSizeFor\(/.test(engine)
+      if (!tone) console.error('    export renderer does not set ACESFilmicToneMapping (the r3f preview default)')
+      if (!colour) console.error('    export renderer does not set SRGBColorSpace output')
+      if (!straightAlpha) console.error('    export renderer is not premultipliedAlpha: false — VP9 alpha edges can pick up dark fringes')
+      if (!sceneNotFlat) console.error('    the preview <Canvas> is missing or passes `flat`, disabling the tone mapping the export replicates')
+      if (!bothFit) console.error('    preview and export must both frame via fitSizeFor, or deep tumbling logos clip')
+      return tone && colour && straightAlpha && sceneNotFlat && bothFit
+    },
+  },
+  {
+    /*
       Regression guard on determinism. MediaRecorder over captureStream is the
       obvious way to record a canvas, but it timestamps by wall clock, so a slow
       machine yields a longer clip than requested. The encoder must drive
       timestamps from the maths above instead.
     */
     name: 'wiring — the encoder drives computed timestamps, not a realtime capture',
+    sourceLevel: true,
     pass: () => {
       const engine = readCode(ENGINE_PATH)
       const usesFrameTurns = /frameTurns\(/.test(engine)
@@ -374,4 +510,5 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log(`Logo 3D export checks passed (${checks.length} assertions; ${checks.length - 1} executed against the real module)`)
+const executedCount = checks.filter((check) => !check.sourceLevel).length
+console.log(`Logo 3D export checks passed (${checks.length} assertions; ${executedCount} executed against the real modules)`)

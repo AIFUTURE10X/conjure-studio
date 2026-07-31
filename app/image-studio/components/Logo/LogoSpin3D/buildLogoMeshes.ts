@@ -28,6 +28,8 @@ export interface LogoMeshBuild {
   center: { x: number; y: number }
   /** Extrusion depth in SVG units, so the caller can centre the solid on Z too. */
   depth: number
+  /** Logo bounds in SVG units (multiply by `scale` for model units), so the camera can fit the real solid, not an assumed unit square. */
+  size: { x: number; y: number }
 }
 
 /** XY bounds across every shape, including hole contours. */
@@ -95,14 +97,14 @@ export function buildLogoMeshes(
       parsedPaths: paths.length,
       shapesFound: allShapes.length,
     })
-    return { meshes: [], scale: 1, center: { x: 0, y: 0 }, depth: 0 }
+    return { meshes: [], scale: 1, center: { x: 0, y: 0 }, depth: 0, size: { x: 0, y: 0 } }
   }
 
   const width = bounds.maxX - bounds.minX
   const height = bounds.maxY - bounds.minY
   const longestSide = Math.max(width, height)
   if (!(longestSide > 0)) {
-    return { meshes: [], scale: 1, center: { x: 0, y: 0 }, depth: 0 }
+    return { meshes: [], scale: 1, center: { x: 0, y: 0 }, depth: 0, size: { x: 0, y: 0 } }
   }
 
   const params = extrudeParamsFor(level, bevelEnabled)
@@ -130,6 +132,7 @@ export function buildLogoMeshes(
       y: bounds.minY + height / 2,
     },
     depth: settings.depth,
+    size: { x: width, y: height },
   }
 }
 
