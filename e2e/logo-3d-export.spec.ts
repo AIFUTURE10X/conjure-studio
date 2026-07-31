@@ -64,17 +64,19 @@ async function openSpinPanel(page: Page) {
 }
 
 test.describe('3D spin export', () => {
-  test('reports the exact frame count and clip length for the chosen settings', async ({ page }) => {
+  test('reports the exact frame count, clip length and whole-turn count for the chosen settings', async ({ page }) => {
     await openSpinPanel(page)
 
-    // 4s @ 30fps -> 120 frames. No codec needed for this assertion.
-    await expect(page.getByText('120 frames · 4.0s')).toBeVisible()
+    // 4s @ 30fps -> 120 frames; at the default 1x speed a 4s or 2s clip rounds
+    // to one whole turn, and showing that is the point — the loop-closing
+    // quantization is disclosed before the encode, not discovered after.
+    await expect(page.getByText('120 frames · 4.0s · 1 turn')).toBeVisible()
 
     await page.getByRole('button', { name: '2s', exact: true }).click()
-    await expect(page.getByText('60 frames · 2.0s')).toBeVisible()
+    await expect(page.getByText('60 frames · 2.0s · 1 turn')).toBeVisible()
 
     await page.getByRole('button', { name: '24fps', exact: true }).click()
-    await expect(page.getByText('48 frames · 2.0s')).toBeVisible()
+    await expect(page.getByText('48 frames · 2.0s · 1 turn')).toBeVisible()
   })
 
   test('blocks an MP4 export of a transparent background rather than exporting a black box', async ({ page }) => {

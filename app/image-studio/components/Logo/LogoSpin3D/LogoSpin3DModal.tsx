@@ -166,6 +166,7 @@ export function LogoSpin3DModal({ isOpen, onClose, logoUrl, logoPrompt }: LogoSp
             <LogoSpinExportControls
               settings={exportSettings}
               onChange={patchExport}
+              speed={settings.speed}
               isTransparent={background === null}
               support={spinExport.support}
               isExporting={spinExport.isExporting}

@@ -3,9 +3,10 @@
 import { Download, Loader2, TriangleAlert, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { SPIN_BASE_PERIOD_SECONDS } from './spin-3d-params'
 import {
   EXPORT_FPS_OPTIONS, EXPORT_MAX_SECONDS, EXPORT_MIN_SECONDS, EXPORT_RESOLUTIONS,
-  alphaConflict, clipDurationFor, frameCountFor, type ExportFormat,
+  alphaConflict, clipDurationFor, exportRevolutions, frameCountFor, type ExportFormat,
 } from './spin-export-math'
 import type { ExportSupport } from './useSpinExport'
 
@@ -69,6 +70,8 @@ function Pills<T extends string | number>({ options, value, onChange }: PillsPro
 interface LogoSpinExportControlsProps {
   settings: ExportSettings
   onChange: (patch: Partial<ExportSettings>) => void
+  /** The preview's spin speed, which sets how many whole turns the clip covers. */
+  speed: number
   /** True when the preview background is transparent. */
   isTransparent: boolean
   support: ExportSupport
@@ -82,7 +85,7 @@ interface LogoSpinExportControlsProps {
 }
 
 export function LogoSpinExportControls({
-  settings, onChange, isTransparent, support, isExporting, progress, error,
+  settings, onChange, speed, isTransparent, support, isExporting, progress, error,
   onExport, onCancel, canRender,
 }: LogoSpinExportControlsProps) {
   const conflict = alphaConflict(settings.format, isTransparent)
@@ -90,12 +93,26 @@ export function LogoSpinExportControls({
   const nothingSupported = support.probed && !support.mp4 && !support.webm
   const frames = frameCountFor(settings.durationSeconds, settings.fps)
   const clip = clipDurationFor(settings.durationSeconds, settings.fps)
+  const revolutions = exportRevolutions(settings.durationSeconds, speed, SPIN_BASE_PERIOD_SECONDS)
 
   return (
     <div className="flex flex-col gap-3 border-t border-zinc-800 pt-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-zinc-300">Export</span>
-        <span className="text-[11px] text-zinc-500">{frames} frames · {clip.toFixed(1)}s</span>
+        {/* The turn count makes the whole-turn quantization visible BEFORE the
+            encode: the clip loops seamlessly, so it covers the whole number of
+            turns nearest the preview speed rather than the exact fraction. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-[11px] text-zinc-500">
+              {frames} frames · {clip.toFixed(1)}s · {revolutions} {revolutions === 1 ? 'turn' : 'turns'}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-60">
+            Exports cover a whole number of turns so the clip loops seamlessly — the count nearest
+            the preview speed. Short or slow clips round up to one full turn.
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <Pills

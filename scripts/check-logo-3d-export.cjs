@@ -57,6 +57,7 @@ const {
   EXPORT_RESOLUTIONS, EXPORT_FPS_OPTIONS, EXPORT_MIN_SECONDS, EXPORT_MAX_SECONDS,
   clampDuration, frameCountFor, frameTurns, frameTimestamp, frameDuration, clipDurationFor,
   cameraDistanceFor, formatSupportsAlpha, alphaConflict, bitrateFor, exportFilename, tumbleTiltTurns,
+  exportRevolutions,
 } = maths
 
 const near = (a, b, tolerance = 1e-9) => Math.abs(a - b) < tolerance
@@ -77,7 +78,9 @@ const checks = [
   {
     name: 'frames — count is duration x fps for every supported combination',
     pass: () => {
-      const cases = [[2, 24, 48], [3, 24, 72], [4, 30, 120], [10, 60, 600], [5, 30, 150], [2, 60, 120]]
+      // The 999s case pins the clamp INSIDE frameCountFor — without it a junk
+      // duration asks the encoder for tens of thousands of frames.
+      const cases = [[2, 24, 48], [3, 24, 72], [4, 30, 120], [10, 60, 600], [5, 30, 150], [2, 60, 120], [999, 30, 300]]
       return cases.every(([duration, fps, want]) => {
         const got = frameCountFor(duration, fps)
         if (got !== want) { console.error(`    ${duration}s @ ${fps}fps: expected ${want}, received ${got}`); return false }
@@ -147,6 +150,37 @@ const checks = [
   },
   {
     /*
+      AC-3 against exact preview speed: at a user-fixed duration the loop can
+      only close on a whole number of turns, so the export cannot always
+      reproduce the preview's velocity. The contract is "the whole count nearest
+      the preview's rate, never zero" — pinned here so neither direction of the
+      tradeoff regresses: preserving the preview's fractional turns would snap
+      the seam (AC-3), while a floor-less round would emit a motionless clip for
+      short slow spins.
+    */
+    name: 'loop — revolutions are the whole count nearest the preview speed, floored at one',
+    pass: () => {
+      const cases = [
+        [4, 1, 1],      // previews 2/3 turn; nearest whole is 1 (1.5x the preview rate)
+        [6, 1, 1],      // exactly one turn at base speed
+        [10, 1, 2],     // previews 1.67 turns; rounds up, a floor-style truncation would give 1
+        [8, 1.5, 2],    // previews exactly 2 turns
+        [10, 3, 5],     // previews exactly 5 turns
+        [2, 0.2, 1],    // previews 1/15 turn; the floor keeps the clip spinning
+        [10, 0.2, 1],   // previews 1/3 turn; rounds to 0, the floor lifts it to 1
+        [999, 1, 2],    // junk duration clamps to 10s, like the frame count does
+        [4, NaN, 1],    // junk speed falls back to 1x
+        [4, 0, 1],      // zero speed falls back rather than dividing to zero turns
+      ]
+      return cases.every(([duration, speed, want]) => {
+        const got = exportRevolutions(duration, speed, 6)
+        if (got !== want) { console.error(`    ${duration}s @ ${speed}x: expected ${want}, received ${got}`); return false }
+        return true
+      })
+    },
+  },
+  {
+    /*
       Regression guard for a seam that shipped to review.
 
       Tumble rotates two axes. The spin axis lands on a whole turn by
@@ -166,7 +200,9 @@ const checks = [
       for (const [duration, fps] of combos) {
         for (const speed of speeds) {
           const frameCount = frameCountFor(duration, fps)
-          const revolutions = Math.max(1, Math.round((duration * speed) / 6))
+          // The REAL revolutions function, not a copy of its formula — a copy
+          // here would keep passing after the engine's derivation drifted.
+          const revolutions = exportRevolutions(duration, speed, 6)
           const tilt = tumbleTiltTurns(revolutions)
           if (!Number.isInteger(tilt) || tilt < 1) {
             console.error(`    ${duration}s @ ${fps}fps speed ${speed}: tilt turns ${tilt} is not a positive whole number`)
@@ -304,16 +340,21 @@ const checks = [
       const usesFrameTurns = /frameTurns\(/.test(engine)
       const usesTimestamps = /frameTimestamp\(/.test(engine) && /frameDuration\(/.test(engine)
       const usesFrameCount = /frameCountFor\(/.test(engine)
+      // The turn count must come from the executed helper above, not an inline
+      // rederivation — an inline copy can drift from the pinned contract while
+      // every executed assertion here stays green.
+      const usesRevolutions = /exportRevolutions\(/.test(engine)
       // Tumble needs a whole-turn tilt derived independently of the spin; deriving
       // it as a fraction inside the rotation is what snapped the seam.
       const usesWholeTilt = /tumbleTiltTurns\(/.test(engine) && /rotationForAxisTurns\(/.test(engine)
       const realtime = /MediaRecorder|captureStream\(/.test(engine)
+      if (!usesRevolutions) console.error('    the encoder does not derive its turn count via exportRevolutions')
       if (!usesWholeTilt) console.error('    the encoder does not derive a whole-turn tumble tilt (tumbleTiltTurns + rotationForAxisTurns)')
       if (!usesFrameTurns) console.error('    the encoder does not use frameTurns — the loop seam is not the pinned one')
       if (!usesTimestamps) console.error('    the encoder does not use frameTimestamp/frameDuration for sample timing')
       if (!usesFrameCount) console.error('    the encoder does not use frameCountFor')
       if (realtime) console.error('    the encoder references MediaRecorder/captureStream — that timestamps by wall clock and breaks the duration guarantee')
-      return usesFrameTurns && usesTimestamps && usesFrameCount && usesWholeTilt && !realtime
+      return usesFrameTurns && usesTimestamps && usesFrameCount && usesRevolutions && usesWholeTilt && !realtime
     },
   },
 ]

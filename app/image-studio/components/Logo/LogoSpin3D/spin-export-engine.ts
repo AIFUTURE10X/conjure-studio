@@ -8,8 +8,8 @@ import {
   type SpinAxis, type SpinDepthLevel, type SpinMaterial,
 } from './spin-3d-params'
 import {
-  bitrateFor, cameraDistanceFor, frameCountFor, frameDuration, frameTimestamp, frameTurns, tumbleTiltTurns,
-  type ExportFormat,
+  bitrateFor, cameraDistanceFor, exportRevolutions, frameCountFor, frameDuration, frameTimestamp, frameTurns,
+  tumbleTiltTurns, type ExportFormat,
 } from './spin-export-math'
 
 /**
@@ -36,7 +36,7 @@ export interface SpinExportRequest {
   bevelEnabled: boolean
   material: SpinMaterial
   axis: SpinAxis
-  /** Preview spin speed. Only affects how many turns fit in the clip. */
+  /** Preview spin speed. Quantized to the nearest whole turn count for the clip — see exportRevolutions. */
   speed: number
   /** A CSS colour, or null for a transparent (alpha) export. */
   background: string | null
@@ -221,9 +221,9 @@ export async function exportSpinVideo(
 
     const frameCount = frameCountFor(request.durationSeconds, request.fps)
     const step = frameDuration(request.fps)
-    // How many whole turns the clip covers, from the preview's speed. Whole, so the
-    // clip ends where it began.
-    const revolutions = Math.max(1, Math.round((request.durationSeconds * request.speed) / SPIN_BASE_PERIOD_SECONDS))
+    // Whole turns nearest the preview's rate — exact speed cannot survive the
+    // loop-closure requirement at a fixed duration; see exportRevolutions.
+    const revolutions = exportRevolutions(request.durationSeconds, request.speed, SPIN_BASE_PERIOD_SECONDS)
     // Tumble tilts a second axis, which has to land on a whole turn too or the seam
     // snaps — see tumbleTiltTurns.
     const tiltTurns = tumbleTiltTurns(revolutions)

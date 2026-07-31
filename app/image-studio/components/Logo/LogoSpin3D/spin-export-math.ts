@@ -46,6 +46,29 @@ export function frameCountFor(durationSeconds: number, fps: number): number {
 }
 
 /**
+ * Whole spin revolutions for a clip, chosen nearest to the preview's speed.
+ *
+ * AC-3 pins the loop: rotation must span a whole number of turns across a
+ * duration the user fixed, so the export cannot always reproduce the preview's
+ * exact velocity — 4s at 1x previews 2/3 of a turn, and encoding 2/3 literally
+ * would snap 120° at the wrap point. Rounding picks the whole count closest to
+ * the preview's rate, and the floor of one keeps a short slow clip spinning at
+ * all (zero turns is a static image, not a spin). The distortion is largest
+ * where the floor bites — 2s at 0.2x previews 1/15 of a turn but exports one —
+ * so the export panel shows the resulting turn count rather than absorbing it
+ * silently.
+ *
+ * Duration is clamped by the same rule frameCountFor uses, so a junk duration
+ * cannot ask for hundreds of turns inside a ten-second clip.
+ */
+export function exportRevolutions(durationSeconds: number, speed: number, basePeriodSeconds: number): number {
+  const duration = clampDuration(durationSeconds)
+  const safeSpeed = Number.isFinite(speed) && speed > 0 ? speed : 1
+  const safePeriod = Number.isFinite(basePeriodSeconds) && basePeriodSeconds > 0 ? basePeriodSeconds : 6
+  return Math.max(1, Math.round((duration * safeSpeed) / safePeriod))
+}
+
+/**
  * Rotation, in turns, for one frame — the property that makes the clip loop.
  *
  * Frame 0 is 0 turns and frame `frameCount` would be exactly `revolutions`, i.e.
@@ -67,9 +90,14 @@ export function frameTurns(frameIndex: number, frameCount: number, revolutions =
  * of turns — otherwise the clip ends mid-tilt and the loop snaps, which is the
  * one thing AC-3 forbids.
  *
- * Rounding the tilt to a whole number keeps roughly the intended slow-tilt ratio
- * while guaranteeing closure at any duration and speed. `max(1, …)` because a
- * tilt of zero turns would make tumble indistinguishable from a plain spin.
+ * Rounding the tilt to a whole number is the nearest legal fit to the preview's
+ * 0.4 ratio — exact when the spin makes five turns, coarser below. At one spin
+ * turn the only whole tilts are 0 and 1, and 0 is no tumble at all (the X axis
+ * would never move, collapsing the export into a plain Y spin), so a short
+ * tumble export visibly tilts faster than the preview. That is the price of
+ * closure, accepted deliberately: the obvious alternative — keeping the
+ * preview's fractional ratio — shipped once and snapped at the seam on every
+ * duration/speed combination but one. `max(1, …)` is that floor.
  */
 export const TUMBLE_TILT_RATIO = 0.4
 
