@@ -14,6 +14,9 @@ import { put } from "@vercel/blob"
 const MAX_BLOB_UPLOAD_ATTEMPTS = 3
 const BLOB_RETRY_BASE_DELAY_MS = 50
 const BLOB_UPLOAD_ATTEMPT_TIMEOUT_MS = 10_000
+// Keep the base64 fallback below the platform's JSON response limit. Blob-backed
+// deployments fail explicitly for larger results instead of returning an unusable response.
+export const MAX_INLINE_EDIT_IMAGE_BYTES = 3_000_000
 
 function isRetryableBlobError(error: unknown) {
   if (!error || typeof error !== "object" || !("status" in error)) return true
@@ -65,6 +68,9 @@ export async function uploadEditImage(buffer: Buffer): Promise<string> {
         if (timeout) clearTimeout(timeout)
       }
     }
+  }
+  if (process.env.BLOB_READ_WRITE_TOKEN && buffer.length > MAX_INLINE_EDIT_IMAGE_BYTES) {
+    throw new Error("Blob upload failed for an image too large for inline fallback")
   }
   return `data:image/png;base64,${buffer.toString("base64")}`
 }

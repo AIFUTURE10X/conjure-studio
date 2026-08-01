@@ -68,7 +68,9 @@ async function run() {
   assert(
     /MAX_BLOB_UPLOAD_ATTEMPTS\s*=\s*3/.test(uploadSource) &&
       /BLOB_UPLOAD_ATTEMPT_TIMEOUT_MS\s*=\s*10_000/.test(uploadSource) &&
-      /abortSignal:\s*controller\.signal/.test(uploadSource),
+      /MAX_INLINE_EDIT_IMAGE_BYTES\s*=\s*3_000_000/.test(uploadSource) &&
+      /abortSignal:\s*controller\.signal/.test(uploadSource) &&
+      /Promise\.race\(\[upload, timeoutGuard\]\)/.test(uploadSource),
     'Blob uploads must bound SDK retries with an abort deadline.',
   )
   assert(/randomUUID\(\)/.test(uploadSource) && !/allowOverwrite/.test(uploadSource),
@@ -101,6 +103,19 @@ async function run() {
   const fallback = await exhausted(Buffer.from('image'))
   assert(attempts === 3, `expected three attempts before fallback, got ${attempts}`)
   assert(fallback.startsWith('data:image/png;base64,'), 'exhausted retries must preserve the data URI fallback')
+
+  const oversized = loadUploadModule(async () => {
+    const error = new Error('invalid token')
+    error.status = 401
+    throw error
+  }).uploadEditImage
+  let oversizedRejected = false
+  try {
+    await oversized(Buffer.alloc(3_000_001))
+  } catch (error) {
+    oversizedRejected = /too large for inline fallback/.test(error.message)
+  }
+  assert(oversizedRejected, 'oversized Blob failures must not fall back to an inline response')
 
   attempts = 0
   const permanent = loadUploadModule(async () => {
