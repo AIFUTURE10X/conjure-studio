@@ -55,7 +55,6 @@ export async function uploadEditImage(buffer: Buffer): Promise<string> {
           error,
         )
         await new Promise((resolve) => setTimeout(resolve, delayMs))
-      }
       } finally {
         clearTimeout(timeout)
       }
