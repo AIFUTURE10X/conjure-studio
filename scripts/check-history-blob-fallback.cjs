@@ -12,6 +12,8 @@ function assert(condition, message) {
 }
 
 const route = read('app/api/history/route.ts')
+const store = read('lib/db/generation-history-store.ts')
+const limits = read('lib/history-limits.ts')
 const packageJson = read('package.json')
 
 assert(
@@ -20,25 +22,15 @@ assert(
 )
 
 assert(
-  /Blob upload failed, storing image directly/.test(route),
-  'History API must treat Blob upload failure as a fallback, not a hard save failure.',
-)
-
-assert(
-  /storedImageUrls/.test(route) &&
-    /image_urls,\s*blob_urls/.test(route) &&
-    /\$\{storedImageUrls\},\s*\$\{storedBlobUrls\}/.test(route),
-  'History API must store direct image URLs when Blob upload is unavailable.',
-)
-
-assert(
-  /Array\.isArray\(item\.blob_urls\)\s*&&\s*item\.blob_urls\.length > 0/.test(route),
-  'History GET must fall back to image_urls when blob_urls is empty or null.',
-)
-
-assert(
   !/return apiError\(500,\s*'blob_upload_failed'/.test(route),
   'History API must not return 500 solely because Blob upload is unavailable.',
 )
+
+assert(/Blob upload failed[\s\S]*storing URL directly/.test(store),
+  'History storage must preserve the original URL when Blob upload fails.')
+assert(/COALESCE\(blob_urls, image_urls\)/.test(route),
+  'History GET must fall back to image_urls when blob_urls is empty or null.')
+assert(/MAX_INLINE_HISTORY_DATA_URI_LENGTH/.test(route) && /3_500_000/.test(limits),
+  'History POST must enforce the shared inline data-URI limit.')
 
 console.log('History Blob fallback contract passed')

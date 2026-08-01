@@ -23,13 +23,10 @@ import { normalizeCreativeDirection } from '../constants/creative-direction-opti
 import { addToActiveCollection } from '@/lib/collections-client'
 import { getUserId } from '@/lib/user-id'
 import { useStudioCore } from './useStudio'
+import { MAX_INLINE_HISTORY_DATA_URI_LENGTH } from '@/lib/history-limits'
 
 export type ImageBgRemovalMethod = 'none' | 'photoroom' | 'fal'
 export type { ImageMetadata } from '../utils/get-image-metadata'
-
-// Keep client-side history requests below Vercel's request cap when Blob is
-// unavailable and an edit is still represented as a data URI.
-export const MAX_INLINE_HISTORY_DATA_URI_LENGTH = 3_500_000
 
 export interface ImageGenerationEngine {
   isGenerating: boolean

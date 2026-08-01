@@ -8,25 +8,40 @@
  * back to a data URI in local dev.
  */
 
+import { randomUUID } from "node:crypto"
 import { put } from "@vercel/blob"
 
 const MAX_BLOB_UPLOAD_ATTEMPTS = 3
 const BLOB_RETRY_BASE_DELAY_MS = 50
+const BLOB_UPLOAD_ATTEMPT_TIMEOUT_MS = 10_000
+
+function isRetryableBlobError(error: unknown) {
+  if (!error || typeof error !== "object" || !("status" in error)) return true
+  const status = (error as { status?: unknown }).status
+  return typeof status !== "number" || status === 408 || status === 425 || status === 429 || status >= 500
+}
 
 export async function uploadEditImage(buffer: Buffer): Promise<string> {
-  let imageUrl = `data:image/png;base64,${buffer.toString("base64")}`
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const pathname = `edits/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`
+    const pathname = `edits/${randomUUID()}.png`
     for (let attempt = 0; attempt < MAX_BLOB_UPLOAD_ATTEMPTS; attempt += 1) {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), BLOB_UPLOAD_ATTEMPT_TIMEOUT_MS)
       try {
         const uploaded = await put(pathname, buffer, {
           access: "public",
-          allowOverwrite: true,
           contentType: "image/png",
+          abortSignal: controller.signal,
         })
-        imageUrl = uploaded.url
-        break
+        return uploaded.url
       } catch (error) {
+        if (!isRetryableBlobError(error)) {
+          console.error(
+            "[edit-upload] Blob upload failed with a permanent error; falling back to data URI:",
+            error,
+          )
+          break
+        }
         if (attempt === MAX_BLOB_UPLOAD_ATTEMPTS - 1) {
           console.error(
             "[edit-upload] Blob upload retries exhausted; falling back to data URI:",
@@ -41,7 +56,10 @@ export async function uploadEditImage(buffer: Buffer): Promise<string> {
         )
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
+      } finally {
+        clearTimeout(timeout)
+      }
     }
   }
-  return imageUrl
+  return `data:image/png;base64,${buffer.toString("base64")}`
 }

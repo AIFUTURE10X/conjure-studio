@@ -5,6 +5,7 @@ import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { ensureGenerationHistorySchema } from '@/lib/db/history-schema'
 import { storeGenerationHistory } from '@/lib/db/generation-history-store'
+import { MAX_INLINE_HISTORY_DATA_URI_LENGTH } from '@/lib/history-limits'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getDatabaseUrl() {
@@ -53,7 +54,20 @@ const postBodySchema = z.object({
   userId: userIdSchema,
   prompt: promptSchema,
   aspectRatio: z.string().max(20).optional().nullable(),
-  imageUrls: z.array(urlOrDataUriSchema).min(1).max(10),
+  imageUrls: z.array(urlOrDataUriSchema).min(1).max(10).superRefine((urls, ctx) => {
+    urls.forEach((url, index) => {
+      if (url.startsWith('data:') && url.length > MAX_INLINE_HISTORY_DATA_URI_LENGTH) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.too_big,
+          maximum: MAX_INLINE_HISTORY_DATA_URI_LENGTH,
+          type: 'string',
+          inclusive: true,
+          path: [index],
+          message: 'Inline history image is too large; upload it to Blob first',
+        })
+      }
+    })
+  }),
   metadata: metadataSchema.optional().nullable(),
 })
 
