@@ -23,16 +23,22 @@ function isRetryableBlobError(error: unknown) {
 
 export async function uploadEditImage(buffer: Buffer): Promise<string> {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const pathname = `edits/${randomUUID()}.png`
     for (let attempt = 0; attempt < MAX_BLOB_UPLOAD_ATTEMPTS; attempt += 1) {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), BLOB_UPLOAD_ATTEMPT_TIMEOUT_MS)
+      let timeout: ReturnType<typeof setTimeout> | undefined
       try {
-        const uploaded = await put(pathname, buffer, {
+        const upload = put(`edits/${randomUUID()}.png`, buffer, {
           access: "public",
           contentType: "image/png",
           abortSignal: controller.signal,
         })
+        const timeoutGuard = new Promise<never>((_, reject) => {
+          timeout = setTimeout(() => {
+            controller.abort()
+            reject(new Error("Blob upload attempt timed out"))
+          }, BLOB_UPLOAD_ATTEMPT_TIMEOUT_MS)
+        })
+        const uploaded = await Promise.race([upload, timeoutGuard])
         return uploaded.url
       } catch (error) {
         if (!isRetryableBlobError(error)) {
@@ -56,7 +62,7 @@ export async function uploadEditImage(buffer: Buffer): Promise<string> {
         )
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       } finally {
-        clearTimeout(timeout)
+        if (timeout) clearTimeout(timeout)
       }
     }
   }
