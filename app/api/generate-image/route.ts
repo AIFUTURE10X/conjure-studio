@@ -6,7 +6,9 @@ import { generateImageWithRetry, type GenerationModel } from "@/lib/gemini-clien
 import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { upscaleBase64WithSharp } from "@/lib/sharp-upscaler"
 import { parseFormData, parseFormFields } from "@/lib/api/http"
-import { aspectRatioSchema, imageModelSchema, imageSizeSchema } from "@/lib/validation/common"
+import { resolveUserId } from "@/lib/api/identity"
+import { hasGenerationHistoryDatabase, storeGenerationHistory } from "@/lib/db/generation-history-store"
+import { aspectRatioSchema, imageModelSchema, imageSizeSchema, userIdSchema } from "@/lib/validation/common"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -49,7 +51,71 @@ const formSchema = z.object({
   model: lenientModelSchema.default('gpt-image-2'),
   imageSize: lenientImageSizeSchema.default('1K'),
   imageQuality: z.enum(['low', 'medium', 'high', 'auto']).default('medium'),
+  // History metadata: identity + what the user actually typed + style context.
+  // All optional so bare API callers (tests, scripts) still generate fine.
+  userId: userIdSchema.optional(),
+  displayPrompt: z.string().trim().min(1).max(20_000).optional(),
+  stylePreset: z.string().trim().max(200).optional(),
+  creativeDirection: z.string().max(20_000).optional(),
 })
+
+/** Best-effort dimensions/file-size for history metadata; never throws. */
+async function describeFirstImage(dataUrl: string): Promise<{ dimensions?: string; fileSize?: string }> {
+  try {
+    const base64 = dataUrl.split(',')[1]
+    if (!base64) return {}
+    const buffer = Buffer.from(base64, 'base64')
+    const fileSize = `~${(buffer.byteLength / 1048576).toFixed(1)} MB`
+    const sharp = (await import('sharp')).default
+    const { width, height } = await sharp(buffer).metadata()
+    return width && height ? { dimensions: `${width}×${height}`, fileSize } : { fileSize }
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Save the batch into generation_history in-process (server-side history-save
+ * pattern): the client used to re-POST multi-MB base64 bodies to /api/history
+ * after generating, which 413'd on large images and failed silently — the
+ * user's history stayed empty while the endpoint looked healthy.
+ */
+async function saveGenerationToHistory(
+  request: NextRequest,
+  fields: z.output<typeof formSchema>,
+  images: string[],
+): Promise<{ historySaved: boolean; historyId?: string }> {
+  try {
+    const userId = await resolveUserId(request, fields.userId ?? '')
+    if (!userId || !hasGenerationHistoryDatabase()) return { historySaved: false }
+
+    let creativeDirection: unknown
+    if (fields.creativeDirection) {
+      try {
+        creativeDirection = JSON.parse(fields.creativeDirection)
+      } catch {
+        creativeDirection = undefined
+      }
+    }
+
+    const item = await storeGenerationHistory({
+      userId,
+      prompt: fields.displayPrompt || fields.prompt,
+      aspectRatio: fields.aspectRatio,
+      imageUrls: images,
+      metadata: {
+        style: fields.stylePreset || undefined,
+        creativeDirection,
+        ...(await describeFirstImage(images[0])),
+      },
+    })
+    console.log(`[v0 SERVER] History saved (id ${item.id}) for user ${userId}`)
+    return { historySaved: true, historyId: item.id }
+  } catch (error) {
+    console.error('[v0 SERVER] History save failed:', error)
+    return { historySaved: false }
+  }
+}
 
 function isOpenAIImageModel(model: AppGenerationModel): model is OpenAIImageModel {
   return model === "gpt-image-2"
@@ -179,7 +245,8 @@ async function handlePost(request: NextRequest) {
     }
 
     console.log(`[v0 SERVER] Success: ${images.length}/${count} images generated${fallback ? " (via fallback)" : ""}`)
-    return NextResponse.json({ images, fallback })
+    const { historySaved, historyId } = await saveGenerationToHistory(request, parsedFields.data, images)
+    return NextResponse.json({ images, fallback, historySaved, historyId })
   } catch (error) {
     console.error("[v0 SERVER] Route error:", error)
     return NextResponse.json(

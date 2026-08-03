@@ -1,10 +1,10 @@
 import { neon } from '@neondatabase/serverless'
-import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { ensureGenerationHistorySchema } from '@/lib/db/history-schema'
+import { storeGenerationHistory } from '@/lib/db/generation-history-store'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
 function getDatabaseUrl() {
@@ -23,20 +23,6 @@ function getSQL() {
 
 function localOnlyResponse(body: Record<string, unknown> = {}, init?: ResponseInit) {
   return NextResponse.json({ code: 'database_unconfigured', localOnly: true, ...body }, init)
-}
-
-/**
- * True for URLs already stored in our own Vercel Blob store (durable + public,
- * e.g. an edit result from uploadEditImage). Re-uploading these would mint a
- * new history/ URL that no longer matches the copy the client already holds,
- * which resurfaces the item as a duplicate card on the next sync.
- */
-function isDurableBlobUrl(url: string) {
-  try {
-    return new URL(url).hostname.endsWith('.public.blob.vercel-storage.com')
-  } catch {
-    return false
-  }
 }
 
 /** Neon returns JSONB as a parsed object, but tolerate a string too. */
@@ -62,9 +48,6 @@ const metadataSchema = z
   .passthrough()
 
 const getQuerySchema = z.object({ userId: userIdSchema })
-
-/** Rows the app keeps per user — matches the GET LIMIT and the client caches. */
-const RETENTION_LIMIT = 100
 
 const postBodySchema = z.object({
   userId: userIdSchema,
@@ -175,103 +158,10 @@ export async function POST(request: NextRequest) {
     console.log('[v0] API: userId:', userId)
     console.log('[v0] API: imageUrls count:', imageUrls.length)
 
-    const sql = getSQL()
-    await ensureGenerationHistorySchema(sql)
-
-    // Upload each image to Vercel Blob for durable storage. When Blob isn't
-    // configured or a single upload fails, we fall back to storing the original
-    // URL / data URI directly so the save still succeeds (mirrors logo-history).
-    const storedImageUrls: string[] = []
-    const blobUrls: string[] = []
-
-    for (let i = 0; i < imageUrls.length; i++) {
-      const imageUrl = imageUrls[i]
-
-      // Already in our durable Blob store: keep the URL as-is so it stays
-      // identical to the copy the client saved locally (avoids sync duplicates)
-      // and so we don't store a second copy of the same asset.
-      if (isDurableBlobUrl(imageUrl)) {
-        storedImageUrls.push(imageUrl)
-        blobUrls.push(imageUrl)
-        continue
-      }
-
-      let blobUrl: string | null = null
-      try {
-        let imageBuffer: Buffer
-        if (imageUrl.startsWith('data:')) {
-          const base64Data = imageUrl.split(',')[1]
-          if (!base64Data) throw new Error('Invalid data URL format')
-          imageBuffer = Buffer.from(base64Data, 'base64')
-        } else {
-          const response = await fetch(imageUrl)
-          if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
-          imageBuffer = Buffer.from(await response.arrayBuffer())
-        }
-
-        const fileName = `history/${userId}-${Date.now()}-${i}.png`
-        const uploadResult = await put(fileName, imageBuffer, {
-          access: 'public',
-          contentType: 'image/png',
-        })
-        blobUrl = uploadResult.url
-        console.log(`[v0] API: Image ${i + 1} uploaded to Blob:`, blobUrl)
-      } catch (error) {
-        console.error(`[v0] API: Blob upload failed for image ${i + 1}, storing URL directly:`, error)
-      }
-
-      // When Blob succeeded, avoid storing the (huge) data URI twice.
-      storedImageUrls.push(
-        blobUrl && imageUrl.startsWith('data:') ? imageUrl.substring(0, 50) + '...[base64]' : imageUrl,
-      )
-      blobUrls.push(blobUrl ?? imageUrl)
-    }
-
-    console.log('[v0] API: All images processed, inserting into Neon database...')
-
-    const metadataJson = metadata ? JSON.stringify(metadata) : null
-
-    // The neon driver serializes JS arrays to Postgres arrays — no
-    // hand-built '{...}' literals.
-    const result = await sql`
-      INSERT INTO public.generation_history (
-        user_id, prompt, aspect_ratio, image_urls, blob_urls, metadata
-      )
-      VALUES (
-        ${userId}, ${prompt}, ${aspectRatio || null},
-        ${storedImageUrls}, ${blobUrls}, ${metadataJson}
-      )
-      RETURNING *
-    `
-
-    console.log('[v0] API: Saved to Neon with ID:', result[0].id)
-
-    // Enforce retention on write: the UI, the client caches, and GET all cap at
-    // RETENTION_LIMIT items, so anything older is an invisible ghost row — and
-    // ghost rows are what "resurrected" deleted history after a Clear All.
-    // Never let a prune failure fail the save.
-    try {
-      await sql`
-        DELETE FROM public.generation_history
-        WHERE user_id = ${userId} AND id NOT IN (
-          SELECT id FROM public.generation_history
-          WHERE user_id = ${userId}
-          ORDER BY created_at DESC, id DESC
-          LIMIT ${RETENTION_LIMIT}
-        )
-      `
-    } catch (pruneError) {
-      console.error('[v0] API: History retention prune failed:', pruneError)
-    }
-
-    const historyItem = {
-      id: result[0].id.toString(),
-      prompt: result[0].prompt,
-      aspectRatio: result[0].aspect_ratio,
-      imageUrls: result[0].blob_urls || result[0].image_urls,
-      metadata: parseMetadata(result[0].metadata),
-      timestamp: new Date(result[0].created_at).getTime()
-    }
+    // Blob upload, insert, and retention prune live in the shared store so
+    // /api/generate-image saves land through the exact same path.
+    const historyItem = await storeGenerationHistory({ userId, prompt, aspectRatio, imageUrls, metadata })
+    console.log('[v0] API: Saved to Neon with ID:', historyItem.id)
 
     return NextResponse.json({ historyItem })
   } catch (error) {

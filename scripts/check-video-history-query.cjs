@@ -5,8 +5,22 @@ const ts = require('typescript')
 const root = process.cwd()
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
 
+/**
+ * Source with comments removed, for the few assertions that must stay
+ * source-level.
+ *
+ * Matching raw source lets a commented-out call satisfy the check — the exact
+ * dead-code failure mode the repo's contract-check rules warn about, and one this
+ * script was caught by in review. Anything asserted against source goes through
+ * here so a `// was: apiError(404, …)` cannot stand in for the real call.
+ */
+const readCode = (relativePath) => read(relativePath)
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/(^|[^:])\/\/.*$/gm, '$1')
+
 const QUERY_PATH = 'lib/video/history-query.ts'
 const ROUTE_PATH = 'app/api/video-history/route.ts'
+const BROWSER_PATH = 'app/image-studio/components/Video/VideoHistory/useVideoHistoryBrowser.ts'
 
 /**
  * Load and EXECUTE the real query contract.
@@ -39,9 +53,31 @@ function loadQueryModule() {
 
 const queryModule = loadQueryModule()
 const schema = queryModule.videoHistoryListParamsSchema
-const { buildPromptSearchPattern, pageFetchLimit, splitPage } = queryModule
+const deleteSchema = queryModule.videoHistoryDeleteParamsSchema
+const { buildPromptSearchPattern, pageFetchLimit, splitPage, resolveVideoDeleteOutcome } = queryModule
 
 const parse = (params) => schema.safeParse(params)
+const parseDelete = (params) => deleteSchema.safeParse(params)
+
+/**
+ * Executed against the real delete schema.
+ *
+ * The id arrives as a query-string value, so coercion is deliberate — but it must
+ * not coerce junk into something that targets a row. `{}` and `''` are the ones
+ * that matter: `Number(undefined)` is NaN and `Number('')` is 0, so a schema
+ * missing `.int()`/`.positive()` would let a blank id through as a falsy value.
+ */
+const DELETE_CASES = [
+  { name: 'a numeric string id parses to a number', input: { id: '42' }, wantOk: true, want: { id: 42 } },
+  { name: 'a real number id parses', input: { id: 42 }, wantOk: true, want: { id: 42 } },
+  { name: 'a missing id is rejected, not coerced to NaN', input: {}, wantOk: false },
+  { name: 'a blank id is rejected, not coerced to 0', input: { id: '' }, wantOk: false },
+  { name: 'a non-numeric id is rejected', input: { id: 'abc' }, wantOk: false },
+  { name: 'a zero id is rejected', input: { id: '0' }, wantOk: false },
+  { name: 'a negative id is rejected', input: { id: '-5' }, wantOk: false },
+  { name: 'a fractional id is rejected', input: { id: '1.5' }, wantOk: false },
+  { name: 'a null id is rejected', input: { id: null }, wantOk: false },
+]
 
 /** Executed against the real schema — these fail if the query contract regresses. */
 const PARAM_CASES = [
@@ -97,6 +133,27 @@ const checks = [
     name: `params — ${testCase.name}`,
     pass: () => {
       const result = parse(testCase.input)
+      if (result.success !== testCase.wantOk) {
+        console.error(`    expected parse to ${testCase.wantOk ? 'succeed' : 'fail'}`)
+        console.error(`    received: ${JSON.stringify(result.success ? result.data : result.error.issues)}`)
+        return false
+      }
+      if (!testCase.wantOk) return true
+      const got = JSON.stringify(result.data)
+      const want = JSON.stringify(testCase.want)
+      if (got !== want) {
+        console.error(`    expected: ${want}`)
+        console.error(`    received: ${got}`)
+        return false
+      }
+      return true
+    },
+  })),
+  { name: 'delete schema is exported and parseable', pass: () => typeof deleteSchema?.safeParse === 'function' },
+  ...DELETE_CASES.map((testCase) => ({
+    name: `delete params — ${testCase.name}`,
+    pass: () => {
+      const result = parseDelete(testCase.input)
       if (result.success !== testCase.wantOk) {
         console.error(`    expected parse to ${testCase.wantOk ? 'succeed' : 'fail'}`)
         console.error(`    received: ${JSON.stringify(result.success ? result.data : result.error.issues)}`)
@@ -208,6 +265,92 @@ const checks = [
       return true
     },
   },
+  {
+    name: 'wiring — DELETE composes the executed delete schema with userIdSchema',
+    pass: () => {
+      const route = read(ROUTE_PATH)
+      return /videoHistoryDeleteParamsSchema\.extend\(\{\s*userId: userIdSchema\s*\}\)/.test(route)
+    },
+  },
+  {
+    // EXECUTED, not matched: a no-op delete reporting success is the regression
+    // that would make the client drop a row the database still holds.
+    name: 'delete outcome — zero rows deleted is a 404, not a success',
+    pass: () => {
+      const cases = [
+        [0, { ok: false, status: 404, code: 'not_found' }],
+        [1, { ok: true }],
+        [7, { ok: true }],
+      ]
+      return cases.every(([rowCount, want]) => {
+        const got = resolveVideoDeleteOutcome(rowCount)
+        if (JSON.stringify(got) !== JSON.stringify(want)) {
+          console.error(`    rowCount: ${rowCount}`)
+          console.error(`    expected: ${JSON.stringify(want)}`)
+          console.error(`    received: ${JSON.stringify(got)}`)
+          return false
+        }
+        return true
+      })
+    },
+  },
+  {
+    // A DELETE with no RETURNING cannot tell "removed" from "matched nothing".
+    // Source-level because the handler needs a live Neon connection — but read
+    // from comment-stripped source, so a commented-out call cannot satisfy it.
+    name: 'wiring — DELETE keeps the pending guard and routes through the executed outcome',
+    pass: () => {
+      const route = readCode(ROUTE_PATH)
+      const hasGuard = /status != 'pending'/.test(route)
+      const returnsIds = /DELETE FROM public\.video_history[\s\S]*?RETURNING id/.test(route)
+      const usesOutcome = /resolveVideoDeleteOutcome\(deleted\.length\)/.test(route)
+      const branches = /if \(!outcome\.ok\)[\s\S]*?apiError\(outcome\.status, outcome\.code/.test(route)
+      if (!hasGuard) console.error('    the status != pending guard is gone — a generating job could be deleted')
+      if (!returnsIds) console.error('    DELETE has no RETURNING id, so a no-op is indistinguishable from a delete')
+      if (!usesOutcome) console.error('    the route does not call resolveVideoDeleteOutcome(deleted.length)')
+      if (!branches) console.error('    the route does not turn a non-ok outcome into its apiError status/code')
+      return hasGuard && returnsIds && usesOutcome && branches
+    },
+  },
+  {
+    /*
+      Regression guard for a deleted clip coming back.
+
+      A favorite write that fails AFTER a delete used to pass the modal's
+      generation guard, and restoreClip's not-found branch spliced the deleted row
+      straight back in — the UI then asserted a clip existed that the database had
+      dropped. The fix is a per-row tombstone that restoreClip consults.
+
+      This also pins the SHAPE of the fix, not just its presence. Bumping
+      listGeneration inside removeClips prevents resurrection too, but by
+      discarding reverts for every other clip as well, so an unrelated delete
+      leaves a different row wrong. Both halves are asserted: the tombstone must
+      exist, and the coarse bump must not come back.
+
+      Source-level because this is React hook state, not a pure function — read
+      from comment-stripped source so a commented-out guard cannot satisfy it.
+    */
+    name: 'wiring — a deleted clip is tombstoned, and restoreClip refuses to resurrect it',
+    pass: () => {
+      const browser = readCode(BROWSER_PATH)
+      const removeBody = browser.match(/const removeClips = useCallback\([\s\S]*?\n  \}, \[/)
+      const restoreBody = browser.match(/const restoreClip = useCallback\([\s\S]*?\n  \}, \[/)
+      if (!removeBody || !restoreBody) {
+        console.error('    could not locate removeClips / restoreClip — the check needs updating alongside the refactor')
+        return false
+      }
+      const tombstones = /deletedIds\.current\.add\(/.test(removeBody[0])
+      const consults = /deletedIds\.current\.has\([\s\S]*?return/.test(restoreBody[0])
+      // The coarse alternative, which this fix deliberately replaced.
+      const bumpsGeneration = /listGeneration\.current\s*\+=/.test(removeBody[0])
+      if (!tombstones) console.error('    removeClips does not tombstone the deleted ids')
+      if (!consults) console.error('    restoreClip does not check the tombstones before re-inserting a row')
+      if (bumpsGeneration) {
+        console.error('    removeClips bumps listGeneration — too coarse; it also cancels reverts for unrelated clips')
+      }
+      return tombstones && consults && !bumpsGeneration
+    },
+  },
 ]
 
 const failures = checks.filter((check) => {
@@ -228,5 +371,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Video history query checks passed (${checks.length} assertions; ${PARAM_CASES.length + 4} executed against the real module)`,
+  `Video history query checks passed (${checks.length} assertions; ${PARAM_CASES.length + DELETE_CASES.length + 4} executed against the real module)`,
 )

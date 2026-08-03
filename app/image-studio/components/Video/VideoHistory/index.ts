@@ -1,3 +1,5 @@
 export { VideoHistoryModal } from './VideoHistoryModal'
 export { VideoHistoryCard } from './VideoHistoryCard'
+export { VideoHistoryHeader } from './VideoHistoryHeader'
 export { useVideoHistoryBrowser, type VideoHistoryTab } from './useVideoHistoryBrowser'
+export { useVideoHistorySelection } from './useVideoHistorySelection'

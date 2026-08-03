@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { BookmarkPlus, Download, Heart, ListPlus, Loader2, Mic, TriangleAlert, Wand2, X } from 'lucide-react'
+import { BookmarkPlus, Download, Heart, ListPlus, Loader2, Mic, Trash2, TriangleAlert, Wand2, X } from 'lucide-react'
 import { ExtendVideoDialog } from './ExtendVideoDialog'
 import { LipSyncDialog, type LipSyncPayload } from './LipSyncDialog'
 import { VIDEO_MODELS, type VideoModelId } from '@/lib/video/providers'
@@ -18,14 +18,16 @@ interface VideoResultCardProps {
   onEnhance?: (job: VideoJob, targetResolution: '1080p' | '1440p' | '2160p') => Promise<boolean>
   onSaveTemplate?: (job: VideoJob) => void
   onCancel?: (job: VideoJob) => Promise<boolean>
+  onRemove?: (job: VideoJob) => Promise<boolean>
 }
 
-export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance, onSaveTemplate, onCancel }: VideoResultCardProps) {
+export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, onEnhance, onSaveTemplate, onCancel, onRemove }: VideoResultCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [showExtend, setShowExtend] = useState(false)
   const [showLipSync, setShowLipSync] = useState(false)
   const [showEnhanceMenu, setShowEnhanceMenu] = useState(false)
   const [isCanceling, setIsCanceling] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
   const model = VIDEO_MODELS[job.model as VideoModelId]
   const isNativeExtend = model?.extendMode === 'native'
 
@@ -133,6 +135,22 @@ export function VideoResultCard({ job, onExtend, onToggleFavorite, onLipSync, on
             {job.durationSeconds ? ` · ${job.durationSeconds}s` : ''} · {new Date(job.timestamp).toLocaleString()}
           </p>
         </div>
+        {job.status === 'failed' && onRemove && (
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={async () => {
+                if (isRemoving) return
+                setIsRemoving(true)
+                try { await onRemove(job) } finally { setIsRemoving(false) }
+              }}
+              disabled={isRemoving}
+              title="Remove this failed clip from your videos"
+              className="flex items-center justify-center w-8 h-8 rounded-md bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors disabled:opacity-50"
+            >
+              {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        )}
         {job.status === 'completed' && job.videoUrl && (
           <div className="flex gap-2 shrink-0">
             {onToggleFavorite && (
