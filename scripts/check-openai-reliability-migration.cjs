@@ -114,9 +114,13 @@ const checks = [
       const topBar = read('app/image-studio/components/Studio/StudioTopBar.tsx')
       const canvas = read('app/image-studio/components/Studio/CanvasPanel.tsx')
       const types = read('app/image-studio/context/studio-types.ts')
+      // Assert 'thumbnail' is a StudioMode member rather than pinning the whole
+      // union: the union legitimately grows (video, translate, guide, analytics
+      // all landed after this check was written), and freezing it made the
+      // check fail for reasons that have nothing to do with thumbnail mode.
       return /mode: 'thumbnail', label: 'Thumbnail'/.test(topBar) &&
         /mode === 'thumbnail' && <ThumbnailCanvas \/>/.test(canvas) &&
-        /export type StudioMode = 'image' \| 'logo' \| 'mockups' \| 'bg-remover' \| 'thumbnail'/.test(types)
+        /export type StudioMode =(?:[^\n]*)\|\s*'thumbnail'(?:\s*\||\s*$)/m.test(types)
     },
   },
   {

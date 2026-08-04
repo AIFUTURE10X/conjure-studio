@@ -147,8 +147,9 @@ assert(
 )
 
 assert(
-  /\{ images, fallback, historySaved, historyId \}/.test(generateImageRoute),
-  '/api/generate-image must report the history-save outcome so the client can surface failures.',
+  /\{ images, fallback, historySaved, historyId, historyRetryUrls \}/.test(generateImageRoute),
+  '/api/generate-image must report the history-save outcome — including the Blob URLs a failed ' +
+    'save can be retried with — so the client can surface and recover from failures.',
 )
 
 assert(

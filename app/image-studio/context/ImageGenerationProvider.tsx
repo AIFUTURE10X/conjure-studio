@@ -13,7 +13,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { usePromptBuilder } from '../hooks/usePromptBuilder'
-import { useImageGeneration } from '../hooks/useImageGeneration'
+import { useImageGeneration, type GenerationOptions } from '../hooks/useImageGeneration'
 import { useGenerationHistory } from '../hooks/useGenerationHistory'
 import { downloadImageAsFile } from '../utils/export-utils'
 import { buildFinalImagePrompt, mergePromptWithReferenceAnalysis } from '../utils/build-image-prompt'
@@ -59,10 +59,49 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     state.setGeneratedImages(current => [...current, ...images])
   }, [state.setGeneratedImages])
 
+  // A failed server-side history save must never be a toast that disappears
+  // while you're looking at the image. The images are already in Blob by then,
+  // so the entry is recoverable: re-post those URLs (a few hundred bytes — the
+  // base64 originals are what used to 413) and the row lands with the same URLs.
+  const handleHistorySaveFailed = useCallback((retryUrls: string[], options: GenerationOptions) => {
+    if (retryUrls.length === 0) {
+      toast.error('Image generated, but saving to history failed', { duration: 15000 })
+      return
+    }
+    toast.error('Image generated, but saving to history failed', {
+      duration: Infinity,
+      action: {
+        label: 'Retry save',
+        onClick: () => {
+          void (async () => {
+            try {
+              const response = await fetch('/api/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: getUserId(),
+                  prompt: options.displayPrompt ?? options.prompt,
+                  aspectRatio: options.aspectRatio,
+                  imageUrls: retryUrls,
+                  metadata: { style: options.stylePreset, creativeDirection: options.creativeDirection },
+                }),
+              })
+              if (!response.ok) throw new Error(`History save failed (${response.status})`)
+              toast.success('Saved to history')
+            } catch (retryError) {
+              console.error('[image] History retry failed:', retryError)
+              toast.error('Still could not save to history — the images stay in the grid.')
+            }
+          })()
+        },
+      },
+    })
+  }, [])
+
   const { isGenerating, error, generateImages, clearImages, upscaleImage } = useImageGeneration(
     appendGeneratedImages,
     (info) => toast.info(info.reason, { duration: 6000 }),
-    () => toast.error('Image generated, but saving to history failed'),
+    handleHistorySaveFailed,
   )
   const { saveToHistory } = useGenerationHistory()
 

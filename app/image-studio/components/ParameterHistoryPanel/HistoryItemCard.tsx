@@ -9,7 +9,8 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Clock, Trash2, RotateCcw, Download, Check } from 'lucide-react'
+import { Clock, Trash2, RotateCcw, Check } from 'lucide-react'
+import { HistoryItemImages } from './HistoryItemImages'
 import type { HistoryItem } from '@/lib/history'
 
 interface HistoryItemCardProps {
@@ -19,7 +20,8 @@ interface HistoryItemCardProps {
   onRestore: (item: HistoryItem) => void
   onDelete: (id: string, e: React.MouseEvent) => void
   onDownload: (imageUrl: string, index: number) => void
-  onPreview: (item: HistoryItem) => void
+  /** Opens the lightbox on a specific image of this item, not just the first. */
+  onPreview: (item: HistoryItem, imageIndex: number) => void
 }
 
 export function HistoryItemCard({
@@ -58,19 +60,17 @@ export function HistoryItemCard({
 
         {item.imageUrls && item.imageUrls.length > 0 ? (
           <>
-            <img
-              src={item.imageUrls[0] || "/placeholder.svg"}
-              alt="Generated preview"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            <HistoryItemImages
+              imageUrls={item.imageUrls}
+              onRestore={() => onRestore(item)}
+              onDownload={onDownload}
+              onPreview={(imageIndex) => onPreview(item, imageIndex)}
             />
-            {item.imageUrls.length > 1 && (
-              <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
-                +{item.imageUrls.length - 1} more
-              </div>
-            )}
 
+            {/* pointer-events-none: this strip sits over the bottom row of a
+                multi-image grid, and must not swallow those tiles' clicks. */}
             {item.metadata && (
-              <div className="absolute bottom-0 left-0 right-0 p-2 bg-linear-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute bottom-0 left-0 right-0 p-2 bg-linear-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 <div className="flex flex-wrap gap-1">
                   {item.aspectRatio && (
                     <span className="text-xs px-2 py-0.5 bg-[#c99850] text-black font-medium rounded">
@@ -90,38 +90,6 @@ export function HistoryItemCard({
                 </div>
               </div>
             )}
-
-            <div
-              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 cursor-zoom-in"
-              title="Click for larger view"
-              onClick={(e) => {
-                e.stopPropagation()
-                onPreview(item)
-              }}
-            >
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDownload(item.imageUrls[0], 0)
-                }}
-                size="sm"
-                className="bg-[#c99850] hover:bg-[#dbb56e] text-black"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onRestore(item)
-                }}
-                size="sm"
-                className="bg-[#c99850] hover:bg-[#dbb56e] text-black"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Restore
-              </Button>
-            </div>
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-zinc-600">
@@ -139,8 +107,13 @@ export function HistoryItemCard({
 
         {/* Metadata */}
         <div className="flex items-center justify-between text-xs text-zinc-400 mb-3">
-          <span className="px-2 py-1 bg-zinc-900 rounded">
-            {item.aspectRatio}
+          <span className="flex items-center gap-2">
+            <span className="px-2 py-1 bg-zinc-900 rounded">
+              {item.aspectRatio}
+            </span>
+            <span className="px-2 py-1 bg-zinc-900 rounded">
+              {item.imageUrls?.length ?? 0} {item.imageUrls?.length === 1 ? 'image' : 'images'}
+            </span>
           </span>
           <span className="text-zinc-500">
             {new Date(item.timestamp).toLocaleDateString('en-US', {
