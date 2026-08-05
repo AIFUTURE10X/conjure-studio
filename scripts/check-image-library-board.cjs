@@ -52,9 +52,13 @@ assert(
   `${SHELL_PATH} must render exactly the selected tab of the shared board.`,
 )
 assert(
-  /onSelectTab=\{state\.setImageLibraryTab\}/.test(shell) &&
+  /onSelectTab=\{selectImageLibraryTab\}/.test(shell) &&
     /onClose=\{\(\) => state\.setImageLibraryTab\(null\)\}/.test(shell),
-  `${SHELL_PATH} must switch tabs in-place and close the shared board through one state setter.`,
+  `${SHELL_PATH} must switch image tabs in-place and close the shared board through one state setter.`,
+)
+assert(
+  /if \(tab === 'database'\)[\s\S]*?setCreationLibraryTab\('images'\)/.test(shell),
+  `${SHELL_PATH} must hand the legacy Database tab to the unified Creation Library.`,
 )
 
 const tabs = read(TABS_PATH)

@@ -6,14 +6,15 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getUserId } from '@/lib/user-id'
-import { ImageLibraryTabs } from '../ImageLibraryTabs'
+import { CreationLibraryTabs } from '../CreationLibraryTabs'
 import { ImageLightbox } from '../ImageLightbox'
 import { NeonStatusBadge } from '../NeonStatusBadge'
 import { usePreviewLightbox } from '../../hooks/usePreviewLightbox'
-import type { ImageLibraryTab } from '../../hooks/useImageStudioState'
+import type { CreationLibraryTab } from '../../hooks/useImageStudioState'
 import {
   buildImageDatabaseRecords,
   filterImageDatabaseRecords,
+  filterImageDatabaseRecordsByMedia,
   type ImageDatabaseRecord,
   type ImageDatabaseSource,
   type ImageDatabaseSourceFilter,
@@ -33,8 +34,8 @@ const SOURCE_LABELS: Record<ImageDatabaseSource, string> = {
 }
 
 interface ImageDatabaseBrowserProps {
-  activeTab: ImageLibraryTab
-  onSelectTab: (tab: ImageLibraryTab) => void
+  activeMedia: Exclude<CreationLibraryTab, 'videos'>
+  onSelectMedia: (tab: CreationLibraryTab) => void
   onClose: () => void
   onFavoritesChanged: () => Promise<void>
 }
@@ -88,7 +89,7 @@ function formatDate(timestamp: number) {
   }).format(new Date(timestamp))
 }
 
-export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavoritesChanged }: ImageDatabaseBrowserProps) {
+export function ImageDatabaseBrowser({ activeMedia, onSelectMedia, onClose, onFavoritesChanged }: ImageDatabaseBrowserProps) {
   const [records, setRecords] = useState<ImageDatabaseRecord[]>([])
   const [source, setSource] = useState<ImageDatabaseSourceFilter>('all')
   const [query, setQuery] = useState('')
@@ -130,9 +131,14 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavori
     }
   }, [])
 
+  const mediaRecords = useMemo(
+    () => filterImageDatabaseRecordsByMedia(records, activeMedia),
+    [records, activeMedia],
+  )
+  const activeSource = activeMedia === 'logos' ? 'all' : source
   const filteredRecords = useMemo(
-    () => filterImageDatabaseRecords(records, source, query),
-    [records, source, query],
+    () => filterImageDatabaseRecords(mediaRecords, activeSource, query),
+    [mediaRecords, activeSource, query],
   )
   const visibleRecords = filteredRecords.slice(0, visibleCount)
   const previewImages = useMemo(
@@ -147,10 +153,9 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavori
   }, { generation_history: 0, favorites: 0, logo_history: 0 }), [records])
 
   const filters: Array<{ value: ImageDatabaseSourceFilter; label: string; count: number }> = [
-    { value: 'all', label: 'All', count: records.length },
+    { value: 'all', label: 'All', count: mediaRecords.length },
     { value: 'generation_history', label: 'History', count: counts.generation_history },
     { value: 'favorites', label: 'Favorites', count: counts.favorites },
-    { value: 'logo_history', label: 'Logos', count: counts.logo_history },
   ]
 
   const restoreRecord = async (record: ImageDatabaseRecord, target: 'history' | 'favorites') => {
@@ -203,17 +208,17 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavori
               <Database className="h-5 w-5 text-black" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Image Library</h2>
+              <h2 className="text-xl font-bold text-white">Creation Library</h2>
               <p className="text-xs text-zinc-400">
-                {loading ? 'Reading Neon image records…' : `${records.length} image records · restore to your library`}
+                {loading
+                  ? `Reading Neon ${activeMedia} records…`
+                  : `${mediaRecords.length} ${activeMedia} · restore to your working library`}
               </p>
             </div>
             <NeonStatusBadge endpoint="/api/history/test-connection" />
-            <ImageLibraryTabs
-              activeTab={activeTab}
-              onSelectTab={onSelectTab}
-              historyCount={counts.generation_history}
-              favoritesCount={counts.favorites}
+            <CreationLibraryTabs
+              activeTab={activeMedia}
+              onSelect={onSelectMedia}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -235,8 +240,9 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavori
         </div>
 
         <div className="flex flex-wrap items-center gap-3 border-b border-zinc-800 px-4 py-3">
-          <div className="flex flex-wrap gap-1 rounded-lg border border-zinc-800 bg-zinc-950/70 p-1">
-            {filters.map((filter) => (
+          {activeMedia === 'images' && (
+            <div className="flex flex-wrap gap-1 rounded-lg border border-zinc-800 bg-zinc-950/70 p-1">
+              {filters.map((filter) => (
               <button
                 key={filter.value}
                 type="button"
@@ -245,15 +251,16 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavori
                   setVisibleCount(PAGE_SIZE)
                 }}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  source === filter.value
+                  activeSource === filter.value
                     ? 'bg-[#c99850]/20 text-[#dbb56e]'
                     : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
                 }`}
               >
                 {filter.label} ({filter.count})
               </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           <label className="relative min-w-52 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
@@ -263,7 +270,7 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavori
                 setQuery(event.target.value)
                 setVisibleCount(PAGE_SIZE)
               }}
-              placeholder="Search prompt, record ID, or image URL"
+              placeholder={`Search ${activeMedia}, prompts, record IDs, or URLs`}
               className="h-9 w-full rounded-md border border-zinc-700 bg-zinc-950 pl-9 pr-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#c99850]"
             />
           </label>
@@ -280,8 +287,8 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavori
           ) : filteredRecords.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-center">
               <Database className="mb-4 h-14 w-14 text-zinc-700" />
-              <p className="text-zinc-400">No matching image records</p>
-              <p className="mt-1 text-xs text-zinc-600">Try another source or search term.</p>
+              <p className="text-zinc-400">No matching {activeMedia}</p>
+              <p className="mt-1 text-xs text-zinc-600">Try another search term{activeMedia === 'images' ? ' or source' : ''}.</p>
             </div>
           ) : (
             <>

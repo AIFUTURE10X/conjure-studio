@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Clapperboard, Home, ImageIcon, Settings, Sparkles } from 'lucide-react'
+import { Database, Home, ImageIcon, Settings, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { ConciergeDialog } from '../Concierge'
 import { HeaderContextButtons } from '../HeaderContextButtons'
@@ -51,6 +51,7 @@ export function StudioTopBar() {
   } = useStudioCore()
   const [showSettings, setShowSettings] = useState(false)
   const [showConcierge, setShowConcierge] = useState(false)
+  const defaultCreationLibraryTab = mode === 'video' ? 'videos' : mode === 'logo' ? 'logos' : 'images'
 
   useEffect(() => {
     if (typeof window === 'undefined' || SHOW_ACCOUNT_CONTROLS) return
@@ -156,16 +157,6 @@ export function StudioTopBar() {
               onShowFavorites={() => state.setImageLibraryTab('favorites')}
             />
           )}
-          {mode === 'video' && (
-            <button
-              onClick={() => state.setShowVideoHistory(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors"
-              title="Browse every clip you have generated, and your favorites"
-            >
-              <Clapperboard className="w-3.5 h-3.5 text-[#dbb56e]" />
-              <span className="hidden sm:inline">Videos</span>
-            </button>
-          )}
           {mode === 'logo' && (
             <button
               onClick={() => setShowPhotoGenerator(true)}
@@ -176,6 +167,14 @@ export function StudioTopBar() {
               <span className="hidden sm:inline">Product Photos</span>
             </button>
           )}
+          <button
+            onClick={() => state.setCreationLibraryTab(defaultCreationLibraryTab)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors"
+            title="Browse all saved images, videos, and logos"
+          >
+            <Database className="w-3.5 h-3.5 text-[#dbb56e]" />
+            <span className="hidden sm:inline">Creation Library</span>
+          </button>
           <StudioResetButton />
           <UiZoomControl />
           <button

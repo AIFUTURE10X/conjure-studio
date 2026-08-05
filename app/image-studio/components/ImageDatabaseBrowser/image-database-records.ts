@@ -1,5 +1,6 @@
 export type ImageDatabaseSource = 'generation_history' | 'favorites' | 'logo_history'
 export type ImageDatabaseSourceFilter = 'all' | ImageDatabaseSource
+export type ImageDatabaseMedia = 'images' | 'logos'
 
 export interface ImageDatabaseRecord {
   recordId: string
@@ -134,4 +135,13 @@ export function filterImageDatabaseRecords(
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(normalizedQuery))
   })
+}
+
+export function filterImageDatabaseRecordsByMedia(
+  records: ImageDatabaseRecord[],
+  media: ImageDatabaseMedia,
+): ImageDatabaseRecord[] {
+  return records.filter((record) => (
+    media === 'logos' ? record.source === 'logo_history' : record.source !== 'logo_history'
+  ))
 }

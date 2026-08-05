@@ -331,11 +331,12 @@ export function VideoCanvas() {
         onConfirm={handleSaveTemplate}
       />
 
-      {/* Opened from the top bar's Videos button; lives here so it shares the
+      {/* Opened from the shared Creation Library; lives here so it shares the
           job list the inline grid renders, keeping favorite hearts in step. */}
       <VideoHistoryModal
-        isOpen={state.showVideoHistory}
-        onClose={() => state.setShowVideoHistory(false)}
+        isOpen={state.creationLibraryTab === 'videos'}
+        onClose={() => state.setCreationLibraryTab(null)}
+        onSelectMedia={state.setCreationLibraryTab}
         onSetFavorite={setFavorite}
         resolveNextFavorite={resolveNextFavorite}
         onDeleteClips={deleteClips}

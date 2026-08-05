@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Clapperboard, Heart, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -9,6 +10,7 @@ import { VideoHistoryCard } from './VideoHistoryCard'
 import { VideoHistoryHeader } from './VideoHistoryHeader'
 import { useVideoHistoryBrowser, type VideoHistoryTab } from './useVideoHistoryBrowser'
 import { useVideoHistorySelection } from './useVideoHistorySelection'
+import type { CreationLibraryTab } from '../../../hooks/useImageStudioState'
 import type { FavoriteWriteResult } from '../useVideoFavorites'
 import type { DeleteResult } from '../useVideoDelete'
 import type { VideoJob } from '../useVideoGeneration'
@@ -16,6 +18,7 @@ import type { VideoJob } from '../useVideoGeneration'
 interface VideoHistoryModalProps {
   isOpen: boolean
   onClose: () => void
+  onSelectMedia: (tab: CreationLibraryTab) => void
   /**
    * Persists the star and mirrors it into the inline grid's job list.
    * Resolves false when the write was rejected, so the modal can undo its own copy.
@@ -71,7 +74,7 @@ function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: b
 }
 
 export function VideoHistoryModal({
-  isOpen, onClose, onSetFavorite, resolveNextFavorite, onDeleteClips, boardJobIds, onAddToBoard,
+  isOpen, onClose, onSelectMedia, onSetFavorite, resolveNextFavorite, onDeleteClips, boardJobIds, onAddToBoard,
 }: VideoHistoryModalProps) {
   // Every click in a burst awaits the same settled write, so without this only
   // the newest one may undo itself — otherwise two reverts stack and land on the
@@ -168,10 +171,11 @@ export function VideoHistoryModal({
     onClose()
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
       <Card className="bg-zinc-900 border-[#c99850]/30 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <VideoHistoryHeader
+          onSelectMedia={onSelectMedia}
           tab={tab}
           onTabChange={setTab}
           selectedCount={selection.selectedCount}
@@ -259,6 +263,7 @@ export function VideoHistoryModal({
           ) : null)}
         </div>
       </Card>
-    </div>
+    </div>,
+    document.body,
   )
 }

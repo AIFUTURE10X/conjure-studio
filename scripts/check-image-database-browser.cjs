@@ -90,8 +90,10 @@ assert(/onSelectTab\('database'\)/.test(tabs), `${TABS_PATH} must expose a Datab
 
 const shell = read(SHELL_PATH)
 assert(
-  /state\.imageLibraryTab === 'database'/.test(shell) && /<ImageDatabaseBrowser/.test(shell),
-  `${SHELL_PATH} must render the database browser in the shared Image Library board.`,
+  /state\.creationLibraryTab === 'images'/.test(shell) &&
+    /state\.creationLibraryTab === 'logos'/.test(shell) &&
+    /<ImageDatabaseBrowser/.test(shell),
+  `${SHELL_PATH} must render the database browser for image and logo Creation Library tabs.`,
 )
 
 console.log('✅ Image database source-browser contract holds')

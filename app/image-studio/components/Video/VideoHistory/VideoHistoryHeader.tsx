@@ -4,9 +4,12 @@ import { Loader2, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { CreationLibraryTabs } from '../../CreationLibraryTabs'
+import type { CreationLibraryTab } from '../../../hooks/useImageStudioState'
 import type { VideoHistoryTab } from './useVideoHistoryBrowser'
 
 interface VideoHistoryHeaderProps {
+  onSelectMedia: (tab: CreationLibraryTab) => void
   tab: VideoHistoryTab
   onTabChange: (tab: VideoHistoryTab) => void
   selectedCount: number
@@ -30,18 +33,20 @@ const TABS: Array<{ id: VideoHistoryTab; label: string }> = [
  * app/image-studio/CLAUDE.md.
  */
 export function VideoHistoryHeader({
-  tab, onTabChange, selectedCount, hasSelectableClips, isAllSelected,
+  onSelectMedia, tab, onTabChange, selectedCount, hasSelectableClips, isAllSelected,
   onToggleAll, onDeleteSelected, isDeleting, onClose,
 }: VideoHistoryHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-4 p-4 border-b border-zinc-800">
       <div className="flex items-center gap-4 min-w-0">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold text-white">Videos</h2>
+          <h2 className="text-xl font-bold text-white">Creation Library</h2>
           <p className="text-xs text-zinc-400">
             {selectedCount > 0 ? `${selectedCount} selected` : 'Every clip you have generated'}
           </p>
         </div>
+
+        <CreationLibraryTabs activeTab="videos" onSelect={onSelectMedia} />
 
         {hasSelectableClips && (
           <div className="flex items-center gap-2 shrink-0">

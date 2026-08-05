@@ -37,6 +37,7 @@ import { ThumbnailProvider } from '../Thumbnail'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { useZoomedViewportSize } from '../../hooks/useZoomedViewportSize'
 import { useFirstPaintReflowNudge } from '../../hooks/useFirstPaintReflowNudge'
+import type { ImageLibraryTab } from '../../hooks/useImageStudioState'
 
 export function StudioShell() {
   const {
@@ -49,6 +50,16 @@ export function StudioShell() {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const viewport = useZoomedViewportSize()
   useFirstPaintReflowNudge()
+
+  const selectImageLibraryTab = (tab: ImageLibraryTab) => {
+    if (tab === 'database') {
+      state.setImageLibraryTab(null)
+      state.setCreationLibraryTab('images')
+      return
+    }
+    state.setCreationLibraryTab(null)
+    state.setImageLibraryTab(tab)
+  }
 
   // The studio is a full-window workspace: every scroll lives inside a
   // panel, never the document. Lock the page scroll while the shell is mounted
@@ -132,7 +143,7 @@ export function StudioShell() {
         <FavoritesModal
           favorites={favorites}
           activeTab="favorites"
-          onSelectTab={state.setImageLibraryTab}
+          onSelectTab={selectImageLibraryTab}
           onClose={() => state.setImageLibraryTab(null)}
           onRemove={toggleFavorite}
           onClearAll={clearAll}
@@ -145,17 +156,17 @@ export function StudioShell() {
           isOpen={state.imageLibraryTab === 'history'}
           favoritesCount={favorites.length}
           activeTab="history"
-          onSelectTab={state.setImageLibraryTab}
+          onSelectTab={selectImageLibraryTab}
           onClose={() => state.setImageLibraryTab(null)}
           onRestoreParameters={handleRestoreParameters}
         />
       )}
 
-      {state.imageLibraryTab === 'database' && (
+      {(state.creationLibraryTab === 'images' || state.creationLibraryTab === 'logos') && (
         <ImageDatabaseBrowser
-          activeTab="database"
-          onSelectTab={state.setImageLibraryTab}
-          onClose={() => state.setImageLibraryTab(null)}
+          activeMedia={state.creationLibraryTab}
+          onSelectMedia={state.setCreationLibraryTab}
+          onClose={() => state.setCreationLibraryTab(null)}
           onFavoritesChanged={refreshFavorites}
         />
       )}
