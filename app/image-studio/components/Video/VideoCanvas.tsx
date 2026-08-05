@@ -42,7 +42,7 @@ export function VideoCanvas() {
   const { improveWithHelper } = useHelperBridge()
   const { registerReset } = useStudioReset()
   const {
-    jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, cancelJob, clearJobs,
+    jobs, isSubmitting, historyLoaded, submitVideo, extendVideo, cancelJob, clearJobs, restoreClipToBoard,
     toggleFavorite, setFavorite, resolveNextFavorite, deleteClip, deleteClips, submitLipSync, submitEnhance, submitAssembleFilm,
   } = useVideoGeneration()
   const [showAssemble, setShowAssemble] = useState(false)
@@ -339,6 +339,8 @@ export function VideoCanvas() {
         onSetFavorite={setFavorite}
         resolveNextFavorite={resolveNextFavorite}
         onDeleteClips={deleteClips}
+        boardJobIds={new Set(jobs.map((job) => job.jobId))}
+        onAddToBoard={restoreClipToBoard}
       />
 
       <EndFrameDialog

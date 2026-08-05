@@ -1,6 +1,6 @@
 "use client"
 
-import { Download, Heart, Loader2, Trash2, TriangleAlert } from 'lucide-react'
+import { Download, Heart, Loader2, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -15,6 +15,8 @@ interface VideoHistoryCardProps {
   onDelete: (clip: VideoJob) => void | Promise<void>
   /** True while a delete covering this clip is in flight. */
   isDeleting: boolean
+  isOnBoard: boolean
+  onAddToBoard: (clip: VideoJob) => void
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -37,7 +39,7 @@ function MetaChip({ children }: { children: React.ReactNode }) {
  * would drop the result behind the overlay the user is still looking at.
  */
 export function VideoHistoryCard({
-  clip, onToggleFavorite, isSelected, onToggleSelect, onDelete, isDeleting,
+  clip, onToggleFavorite, isSelected, onToggleSelect, onDelete, isDeleting, isOnBoard, onAddToBoard,
 }: VideoHistoryCardProps) {
   const isFailed = clip.status === 'failed'
   const isPending = clip.status === 'pending'
@@ -93,6 +95,27 @@ export function VideoHistoryCard({
       </div>
 
       <div className="flex flex-col gap-1 shrink-0">
+        {canDownload && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => onAddToBoard(clip)}
+                disabled={isOnBoard}
+                aria-label="Add to board"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-[#dbb56e] hover:text-[#f0d49b] border border-[#c99850]/30 disabled:text-zinc-600 disabled:border-zinc-800 disabled:cursor-default"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Board
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              {isOnBoard ? 'Already on the video board' : 'Add back to the video board'}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

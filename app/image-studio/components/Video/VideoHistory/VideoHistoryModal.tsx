@@ -28,6 +28,10 @@ interface VideoHistoryModalProps {
    * so the modal drops only those and leaves anything the server kept on screen.
    */
   onDeleteClips: (jobIds: number[]) => Promise<DeleteResult>
+  /** Job ids already rendered on the working video board. */
+  boardJobIds: ReadonlySet<number>
+  /** Restores an archived clip to the working board without changing history. */
+  onAddToBoard: (clip: VideoJob) => void
 }
 
 /** Trimmed prompt for a confirm dialog, so the user sees what they are deleting. */
@@ -67,7 +71,7 @@ function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: b
 }
 
 export function VideoHistoryModal({
-  isOpen, onClose, onSetFavorite, resolveNextFavorite, onDeleteClips,
+  isOpen, onClose, onSetFavorite, resolveNextFavorite, onDeleteClips, boardJobIds, onAddToBoard,
 }: VideoHistoryModalProps) {
   // Every click in a burst awaits the same settled write, so without this only
   // the newest one may undo itself — otherwise two reverts stack and land on the
@@ -159,6 +163,11 @@ export function VideoHistoryModal({
     else applyFavorite(clip.jobId, false)
   }
 
+  const handleAddToBoard = (clip: VideoJob) => {
+    onAddToBoard(clip)
+    onClose()
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
       <Card className="bg-zinc-900 border-[#c99850]/30 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -207,6 +216,8 @@ export function VideoHistoryModal({
                   onToggleSelect={selection.toggle}
                   onDelete={handleDeleteClip}
                   isDeleting={deletingIds.has(clip.jobId)}
+                  isOnBoard={boardJobIds.has(clip.jobId)}
+                  onAddToBoard={handleAddToBoard}
                 />
               ))}
             </div>

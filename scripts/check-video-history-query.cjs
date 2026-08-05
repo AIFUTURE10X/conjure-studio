@@ -21,6 +21,11 @@ const readCode = (relativePath) => read(relativePath)
 const QUERY_PATH = 'lib/video/history-query.ts'
 const ROUTE_PATH = 'app/api/video-history/route.ts'
 const BROWSER_PATH = 'app/image-studio/components/Video/VideoHistory/useVideoHistoryBrowser.ts'
+const BOARD_PATH = 'app/image-studio/components/Video/video-board.ts'
+const GENERATION_PATH = 'app/image-studio/components/Video/useVideoGeneration.ts'
+const CANVAS_PATH = 'app/image-studio/components/Video/VideoCanvas.tsx'
+const MODAL_PATH = 'app/image-studio/components/Video/VideoHistory/VideoHistoryModal.tsx'
+const CARD_PATH = 'app/image-studio/components/Video/VideoHistory/VideoHistoryCard.tsx'
 
 /**
  * Load and EXECUTE the real query contract.
@@ -55,6 +60,25 @@ const queryModule = loadQueryModule()
 const schema = queryModule.videoHistoryListParamsSchema
 const deleteSchema = queryModule.videoHistoryDeleteParamsSchema
 const { buildPromptSearchPattern, pageFetchLimit, splitPage, resolveVideoDeleteOutcome } = queryModule
+
+/** Execute the pure board-restoration helper without loading React. */
+function loadBoardModule() {
+  const { outputText } = ts.transpileModule(read(BOARD_PATH), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    fileName: BOARD_PATH,
+  })
+  const mod = { exports: {} }
+  new Function('exports', 'require', 'module', '__filename', '__dirname', outputText)(
+    mod.exports,
+    (id) => { throw new Error(`unexpected runtime import in ${BOARD_PATH}: ${id}`) },
+    mod,
+    BOARD_PATH,
+    path.dirname(BOARD_PATH),
+  )
+  return mod.exports
+}
+
+const { addVideoToBoard } = fs.existsSync(path.join(root, BOARD_PATH)) ? loadBoardModule() : {}
 
 const parse = (params) => schema.safeParse(params)
 const parseDelete = (params) => deleteSchema.safeParse(params)
@@ -128,6 +152,42 @@ const PARAM_CASES = [
 ]
 
 const checks = [
+  {
+    name: 'board restore — an archived clip is prepended to the working board',
+    pass: () => {
+      const existing = [{ jobId: 1, prompt: 'existing' }]
+      const archived = { jobId: 2, prompt: 'restored' }
+      const result = addVideoToBoard(existing, archived)
+      return result.length === 2 && result[0] === archived && result[1] === existing[0]
+    },
+  },
+  {
+    name: 'board restore — a clip already on the board is not duplicated or overwritten',
+    pass: () => {
+      const live = { jobId: 7, prompt: 'fresh board state' }
+      const current = [live]
+      const archived = { jobId: 7, prompt: 'stale archive state' }
+      const result = addVideoToBoard(current, archived)
+      return result === current && result[0] === live
+    },
+  },
+  {
+    name: 'wiring — completed history and favorite cards expose Add to board',
+    pass: () => {
+      const generation = readCode(GENERATION_PATH)
+      const canvas = readCode(CANVAS_PATH)
+      const modal = readCode(MODAL_PATH)
+      const card = readCode(CARD_PATH)
+      return /addVideoToBoard/.test(generation) &&
+        /restoreClipToBoard/.test(generation) &&
+        /onAddToBoard=\{restoreClipToBoard\}/.test(canvas) &&
+        /boardJobIds=\{new Set\(jobs\.map\(\(job\) => job\.jobId\)\)\}/.test(canvas) &&
+        /onAddToBoard\(clip\)/.test(modal) &&
+        /onClose\(\)/.test(modal) &&
+        /aria-label="Add to board"/.test(card) &&
+        /canDownload &&/.test(card)
+    },
+  },
   { name: 'query schema is exported and parseable', pass: () => typeof schema?.safeParse === 'function' },
   ...PARAM_CASES.map((testCase) => ({
     name: `params — ${testCase.name}`,
@@ -371,5 +431,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Video history query checks passed (${checks.length} assertions; ${PARAM_CASES.length + DELETE_CASES.length + 4} executed against the real module)`,
+  `Video history query checks passed (${checks.length} assertions; ${PARAM_CASES.length + DELETE_CASES.length + 6} executed against the real module)`,
 )

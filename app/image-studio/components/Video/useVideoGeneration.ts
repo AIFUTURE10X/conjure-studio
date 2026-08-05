@@ -10,6 +10,7 @@ import { VIDEO_COMPLETED_EVENT } from '../../constants/concierge-tree'
 import { useVideoDelete } from './useVideoDelete'
 import { useVideoFavorites } from './useVideoFavorites'
 import { useVideoPostProduction } from './useVideoPostProduction'
+import { addVideoToBoard } from './video-board'
 
 /**
  * Video job state: submit to /api/generate-video, poll the status route
@@ -256,6 +257,12 @@ export function useVideoGeneration() {
    */
   const clearJobs = useCallback(() => setJobs([]), [])
 
+  /** Restore one archived clip to the working board without duplicating it. */
+  const restoreClipToBoard = useCallback((clip: VideoJob) => {
+    setJobs((current) => addVideoToBoard(current, clip))
+    toast.success('Added back to the video board')
+  }, [])
+
   return {
     jobs,
     isSubmitting,
@@ -265,6 +272,7 @@ export function useVideoGeneration() {
     extendVideo,
     cancelJob,
     clearJobs,
+    restoreClipToBoard,
     toggleFavorite,
     setFavorite,
     resolveNextFavorite,
