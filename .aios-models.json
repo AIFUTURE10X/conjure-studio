@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "project": "conjure-studio",
+  "models": [
+    {
+      "id": "fal-ai/bytedance/seedance/v1/pro/fast/text-to-video",
+      "family": "seedance",
+      "version": "1.0",
+      "kind": "video",
+      "role": "default",
+      "where": "lib/video/providers.ts"
+    },
+    {
+      "id": "bytedance/seedance-2.0/text-to-video",
+      "family": "seedance",
+      "version": "2.0",
+      "kind": "video",
+      "role": "offered",
+      "where": "lib/video/providers.ts"
+    },
+    {
+      "id": "fal-ai/kling-video/v3/pro/text-to-video",
+      "family": "kling",
+      "version": "3.0",
+      "kind": "video",
+      "role": "offered",
+      "where": "lib/video/providers.ts"
+    },
+    {
+      "id": "fal-ai/veo3.1",
+      "family": "veo",
+      "version": "3.1",
+      "kind": "video",
+      "role": "offered",
+      "where": "lib/video/providers.ts"
+    },
+    {
+      "id": "gpt-image-2",
+      "family": "gpt-image",
+      "version": "2",
+      "kind": "image",
+      "role": "default",
+      "where": "app/image-studio/constants/settings-defaults.ts"
+    }
+  ]
+}
