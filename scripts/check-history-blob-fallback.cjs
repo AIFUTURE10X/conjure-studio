@@ -31,6 +31,7 @@ function assert(condition, message) {
 
 const store = read('lib/db/generation-history-store.ts')
 const historyRoute = read('app/api/history/route.ts')
+const limits = read('lib/history-limits.ts')
 const packageJson = read('package.json')
 
 assert(
@@ -61,6 +62,11 @@ assert(
 assert(
   !/return apiError\(500,\s*'blob_upload_failed'/.test(historyRoute),
   'History API must not return 500 solely because Blob upload is unavailable.',
+)
+
+assert(
+  /MAX_INLINE_HISTORY_DATA_URI_LENGTH/.test(historyRoute) && /3_500_000/.test(limits),
+  'History POST must enforce the shared inline data-URI limit.',
 )
 
 console.log('✅ History Blob fallback contract passed')

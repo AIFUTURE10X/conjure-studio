@@ -23,6 +23,7 @@ import { normalizeCreativeDirection } from '../constants/creative-direction-opti
 import { addToActiveCollection } from '@/lib/collections-client'
 import { getUserId } from '@/lib/user-id'
 import { useStudioCore } from './useStudio'
+import { MAX_INLINE_HISTORY_DATA_URI_LENGTH } from '@/lib/history-limits'
 
 export type ImageBgRemovalMethod = 'none' | 'photoroom' | 'fal'
 export type { ImageMetadata } from '../utils/get-image-metadata'
@@ -366,6 +367,11 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     updated[index] = { ...original, url }
     state.setGeneratedImages(updated)
     toast.success('AI edit applied')
+
+    if (url.startsWith('data:') && url.length > MAX_INLINE_HISTORY_DATA_URI_LENGTH) {
+      toast.error('Edit applied, but it couldn\'t be stored in history (image too large to upload)')
+      return true
+    }
 
     const historyPrompt = editPrompt ? `AI edit: ${editPrompt}` : 'AI edit: erase'
     try {
