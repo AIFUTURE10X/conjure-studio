@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const ts = require('typescript')
 
 const root = process.cwd()
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
@@ -9,6 +10,62 @@ const route = read('app/api/generate-prompt-suggestion/route.ts')
 // studio workspace migration.
 const sidebar = read('app/image-studio/components/AIHelper/useAIHelperChatController.ts')
 const packageJson = read('package.json')
+
+function loadClarificationGate() {
+  const start = route.indexOf('function includesAny')
+  const end = route.indexOf('function formatClarificationGate')
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error('Could not locate clarification gate source')
+  }
+
+  const source = `${route.slice(start, end)}\nexport { buildClarificationGate }`
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    fileName: 'app/api/generate-prompt-suggestion/route.ts',
+  })
+  const mod = { exports: {} }
+  new Function('exports', 'require', 'module', outputText)(mod.exports, require, mod)
+  return mod.exports.buildClarificationGate
+}
+
+const buildClarificationGate = loadClarificationGate()
+
+const answeredBackgroundClarification = [
+  'CLARIFICATION CONTINUATION',
+  'Original question: Should the final output be a transparent PNG or use a visible background?',
+  'User answer: Transparent PNG',
+  'Active design brief: Make a transparent logo',
+  'Active task: Produce the logo',
+  'Current generator prompt: A polished brand logo',
+  'Continue from the pending clarification.',
+].join('\n')
+
+const clarificationGateCases = [
+  {
+    name: 'image mode accepts an answered transparent PNG clarification',
+    mode: 'image',
+    message: answeredBackgroundClarification,
+    wantShouldAsk: false,
+  },
+  {
+    name: 'logo mode accepts an answered transparent PNG clarification',
+    mode: 'logo',
+    message: answeredBackgroundClarification,
+    wantShouldAsk: false,
+  },
+  {
+    name: 'image mode accepts an answered visible-background clarification',
+    mode: 'image',
+    message: answeredBackgroundClarification.replace('User answer: Transparent PNG', 'User answer: Visible white background'),
+    wantShouldAsk: false,
+  },
+  {
+    name: 'a fresh conflicting background request still asks for clarification',
+    mode: 'image',
+    message: 'Create an image with a transparent PNG and a visible white background',
+    wantShouldAsk: true,
+  },
+]
 
 const scenarios = [
   {
@@ -160,6 +217,21 @@ const scenarios = [
 
 const failures = []
 
+for (const testCase of clarificationGateCases) {
+  const result = buildClarificationGate({
+    mode: testCase.mode,
+    message: testCase.message,
+    currentPrompt: '',
+    agentMemory: {},
+    hasReference: false,
+    hasOutput: false,
+  })
+  if (result.shouldAsk !== testCase.wantShouldAsk) {
+    console.error(`    ${testCase.name}: expected shouldAsk=${testCase.wantShouldAsk}, received ${result.shouldAsk}`)
+    failures.push({ name: `behavior — ${testCase.name}`, missing: [] })
+  }
+}
+
 for (const scenario of scenarios) {
   const source = scenario.source || route
   const missing = scenario.expected.filter((pattern) => !pattern.test(source))
@@ -247,4 +319,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log('AI helper scenario checks passed')
+console.log(`AI helper scenario checks passed (${clarificationGateCases.length} clarification behaviors executed)`)

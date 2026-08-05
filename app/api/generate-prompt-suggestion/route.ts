@@ -514,6 +514,10 @@ function buildClarificationGate({
   const hasLegacyClarificationAnswer = request.includes('clarifying question:') && request.includes('user answer:')
   const hasStructuredClarificationContinuation = request.includes('clarification continuation') && request.includes('original question:') && request.includes('user answer:')
   const hasClarificationAnswer = hasLegacyClarificationAnswer || hasStructuredClarificationContinuation
+  const clarificationAnswer = hasClarificationAnswer
+    ? request.match(/(?:^|\n)user answer:\s*([^\n]*)/i)?.[1]?.trim()
+    : undefined
+  const backgroundIntent = clarificationAnswer || request
   const hasUsefulContext = hasCurrentPrompt || hasReference || hasOutput || hasActiveTask || hasClarificationAnswer
   const asksForCreativeOutput = includesAny(request, ['create', 'generate', 'make', 'design', 'write', 'prompt', 'build'])
   const asksForLogo = mode === 'logo' || includesAny(request, ['logo', 'wordmark', 'brand mark', 'brandmark', 'icon'])
@@ -542,7 +546,7 @@ function buildClarificationGate({
     }
   }
 
-  if (includesAny(request, ['transparent', 'true png', 'no background', 'remove background']) && includesAny(request, ['white background', 'blue background', 'dark background', 'visible background'])) {
+  if (includesAny(backgroundIntent, ['transparent', 'true png', 'no background', 'remove background']) && includesAny(backgroundIntent, ['white background', 'blue background', 'dark background', 'visible background'])) {
     return {
       shouldAsk: true,
       question: 'Should the final output be a transparent PNG or use a visible background?',
