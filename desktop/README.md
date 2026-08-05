@@ -1,7 +1,7 @@
 # Conjure Studio Desktop
 
 Native Windows .exe wrapper for Conjure Studio, built with Tauri v2.
-Loads https://v0promptsgenie.vercel.app/ using WebView2.
+Loads https://conjure.aifuturestudio.com/ using WebView2.
 
 ## Builds
 

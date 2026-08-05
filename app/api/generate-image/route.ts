@@ -7,7 +7,7 @@ import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { upscaleBase64WithSharp } from "@/lib/sharp-upscaler"
 import { parseFormData, parseFormFields } from "@/lib/api/http"
 import { resolveUserId } from "@/lib/api/identity"
-import { hasGenerationHistoryDatabase, storeGenerationHistory } from "@/lib/db/generation-history-store"
+import { HistoryInsertError, hasGenerationHistoryDatabase, storeGenerationHistory } from "@/lib/db/generation-history-store"
 import { aspectRatioSchema, imageModelSchema, imageSizeSchema, userIdSchema } from "@/lib/validation/common"
 
 export const runtime = "nodejs"
@@ -84,7 +84,7 @@ async function saveGenerationToHistory(
   request: NextRequest,
   fields: z.output<typeof formSchema>,
   images: string[],
-): Promise<{ historySaved: boolean; historyId?: string }> {
+): Promise<{ historySaved: boolean; historyId?: string; historyRetryUrls?: string[] }> {
   try {
     const userId = await resolveUserId(request, fields.userId ?? '')
     if (!userId || !hasGenerationHistoryDatabase()) return { historySaved: false }
@@ -113,6 +113,12 @@ async function saveGenerationToHistory(
     return { historySaved: true, historyId: item.id }
   } catch (error) {
     console.error('[v0 SERVER] History save failed:', error)
+    // The images were already uploaded to Blob before the row failed, so hand
+    // the client those URLs. Retrying with them costs a few hundred bytes —
+    // re-posting the base64 originals is what used to 413 and lose the images.
+    if (error instanceof HistoryInsertError && error.blobUrls.length > 0) {
+      return { historySaved: false, historyRetryUrls: error.blobUrls }
+    }
     return { historySaved: false }
   }
 }
@@ -245,8 +251,8 @@ async function handlePost(request: NextRequest) {
     }
 
     console.log(`[v0 SERVER] Success: ${images.length}/${count} images generated${fallback ? " (via fallback)" : ""}`)
-    const { historySaved, historyId } = await saveGenerationToHistory(request, parsedFields.data, images)
-    return NextResponse.json({ images, fallback, historySaved, historyId })
+    const { historySaved, historyId, historyRetryUrls } = await saveGenerationToHistory(request, parsedFields.data, images)
+    return NextResponse.json({ images, fallback, historySaved, historyId, historyRetryUrls })
   } catch (error) {
     console.error("[v0 SERVER] Route error:", error)
     return NextResponse.json(

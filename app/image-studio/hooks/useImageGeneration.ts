@@ -56,7 +56,12 @@ function splitCount(total: number): number[] {
 export function useImageGeneration(
   onImagesUpdate?: (images: GeneratedImage[]) => void,
   onFallback?: (info: FallbackInfo) => void,
-  onHistorySaveFailed?: () => void,
+  /**
+   * Called once per batch when the server could not persist the generation.
+   * `retryUrls` are the already-uploaded Blob URLs, present whenever the images
+   * survived the failure — pass them to /api/history to recover the entry.
+   */
+  onHistorySaveFailed?: (retryUrls: string[], options: GenerationOptions) => void,
 ) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +92,12 @@ export function useImageGeneration(
   const requestImages = async (
     options: GenerationOptions,
     count: number,
-  ): Promise<{ images: GeneratedImage[]; fallback?: FallbackInfo; historySaved?: boolean }> => {
+  ): Promise<{
+    images: GeneratedImage[]
+    fallback?: FallbackInfo
+    historySaved?: boolean
+    historyRetryUrls?: string[]
+  }> => {
     const formData = new FormData()
     formData.append('prompt', options.prompt)
     formData.append('count', count.toString())
@@ -168,6 +178,9 @@ export function useImageGeneration(
       images,
       fallback: data.fallback as FallbackInfo | undefined,
       historySaved: data.historySaved as boolean | undefined,
+      historyRetryUrls: Array.isArray(data.historyRetryUrls)
+        ? (data.historyRetryUrls as string[])
+        : undefined,
     }
   }
 
@@ -187,14 +200,14 @@ export function useImageGeneration(
 
       const results = await Promise.all(counts.map(async (chunkCount) => {
         try {
-          const { images, fallback, historySaved } = await requestImages(options, chunkCount)
+          const { images, fallback, historySaved, historyRetryUrls } = await requestImages(options, chunkCount)
           if (fallback?.used && !fallbackReported && onFallback) {
             fallbackReported = true
             onFallback(fallback)
           }
           if (historySaved === false && !saveFailureReported && onHistorySaveFailed) {
             saveFailureReported = true
-            onHistorySaveFailed()
+            onHistorySaveFailed(historyRetryUrls ?? [], options)
           }
           onImagesUpdate?.(images)
           return { images, failed: 0, message: undefined as string | undefined }

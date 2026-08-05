@@ -13,6 +13,7 @@ import { getHistoryDurable, deleteHistoryItem, clearHistory, syncHistoryFromNeon
 import { toast } from 'sonner'
 import { HistoryHeader } from './HistoryHeader'
 import { HistoryItemCard } from './HistoryItemCard'
+import { flattenPreviewImages, previewIndexFor } from './history-preview'
 import { ImageLightbox } from '../ImageLightbox'
 import { usePreviewLightbox } from '../../hooks/usePreviewLightbox'
 
@@ -30,18 +31,16 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
 
   // Every image across all history items, flattened so the lightbox arrows
   // browse the whole history (multi-image items contribute each image).
-  const previewImages = useMemo(
-    () =>
-      history.flatMap((item) =>
-        (item.imageUrls ?? []).map((url) => ({ url, prompt: item.prompt })),
-      ),
-    [history],
-  )
+  const previewImages = useMemo(() => flattenPreviewImages(history), [history])
   const lightbox = usePreviewLightbox(previewImages)
-  const openPreviewFor = (item: HistoryItem) => {
-    const flatIndex = previewImages.findIndex((image) => image.url === item.imageUrls?.[0])
-    if (flatIndex >= 0) lightbox.open(flatIndex)
+
+  const openPreviewFor = (item: HistoryItem, imageIndex: number) => {
+    const flatIndex = previewIndexFor(history, item.id, imageIndex)
+    if (flatIndex !== null) lightbox.open(flatIndex)
   }
+
+  /** Images saved, not cards shown — the number users actually check against. */
+  const imageCount = previewImages.length
 
   // On open: show the local cache instantly, then refresh from Neon in the
   // background. The cache intentionally drops heavyweight data-URI entries
@@ -187,6 +186,7 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
       <Card className="w-full max-w-6xl max-h-[90vh] bg-zinc-900 border-[#c99850]/30 overflow-hidden flex flex-col">
         <HistoryHeader
           historyCount={history.length}
+          imageCount={imageCount}
           selectedCount={selectedItems.size}
           allSelected={selectedItems.size === history.length && history.length > 0}
           loading={loading}

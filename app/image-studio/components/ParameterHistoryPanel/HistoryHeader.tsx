@@ -13,6 +13,8 @@ import { NeonStatusBadge } from '../NeonStatusBadge'
 
 interface HistoryHeaderProps {
   historyCount: number
+  /** Total images across all generations — one generation can hold a batch. */
+  imageCount: number
   selectedCount: number
   allSelected: boolean
   loading: boolean
@@ -26,6 +28,7 @@ interface HistoryHeaderProps {
 
 export function HistoryHeader({
   historyCount,
+  imageCount,
   selectedCount,
   allSelected,
   loading,
@@ -45,10 +48,12 @@ export function HistoryHeader({
         <div className="flex items-center gap-3">
           <div>
             <h2 className="text-xl font-bold text-white">Parameter History</h2>
+            {/* Report images, not just cards: a batch is one card holding
+                several images, and counting cards made saved images look lost. */}
             <p className="text-sm text-zinc-400">
               {selectedCount > 0
                 ? `${selectedCount} selected`
-                : `${historyCount} ${historyCount === 1 ? 'item' : 'items'} saved`}
+                : `${historyCount} ${historyCount === 1 ? 'generation' : 'generations'} · ${imageCount} ${imageCount === 1 ? 'image' : 'images'} saved`}
             </p>
           </div>
           <NeonStatusBadge endpoint="/api/history/test-connection" />

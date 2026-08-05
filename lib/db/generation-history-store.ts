@@ -13,6 +13,21 @@ import { ensureGenerationHistorySchema } from '@/lib/db/history-schema'
 /** Rows the app keeps per user — matches the GET LIMIT and the client caches. */
 export const RETENTION_LIMIT = 100
 
+/** Insert attempts before a generation is declared unsaved. */
+const INSERT_ATTEMPTS = 3
+
+/**
+ * Thrown when the row could not be inserted after every retry. Carries the
+ * Blob URLs that *were* uploaded, so the caller can hand the client a cheap
+ * (URL-sized, never base64) retry payload instead of losing the images.
+ */
+export class HistoryInsertError extends Error {
+  constructor(message: string, readonly blobUrls: string[], readonly cause?: unknown) {
+    super(message)
+    this.name = 'HistoryInsertError'
+  }
+}
+
 export function getGenerationHistoryDatabaseUrl() {
   return process.env.NEON_DATABASE_URL || process.env.DATABASE_URL
 }
@@ -129,18 +144,66 @@ export async function storeGenerationHistory(input: StoreGenerationHistoryInput)
 
   const metadataJson = metadata ? JSON.stringify(metadata) : null
 
-  // The neon driver serializes JS arrays to Postgres arrays — no
-  // hand-built '{...}' literals.
-  const result = await sql`
-    INSERT INTO public.generation_history (
-      user_id, prompt, aspect_ratio, image_urls, blob_urls, metadata
+  // A single-attempt INSERT turns one transient Neon HTTP hiccup into a
+  // permanently missing history row for an image the user already generated
+  // (and paid credits for). Retry — and before each retry, check whether the
+  // previous attempt actually landed, so a lost response can't duplicate the
+  // card. blob_urls is unique per attempt (Date.now()-keyed names), which is
+  // what makes that probe exact.
+  //
+  // RETURNING lists columns instead of *: image_urls can hold full base64 data
+  // URIs when a Blob upload fell back, and echoing megabytes back through the
+  // Neon HTTP driver is the same overflow that once 500'd every history read.
+  let result: Record<string, unknown>[] | undefined
+  let lastError: unknown
+  for (let attempt = 1; attempt <= INSERT_ATTEMPTS; attempt++) {
+    if (attempt > 1) {
+      try {
+        const existing = await sql`
+          SELECT id, prompt, aspect_ratio, created_at
+          FROM public.generation_history
+          WHERE user_id = ${userId} AND blob_urls = ${blobUrls}::text[]
+          ORDER BY id DESC
+          LIMIT 1
+        `
+        if (existing.length > 0) {
+          console.log('[v0] History store: previous insert had landed after all, id', existing[0].id)
+          result = existing
+          break
+        }
+      } catch (probeError) {
+        console.error('[v0] History store: duplicate probe failed, retrying insert anyway:', probeError)
+      }
+    }
+
+    try {
+      result = await sql`
+        INSERT INTO public.generation_history (
+          user_id, prompt, aspect_ratio, image_urls, blob_urls, metadata
+        )
+        VALUES (
+          ${userId}, ${prompt}, ${aspectRatio || null},
+          ${storedImageUrls}, ${blobUrls}, ${metadataJson}
+        )
+        RETURNING id, prompt, aspect_ratio, created_at
+      `
+      break
+    } catch (error) {
+      lastError = error
+      console.error(`[v0] History store: insert attempt ${attempt}/${INSERT_ATTEMPTS} failed:`, error)
+      if (attempt < INSERT_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt))
+      }
+    }
+  }
+
+  if (!result || result.length === 0) {
+    throw new HistoryInsertError(
+      'Failed to insert generation history row after retries',
+      blobUrls.filter((url) => /^https?:\/\//.test(url)),
+      lastError,
     )
-    VALUES (
-      ${userId}, ${prompt}, ${aspectRatio || null},
-      ${storedImageUrls}, ${blobUrls}, ${metadataJson}
-    )
-    RETURNING *
-  `
+  }
 
   // Enforce retention on write: the UI, the client caches, and GET all cap at
   // RETENTION_LIMIT items, so anything older is an invisible ghost row — and
@@ -160,12 +223,14 @@ export async function storeGenerationHistory(input: StoreGenerationHistoryInput)
     console.error('[v0] History store: retention prune failed:', pruneError)
   }
 
+  // Echo the values we just wrote rather than re-reading the heavy columns.
+  const row = result[0]
   return {
-    id: result[0].id.toString(),
-    prompt: result[0].prompt,
-    aspectRatio: result[0].aspect_ratio,
-    imageUrls: result[0].blob_urls || result[0].image_urls,
-    metadata: parseHistoryMetadata(result[0].metadata),
-    timestamp: new Date(result[0].created_at).getTime(),
+    id: String(row.id),
+    prompt: (row.prompt as string) ?? prompt,
+    aspectRatio: (row.aspect_ratio as string | null) ?? null,
+    imageUrls: blobUrls,
+    metadata: parseHistoryMetadata(metadataJson),
+    timestamp: new Date(row.created_at as string).getTime(),
   }
 }

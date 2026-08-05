@@ -53,5 +53,35 @@ jobs:
       - name: Contract — logo 3D extrude params
         run: npm run check:logo-3d
 
+      - name: Contract — logo 3D export maths
+        run: npm run check:logo-3d-export
+
+      - name: Contract — persistence identity
+        run: npm run check:persistence-identity
+
+      - name: Contract — history persistence
+        run: npm run check:history-persistence
+
+      - name: Contract — history blob fallback
+        run: npm run check:history-blob-fallback
+
+      - name: Contract — background remover resilience
+        run: npm run check:bg-remover
+
+      - name: Contract — image annotation tool
+        run: npm run check:image-annotation
+
+      - name: Contract — OpenAI reliability migration
+        run: npm run check:openai-migration
+
+      - name: Contract — translation tool
+        run: npm run check:translation-tool
+
+      # Fails the build if package.json defines a check:* script that has no
+      # step above. Every past history regression shipped past a guard that
+      # existed but was never wired into CI — this makes that impossible.
+      - name: Contract — every check runs in CI
+        run: npm run check:ci-coverage
+
       - name: Build
         run: npm run build

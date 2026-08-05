@@ -109,6 +109,29 @@ export function materialParamsFor(material: SpinMaterial): MaterialParams {
   return SPIN_MATERIALS[material] ?? SPIN_MATERIALS.matte
 }
 
+/**
+ * The lighting rig, shared by the live preview and the export renderer.
+ *
+ * Declared as data rather than duplicated JSX and imperative code, because the
+ * export builds its scene imperatively while the preview is declarative — and if
+ * the two rigs drift, an export stops matching the thing the user approved on
+ * screen. Same reason `SPIN_CAMERA_FOV` is not written twice.
+ */
+export interface SpinLight {
+  kind: 'ambient' | 'directional'
+  intensity: number
+  position?: [number, number, number]
+}
+
+export const SPIN_LIGHTS: SpinLight[] = [
+  { kind: 'ambient', intensity: 0.7 },
+  { kind: 'directional', intensity: 1.5, position: [3, 4, 5] },
+  // Rim light, so the extruded sides read against a dark backdrop as the logo turns away.
+  { kind: 'directional', intensity: 0.6, position: [-4, -2, -3] },
+]
+
+export const SPIN_CAMERA_FOV = 45
+
 /** Seconds for one full revolution at speed 1. */
 export const SPIN_BASE_PERIOD_SECONDS = 6
 
@@ -131,9 +154,43 @@ export interface Rotation {
  */
 export function rotationFor(axis: SpinAxis, elapsedSeconds: number, speed: number): Rotation {
   const safeSpeed = Number.isFinite(speed) && speed > 0 ? speed : 1
-  const turns = (elapsedSeconds * safeSpeed) / SPIN_BASE_PERIOD_SECONDS
-  const angle = turns * Math.PI * 2
-  if (axis === 'x') return { x: angle, y: 0, z: 0 }
-  if (axis === 'tumble') return { x: angle * 0.4, y: angle, z: 0 }
-  return { x: 0, y: angle, z: 0 }
+  return rotationForTurns(axis, (elapsedSeconds * safeSpeed) / SPIN_BASE_PERIOD_SECONDS)
+}
+
+/**
+ * Rotation at a given number of turns.
+ *
+ * The export works in turns, not seconds — it needs a whole number of
+ * revolutions across the clip so the loop closes — so this is the primitive and
+ * `rotationFor` is the time-based wrapper. Exposing it avoids the export having
+ * to convert turns back into seconds through the base period, which put a magic
+ * constant on both sides of the same equation.
+ */
+export function rotationForTurns(axis: SpinAxis, turns: number): Rotation {
+  const safeTurns = Number.isFinite(turns) ? turns : 0
+  // The live preview runs forever, so its tumble tilt can be a plain fraction of
+  // the spin — nothing has to close. An export does, which is why it uses
+  // rotationForAxisTurns with an independently whole tilt instead.
+  return rotationForAxisTurns(axis, safeTurns, safeTurns * PREVIEW_TUMBLE_TILT_RATIO)
+}
+
+/** Preview-only tilt ratio; exports derive their tilt from `tumbleTiltTurns`. */
+const PREVIEW_TUMBLE_TILT_RATIO = 0.4
+
+/**
+ * Rotation from explicit per-axis turn counts.
+ *
+ * Exists because tumble has two independent rotations, and an exported clip only
+ * loops if BOTH land on a whole turn. Deriving the tilt as a fixed fraction of the
+ * spin — the obvious approach — closes only when the spin count happens to be a
+ * multiple of 1/ratio, so almost every export would snap at the seam.
+ */
+export function rotationForAxisTurns(axis: SpinAxis, spinTurns: number, tiltTurns: number): Rotation {
+  const safeSpin = Number.isFinite(spinTurns) ? spinTurns : 0
+  const safeTilt = Number.isFinite(tiltTurns) ? tiltTurns : 0
+  const spinAngle = safeSpin * Math.PI * 2
+  const tiltAngle = safeTilt * Math.PI * 2
+  if (axis === 'x') return { x: spinAngle, y: 0, z: 0 }
+  if (axis === 'tumble') return { x: tiltAngle, y: spinAngle, z: 0 }
+  return { x: 0, y: spinAngle, z: 0 }
 }

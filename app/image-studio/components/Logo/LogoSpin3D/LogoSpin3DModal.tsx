@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { BACKGROUND_OPTIONS, LogoSpin3DControls, type SpinSettings } from './LogoSpin3DControls'
+import { LogoSpinExportControls, type ExportSettings } from './LogoSpinExportControls'
 import { useLogoSvg } from './useLogoSvg'
+import { useSpinExport } from './useSpinExport'
+import { EXPORT_RESOLUTIONS } from './spin-export-math'
 
 /**
  * 3D spin preview for a generated logo.
@@ -38,21 +41,70 @@ const DEFAULT_SETTINGS: SpinSettings = {
   backgroundId: 'dark',
 }
 
+const DEFAULT_EXPORT: ExportSettings = {
+  format: 'mp4',
+  durationSeconds: 4,
+  fps: 30,
+  resolutionId: '1080p',
+}
+
 interface LogoSpin3DModalProps {
   isOpen: boolean
   onClose: () => void
   /** URL of the logo to extrude; vectorized on demand. */
   logoUrl: string | null
+  /** The logo's prompt, used to name the exported file. */
+  logoPrompt?: string
 }
 
-export function LogoSpin3DModal({ isOpen, onClose, logoUrl }: LogoSpin3DModalProps) {
+export function LogoSpin3DModal({ isOpen, onClose, logoUrl, logoPrompt }: LogoSpin3DModalProps) {
   const [settings, setSettings] = useState<SpinSettings>(DEFAULT_SETTINGS)
+  const [exportSettings, setExportSettings] = useState<ExportSettings>(DEFAULT_EXPORT)
+  // Null = the scene has not reported yet (treated as renderable so Export does
+  // not flash disabled); 0 = the SVG parsed but yielded nothing extrudable, in
+  // which case Export must be dead rather than failing with a toast after a
+  // pointless second geometry build.
+  const [meshCount, setMeshCount] = useState<number | null>(null)
   const { svg, isLoading, error, retry } = useLogoSvg(logoUrl, isOpen)
+  const spinExport = useSpinExport(isOpen)
+
+  // Render-phase reset, not an effect: a new SVG's mesh count is unknown until
+  // the scene reports it, and the previous logo's count must not gate Export.
+  const [countedSvg, setCountedSvg] = useState<string | null>(svg)
+  if (svg !== countedSvg) {
+    setCountedSvg(svg)
+    setMeshCount(null)
+  }
 
   if (!isOpen) return null
 
   const background = BACKGROUND_OPTIONS.find((option) => option.id === settings.backgroundId)?.value ?? null
   const patchSettings = (patch: Partial<SpinSettings>) => setSettings((current) => ({ ...current, ...patch }))
+  const patchExport = (patch: Partial<ExportSettings>) => {
+    // A failure reason for settings the user has since changed is stale noise.
+    spinExport.clearError()
+    setExportSettings((current) => ({ ...current, ...patch }))
+  }
+
+  const handleExport = () => {
+    if (!svg) return
+    const resolution = EXPORT_RESOLUTIONS.find((option) => option.id === exportSettings.resolutionId)
+      ?? EXPORT_RESOLUTIONS[0]
+    void spinExport.runExport({
+      svg,
+      level: settings.level,
+      bevelEnabled: settings.bevelEnabled,
+      material: settings.material,
+      axis: settings.axis,
+      speed: settings.speed,
+      background,
+      format: exportSettings.format,
+      durationSeconds: exportSettings.durationSeconds,
+      fps: exportSettings.fps,
+      width: resolution.width,
+      height: resolution.height,
+    }, logoPrompt ?? '')
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
@@ -116,6 +168,7 @@ export function LogoSpin3DModal({ isOpen, onClose, logoUrl }: LogoSpin3DModalPro
                 axis={settings.axis}
                 speed={settings.speed}
                 background={background}
+                onMeshesChange={setMeshCount}
               />
             )}
 
@@ -126,8 +179,21 @@ export function LogoSpin3DModal({ isOpen, onClose, logoUrl }: LogoSpin3DModalPro
             )}
           </div>
 
-          <div className="w-full shrink-0 md:w-64">
+          <div className="flex w-full shrink-0 flex-col gap-4 md:w-64">
             <LogoSpin3DControls settings={settings} onChange={patchSettings} />
+            <LogoSpinExportControls
+              settings={exportSettings}
+              onChange={patchExport}
+              speed={settings.speed}
+              isTransparent={background === null}
+              support={spinExport.support}
+              isExporting={spinExport.isExporting}
+              progress={spinExport.progress}
+              error={spinExport.error}
+              onExport={handleExport}
+              onCancel={spinExport.cancel}
+              canRender={Boolean(svg) && !isLoading && !error && meshCount !== 0}
+            />
           </div>
         </div>
       </Card>
