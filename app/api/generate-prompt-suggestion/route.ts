@@ -293,6 +293,14 @@ function normalizeDiagnosticFindings(rawFindings: unknown, fallbackMessage = '')
   return fallbackMessage.trim() ? [fallbackMessage.trim()] : []
 }
 
+function isClarificationContinuationRequest(message: unknown): boolean {
+  if (typeof message !== 'string') return false
+  const request = message.toLowerCase()
+  const hasLegacyClarificationAnswer = request.includes('clarifying question:') && request.includes('user answer:')
+  const hasStructuredClarificationContinuation = request.includes('clarification continuation') && request.includes('original question:') && request.includes('user answer:')
+  return hasLegacyClarificationAnswer || hasStructuredClarificationContinuation
+}
+
 function isDiagnosticOnlyRequest(message: unknown): boolean {
   if (typeof message !== 'string') return false
   const text = message.toLowerCase()
@@ -594,6 +602,7 @@ function buildClarificationResponse(mode: 'image' | 'logo', gate: ClarificationG
 
 function isOperationalDiagnosticRequest(message: unknown): boolean {
   if (typeof message !== 'string') return false
+  if (isClarificationContinuationRequest(message)) return false
   const text = message.toLowerCase()
   const operationalTerms = [
     'what background remover',
@@ -708,6 +717,7 @@ function buildLocalDiagnosticResponse(mode: 'image' | 'logo', message: unknown, 
 
 function isCapabilityGuideRequest(message: unknown): boolean {
   if (typeof message !== 'string') return false
+  if (isClarificationContinuationRequest(message)) return false
   const text = message.toLowerCase().trim()
   const guideTerms = [
     'what can you do',
@@ -787,6 +797,7 @@ function buildLocalCapabilityGuideResponse(
 
 function isMemoryStatusRequest(message: unknown): boolean {
   if (typeof message !== 'string') return false
+  if (isClarificationContinuationRequest(message)) return false
   const text = message.toLowerCase().trim()
   const memoryTerms = [
     'what do you remember',

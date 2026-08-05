@@ -28,7 +28,35 @@ function loadClarificationGate() {
   return mod.exports.buildClarificationGate
 }
 
+function loadLocalRequestClassifiers() {
+  const slice = (startMarker, endMarker) => {
+    const start = route.indexOf(startMarker)
+    const end = route.indexOf(endMarker, start)
+    if (start === -1 || end === -1 || end <= start) {
+      throw new Error(`Could not locate source between ${startMarker} and ${endMarker}`)
+    }
+    return route.slice(start, end)
+  }
+
+  const source = [
+    slice('function isClarificationContinuationRequest', 'function hasLatestOutput'),
+    slice('function isOperationalDiagnosticRequest', 'function formatGenerationModelLabel'),
+    slice('function isCapabilityGuideRequest', 'function buildLocalCapabilityGuideResponse'),
+    slice('function isMemoryStatusRequest', 'function truncateMemoryLine'),
+    slice('function includesAny', 'function buildClarificationGate'),
+    'export { isOperationalDiagnosticRequest, isCapabilityGuideRequest, isMemoryStatusRequest }',
+  ].join('\n')
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    fileName: 'app/api/generate-prompt-suggestion/route.ts',
+  })
+  const mod = { exports: {} }
+  new Function('exports', 'require', 'module', outputText)(mod.exports, require, mod)
+  return mod.exports
+}
+
 const buildClarificationGate = loadClarificationGate()
+const localRequestClassifiers = loadLocalRequestClassifiers()
 
 const answeredBackgroundClarification = [
   'CLARIFICATION CONTINUATION',
@@ -229,6 +257,13 @@ for (const testCase of clarificationGateCases) {
   if (result.shouldAsk !== testCase.wantShouldAsk) {
     console.error(`    ${testCase.name}: expected shouldAsk=${testCase.wantShouldAsk}, received ${result.shouldAsk}`)
     failures.push({ name: `behavior — ${testCase.name}`, missing: [] })
+  }
+}
+
+for (const [name, classify] of Object.entries(localRequestClassifiers)) {
+  if (classify(answeredBackgroundClarification)) {
+    console.error(`    ${name}: answered clarification continuation was misclassified as a local shortcut`)
+    failures.push({ name: `behavior — ${name} ignores answered clarification continuations`, missing: [] })
   }
 }
 
