@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 import { put } from '@vercel/blob'
 import { ensureGenerationHistorySchema } from '@/lib/db/history-schema'
+import { IMAGE_HISTORY_RETENTION_LIMIT } from '@/lib/image-history-retention'
 
 /**
  * Server-side storage for generation_history rows, shared by POST /api/history
@@ -11,7 +12,7 @@ import { ensureGenerationHistorySchema } from '@/lib/db/history-schema'
  */
 
 /** Rows the app keeps per user — matches the GET LIMIT and the client caches. */
-export const RETENTION_LIMIT = 100
+export const RETENTION_LIMIT = IMAGE_HISTORY_RETENTION_LIMIT
 
 /** Insert attempts before a generation is declared unsaved. */
 const INSERT_ATTEMPTS = 3

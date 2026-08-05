@@ -1,5 +1,6 @@
 import { getUserId } from '@/lib/user-id'
 import { indexedDBHelper } from '@/lib/db/indexedDB'
+import { IMAGE_HISTORY_RETENTION_LIMIT } from '@/lib/image-history-retention'
 import {
   addDeletedId,
   addDeletedUrls,
@@ -25,7 +26,7 @@ export type HistoryItem = {
 }
 
 const HISTORY_KEY = "image_generation_history"
-const MAX_HISTORY_ITEMS = 100
+const MAX_HISTORY_ITEMS = IMAGE_HISTORY_RETENTION_LIMIT
 
 /**
  * Persist the history cache to localStorage without ever throwing. localStorage

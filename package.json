@@ -13,6 +13,7 @@
     "check:history-blob-fallback": "node scripts/check-history-blob-fallback.cjs",
     "check:applied-edit-history": "node scripts/check-applied-edit-history.cjs",
     "check:history-persistence": "node scripts/check-history-persistence.cjs",
+    "check:image-history-retention": "node scripts/check-image-history-retention.cjs",
     "check:image-library-board": "node scripts/check-image-library-board.cjs",
     "check:image-database-browser": "node scripts/check-image-database-browser.cjs",
     "check:image-database-restore-actions": "node scripts/check-image-database-restore-actions.cjs",

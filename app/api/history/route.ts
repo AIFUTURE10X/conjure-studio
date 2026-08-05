@@ -5,6 +5,7 @@ import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { ensureGenerationHistorySchema } from '@/lib/db/history-schema'
 import { storeGenerationHistory } from '@/lib/db/generation-history-store'
+import { IMAGE_HISTORY_RETENTION_LIMIT } from '@/lib/image-history-retention'
 import { MAX_INLINE_HISTORY_DATA_URI_LENGTH } from '@/lib/history-limits'
 import { numericIdSchema, promptSchema, urlOrDataUriSchema, userIdSchema } from '@/lib/validation/common'
 
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
       FROM public.generation_history
       WHERE user_id = ${userId}
       ORDER BY created_at DESC
-      LIMIT 100
+      LIMIT ${IMAGE_HISTORY_RETENTION_LIMIT}
     `
 
     console.log('[v0] API: Loaded from Neon:', result.length)
