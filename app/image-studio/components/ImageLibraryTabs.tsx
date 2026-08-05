@@ -1,6 +1,6 @@
 "use client"
 
-import { Clock, Heart } from 'lucide-react'
+import { Clock, Database, Heart } from 'lucide-react'
 import type { ImageLibraryTab } from '../hooks/useImageStudioState'
 
 interface ImageLibraryTabsProps {
@@ -32,6 +32,10 @@ export function ImageLibraryTabs({
       <button type="button" onClick={() => onSelectTab('favorites')} className={tabClass('favorites')}>
         <Heart className={`w-3.5 h-3.5 ${activeTab === 'favorites' ? 'fill-current' : ''}`} />
         Favorites{favoritesCount === undefined ? '' : ` (${favoritesCount})`}
+      </button>
+      <button type="button" onClick={() => onSelectTab('database')} className={tabClass('database')}>
+        <Database className="w-3.5 h-3.5" />
+        Database
       </button>
     </div>
   )

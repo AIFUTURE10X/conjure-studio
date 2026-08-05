@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/resizable'
 import { FavoritesModal } from '../SimpleFavorites'
 import { ParameterHistoryPanel } from '../ParameterHistoryPanel'
+import { ImageDatabaseBrowser } from '../ImageDatabaseBrowser'
 import { MockupPhotoGenerator } from '../Logo/MockupPreview/MockupPhotoGenerator'
 import { ConciergeChecklist } from '../Concierge'
 import { StudioTopBar } from './StudioTopBar'
@@ -147,6 +148,14 @@ export function StudioShell() {
           onSelectTab={state.setImageLibraryTab}
           onClose={() => state.setImageLibraryTab(null)}
           onRestoreParameters={handleRestoreParameters}
+        />
+      )}
+
+      {state.imageLibraryTab === 'database' && (
+        <ImageDatabaseBrowser
+          activeTab="database"
+          onSelectTab={state.setImageLibraryTab}
+          onClose={() => state.setImageLibraryTab(null)}
         />
       )}
 

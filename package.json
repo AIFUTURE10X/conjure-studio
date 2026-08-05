@@ -14,6 +14,7 @@
     "check:applied-edit-history": "node scripts/check-applied-edit-history.cjs",
     "check:history-persistence": "node scripts/check-history-persistence.cjs",
     "check:image-library-board": "node scripts/check-image-library-board.cjs",
+    "check:image-database-browser": "node scripts/check-image-database-browser.cjs",
     "check:image-annotation": "node scripts/check-image-annotation-tool.cjs",
     "check:image-references": "node scripts/check-image-references-ui.cjs",
     "check:logo": "node scripts/check-logo-generator-contract.cjs",
