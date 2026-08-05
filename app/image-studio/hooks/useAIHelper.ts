@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import type { AIHelperModelChoice } from '@/lib/ai-helper-models'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import {
   clearStoredAgentMemory,
@@ -99,6 +100,11 @@ export interface AIHelperAgentMemory {
 interface AIHelperErrorPayload {
   error?: string
   details?: string
+}
+
+interface AIHelperSendOptions {
+  displayMessage?: string
+  modelChoice?: AIHelperModelChoice
 }
 
 function formatAIHelperErrorMessage(errorData: AIHelperErrorPayload, status: number): string {
@@ -410,7 +416,7 @@ export function useAIHelper() {
     })
   }, [])
 
-  const sendMessage = useCallback(async (userInput: string, currentPromptSettings: any, options: { displayMessage?: string } = {}) => {
+  const sendMessage = useCallback(async (userInput: string, currentPromptSettings: any, options: AIHelperSendOptions = {}) => {
     const displayMessage = options.displayMessage?.trim() || userInput.trim() || '📷 [Image uploaded]'
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now() }
     setMessages(prev => [...prev, userMessage])
@@ -467,6 +473,7 @@ export function useAIHelper() {
           message: userInput + imageAnalysisContext,
           ...currentPromptSettings,
           currentPromptSettings,
+          helperModel: options.modelChoice,
           agentMemory: buildAgentMemory(messages, 'image', generationMemory),
           conversationHistory: messages
         })
@@ -504,7 +511,7 @@ export function useAIHelper() {
     }
   }, [uploadedImages, messages, generationMemory, rememberAssistantSuggestion, rememberMemorySnapshot, rememberUserPreference])
 
-  const sendLogoMessage = useCallback(async (userInput: string, currentPromptSettings: any = {}, options: { displayMessage?: string } = {}) => {
+  const sendLogoMessage = useCallback(async (userInput: string, currentPromptSettings: any = {}, options: AIHelperSendOptions = {}) => {
     const displayMessage = options.displayMessage?.trim() || userInput.trim() || '📷 [Logo reference uploaded]'
     const userMessage: AIMessage = { role: 'user', content: displayMessage, timestamp: Date.now(), mode: 'logo' }
     setMessages(prev => [...prev, userMessage])
@@ -549,6 +556,7 @@ export function useAIHelper() {
           mode: 'logo',
           logoAnalysis: logoAnalysis || undefined,
           currentPromptSettings,
+          helperModel: options.modelChoice,
           agentMemory: buildAgentMemory(messages, 'logo', generationMemory),
           conversationHistory: messages.filter(m => m.mode === 'logo')
         })
@@ -593,7 +601,7 @@ export function useAIHelper() {
     currentPromptSettings: any = {},
     latestOutput?: AIHelperLatestOutput | null,
     targetMode: AIHelperMode = mode,
-    options: { skipUserMessage?: boolean } = {}
+    options: { skipUserMessage?: boolean; modelChoice?: AIHelperModelChoice } = {}
   ) => {
     const isLogo = targetMode === 'logo'
     const actionLabel = actionType === 'critique_last_output'
@@ -646,6 +654,7 @@ export function useAIHelper() {
             } : { hasOutput: false },
           },
           latestOutputAnalysis: latestOutputAnalysis || undefined,
+          helperModel: options.modelChoice,
           agentMemory: buildAgentMemory(messages, isLogo ? 'logo' : 'image', generationMemory),
           conversationHistory: isLogo ? messages.filter(m => m.mode === 'logo') : messages,
         })

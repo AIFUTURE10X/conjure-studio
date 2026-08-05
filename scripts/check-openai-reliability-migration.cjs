@@ -29,13 +29,15 @@ const checks = [
     },
   },
   {
-    name: 'AI helper route uses OpenAI instead of Gemini text models',
+    name: 'AI helper keeps OpenAI primary while allowing explicit provider selection',
     pass: () => {
       const source = read('app/api/generate-prompt-suggestion/route.ts')
+      const helperClient = read('lib/ai-helper-text-client.ts')
       return noGeminiTextRoute('app/api/generate-prompt-suggestion/route.ts') &&
-        /generateOpenAIText/.test(source) &&
-        /hasOpenAITextApiKey/.test(source) &&
-        /getOpenAITextApiKeyNames/.test(source)
+        /generateAIHelperText/.test(source) &&
+        /hasAIHelperApiKey/.test(source) &&
+        /generateOpenAIText/.test(helperClient) &&
+        /resolveAIHelperModel/.test(helperClient)
     },
   },
   {

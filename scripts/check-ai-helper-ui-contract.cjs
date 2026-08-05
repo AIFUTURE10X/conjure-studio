@@ -202,7 +202,7 @@ const checks = [
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /agentMemory/.test(hook) &&
         /buildAgentMemory/.test(hook) &&
-        /sendLogoMessage\(userInput, currentPromptSettings\)/.test(sidebar) &&
+        /sendLogoMessage\(userInput, currentPromptSettings, \{ modelChoice \}\)/.test(sidebar) &&
         /currentPromptSettings/.test(route) &&
         /AGENT MEMORY/.test(route)
     },
@@ -824,7 +824,7 @@ const checks = [
         /imageRequestTerms/.test(sidebar) &&
         /const targetMode = !prompt \? detectRequestedHelperMode\(userInput\) \|\| mode : mode/.test(sidebar) &&
         /if \(targetMode !== mode\) setMode\(targetMode\)/.test(sidebar) &&
-        /targetMode === 'logo' \? await sendLogoMessage/.test(sidebar)
+        /if \(targetMode === 'logo'\)[\s\S]*await sendLogoMessage/.test(sidebar)
     },
   },
   {

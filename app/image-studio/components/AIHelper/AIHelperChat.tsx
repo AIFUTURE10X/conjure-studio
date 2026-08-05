@@ -20,6 +20,7 @@ import { DesignBriefCard } from './DesignBriefCard'
 import { ExecutionPlanCard } from './ExecutionPlanCard'
 import { DiagnosticCard } from './DiagnosticCard'
 import { PromptQualityCard } from './PromptQualityCard'
+import { AIHelperModelSelector } from './AIHelperModelSelector'
 import type { AIHelperChatController } from './useAIHelperChatController'
 
 interface AIHelperChatProps {
@@ -32,10 +33,11 @@ export function AIHelperChat({ controller, className }: AIHelperChatProps) {
     input, setInput, copiedField, editingIndex, editedSuggestions, appliedIndex,
     pendingFollowUp, setPendingFollowUp, messagesEndRef,
     messages, uploadedImages, isLoading, mode,
+    modelChoice, setModelChoice, modelAvailability, modelNames,
     removeImage, cancelRequest,
     handleImageUpload, handleCopy, handleEditStart, handleEditCancel, handleEditSave,
     handleApplyClick, handleRunAction, applyLogoConfigFromMessage,
-    handleSend, updateEditedField,
+    handleSend, retryLastPromptWithBest, updateEditedField,
     callbacks: { onApplySuggestions, onApplyLogoSuggestions, onApplyLogoConfig },
   } = controller
 
@@ -124,6 +126,15 @@ export function AIHelperChat({ controller, className }: AIHelperChatProps) {
           </div>
         </div>
       )}
+      <AIHelperModelSelector
+        value={modelChoice}
+        availability={modelAvailability}
+        modelNames={modelNames}
+        canRetry={messages.some((message) => message.role === 'assistant' && Boolean(message.suggestions?.prompt))}
+        isLoading={isLoading}
+        onChange={setModelChoice}
+        onRetryBest={() => void retryLastPromptWithBest()}
+      />
       <ChatInput
         input={input}
         setInput={setInput}

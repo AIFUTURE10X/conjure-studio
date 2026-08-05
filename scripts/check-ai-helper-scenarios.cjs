@@ -277,69 +277,69 @@ for (const scenario of scenarios) {
 
 const postImageClarificationIndex = route.indexOf("return buildClarificationResponse('image', earlyClarificationGate)")
 const imageHandlerIndex = route.indexOf('Generate Prompt Suggestion called')
-const postModelCheckIndex = route.indexOf('if (!hasOpenAITextApiKey())', imageHandlerIndex)
+const postModelCheckIndex = route.indexOf('if (!hasAIHelperApiKey(helperModel))', imageHandlerIndex)
 if (postImageClarificationIndex === -1 || postModelCheckIndex === -1 || postImageClarificationIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image clarification happens before OpenAI availability check',
-    missing: [/return buildClarificationResponse\('image', earlyClarificationGate\) before OpenAI availability check/],
+    name: 'image clarification happens before AI provider availability check',
+    missing: [/return buildClarificationResponse\('image', earlyClarificationGate\) before AI provider availability check/],
   })
 }
 
 const postImageDiagnosticIndex = route.indexOf('return earlyDiagnosticResponse')
 if (postImageDiagnosticIndex === -1 || postModelCheckIndex === -1 || postImageDiagnosticIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image diagnostics happen before OpenAI availability check',
-    missing: [/return earlyDiagnosticResponse before OpenAI availability check/],
+    name: 'image diagnostics happen before AI provider availability check',
+    missing: [/return earlyDiagnosticResponse before AI provider availability check/],
   })
 }
 
 const postImageCapabilityIndex = route.indexOf('return earlyCapabilityGuideResponse')
 if (postImageCapabilityIndex === -1 || postModelCheckIndex === -1 || postImageCapabilityIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image capability guide happens before OpenAI availability check',
-    missing: [/return earlyCapabilityGuideResponse before OpenAI availability check/],
+    name: 'image capability guide happens before AI provider availability check',
+    missing: [/return earlyCapabilityGuideResponse before AI provider availability check/],
   })
 }
 
 const postImageMemoryIndex = route.indexOf('return earlyMemoryStatusResponse')
 if (postImageMemoryIndex === -1 || postModelCheckIndex === -1 || postImageMemoryIndex > postModelCheckIndex) {
   failures.push({
-    name: 'image memory status happens before OpenAI availability check',
-    missing: [/return earlyMemoryStatusResponse before OpenAI availability check/],
+    name: 'image memory status happens before AI provider availability check',
+    missing: [/return earlyMemoryStatusResponse before AI provider availability check/],
   })
 }
 
 const logoHandlerIndex = route.indexOf('async function handleLogoMode')
 const logoClarificationIndex = route.indexOf("return buildClarificationResponse('logo', earlyClarificationGate)", logoHandlerIndex)
-const logoModelCheckIndex = route.indexOf('if (!hasOpenAITextApiKey())', logoHandlerIndex)
+const logoModelCheckIndex = route.indexOf('if (!hasAIHelperApiKey(helperModel))', logoHandlerIndex)
 if (logoClarificationIndex === -1 || logoModelCheckIndex === -1 || logoClarificationIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo clarification happens before OpenAI availability check',
-    missing: [/return buildClarificationResponse\('logo', earlyClarificationGate\) before OpenAI availability check/],
+    name: 'logo clarification happens before AI provider availability check',
+    missing: [/return buildClarificationResponse\('logo', earlyClarificationGate\) before AI provider availability check/],
   })
 }
 
 const logoDiagnosticIndex = route.indexOf('return earlyDiagnosticResponse', logoHandlerIndex)
 if (logoDiagnosticIndex === -1 || logoModelCheckIndex === -1 || logoDiagnosticIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo diagnostics happen before OpenAI availability check',
-    missing: [/return earlyDiagnosticResponse before logo OpenAI availability check/],
+    name: 'logo diagnostics happen before AI provider availability check',
+    missing: [/return earlyDiagnosticResponse before logo AI provider availability check/],
   })
 }
 
 const logoCapabilityIndex = route.indexOf('return earlyCapabilityGuideResponse', logoHandlerIndex)
 if (logoCapabilityIndex === -1 || logoModelCheckIndex === -1 || logoCapabilityIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo capability guide happens before OpenAI availability check',
-    missing: [/return earlyCapabilityGuideResponse before logo OpenAI availability check/],
+    name: 'logo capability guide happens before AI provider availability check',
+    missing: [/return earlyCapabilityGuideResponse before logo AI provider availability check/],
   })
 }
 
 const logoMemoryIndex = route.indexOf('return earlyMemoryStatusResponse', logoHandlerIndex)
 if (logoMemoryIndex === -1 || logoModelCheckIndex === -1 || logoMemoryIndex > logoModelCheckIndex) {
   failures.push({
-    name: 'logo memory status happens before OpenAI availability check',
-    missing: [/return earlyMemoryStatusResponse before logo OpenAI availability check/],
+    name: 'logo memory status happens before AI provider availability check',
+    missing: [/return earlyMemoryStatusResponse before logo AI provider availability check/],
   })
 }
 

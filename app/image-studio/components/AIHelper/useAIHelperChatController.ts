@@ -12,6 +12,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAIHelper, type AIHelperAction, type AIHelperLatestOutput, type AIHelperMode, type AIMessage } from '../../hooks/useAIHelper'
+import { useAIHelperModelSelection } from '../../hooks/useAIHelperModelSelection'
 import type { DotMatrixConfig } from '../../constants/dot-matrix-config'
 import type { CreativeDirectionState } from '../../constants/creative-direction-options'
 import {
@@ -136,6 +137,7 @@ export function useAIHelperChatController({
   const [appliedIndex, setAppliedIndex] = useState<number | null>(null)
   const [pendingFollowUp, setPendingFollowUp] = useState<{ prompt: string; mode: AIHelperMode } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { modelChoice, setModelChoice, modelAvailability, modelNames } = useAIHelperModelSelection()
 
   const { messages, uploadedImages, isLoading, mode, setMode, sendMessage, sendLogoMessage, sendActionMessage, addImage, removeImage, clearHistory, updateMessageSuggestions, preferenceCount, preferenceMemory, activeDesignBrief, sharedProjectBrief, activeTaskContext, forgetPreference, cancelRequest, appendLocalMessage } = useAIHelper()
 
@@ -301,7 +303,7 @@ export function useAIHelperChatController({
         )
         return
       }
-      void sendActionMessage(action.type, currentPromptSettings, latestOutput, actionMode)
+      void sendActionMessage(action.type, currentPromptSettings, latestOutput, actionMode, { modelChoice })
     }
   }
 
@@ -915,7 +917,7 @@ export function useAIHelperChatController({
     }
 
     appendLocalMessage({ role: 'assistant', content: feedbackMessage, mode })
-    void sendActionMessage(directAction, currentPromptSettings, latestOutput, mode, { skipUserMessage: true })
+    void sendActionMessage(directAction, currentPromptSettings, latestOutput, mode, { skipUserMessage: true, modelChoice })
     return true
   }
 
@@ -951,9 +953,11 @@ export function useAIHelperChatController({
       const followUpMode = pendingFollowUp.mode
       setPendingFollowUp(null)
       setInput('')
-      followUpMode === 'logo'
-        ? await sendLogoMessage(followUpRequest, currentPromptSettings, { displayMessage: userInput })
-        : await sendMessage(followUpRequest, currentPromptSettings, { displayMessage: userInput })
+      if (followUpMode === 'logo') {
+        await sendLogoMessage(followUpRequest, currentPromptSettings, { displayMessage: userInput, modelChoice })
+      } else {
+        await sendMessage(followUpRequest, currentPromptSettings, { displayMessage: userInput, modelChoice })
+      }
       return
     }
     if (!prompt && runDirectLatestOutputCommand(userInput)) {
@@ -967,10 +971,31 @@ export function useAIHelperChatController({
     setInput('')
     const targetMode = !prompt ? detectRequestedHelperMode(userInput) || mode : mode
     if (targetMode !== mode) setMode(targetMode)
-    targetMode === 'logo' ? await sendLogoMessage(userInput, currentPromptSettings) : await sendMessage(userInput, currentPromptSettings)
+    if (targetMode === 'logo') {
+      await sendLogoMessage(userInput, currentPromptSettings, { modelChoice })
+    } else {
+      await sendMessage(userInput, currentPromptSettings, { modelChoice })
+    }
   }
 
   const handleSend = async () => runHelperPrompt()
+
+  const retryLastPromptWithBest = async () => {
+    if (isLoading) return
+    const lastUserRequest = [...messages].reverse().find((message) => {
+      const messageMode = message.mode === 'logo' ? 'logo' : 'image'
+      return message.role === 'user' && messageMode === mode && !message.content.startsWith('Retrying the last request')
+    })
+    if (!lastUserRequest?.content.trim()) return
+
+    setModelChoice('best')
+    const displayMessage = 'Retrying the last request with GPT-5.6 Sol'
+    if (mode === 'logo') {
+      await sendLogoMessage(lastUserRequest.content, currentPromptSettings, { displayMessage, modelChoice: 'best' })
+      return
+    }
+    await sendMessage(lastUserRequest.content, currentPromptSettings, { displayMessage, modelChoice: 'best' })
+  }
 
   const updateEditedField = (field: string, value: string) => setEditedSuggestions((prev: any) => ({ ...prev, [field]: value }))
 
@@ -988,6 +1013,7 @@ export function useAIHelperChatController({
     uploadedImages,
     isLoading,
     mode, setMode,
+    modelChoice, setModelChoice, modelAvailability, modelNames,
     clearHistory,
     removeImage,
     preferenceCount,
@@ -1008,6 +1034,7 @@ export function useAIHelperChatController({
     handleQuickSettingClick,
     applyLogoConfigFromMessage,
     runHelperPrompt,
+    retryLastPromptWithBest,
     handleSend,
     updateEditedField,
     // host callbacks (for conditional rendering in chat UI)

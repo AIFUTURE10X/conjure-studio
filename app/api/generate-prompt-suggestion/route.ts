@@ -17,19 +17,25 @@ import {
   type CreativeDirectionState,
 } from "@/app/image-studio/constants/creative-direction-options"
 import {
-  generateOpenAIText,
-  getOpenAITextApiKeyNames,
-  hasOpenAITextApiKey,
-  isOpenAIAuthError,
-  isOpenAIRateLimitError,
-} from "@/lib/openai-text-client"
+  generateAIHelperText,
+  getAIHelperApiKeyNames,
+  getAIHelperApiKeyNameForChoice,
+  getAIHelperModelAvailability,
+  getAIHelperModelNames,
+  hasAIHelperApiKey,
+  isAIHelperAuthError,
+  isAIHelperRateLimitError,
+} from "@/lib/ai-helper-text-client"
 import {
   LOGO_BACKGROUND_REMOVAL_METHODS,
   LOGO_TEXT_MODES,
 } from "@/lib/logo-generation-contract"
 
-if (!hasOpenAITextApiKey()) {
-  console.error(`[v0 API] ${getOpenAITextApiKeyNames()} is not set in environment variables`)
+export async function GET() {
+  return NextResponse.json({
+    availability: getAIHelperModelAvailability(),
+    models: getAIHelperModelNames(),
+  })
 }
 
 const CREATIVE_DIRECTION_OPTION_CONTEXT = [
@@ -1496,6 +1502,7 @@ export async function POST(request: Request) {
       conversationHistory,
       mode, // NEW: 'image' | 'logo'
       logoAnalysis, // NEW: analysis from reference logo image
+      helperModel,
     } = await request.json()
 
     console.log("[v0 API] Generate Prompt Suggestion called:", {
@@ -1507,7 +1514,7 @@ export async function POST(request: Request) {
 
     // Handle logo mode separately; it can answer missing-essential clarifications before the model is required.
     if (mode === 'logo') {
-      return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory, latestOutputAnalysis)
+      return handleLogoMode(message, conversationHistory, logoAnalysis, currentPromptSettings, agentMemory, latestOutputAnalysis, helperModel)
     }
 
     const hasImageAnalysisForEarlyGate = typeof message === 'string' && message.includes("REFERENCE IMAGES ANALYSIS")
@@ -1539,10 +1546,11 @@ export async function POST(request: Request) {
       return earlyMemoryStatusResponse
     }
 
-    if (!hasOpenAITextApiKey()) {
-      console.error(`[v0 API] OpenAI prompt service not initialized - missing ${getOpenAITextApiKeyNames()}`)
+    if (!hasAIHelperApiKey(helperModel)) {
+      const apiKeyName = getAIHelperApiKeyNameForChoice(helperModel)
+      console.error(`[v0 API] AI prompt service not initialized - missing ${apiKeyName}`)
       return NextResponse.json(
-        { error: "AI service not configured", details: `${getOpenAITextApiKeyNames()} environment variable is not set` },
+        { error: "AI service not configured", details: `${apiKeyName} environment variable is not set` },
         { status: 500 }
       )
     }
@@ -1788,11 +1796,11 @@ Available camera lenses: standard, wide-angle, telephoto, fisheye, macro, portra
 Available aspect ratios: 1:1, 16:9, 9:16, 4:3, 3:4, 21:9
 Available style strengths: subtle, moderate, strong`
 
-    console.log("[v0 API] Calling OpenAI prompt service with prompt length:", systemPrompt.length)
+    console.log("[v0 API] Calling AI prompt service with prompt length:", systemPrompt.length)
 
-    const responseText = await generateOpenAIText(systemPrompt)
+    const responseText = await generateAIHelperText(systemPrompt, helperModel)
 
-    console.log("[v0 API] OpenAI response received, length:", responseText.length)
+    console.log("[v0 API] AI prompt response received, length:", responseText.length)
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -1879,16 +1887,16 @@ Available style strengths: subtle, moderate, strong`
 
     const errorMessage = error?.message || String(error)
 
-    if (isOpenAIRateLimitError(error)) {
+    if (isAIHelperRateLimitError(error)) {
       return NextResponse.json(
         { error: "Rate limit exceeded", details: "Please wait a moment and try again" },
         { status: 429 }
       )
     }
 
-    if (isOpenAIAuthError(error)) {
+    if (isAIHelperAuthError(error)) {
       return NextResponse.json(
-        { error: "API authentication failed", details: `Check your ${getOpenAITextApiKeyNames()} configuration` },
+        { error: "API authentication failed", details: `Check your ${getAIHelperApiKeyNames(error)} configuration` },
         { status: 401 }
       )
     }
@@ -1977,7 +1985,8 @@ async function handleLogoMode(
   logoAnalysis?: string,
   currentPromptSettings?: unknown,
   agentMemory?: unknown,
-  latestOutputAnalysis?: string
+  latestOutputAnalysis?: string,
+  helperModel?: unknown,
 ) {
   try {
     const logoSettingsForGate = currentPromptSettings && typeof currentPromptSettings === 'object'
@@ -2011,10 +2020,11 @@ async function handleLogoMode(
       return earlyMemoryStatusResponse
     }
 
-    if (!hasOpenAITextApiKey()) {
-      console.error(`[v0 API] Logo mode - OpenAI prompt service not initialized - missing ${getOpenAITextApiKeyNames()}`)
+    if (!hasAIHelperApiKey(helperModel)) {
+      const apiKeyName = getAIHelperApiKeyNameForChoice(helperModel)
+      console.error(`[v0 API] Logo mode - AI prompt service not initialized - missing ${apiKeyName}`)
       return NextResponse.json(
-        { error: "AI service not configured", details: `${getOpenAITextApiKeyNames()} environment variable is not set` },
+        { error: "AI service not configured", details: `${apiKeyName} environment variable is not set` },
         { status: 500 }
       )
     }
@@ -2241,11 +2251,11 @@ Action schema:
   { "type": "copy_prompt", "label": "Copy Prompt", "description": "Copy the generated logo prompt" }
 ]`
 
-    console.log("[v0 API] Logo mode - calling OpenAI with dynamic system prompt")
+    console.log("[v0 API] Logo mode - calling AI prompt service with dynamic system prompt")
 
-    const responseText = await generateOpenAIText(fullPrompt)
+    const responseText = await generateAIHelperText(fullPrompt, helperModel)
 
-    console.log("[v0 API] Logo mode - OpenAI response received, length:", responseText.length)
+    console.log("[v0 API] Logo mode - AI prompt response received, length:", responseText.length)
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -2332,16 +2342,16 @@ Action schema:
 
     const errorMessage = error?.message || String(error)
 
-    if (isOpenAIRateLimitError(error)) {
+    if (isAIHelperRateLimitError(error)) {
       return NextResponse.json(
         { error: "Rate limit exceeded", details: "Please wait a moment and try again" },
         { status: 429 }
       )
     }
 
-    if (isOpenAIAuthError(error)) {
+    if (isAIHelperAuthError(error)) {
       return NextResponse.json(
-        { error: "API authentication failed", details: `Check your ${getOpenAITextApiKeyNames()} configuration` },
+        { error: "API authentication failed", details: `Check your ${getAIHelperApiKeyNames(error)} configuration` },
         { status: 401 }
       )
     }

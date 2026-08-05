@@ -41,6 +41,9 @@ jobs:
       - name: Contract — AI helper scenarios
         run: npm run check:ai-helper-scenarios
 
+      - name: Contract — AI helper models
+        run: npm run check:ai-helper-models
+
       - name: Contract — image references UI
         run: npm run check:image-references
 

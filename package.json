@@ -9,6 +9,7 @@
     "check:gemini-identity": "node scripts/check-gemini-inspire-identity.cjs",
     "check:ai-helper-scenarios": "node scripts/check-ai-helper-scenarios.cjs",
     "check:ai-helper-ui": "node scripts/check-ai-helper-ui-contract.cjs",
+    "check:ai-helper-models": "node --no-warnings scripts/check-ai-helper-model-selection.mjs",
     "check:history-blob-fallback": "node scripts/check-history-blob-fallback.cjs",
     "check:applied-edit-history": "node scripts/check-applied-edit-history.cjs",
     "check:history-persistence": "node scripts/check-history-persistence.cjs",
