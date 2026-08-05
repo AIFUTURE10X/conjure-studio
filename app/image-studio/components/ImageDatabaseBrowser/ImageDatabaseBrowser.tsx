@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Database, ExternalLink, RefreshCw, Search, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Clock3, Database, ExternalLink, Heart, Loader2, RefreshCw, Search, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getUserId } from '@/lib/user-id'
@@ -17,6 +18,11 @@ import {
   type ImageDatabaseSource,
   type ImageDatabaseSourceFilter,
 } from './image-database-records'
+import {
+  favoriteRestorePayload,
+  historyRestorePayload,
+  restoredTargetsForUrl,
+} from './image-database-actions'
 
 const PAGE_SIZE = 60
 
@@ -30,6 +36,7 @@ interface ImageDatabaseBrowserProps {
   activeTab: ImageLibraryTab
   onSelectTab: (tab: ImageLibraryTab) => void
   onClose: () => void
+  onFavoritesChanged: () => Promise<void>
 }
 
 interface ImageDatabaseResponses {
@@ -81,13 +88,15 @@ function formatDate(timestamp: number) {
   }).format(new Date(timestamp))
 }
 
-export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose }: ImageDatabaseBrowserProps) {
+export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose, onFavoritesChanged }: ImageDatabaseBrowserProps) {
   const [records, setRecords] = useState<ImageDatabaseRecord[]>([])
   const [source, setSource] = useState<ImageDatabaseSourceFilter>('all')
   const [query, setQuery] = useState('')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pendingActions, setPendingActions] = useState<Set<string>>(new Set())
+  const pendingActionsRef = useRef<Set<string>>(new Set())
 
   const loadRecords = useCallback(async () => {
     setLoading(true)
@@ -144,6 +153,47 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose }: ImageD
     { value: 'logo_history', label: 'Logos', count: counts.logo_history },
   ]
 
+  const restoreRecord = async (record: ImageDatabaseRecord, target: 'history' | 'favorites') => {
+    const actionKey = `${target}:${record.url}`
+    if (pendingActionsRef.current.has(actionKey)) return
+
+    const restored = restoredTargetsForUrl(records, record.url)
+    if (restored[target]) {
+      toast.info(`Already in ${target === 'history' ? 'History' : 'Favorites'}`)
+      return
+    }
+
+    pendingActionsRef.current.add(actionKey)
+    setPendingActions(new Set(pendingActionsRef.current))
+
+    try {
+      const userId = getUserId()
+      const response = await fetch(target === 'history' ? '/api/history' : '/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          target === 'history'
+            ? historyRestorePayload(record, userId)
+            : favoriteRestorePayload(record, userId),
+        ),
+      })
+      const result = await response.json() as { alreadyExists?: boolean; error?: string }
+      if (!response.ok) throw new Error(result.error || `Restore failed (${response.status})`)
+
+      if (target === 'favorites') await onFavoritesChanged()
+      await loadRecords()
+      toast.success(result.alreadyExists
+        ? `Already in ${target === 'history' ? 'History' : 'Favorites'}`
+        : `Added to ${target === 'history' ? 'History' : 'Favorites'}`)
+    } catch (restoreError) {
+      console.error(`[Image Database] Failed to restore to ${target}:`, restoreError)
+      toast.error(restoreError instanceof Error ? restoreError.message : 'Could not restore image')
+    } finally {
+      pendingActionsRef.current.delete(actionKey)
+      setPendingActions(new Set(pendingActionsRef.current))
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm">
       <Card className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden border-[#c99850]/30 bg-zinc-900">
@@ -155,7 +205,7 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose }: ImageD
             <div>
               <h2 className="text-xl font-bold text-white">Image Library</h2>
               <p className="text-xs text-zinc-400">
-                {loading ? 'Reading Neon image records…' : `${records.length} image records · read only`}
+                {loading ? 'Reading Neon image records…' : `${records.length} image records · restore to your library`}
               </p>
             </div>
             <NeonStatusBadge endpoint="/api/history/test-connection" />
@@ -238,6 +288,9 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose }: ImageD
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {visibleRecords.map((record) => {
                   const previewIndex = filteredRecords.findIndex((candidate) => candidate.recordId === record.recordId && candidate.source === record.source)
+                  const restored = restoredTargetsForUrl(records, record.url)
+                  const historyActionKey = `history:${record.url}`
+                  const favoriteActionKey = `favorites:${record.url}`
                   return (
                     <article key={`${record.source}:${record.recordId}`} className="group overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
                       <button
@@ -273,6 +326,26 @@ export function ImageDatabaseBrowser({ activeTab, onSelectTab, onClose }: ImageD
                           <span className="truncate">{displayUrl(record.url)}</span>
                           <ExternalLink className="h-3 w-3 shrink-0" />
                         </a>
+                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => void restoreRecord(record, 'history')}
+                            disabled={restored.history || pendingActions.has(historyActionKey)}
+                            className="flex h-7 items-center justify-center gap-1 rounded border border-zinc-700 px-1.5 text-[10px] font-medium text-zinc-300 transition-colors hover:border-[#c99850]/70 hover:text-[#dbb56e] disabled:cursor-default disabled:border-zinc-800 disabled:text-zinc-600"
+                          >
+                            {pendingActions.has(historyActionKey) ? <Loader2 className="h-3 w-3 animate-spin" /> : restored.history ? <Check className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}
+                            {restored.history ? 'In History' : 'Add to History'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void restoreRecord(record, 'favorites')}
+                            disabled={restored.favorites || pendingActions.has(favoriteActionKey)}
+                            className="flex h-7 items-center justify-center gap-1 rounded border border-zinc-700 px-1.5 text-[10px] font-medium text-zinc-300 transition-colors hover:border-red-400/60 hover:text-red-300 disabled:cursor-default disabled:border-zinc-800 disabled:text-zinc-600"
+                          >
+                            {pendingActions.has(favoriteActionKey) ? <Loader2 className="h-3 w-3 animate-spin" /> : restored.favorites ? <Check className="h-3 w-3" /> : <Heart className="h-3 w-3" />}
+                            {restored.favorites ? 'In Favorites' : 'Add to Favorites'}
+                          </button>
+                        </div>
                       </div>
                     </article>
                   )

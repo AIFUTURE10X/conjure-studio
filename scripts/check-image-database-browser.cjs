@@ -1,5 +1,6 @@
 /**
- * Contract: the Image Library exposes a read-only database image browser.
+ * Contract: the Image Library exposes a database image browser whose source
+ * browsing is read-only; its only writes are explicit restore actions.
  */
 
 const fs = require('fs')
@@ -79,10 +80,7 @@ const browser = read(BROWSER_PATH)
 for (const endpoint of ['/api/history?', '/api/favorites?', '/api/logo-history?']) {
   assert(browser.includes(endpoint), `${BROWSER_PATH} must read ${endpoint}.`)
 }
-assert(
-  !/method:\s*['"](?:POST|PATCH|DELETE)['"]/.test(browser),
-  `${BROWSER_PATH} must remain read-only.`,
-)
+assert(!/method:\s*['"](?:PATCH|DELETE)['"]/.test(browser), `${BROWSER_PATH} must not edit or delete database rows.`)
 assert(/loading="lazy"/.test(browser), `${BROWSER_PATH} must lazy-load thumbnails.`)
 assert(/slice\(0, visibleCount\)/.test(browser), `${BROWSER_PATH} must cap the initial rendered image count.`)
 assert(/<ImageLightbox/.test(browser), `${BROWSER_PATH} must open images full-size.`)
@@ -96,4 +94,4 @@ assert(
   `${SHELL_PATH} must render the database browser in the shared Image Library board.`,
 )
 
-console.log('✅ Read-only image database browser contract holds')
+console.log('✅ Image database source-browser contract holds')

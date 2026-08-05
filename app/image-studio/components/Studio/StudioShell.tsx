@@ -40,7 +40,7 @@ import { useFirstPaintReflowNudge } from '../../hooks/useFirstPaintReflowNudge'
 
 export function StudioShell() {
   const {
-    favorites, toggleFavorite, clearAll, state,
+    favorites, toggleFavorite, clearAll, refreshFavorites, state,
     handleRestoreParameters,
     showPhotoGenerator, setShowPhotoGenerator,
   } = useStudioCore()
@@ -156,6 +156,7 @@ export function StudioShell() {
           activeTab="database"
           onSelectTab={state.setImageLibraryTab}
           onClose={() => state.setImageLibraryTab(null)}
+          onFavoritesChanged={refreshFavorites}
         />
       )}
 

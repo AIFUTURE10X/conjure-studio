@@ -47,7 +47,7 @@ export function usePageState() {
   const uploadState = useImageUpload()
   const { analyzeImage, analyzing } = useImageAnalysis()
   const { saveParameters, loadParameters, hasStoredParams } = useParameters()
-  const { favorites, toggleFavorite, isFavorite, clearAll } = useFavorites()
+  const { favorites, toggleFavorite, isFavorite, clearAll, refreshFavorites } = useFavorites()
   const state = useImageStudioState()
   const { settings, updateSetting, resetSettings, saveGenerateParams } = useAppSettings()
   const { presets, savePreset, deletePreset, updatePreset, clearAllPresets } = usePresets()
@@ -197,6 +197,7 @@ export function usePageState() {
     toggleFavorite,
     isFavorite,
     clearAll,
+    refreshFavorites,
 
     // Main state
     state,

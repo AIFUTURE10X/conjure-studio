@@ -8,6 +8,8 @@ export interface ImageDatabaseRecord {
   url: string
   prompt?: string
   detail?: string
+  aspectRatio?: string
+  style?: string
   timestamp: number
 }
 
@@ -17,15 +19,23 @@ interface HistoryResponseItem {
   aspectRatio?: string | null
   imageUrls?: string[]
   timestamp: number
+  metadata?: {
+    style?: string | null
+  }
 }
 
 interface FavoriteResponseItem {
   id: string
   url: string
+  prompt?: string
   timestamp: number
   metadata?: {
     ratio?: string | null
     style?: string | null
+    params?: {
+      mainPrompt?: string
+      aspectRatio?: string
+    } | null
   }
 }
 
@@ -65,6 +75,8 @@ export function buildImageDatabaseRecords({
         url,
         prompt: item.prompt,
         detail: item.aspectRatio ?? undefined,
+        aspectRatio: item.aspectRatio ?? undefined,
+        style: item.metadata?.style ?? undefined,
         timestamp: item.timestamp,
         sortOrder: sortOrder++,
       })
@@ -78,7 +90,10 @@ export function buildImageDatabaseRecords({
       sourceId: item.id,
       source: 'favorites',
       url: item.url,
+      prompt: item.prompt || item.metadata?.params?.mainPrompt,
       detail: [item.metadata?.style, item.metadata?.ratio].filter(Boolean).join(' · ') || undefined,
+      aspectRatio: item.metadata?.ratio || item.metadata?.params?.aspectRatio || undefined,
+      style: item.metadata?.style ?? undefined,
       timestamp: item.timestamp,
       sortOrder: sortOrder++,
     })
@@ -93,6 +108,7 @@ export function buildImageDatabaseRecords({
       url: item.imageUrl,
       prompt: item.prompt,
       detail: item.style ?? undefined,
+      style: item.style ?? undefined,
       timestamp: item.timestamp,
       sortOrder: sortOrder++,
     })

@@ -1,27 +1,27 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { addFavorite, getAllFavorites, removeFavorite, clearAllFavorites, type FavoriteImage } from '@/lib/db/dbService'
 
 // Re-export components for backward compatibility
 export { FavoriteButton } from './Favorites/FavoriteButton'
 export { FavoritesModal } from './Favorites/FavoritesModal'
 
+async function readFavorites(): Promise<FavoriteImage[]> {
+  console.log('[v0] Loading favorites via service layer')
+  return getAllFavorites()
+}
+
 export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteImage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [togglingUrls, setTogglingUrls] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    loadFavorites()
-  }, [])
-
-  const loadFavorites = async () => {
+  const loadFavorites = useCallback(async () => {
     setIsLoading(true)
-    console.log('[v0] Loading favorites via service layer')
 
     try {
-      const loaded = await getAllFavorites()
+      const loaded = await readFavorites()
       console.log('[v0] Loaded favorites:', loaded.length)
       setFavorites(loaded)
     } catch (error) {
@@ -30,7 +30,26 @@ export function useFavorites() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    void readFavorites()
+      .then((loaded) => {
+        console.log('[v0] Loaded favorites:', loaded.length)
+        if (active) setFavorites(loaded)
+      })
+      .catch((error) => {
+        console.error('[v0] Error loading favorites:', error)
+        if (active) setFavorites([])
+      })
+      .finally(() => {
+        if (active) setIsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const toggleFavorite = async (url: string, metadata?: FavoriteImage['metadata']) => {
     if (togglingUrls.has(url)) {
@@ -79,5 +98,5 @@ export function useFavorites() {
     }
   }
 
-  return { favorites, toggleFavorite, isFavorite, isToggling, clearAll, isLoading }
+  return { favorites, toggleFavorite, isFavorite, isToggling, clearAll, refreshFavorites: loadFavorites, isLoading }
 }

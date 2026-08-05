@@ -24,6 +24,7 @@ const postBodySchema = z.object({
     fileSize: z.string().max(50).optional().nullable(),
     params: z.unknown().optional(),
   }).passthrough().optional().nullable(),
+  restoreOnlyIfMissing: z.boolean().optional(),
 })
 
 const deleteQuerySchema = z.object({ id: numericIdSchema, userId: userIdSchema })
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
       id: fav.id.toString(),
       url: fav.blob_url || fav.image_url,
       blobUrl: fav.blob_url,
+      prompt: fav.prompt || undefined,
       timestamp: new Date(fav.created_at).getTime(),
       metadata: {
         ratio: fav.aspect_ratio,
@@ -71,18 +73,44 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const parsed = await parseJson(request, postBodySchema)
   if (parsed.response) return parsed.response
-  const { imageUrl, metadata } = parsed.data
+  const { imageUrl, metadata, restoreOnlyIfMissing } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
 
   try {
     const sql = getSQL()
     console.log('[v0] API: Adding favorite for user:', userId)
 
+    if (restoreOnlyIfMissing) {
+      const existing = await sql`
+        SELECT * FROM public.favorites
+        WHERE user_id = ${userId}
+          AND (image_url = ${imageUrl} OR blob_url = ${imageUrl})
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+      if (existing[0]) {
+        return NextResponse.json({
+          alreadyExists: true,
+          favorite: {
+            id: existing[0].id.toString(),
+            url: existing[0].blob_url || existing[0].image_url,
+            blobUrl: existing[0].blob_url,
+            timestamp: new Date(existing[0].created_at).getTime(),
+            metadata,
+          },
+        })
+      }
+    }
+
     // Upload to Blob Storage first
     const tempId = `temp-${Date.now()}`
     let blobUrl: string
 
-    try {
+    if (restoreOnlyIfMissing) {
+      // Database-browser records already point at durable public storage.
+      // Keep that exact URL so restoring does not copy the same image again.
+      blobUrl = imageUrl
+    } else try {
       let imageBuffer: Buffer
 
       // Handle data URIs directly (from batch generation)
@@ -140,7 +168,7 @@ export async function POST(request: NextRequest) {
           timestamp: new Date(existing[0].created_at).getTime(),
           metadata
         }
-        return NextResponse.json({ favorite })
+        return NextResponse.json({ favorite, alreadyExists: true })
       }
     }
 
@@ -154,7 +182,7 @@ export async function POST(request: NextRequest) {
       metadata
     }
 
-    return NextResponse.json({ favorite })
+    return NextResponse.json({ favorite, alreadyExists: false })
   } catch (error) {
     console.error('[v0] API: Save failed with error:', error)
     return apiError(500, 'internal_error', 'Failed to save favorite')

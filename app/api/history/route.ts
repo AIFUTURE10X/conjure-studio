@@ -69,6 +69,7 @@ const postBodySchema = z.object({
     })
   }),
   metadata: metadataSchema.optional().nullable(),
+  restoreOnlyIfMissing: z.boolean().optional(),
 })
 
 const deleteQuerySchema = z.object({
@@ -148,7 +149,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const parsed = await parseJson(request, postBodySchema)
   if (parsed.response) return parsed.response
-  const { prompt, aspectRatio, imageUrls, metadata } = parsed.data
+  const { prompt, aspectRatio, imageUrls, metadata, restoreOnlyIfMissing } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
 
   if (!hasDatabaseConnection()) {
@@ -172,12 +173,41 @@ export async function POST(request: NextRequest) {
     console.log('[v0] API: userId:', userId)
     console.log('[v0] API: imageUrls count:', imageUrls.length)
 
+    if (restoreOnlyIfMissing) {
+      const sql = getSQL()
+      await ensureGenerationHistorySchema(sql)
+      const existing = await sql`
+        SELECT id, prompt, aspect_ratio, metadata, created_at
+        FROM public.generation_history
+        WHERE user_id = ${userId}
+          AND (
+            COALESCE(blob_urls, ARRAY[]::text[]) && ${imageUrls}::text[]
+            OR image_urls && ${imageUrls}::text[]
+          )
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      `
+      if (existing[0]) {
+        return NextResponse.json({
+          alreadyExists: true,
+          historyItem: {
+            id: existing[0].id.toString(),
+            prompt: existing[0].prompt,
+            aspectRatio: existing[0].aspect_ratio,
+            imageUrls,
+            metadata: parseMetadata(existing[0].metadata),
+            timestamp: new Date(existing[0].created_at).getTime(),
+          },
+        })
+      }
+    }
+
     // Blob upload, insert, and retention prune live in the shared store so
     // /api/generate-image saves land through the exact same path.
     const historyItem = await storeGenerationHistory({ userId, prompt, aspectRatio, imageUrls, metadata })
     console.log('[v0] API: Saved to Neon with ID:', historyItem.id)
 
-    return NextResponse.json({ historyItem })
+    return NextResponse.json({ historyItem, alreadyExists: false })
   } catch (error) {
     console.error('[v0] API: History save failed with error:', error)
     return apiError(500, 'internal_error', 'Failed to save history')
