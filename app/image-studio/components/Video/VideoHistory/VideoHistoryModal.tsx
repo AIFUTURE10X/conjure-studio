@@ -164,7 +164,7 @@ export function VideoHistoryModal({
   }
 
   const handleAddToBoard = (clip: VideoJob) => {
-    onAddToBoard(clip)
+    if (!boardJobIds.has(clip.jobId)) onAddToBoard(clip)
     onClose()
   }
 

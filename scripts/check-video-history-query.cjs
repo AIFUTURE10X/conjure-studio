@@ -182,9 +182,11 @@ const checks = [
         /restoreClipToBoard/.test(generation) &&
         /onAddToBoard=\{restoreClipToBoard\}/.test(canvas) &&
         /boardJobIds=\{new Set\(jobs\.map\(\(job\) => job\.jobId\)\)\}/.test(canvas) &&
-        /onAddToBoard\(clip\)/.test(modal) &&
+        /if \(!boardJobIds\.has\(clip\.jobId\)\) onAddToBoard\(clip\)/.test(modal) &&
         /onClose\(\)/.test(modal) &&
-        /aria-label="Add to board"/.test(card) &&
+        /aria-label=\{isOnBoard \? 'View board' : 'Add to board'\}/.test(card) &&
+        /\{isOnBoard \? 'View board' : 'Add to board'\}/.test(card) &&
+        !/disabled=\{isOnBoard\}/.test(card) &&
         /canDownload &&/.test(card)
     },
   },

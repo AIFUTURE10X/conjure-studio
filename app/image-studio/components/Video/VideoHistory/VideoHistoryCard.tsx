@@ -1,6 +1,6 @@
 "use client"
 
-import { Download, Heart, Loader2, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, Download, Heart, Loader2, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -100,18 +100,19 @@ export function VideoHistoryCard({
             <TooltipTrigger asChild>
               <Button
                 onClick={() => onAddToBoard(clip)}
-                disabled={isOnBoard}
-                aria-label="Add to board"
+                aria-label={isOnBoard ? 'View board' : 'Add to board'}
                 size="sm"
                 variant="ghost"
-                className="h-8 px-2 text-[#dbb56e] hover:text-[#f0d49b] border border-[#c99850]/30 disabled:text-zinc-600 disabled:border-zinc-800 disabled:cursor-default"
+                className="h-8 px-2 text-[#dbb56e] hover:text-[#f0d49b] border border-[#c99850]/30"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Board
+                {isOnBoard
+                  ? <Check className="w-3.5 h-3.5 mr-1" />
+                  : <Plus className="w-3.5 h-3.5 mr-1" />}
+                {isOnBoard ? 'View board' : 'Add to board'}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left">
-              {isOnBoard ? 'Already on the video board' : 'Add back to the video board'}
+              {isOnBoard ? 'Close the library and return to this clip' : 'Add back to the video board'}
             </TooltipContent>
           </Tooltip>
         )}
