@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless"
 import { z } from "zod"
 import { apiError, parseJson, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
+import { ensureCreationMetadataSchema } from '@/lib/db/creation-metadata-schema'
 import { userIdSchema } from '@/lib/validation/common'
 import {
   buildPromptSearchPattern,
@@ -41,22 +42,44 @@ export async function GET(request: NextRequest) {
   const parsed = parseParams(Object.fromEntries(request.nextUrl.searchParams), getQuerySchema)
   if (parsed.response) return parsed.response
   const userId = await resolveUserId(request, parsed.data.userId)
-  const { limit, offset, search, favoritesOnly } = parsed.data
+  const { limit, offset, search, category, tag, favoritesOnly } = parsed.data
   const searchPattern = search ? buildPromptSearchPattern(search) : null
 
   try {
     const sql = getSQL()
+    await ensureCreationMetadataSchema(sql)
     // Both filters are expressed as no-op comparisons rather than composed SQL
     // fragments, so this stays a single tagged template the driver parameterizes.
     // One extra row is fetched to derive `hasMore` without a second COUNT.
     const rows = await sql`
-      SELECT id, status, prompt, model, video_url, error, start_image_url, created_at,
-             duration_seconds, resolution, aspect_ratio, has_audio, is_favorited
-      FROM public.video_history
-      WHERE user_id = ${userId}
-        AND (${favoritesOnly}::boolean = false OR is_favorited = true)
-        AND (${searchPattern}::text IS NULL OR prompt ILIKE ${searchPattern} ESCAPE '\\')
-      ORDER BY created_at DESC
+      SELECT video.id, video.status, video.prompt, video.model, video.video_url,
+             video.error, video.start_image_url, video.created_at,
+             video.duration_seconds, video.resolution, video.aspect_ratio,
+             video.has_audio, video.is_favorited,
+             metadata.title, metadata.category, metadata.tags
+      FROM public.video_history AS video
+      LEFT JOIN public.creation_media_metadata AS metadata
+        ON metadata.user_id = video.user_id
+       AND metadata.media_type = 'video'
+       AND metadata.media_url = video.video_url
+      WHERE video.user_id = ${userId}
+        AND (${favoritesOnly}::boolean = false OR video.is_favorited = true)
+        AND (
+          ${searchPattern}::text IS NULL
+          OR video.prompt ILIKE ${searchPattern} ESCAPE '\\'
+          OR metadata.title ILIKE ${searchPattern} ESCAPE '\\'
+          OR metadata.category ILIKE ${searchPattern} ESCAPE '\\'
+          OR array_to_string(metadata.tags, ' ') ILIKE ${searchPattern} ESCAPE '\\'
+        )
+        AND (${category ?? null}::text IS NULL OR LOWER(metadata.category) = LOWER(${category ?? null}))
+        AND (
+          ${tag ?? null}::text IS NULL
+          OR EXISTS (
+            SELECT 1 FROM unnest(COALESCE(metadata.tags, ARRAY[]::text[])) AS saved_tag
+            WHERE LOWER(saved_tag) = LOWER(${tag ?? null})
+          )
+        )
+      ORDER BY video.created_at DESC
       LIMIT ${pageFetchLimit(limit)} OFFSET ${offset}
     `
 
@@ -76,6 +99,9 @@ export async function GET(request: NextRequest) {
       aspectRatio: (row.aspect_ratio as string | null) ?? null,
       hasAudio: Boolean(row.has_audio),
       isFavorited: Boolean(row.is_favorited),
+      title: (row.title as string | null) ?? null,
+      category: (row.category as string | null) ?? null,
+      tags: Array.isArray(row.tags) ? row.tags as string[] : [],
     }))
 
     return NextResponse.json({ videos, hasMore })

@@ -6,12 +6,24 @@ export interface ImageDatabaseRecord {
   recordId: string
   sourceId: string
   source: ImageDatabaseSource
+  mediaType: 'image' | 'logo'
   url: string
   prompt?: string
   detail?: string
   aspectRatio?: string
   style?: string
+  title?: string | null
+  category?: string | null
+  tags?: string[]
   timestamp: number
+}
+
+interface CreationMetadataResponseItem {
+  mediaType: 'image' | 'logo' | 'video'
+  mediaUrl: string
+  title: string | null
+  category: string | null
+  tags: string[]
 }
 
 interface HistoryResponseItem {
@@ -73,6 +85,7 @@ export function buildImageDatabaseRecords({
         recordId: `${item.id}:${index + 1}`,
         sourceId: item.id,
         source: 'generation_history',
+        mediaType: 'image',
         url,
         prompt: item.prompt,
         detail: item.aspectRatio ?? undefined,
@@ -90,6 +103,7 @@ export function buildImageDatabaseRecords({
       recordId: item.id,
       sourceId: item.id,
       source: 'favorites',
+      mediaType: 'image',
       url: item.url,
       prompt: item.prompt || item.metadata?.params?.mainPrompt,
       detail: [item.metadata?.style, item.metadata?.ratio].filter(Boolean).join(' · ') || undefined,
@@ -106,6 +120,7 @@ export function buildImageDatabaseRecords({
       recordId: item.id,
       sourceId: item.id,
       source: 'logo_history',
+      mediaType: 'logo',
       url: item.imageUrl,
       prompt: item.prompt,
       detail: item.style ?? undefined,
@@ -120,18 +135,54 @@ export function buildImageDatabaseRecords({
     .map(({ sortOrder: _sortOrder, ...record }) => record)
 }
 
+export function applyCreationMetadata(
+  records: ImageDatabaseRecord[],
+  metadata: CreationMetadataResponseItem[],
+): ImageDatabaseRecord[] {
+  const byMedia = new Map(
+    metadata.map((item) => [`${item.mediaType}\u0000${item.mediaUrl}`, item]),
+  )
+
+  return records.map((record) => {
+    const item = byMedia.get(`${record.mediaType}\u0000${record.url}`)
+    if (!item) return record
+    return {
+      ...record,
+      title: item.title,
+      category: item.category,
+      tags: item.tags,
+    }
+  })
+}
+
 export function filterImageDatabaseRecords(
   records: ImageDatabaseRecord[],
   source: ImageDatabaseSourceFilter,
   query: string,
+  category = 'all',
+  tag = 'all',
 ): ImageDatabaseRecord[] {
   const normalizedQuery = query.trim().toLowerCase()
+  const normalizedCategory = category.trim().toLowerCase()
+  const normalizedTag = tag.trim().toLowerCase()
 
   return records.filter((record) => {
     if (source !== 'all' && record.source !== source) return false
+    if (normalizedCategory !== 'all' && record.category?.toLowerCase() !== normalizedCategory) return false
+    if (normalizedTag !== 'all' && !record.tags?.some((value) => value.toLowerCase() === normalizedTag)) return false
     if (!normalizedQuery) return true
 
-    return [record.recordId, record.sourceId, record.source, record.url, record.prompt, record.detail]
+    return [
+      record.recordId,
+      record.sourceId,
+      record.source,
+      record.url,
+      record.title,
+      record.category,
+      record.tags?.join(' '),
+      record.prompt,
+      record.detail,
+    ]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(normalizedQuery))
   })

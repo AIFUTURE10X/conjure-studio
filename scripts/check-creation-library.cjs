@@ -24,6 +24,7 @@ const STATE_PATH = 'app/image-studio/hooks/useImageStudioState.ts'
 const TOP_BAR_PATH = 'app/image-studio/components/Studio/StudioTopBar.tsx'
 const SHELL_PATH = 'app/image-studio/components/Studio/StudioShell.tsx'
 const IMAGE_BROWSER_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseBrowser.tsx'
+const IMAGE_HEADER_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseHeader.tsx'
 const VIDEO_CANVAS_PATH = 'app/image-studio/components/Video/VideoCanvas.tsx'
 const VIDEO_HEADER_PATH = 'app/image-studio/components/Video/VideoHistory/VideoHistoryHeader.tsx'
 const VIDEO_MODAL_PATH = 'app/image-studio/components/Video/VideoHistory/VideoHistoryModal.tsx'
@@ -76,9 +77,12 @@ assert(/creationLibraryTab === 'images'/.test(shell) && /creationLibraryTab === 
 assert(/<ImageDatabaseBrowser/.test(shell), `${SHELL_PATH} must reuse the database image browser.`)
 
 const imageBrowser = read(IMAGE_BROWSER_PATH)
-assert(/<CreationLibraryTabs/.test(imageBrowser), `${IMAGE_BROWSER_PATH} must render the shared media tabs.`)
-assert(/Creation Library/.test(imageBrowser), `${IMAGE_BROWSER_PATH} must use the unified library title.`)
+assert(/<ImageDatabaseHeader/.test(imageBrowser), `${IMAGE_BROWSER_PATH} must render its extracted header.`)
 assert(/filterImageDatabaseRecordsByMedia/.test(imageBrowser), `${IMAGE_BROWSER_PATH} must isolate images from logos by media tab.`)
+
+const imageHeader = read(IMAGE_HEADER_PATH)
+assert(/<CreationLibraryTabs/.test(imageHeader), `${IMAGE_HEADER_PATH} must render the shared media tabs.`)
+assert(/Creation Library/.test(imageHeader), `${IMAGE_HEADER_PATH} must use the unified library title.`)
 
 const videoCanvas = read(VIDEO_CANVAS_PATH)
 assert(/creationLibraryTab === 'videos'/.test(videoCanvas), `${VIDEO_CANVAS_PATH} must open video history from the shared media state.`)

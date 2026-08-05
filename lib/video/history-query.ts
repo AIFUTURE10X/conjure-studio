@@ -22,6 +22,15 @@ const booleanParamSchema = z
   .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
   .transform((value) => value === true || value === 'true' || value === '1')
 
+const optionalTrimmedText = (maxLength: number) => z
+  .string()
+  .max(maxLength)
+  .optional()
+  .transform((value) => {
+    const trimmed = value?.trim()
+    return trimmed || undefined
+  })
+
 export const videoHistoryListParamsSchema = z.object({
   limit: z.coerce
     .number()
@@ -40,6 +49,8 @@ export const videoHistoryListParamsSchema = z.object({
       const trimmed = value?.trim()
       return trimmed ? trimmed : undefined
     }),
+  category: optionalTrimmedText(80),
+  tag: optionalTrimmedText(40),
   favoritesOnly: booleanParamSchema.default(false),
 })
 

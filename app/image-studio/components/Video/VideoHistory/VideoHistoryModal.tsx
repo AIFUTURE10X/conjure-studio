@@ -5,8 +5,9 @@ import { createPortal } from 'react-dom'
 import { Clapperboard, Heart, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { CreationMetadataEditor } from '../../CreationMetadata'
 import { VideoHistoryCard } from './VideoHistoryCard'
+import { VideoHistoryFilters } from './VideoHistoryFilters'
 import { VideoHistoryHeader } from './VideoHistoryHeader'
 import { useVideoHistoryBrowser, type VideoHistoryTab } from './useVideoHistoryBrowser'
 import { useVideoHistorySelection } from './useVideoHistorySelection'
@@ -45,13 +46,13 @@ function clipLabel(clip: VideoJob): string {
 }
 
 /** Empty-state copy differs per cause so a filtered view never reads as "you have nothing". */
-function EmptyState({ tab, isSearching }: { tab: VideoHistoryTab; isSearching: boolean }) {
-  if (isSearching) {
+function EmptyState({ tab, isFiltered }: { tab: VideoHistoryTab; isFiltered: boolean }) {
+  if (isFiltered) {
     return (
       <>
         <Search className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
-        <p className="text-zinc-400">No clips match that search</p>
-        <p className="text-xs text-zinc-500 mt-1">Try a different word from the prompt.</p>
+        <p className="text-zinc-400">No clips match those filters</p>
+        <p className="text-xs text-zinc-500 mt-1">Try another search, category, or tag.</p>
       </>
     )
   }
@@ -82,13 +83,14 @@ export function VideoHistoryModal({
   const toggleTokens = useRef<Map<number, number>>(new Map())
 
   const {
-    tab, setTab, search, setSearch, clips, hasMore,
+    tab, setTab, search, setSearch, category, setCategory, tag, setTag, categories, tags, clips, hasMore,
     isLoading, isLoadingMore, error, loadMore, applyFavorite, restoreClip,
-    removeClips, refresh, getListGeneration, isSearching,
+    removeClips, refresh, refreshMetadataOptions, getListGeneration, isFiltering,
   } = useVideoHistoryBrowser(isOpen)
 
-  const selection = useVideoHistorySelection(clips, tab, search, isOpen)
+  const selection = useVideoHistorySelection(clips, tab, `${search}|${category}|${tag}`, isOpen)
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
+  const [editingClip, setEditingClip] = useState<VideoJob | null>(null)
 
   /**
    * Delete a batch and reconcile the list.
@@ -171,6 +173,14 @@ export function VideoHistoryModal({
     onClose()
   }
 
+  const editingItem = editingClip?.videoUrl ? {
+    mediaType: 'video' as const,
+    mediaUrl: editingClip.videoUrl,
+    title: editingClip.title ?? null,
+    category: editingClip.category ?? null,
+    tags: editingClip.tags ?? [],
+  } : null
+
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
       <Card className="bg-zinc-900 border-[#c99850]/30 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -187,17 +197,16 @@ export function VideoHistoryModal({
           onClose={onClose}
         />
 
-        <div className="p-4 pb-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search prompts…"
-              className="pl-9 bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600"
-            />
-          </div>
-        </div>
+        <VideoHistoryFilters
+          search={search}
+          category={category}
+          tag={tag}
+          categories={categories}
+          tags={tags}
+          onSearchChange={setSearch}
+          onCategoryChange={setCategory}
+          onTagChange={setTag}
+        />
 
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           {/* Clips already on screen survive a failed page fetch — losing them
@@ -222,6 +231,7 @@ export function VideoHistoryModal({
                   isDeleting={deletingIds.has(clip.jobId)}
                   isOnBoard={boardJobIds.has(clip.jobId)}
                   onAddToBoard={handleAddToBoard}
+                  onEditMetadata={setEditingClip}
                 />
               ))}
             </div>
@@ -229,7 +239,7 @@ export function VideoHistoryModal({
 
           {!isLoading && clips.length === 0 && (
             <div className="text-center py-12">
-              {error ? <p className="text-red-400 text-sm">{error}</p> : <EmptyState tab={tab} isSearching={isSearching} />}
+              {error ? <p className="text-red-400 text-sm">{error}</p> : <EmptyState tab={tab} isFiltered={isFiltering} />}
             </div>
           )}
 
@@ -263,6 +273,15 @@ export function VideoHistoryModal({
           ) : null)}
         </div>
       </Card>
+      <CreationMetadataEditor
+        item={editingItem}
+        categorySuggestions={categories}
+        onClose={() => setEditingClip(null)}
+        onSaved={() => {
+          refreshMetadataOptions()
+          refresh()
+        }}
+      />
     </div>,
     document.body,
   )

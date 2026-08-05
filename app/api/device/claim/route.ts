@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, parseJson } from '@/lib/api/http'
 import { pgPool } from '@/lib/db/pool'
+import { ensureCreationMetadataPoolSchema } from '@/lib/db/creation-metadata-schema'
 import { isSaasEnforcementOn } from '@/lib/api/guard'
 import { userIdSchema } from '@/lib/validation/common'
 
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
   const client = await pgPool.connect()
   try {
     await client.query('BEGIN')
+    await ensureCreationMetadataPoolSchema(client)
 
     // favorites — UNIQUE(user_id, image_url): drop legacy rows the target
     // already has, then collapse duplicates within the legacy set (keep the
@@ -71,6 +73,34 @@ export async function POST(request: NextRequest) {
     const history = await client.query('UPDATE generation_history SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, targetUserId])
     const logos = await client.query('UPDATE logo_history SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, targetUserId])
     const videos = await client.query('UPDATE video_history SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, targetUserId])
+
+    // Creation Library details are URL-keyed and can exist under several old
+    // browser ids. Prefer the durable target's row, then the newest legacy row.
+    await client.query(
+      `DELETE FROM creation_media_metadata metadata
+       WHERE metadata.user_id = ANY($1::text[])
+         AND EXISTS (
+           SELECT 1 FROM creation_media_metadata target
+           WHERE target.user_id = $2
+             AND target.media_type = metadata.media_type
+             AND target.media_url = metadata.media_url
+         )`,
+      [legacyUserIds, targetUserId],
+    )
+    await client.query(
+      `DELETE FROM creation_media_metadata metadata
+       WHERE metadata.user_id = ANY($1::text[])
+         AND EXISTS (
+           SELECT 1 FROM creation_media_metadata keep
+           WHERE keep.user_id = ANY($1::text[])
+             AND keep.id <> metadata.id
+             AND keep.media_type = metadata.media_type
+             AND keep.media_url = metadata.media_url
+             AND (keep.updated_at > metadata.updated_at OR (keep.updated_at = metadata.updated_at AND keep.id > metadata.id))
+         )`,
+      [legacyUserIds],
+    )
+    const creationMetadata = await client.query('UPDATE creation_media_metadata SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, targetUserId])
 
     // user_presets — PRIMARY KEY (user_id, id): drop legacy copies of preset
     // ids the target already has, then collapse duplicate ids within the
@@ -146,6 +176,7 @@ export async function POST(request: NextRequest) {
       (history.rowCount ?? 0) +
       (logos.rowCount ?? 0) +
       (videos.rowCount ?? 0) +
+      (creationMetadata.rowCount ?? 0) +
       (presets.rowCount ?? 0) +
       (prompts.rowCount ?? 0) +
       (collections.rowCount ?? 0)
@@ -157,6 +188,7 @@ export async function POST(request: NextRequest) {
         history: history.rowCount ?? 0,
         logos: logos.rowCount ?? 0,
         videos: videos.rowCount ?? 0,
+        creationMetadata: creationMetadata.rowCount ?? 0,
         presets: presets.rowCount ?? 0,
         prompts: prompts.rowCount ?? 0,
         collections: collections.rowCount ?? 0,

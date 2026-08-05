@@ -126,6 +126,7 @@ const CLAIMED_TABLES = [
   'saved_prompts',
   'collections',
   'collection_items',
+  'creation_media_metadata',
 ]
 for (const table of CLAIMED_TABLES) {
   assert(
@@ -165,8 +166,16 @@ assert(
 assert(
   /UPDATE favorites SET user_id = \$2 WHERE user_id = ANY\(\$1::text\[\]\)/.test(claimRoute) &&
     /UPDATE generation_history SET user_id = \$2 WHERE user_id = ANY\(\$1::text\[\]\)/.test(claimRoute) &&
-    /UPDATE logo_history SET user_id = \$2 WHERE user_id = ANY\(\$1::text\[\]\)/.test(claimRoute),
-  'Account claim route must move favorites, generation history, and logo history for all legacy IDs.',
+    /UPDATE logo_history SET user_id = \$2 WHERE user_id = ANY\(\$1::text\[\]\)/.test(claimRoute) &&
+    /UPDATE video_history SET user_id = \$2 WHERE user_id = ANY\(\$1::text\[\]\)/.test(claimRoute) &&
+    /UPDATE creation_media_metadata SET user_id = \$2 WHERE user_id = ANY\(\$1::text\[\]\)/.test(claimRoute),
+  'Account claim route must move image, logo, video, and creation metadata rows for all legacy IDs.',
+)
+
+assert(
+  /ensureCreationMetadataPoolSchema\(client\)/.test(deviceClaimRoute) &&
+    /ensureCreationMetadataPoolSchema\(client\)/.test(claimRoute),
+  'Both identity claim routes must ensure the additive creation-metadata table before moving rows.',
 )
 
 console.log('Persistence identity contract passed')

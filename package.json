@@ -18,6 +18,7 @@
     "check:image-database-browser": "node scripts/check-image-database-browser.cjs",
     "check:image-database-restore-actions": "node scripts/check-image-database-restore-actions.cjs",
     "check:creation-library": "node scripts/check-creation-library.cjs",
+    "check:creation-metadata": "node scripts/check-creation-metadata.cjs",
     "check:image-annotation": "node scripts/check-image-annotation-tool.cjs",
     "check:image-references": "node scripts/check-image-references-ui.cjs",
     "check:logo": "node scripts/check-logo-generator-contract.cjs",

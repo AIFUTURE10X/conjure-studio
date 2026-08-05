@@ -4,12 +4,12 @@ import { apiError, parseJson } from '@/lib/api/http'
 import { userIdSchema } from '@/lib/validation/common'
 import { getSessionUser } from '@/lib/auth'
 import { pgPool } from '@/lib/db/pool'
+import { ensureCreationMetadataPoolSchema } from '@/lib/db/creation-metadata-schema'
 
 /**
  * POST /api/account/claim { legacyUserId } or { legacyUserIds }
  *
- * Re-parents anonymous device rows (favorites, generation_history,
- * logo_history) onto the signed-in account. Each legacy id can be claimed
+ * Re-parents anonymous device rows onto the signed-in account. Each legacy id can be claimed
  * exactly once (account_claims PK); re-claiming your own ids is idempotent.
  */
 
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
   const client = await pgPool.connect()
   try {
     await client.query('BEGIN')
+    await ensureCreationMetadataPoolSchema(client)
 
     const existing = await client.query(
       'SELECT legacy_user_id, auth_user_id FROM account_claims WHERE legacy_user_id = ANY($1::text[]) FOR UPDATE',
@@ -71,10 +72,42 @@ export async function POST(request: NextRequest) {
     const favorites = await client.query('UPDATE favorites SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, user.id])
     const history = await client.query('UPDATE generation_history SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, user.id])
     const logos = await client.query('UPDATE logo_history SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, user.id])
+    const videos = await client.query('UPDATE video_history SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, user.id])
+
+    await client.query(
+      `DELETE FROM creation_media_metadata metadata
+       WHERE metadata.user_id = ANY($1::text[])
+         AND EXISTS (
+           SELECT 1 FROM creation_media_metadata target
+           WHERE target.user_id = $2
+             AND target.media_type = metadata.media_type
+             AND target.media_url = metadata.media_url
+         )`,
+      [legacyUserIds, user.id],
+    )
+    await client.query(
+      `DELETE FROM creation_media_metadata metadata
+       WHERE metadata.user_id = ANY($1::text[])
+         AND EXISTS (
+           SELECT 1 FROM creation_media_metadata keep
+           WHERE keep.user_id = ANY($1::text[])
+             AND keep.id <> metadata.id
+             AND keep.media_type = metadata.media_type
+             AND keep.media_url = metadata.media_url
+             AND (keep.updated_at > metadata.updated_at OR (keep.updated_at = metadata.updated_at AND keep.id > metadata.id))
+         )`,
+      [legacyUserIds],
+    )
+    const creationMetadata = await client.query('UPDATE creation_media_metadata SET user_id = $2 WHERE user_id = ANY($1::text[])', [legacyUserIds, user.id])
 
     await client.query('COMMIT')
 
-    const moved = (favorites.rowCount ?? 0) + (history.rowCount ?? 0) + (logos.rowCount ?? 0)
+    const moved =
+      (favorites.rowCount ?? 0) +
+      (history.rowCount ?? 0) +
+      (logos.rowCount ?? 0) +
+      (videos.rowCount ?? 0) +
+      (creationMetadata.rowCount ?? 0)
     return NextResponse.json({
       success: true,
       alreadyClaimed: moved === 0 && claimableIds.length === 0,
@@ -84,6 +117,8 @@ export async function POST(request: NextRequest) {
         favorites: favorites.rowCount ?? 0,
         history: history.rowCount ?? 0,
         logos: logos.rowCount ?? 0,
+        videos: videos.rowCount ?? 0,
+        creationMetadata: creationMetadata.rowCount ?? 0,
       },
     })
   } catch (error) {

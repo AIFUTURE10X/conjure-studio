@@ -141,6 +141,18 @@ const PARAM_CASES = [
     wantOk: true,
     want: { limit: 50, offset: 0, search: 'neon city', favoritesOnly: false },
   },
+  {
+    name: 'category and tag filters are trimmed and kept',
+    input: { category: '  Marketing  ', tag: '  luxury  ' },
+    wantOk: true,
+    want: { limit: 50, offset: 0, search: undefined, category: 'Marketing', tag: 'luxury', favoritesOnly: false },
+  },
+  {
+    name: 'blank category and tag filters are treated as absent',
+    input: { category: ' ', tag: '' },
+    wantOk: true,
+    want: { limit: 50, offset: 0, search: undefined, category: undefined, tag: undefined, favoritesOnly: false },
+  },
   // Rejections: the point of AC-1 is that bad input 400s rather than being
   // silently coerced into a working query.
   { name: 'limit above the cap is rejected, not clamped', input: { limit: '500' }, wantOk: false },
@@ -149,6 +161,8 @@ const PARAM_CASES = [
   { name: 'a negative offset is rejected', input: { offset: '-1' }, wantOk: false },
   { name: 'a fractional limit is rejected', input: { limit: '10.5' }, wantOk: false },
   { name: 'a non-boolean favoritesOnly is rejected', input: { favoritesOnly: 'yes' }, wantOk: false },
+  { name: 'an overlong category is rejected', input: { category: 'c'.repeat(81) }, wantOk: false },
+  { name: 'an overlong tag is rejected', input: { tag: 't'.repeat(41) }, wantOk: false },
 ]
 
 const checks = [

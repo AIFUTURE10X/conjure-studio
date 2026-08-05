@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Download, Heart, Loader2, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, Download, Heart, Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -17,6 +17,7 @@ interface VideoHistoryCardProps {
   isDeleting: boolean
   isOnBoard: boolean
   onAddToBoard: (clip: VideoJob) => void
+  onEditMetadata: (clip: VideoJob) => void
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -39,7 +40,7 @@ function MetaChip({ children }: { children: React.ReactNode }) {
  * would drop the result behind the overlay the user is still looking at.
  */
 export function VideoHistoryCard({
-  clip, onToggleFavorite, isSelected, onToggleSelect, onDelete, isDeleting, isOnBoard, onAddToBoard,
+  clip, onToggleFavorite, isSelected, onToggleSelect, onDelete, isDeleting, isOnBoard, onAddToBoard, onEditMetadata,
 }: VideoHistoryCardProps) {
   const isFailed = clip.status === 'failed'
   const isPending = clip.status === 'pending'
@@ -77,9 +78,12 @@ export function VideoHistoryCard({
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-        <p className="text-sm text-white line-clamp-2 break-words">{clip.prompt}</p>
+        {clip.title && <h3 className="text-sm font-semibold text-white line-clamp-1 break-words">{clip.title}</h3>}
+        <p className={`${clip.title ? 'text-xs text-zinc-400' : 'text-sm text-white'} line-clamp-2 break-words`}>{clip.prompt}</p>
 
         <div className="flex flex-wrap gap-1">
+          {clip.category && <MetaChip>{clip.category}</MetaChip>}
+          {clip.tags?.map((tag) => <MetaChip key={tag}>#{tag}</MetaChip>)}
           <MetaChip>{modelLabel(clip.model)}</MetaChip>
           {clip.durationSeconds != null && <MetaChip>{clip.durationSeconds}s</MetaChip>}
           {clip.resolution && <MetaChip>{clip.resolution}</MetaChip>}
@@ -95,6 +99,23 @@ export function VideoHistoryCard({
       </div>
 
       <div className="flex flex-col gap-1 shrink-0">
+        {canDownload && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => onEditMetadata(clip)}
+                aria-label="Edit title, category, and tags"
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-zinc-500 hover:text-[#dbb56e]"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Edit title, category, and tags</TooltipContent>
+          </Tooltip>
+        )}
+
         {canDownload && (
           <Tooltip>
             <TooltipTrigger asChild>

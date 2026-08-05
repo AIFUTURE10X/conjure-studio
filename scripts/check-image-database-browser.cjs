@@ -1,6 +1,6 @@
 /**
  * Contract: the Image Library exposes a database image browser whose source
- * browsing is read-only; its only writes are explicit restore actions.
+ * browsing is delete-free; writes are explicit restores or metadata edits.
  */
 
 const fs = require('fs')
@@ -20,6 +20,7 @@ const equal = (received, expected, message) => {
 
 const RECORDS_PATH = 'app/image-studio/components/ImageDatabaseBrowser/image-database-records.ts'
 const BROWSER_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseBrowser.tsx'
+const CARD_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseCard.tsx'
 const TABS_PATH = 'app/image-studio/components/ImageLibraryTabs.tsx'
 const SHELL_PATH = 'app/image-studio/components/Studio/StudioShell.tsx'
 
@@ -81,9 +82,12 @@ for (const endpoint of ['/api/history?', '/api/favorites?', '/api/logo-history?'
   assert(browser.includes(endpoint), `${BROWSER_PATH} must read ${endpoint}.`)
 }
 assert(!/method:\s*['"](?:PATCH|DELETE)['"]/.test(browser), `${BROWSER_PATH} must not edit or delete database rows.`)
-assert(/loading="lazy"/.test(browser), `${BROWSER_PATH} must lazy-load thumbnails.`)
+assert(/<ImageDatabaseCard/.test(browser), `${BROWSER_PATH} must render the extracted thumbnail card.`)
 assert(/slice\(0, visibleCount\)/.test(browser), `${BROWSER_PATH} must cap the initial rendered image count.`)
 assert(/<ImageLightbox/.test(browser), `${BROWSER_PATH} must open images full-size.`)
+
+const card = read(CARD_PATH)
+assert(/loading="lazy"/.test(card), `${CARD_PATH} must lazy-load thumbnails.`)
 
 const tabs = read(TABS_PATH)
 assert(/onSelectTab\('database'\)/.test(tabs), `${TABS_PATH} must expose a Database tab.`)

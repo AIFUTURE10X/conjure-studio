@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { fetchCreationMetadata } from '@/lib/creation-metadata-client'
 import { getUserId } from '@/lib/user-id'
 import { VIDEO_HISTORY_PAGE_SIZE } from '@/lib/video/history-query'
 import type { VideoJob } from '../useVideoGeneration'
@@ -17,6 +18,8 @@ export type VideoHistoryTab = 'all' | 'favorites'
 interface FetchOptions {
   tab: VideoHistoryTab
   search: string
+  category: string
+  tag: string
   offset: number
 }
 
@@ -24,6 +27,10 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
   const [tab, setTab] = useState<VideoHistoryTab>('all')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [category, setCategory] = useState('all')
+  const [tag, setTag] = useState('all')
+  const [categories, setCategories] = useState<string[]>([])
+  const [tags, setTags] = useState<string[]>([])
   const [clips, setClips] = useState<VideoJob[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -80,7 +87,7 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     deletedIds.current.clear()
   }, [])
 
-  const fetchPage = useCallback(async ({ tab: activeTab, search: term, offset }: FetchOptions) => {
+  const fetchPage = useCallback(async ({ tab: activeTab, search: term, category: categoryFilter, tag: tagFilter, offset }: FetchOptions) => {
     const seq = ++requestSeq.current
     if (offset === 0) setIsLoading(true)
     else setIsLoadingMore(true)
@@ -92,6 +99,8 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
       offset: String(offset),
     })
     if (term) params.set('search', term)
+    if (categoryFilter !== 'all') params.set('category', categoryFilter)
+    if (tagFilter !== 'all') params.set('tag', tagFilter)
     if (activeTab === 'favorites') params.set('favoritesOnly', 'true')
 
     try {
@@ -123,17 +132,30 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     }
   }, [beginNewList])
 
+  const refreshMetadataOptions = useCallback(() => {
+    void fetchCreationMetadata('video')
+      .then((items) => {
+        setCategories([...new Set(items.map((item) => item.category).filter((value): value is string => Boolean(value)))].sort())
+        setTags([...new Set(items.flatMap((item) => item.tags))].sort())
+      })
+      .catch((error) => console.error('[video] Metadata options load failed:', error))
+  }, [])
+
   // Refetch from the top whenever the modal opens or the tab/search changes, so
   // stars toggled on the inline grid are reflected without a page reload.
   useEffect(() => {
     if (!isOpen) return
-    void fetchPage({ tab, search: debouncedSearch, offset: 0 })
-  }, [isOpen, tab, debouncedSearch, fetchPage])
+    void fetchPage({ tab, search: debouncedSearch, category, tag, offset: 0 })
+  }, [isOpen, tab, debouncedSearch, category, tag, fetchPage])
+
+  useEffect(() => {
+    if (isOpen) refreshMetadataOptions()
+  }, [isOpen, refreshMetadataOptions])
 
   const loadMore = useCallback(() => {
     if (isLoading || isLoadingMore || !hasMore) return
-    void fetchPage({ tab, search: debouncedSearch, offset: clips.length })
-  }, [clips.length, debouncedSearch, fetchPage, hasMore, isLoading, isLoadingMore, tab])
+    void fetchPage({ tab, search: debouncedSearch, category, tag, offset: clips.length })
+  }, [category, clips.length, debouncedSearch, fetchPage, hasMore, isLoading, isLoadingMore, tab, tag])
 
   /**
    * Reflect a favorite change locally. On the Favorites tab an unstarred clip is
@@ -209,14 +231,20 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
    * "you have no videos", which is a lie.
    */
   const refresh = useCallback(() => {
-    void fetchPage({ tab, search: debouncedSearch, offset: 0 })
-  }, [debouncedSearch, fetchPage, tab])
+    void fetchPage({ tab, search: debouncedSearch, category, tag, offset: 0 })
+  }, [category, debouncedSearch, fetchPage, tab, tag])
 
   return {
     tab,
     setTab,
     search,
     setSearch,
+    category,
+    setCategory,
+    tag,
+    setTag,
+    categories,
+    tags,
     clips,
     hasMore,
     isLoading,
@@ -227,7 +255,8 @@ export function useVideoHistoryBrowser(isOpen: boolean) {
     restoreClip,
     removeClips,
     refresh,
+    refreshMetadataOptions,
     getListGeneration,
-    isSearching: debouncedSearch.length > 0,
+    isFiltering: debouncedSearch.length > 0 || category !== 'all' || tag !== 'all',
   }
 }

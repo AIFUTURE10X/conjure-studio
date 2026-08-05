@@ -33,6 +33,9 @@ export interface VideoJob {
   aspectRatio: string | null
   hasAudio: boolean
   isFavorited?: boolean
+  title?: string | null
+  category?: string | null
+  tags?: string[]
 }
 
 export interface SubmitVideoOptions {
