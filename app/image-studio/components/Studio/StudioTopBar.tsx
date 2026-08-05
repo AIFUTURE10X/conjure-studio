@@ -151,9 +151,9 @@ export function StudioTopBar() {
             <HeaderContextButtons
               favoritesCount={favorites.length}
               hasStoredParams={hasStoredParams}
-              onShowHistory={() => state.setShowParameterHistory(true)}
+              onShowHistory={() => state.setImageLibraryTab('history')}
               onRestoreParameters={handleRestoreParameters}
-              onShowFavorites={() => state.setShowFavorites(true)}
+              onShowFavorites={() => state.setImageLibraryTab('favorites')}
             />
           )}
           {mode === 'video' && (

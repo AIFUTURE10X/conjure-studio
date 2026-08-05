@@ -11,6 +11,7 @@ import {
 } from '../constants/creative-direction-options'
 
 type ActiveTab = 'generate' | 'video' | 'logo' | 'mockups' | 'bg-remover' | 'settings' | 'thumbnail' | 'translate' | 'guide' | 'analytics'
+export type ImageLibraryTab = 'history' | 'favorites'
 
 // Read defaultTab from localStorage settings (called in useEffect to avoid hydration mismatch)
 function getStoredDefaultTab(): ActiveTab | null {
@@ -43,10 +44,8 @@ export interface GeneratedImage {
 
 export interface ImageStudioState {
   // Favorites & History UI
-  showFavorites: boolean
-  setShowFavorites: (show: boolean) => void
-  showParameterHistory: boolean
-  setShowParameterHistory: (show: boolean) => void
+  imageLibraryTab: ImageLibraryTab | null
+  setImageLibraryTab: (tab: ImageLibraryTab | null) => void
   /** Video mode's archive modal; rendered by VideoCanvas, opened from the top bar. */
   showVideoHistory: boolean
   setShowVideoHistory: (show: boolean) => void
@@ -128,8 +127,7 @@ export interface ImageStudioState {
 
 export function useImageStudioState(): ImageStudioState {
   // Favorites & History UI
-  const [showFavorites, setShowFavorites] = useState(false)
-  const [showParameterHistory, setShowParameterHistory] = useState(false)
+  const [imageLibraryTab, setImageLibraryTab] = useState<ImageLibraryTab | null>(null)
   const [showVideoHistory, setShowVideoHistory] = useState(false)
 
   // Analysis results
@@ -216,8 +214,7 @@ export function useImageStudioState(): ImageStudioState {
 
   return {
     // Favorites & History UI
-    showFavorites, setShowFavorites,
-    showParameterHistory, setShowParameterHistory,
+    imageLibraryTab, setImageLibraryTab,
     showVideoHistory, setShowVideoHistory,
 
     // Analysis results

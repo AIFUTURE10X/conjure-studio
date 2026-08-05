@@ -127,20 +127,25 @@ export function StudioShell() {
         <ConciergeChecklist />
       </div>
 
-      {state.showFavorites && (
+      {state.imageLibraryTab === 'favorites' && (
         <FavoritesModal
           favorites={favorites}
-          onClose={() => state.setShowFavorites(false)}
+          activeTab="favorites"
+          onSelectTab={state.setImageLibraryTab}
+          onClose={() => state.setImageLibraryTab(null)}
           onRemove={toggleFavorite}
           onClearAll={clearAll}
           onRestoreParameters={handleRestoreParameters}
         />
       )}
 
-      {state.showParameterHistory && (
+      {state.imageLibraryTab === 'history' && (
         <ParameterHistoryPanel
-          isOpen={state.showParameterHistory}
-          onClose={() => state.setShowParameterHistory(false)}
+          isOpen={state.imageLibraryTab === 'history'}
+          favoritesCount={favorites.length}
+          activeTab="history"
+          onSelectTab={state.setImageLibraryTab}
+          onClose={() => state.setImageLibraryTab(null)}
           onRestoreParameters={handleRestoreParameters}
         />
       )}

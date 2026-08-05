@@ -9,16 +9,28 @@ import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { usePreviewLightbox } from '../../hooks/usePreviewLightbox'
 import type { FavoriteImage } from '@/lib/db/dbService'
+import { ImageLibraryTabs } from '../ImageLibraryTabs'
+import type { ImageLibraryTab } from '../../hooks/useImageStudioState'
 
 interface FavoritesModalProps {
   favorites: FavoriteImage[]
+  activeTab: ImageLibraryTab
+  onSelectTab: (tab: ImageLibraryTab) => void
   onClose: () => void
   onRemove: (url: string) => void
   onClearAll: () => void
   onRestoreParameters?: (params: any, imageUrl?: string) => void
 }
 
-export function FavoritesModal({ favorites, onClose, onRemove, onClearAll, onRestoreParameters }: FavoritesModalProps) {
+export function FavoritesModal({
+  favorites,
+  activeTab,
+  onSelectTab,
+  onClose,
+  onRemove,
+  onClearAll,
+  onRestoreParameters,
+}: FavoritesModalProps) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const previewImages = useMemo(() => favorites.map((fav) => ({ url: fav.url })), [favorites])
@@ -76,15 +88,20 @@ export function FavoritesModal({ favorites, onClose, onRemove, onClearAll, onRes
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
-      <Card className="bg-zinc-900 border-[#c99850]/30 max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <Card className="bg-zinc-900 border-[#c99850]/30 max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <div>
-                <h2 className="text-xl font-bold text-white">Favorites</h2>
+                <h2 className="text-xl font-bold text-white">Image Library</h2>
                 <p className="text-xs text-zinc-400">{selectedItems.size > 0 ? `${selectedItems.size} selected` : `${favorites.length} saved images`}</p>
               </div>
               <NeonStatusBadge endpoint="/api/favorites/test-connection" />
+              <ImageLibraryTabs
+                activeTab={activeTab}
+                onSelectTab={onSelectTab}
+                favoritesCount={favorites.length}
+              />
             </div>
             {favorites.length > 0 && (
               <div className="flex items-center gap-2">

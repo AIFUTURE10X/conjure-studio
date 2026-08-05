@@ -10,11 +10,16 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { X, Clock, Trash2, RefreshCw } from 'lucide-react'
 import { NeonStatusBadge } from '../NeonStatusBadge'
+import { ImageLibraryTabs } from '../ImageLibraryTabs'
+import type { ImageLibraryTab } from '../../hooks/useImageStudioState'
 
 interface HistoryHeaderProps {
   historyCount: number
   /** Total images across all generations — one generation can hold a batch. */
   imageCount: number
+  favoritesCount: number
+  activeTab: ImageLibraryTab
+  onSelectTab: (tab: ImageLibraryTab) => void
   selectedCount: number
   allSelected: boolean
   loading: boolean
@@ -29,6 +34,9 @@ interface HistoryHeaderProps {
 export function HistoryHeader({
   historyCount,
   imageCount,
+  favoritesCount,
+  activeTab,
+  onSelectTab,
   selectedCount,
   allSelected,
   loading,
@@ -47,7 +55,7 @@ export function HistoryHeader({
         </div>
         <div className="flex items-center gap-3">
           <div>
-            <h2 className="text-xl font-bold text-white">Parameter History</h2>
+            <h2 className="text-xl font-bold text-white">Image Library</h2>
             {/* Report images, not just cards: a batch is one card holding
                 several images, and counting cards made saved images look lost. */}
             <p className="text-sm text-zinc-400">
@@ -57,6 +65,12 @@ export function HistoryHeader({
             </p>
           </div>
           <NeonStatusBadge endpoint="/api/history/test-connection" />
+          <ImageLibraryTabs
+            activeTab={activeTab}
+            onSelectTab={onSelectTab}
+            historyCount={historyCount}
+            favoritesCount={favoritesCount}
+          />
         </div>
         {historyCount > 0 && (
           <div className="flex items-center gap-2 ml-4">

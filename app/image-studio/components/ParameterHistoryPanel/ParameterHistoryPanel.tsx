@@ -16,14 +16,25 @@ import { HistoryItemCard } from './HistoryItemCard'
 import { flattenPreviewImages, previewIndexFor } from './history-preview'
 import { ImageLightbox } from '../ImageLightbox'
 import { usePreviewLightbox } from '../../hooks/usePreviewLightbox'
+import type { ImageLibraryTab } from '../../hooks/useImageStudioState'
 
 interface ParameterHistoryPanelProps {
   isOpen: boolean
+  favoritesCount: number
+  activeTab: ImageLibraryTab
+  onSelectTab: (tab: ImageLibraryTab) => void
   onClose: () => void
   onRestoreParameters: (params: any) => void
 }
 
-export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: ParameterHistoryPanelProps) {
+export function ParameterHistoryPanel({
+  isOpen,
+  favoritesCount,
+  activeTab,
+  onSelectTab,
+  onClose,
+  onRestoreParameters,
+}: ParameterHistoryPanelProps) {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
@@ -187,6 +198,9 @@ export function ParameterHistoryPanel({ isOpen, onClose, onRestoreParameters }: 
         <HistoryHeader
           historyCount={history.length}
           imageCount={imageCount}
+          favoritesCount={favoritesCount}
+          activeTab={activeTab}
+          onSelectTab={onSelectTab}
           selectedCount={selectedItems.size}
           allSelected={selectedItems.size === history.length && history.length > 0}
           loading={loading}
