@@ -76,6 +76,11 @@
     color: hsl(var(--foreground));
   }
 
+  .landing-display {
+    font-family: Georgia, 'Times New Roman', serif;
+    text-wrap: balance;
+  }
+
   /* Hide scrollbars while keeping functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;  /* IE and Edge */

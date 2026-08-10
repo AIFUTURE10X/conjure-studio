@@ -21,6 +21,7 @@
     "check:creation-metadata": "node scripts/check-creation-metadata.cjs",
     "check:image-annotation": "node scripts/check-image-annotation-tool.cjs",
     "check:image-references": "node scripts/check-image-references-ui.cjs",
+    "check:landing": "node scripts/check-landing-page.cjs",
     "check:logo": "node scripts/check-logo-generator-contract.cjs",
     "check:logo-3d": "node scripts/check-logo-3d-extrude.cjs",
     "check:logo-3d-export": "node scripts/check-logo-3d-export.cjs",
