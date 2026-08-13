@@ -53,6 +53,9 @@ jobs:
       - name: Contract — video history query
         run: npm run check:video-history-query
 
+      - name: Contract — Seedance 2.5
+        run: npm run check:seedance-2-5
+
       - name: Contract — logo 3D extrude params
         run: npm run check:logo-3d
 

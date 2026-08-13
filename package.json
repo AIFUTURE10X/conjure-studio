@@ -28,6 +28,7 @@
     "check:openai-migration": "node scripts/check-openai-reliability-migration.cjs",
     "check:persistence-identity": "node scripts/check-persistence-identity.cjs",
     "check:prompt-merge": "node scripts/check-prompt-merge.cjs",
+    "check:seedance-2-5": "node scripts/check-seedance-2-5.cjs",
     "check:translation-tool": "node scripts/check-translation-tool.cjs",
     "check:video-history-query": "node scripts/check-video-history-query.cjs",
     "dev": "next dev",

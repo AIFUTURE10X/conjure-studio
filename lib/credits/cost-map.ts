@@ -53,6 +53,7 @@ export function transformCost(operation: TransformOperation): number {
 const VIDEO_CREDITS_PER_SECOND: Record<string, { base: number; audio: number }> = {
   'seedance-fast': { base: 3, audio: 3 },
   'seedance-2': { base: 6, audio: 8 },
+  'seedance-2.5': { base: 20, audio: 20 },
   'kling-3': { base: 8, audio: 10 },
   'veo-3.1': { base: 12, audio: 20 },
 }
@@ -83,7 +84,8 @@ export function videoGenerationCost(
 ): number {
   const rates = VIDEO_CREDITS_PER_SECOND[model] ?? { base: 20, audio: 20 }
   const perSecond = withAudio ? rates.audio : rates.base
-  const seconds = Math.min(Math.max(Math.round(durationSeconds) || 5, 2), 15)
+  const maxSeconds = model === 'seedance-2.5' ? 30 : 15
+  const seconds = Math.min(Math.max(Math.round(durationSeconds) || 5, 2), maxSeconds)
   const resolutionMultiplier = resolution.toLowerCase() === '4k' ? 2 : 1
   return Math.ceil(perSecond * seconds * resolutionMultiplier)
 }

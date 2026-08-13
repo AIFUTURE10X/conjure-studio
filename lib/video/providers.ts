@@ -8,7 +8,7 @@
  * Endpoint IDs and schemas verified against fal.ai docs 2026-07-20.
  */
 
-export type VideoModelId = 'seedance-fast' | 'seedance-2' | 'kling-3' | 'veo-3.1'
+export type VideoModelId = 'seedance-fast' | 'seedance-2' | 'seedance-2.5' | 'kling-3' | 'veo-3.1'
 
 export type VideoResolution = '480p' | '720p' | '1080p' | '4k'
 
@@ -122,6 +122,35 @@ export const VIDEO_MODELS: Record<VideoModelId, VideoModelConfig> = {
     }),
   },
 
+  'seedance-2.5': {
+    id: 'seedance-2.5',
+    label: 'Seedance 2.5',
+    tier: 'final',
+    description: 'ByteDance Seedance 2.5 — coherent single-shot video up to 30 seconds with native audio and end-frame support.',
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      endFrame: true,
+      audio: true,
+      resolutions: ['480p', '720p'],
+      durations: [4, 5, 6, 8, 10, 12, 15, 20, 25, 30],
+    },
+    extendMode: 'frame-chain',
+    endpoint: (p) =>
+      p.startImageUrl
+        ? 'bytedance/seedance-2.5/image-to-video'
+        : 'bytedance/seedance-2.5/text-to-video',
+    buildInput: (p) => ({
+      prompt: p.prompt,
+      resolution: p.resolution === '480p' ? '480p' : '720p',
+      duration: String(clamp(p.durationSeconds, 4, 30)),
+      aspect_ratio: p.aspectRatio,
+      generate_audio: p.generateAudio,
+      ...(p.startImageUrl ? { image_url: p.startImageUrl } : {}),
+      ...(p.startImageUrl && p.endImageUrl ? { end_image_url: p.endImageUrl } : {}),
+    }),
+  },
+
   'kling-3': {
     id: 'kling-3',
     label: 'Kling 3.0 Pro',
@@ -206,4 +235,11 @@ export const VIDEO_MODEL_IDS = Object.keys(VIDEO_MODELS) as VideoModelId[]
 
 export function getVideoModel(id: string): VideoModelConfig | undefined {
   return VIDEO_MODELS[id as VideoModelId]
+}
+
+export function normalizeVideoDuration(id: string, durationSeconds: number): number {
+  const model = getVideoModel(id)
+  if (!model) return durationSeconds
+  const { durations } = model.capabilities
+  return clamp(durationSeconds, Math.min(...durations), Math.max(...durations))
 }

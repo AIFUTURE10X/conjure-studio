@@ -7,7 +7,7 @@ import { apiError, parseFormData, parseFormFields } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { isSaasEnforcementOn } from '@/lib/api/guard'
 import { videoGenerationCost } from '@/lib/credits/cost-map'
-import { getVideoModel, VIDEO_MODEL_IDS, type VideoResolution } from '@/lib/video/providers'
+import { getVideoModel, normalizeVideoDuration, VIDEO_MODEL_IDS, type VideoResolution } from '@/lib/video/providers'
 import { submitVideoJob, uploadFrameToFal } from '@/lib/video/fal-video-client'
 import { promptSchema, userIdSchema } from '@/lib/validation/common'
 
@@ -27,7 +27,7 @@ const formSchema = z.object({
   userId: userIdSchema,
   prompt: promptSchema,
   model: z.enum(VIDEO_MODEL_IDS as [string, ...string[]]),
-  duration: z.coerce.number().int().min(2).max(15).default(5),
+  duration: z.coerce.number().int().min(2).max(30).default(5),
   resolution: z.enum(['480p', '720p', '1080p', '4k']).default('1080p'),
   aspectRatio: z.string().trim().max(20).default('auto'),
   generateAudio: z.preprocess((value) => value === 'true' || value === true, z.boolean()).default(false),
@@ -49,11 +49,12 @@ async function handlePost(request: NextRequest) {
 
   const parsedFields = parseFormFields(formData, formSchema)
   if (parsedFields.response) return parsedFields.response
-  const { prompt, model: modelId, duration, aspectRatio, generateAudio } = parsedFields.data
+  const { prompt, model: modelId, duration: requestedDuration, aspectRatio, generateAudio } = parsedFields.data
   const userId = await resolveUserId(request, parsedFields.data.userId)
 
   const model = getVideoModel(modelId)
   if (!model) return apiError(400, 'invalid_request', `Unknown video model: ${modelId}`)
+  const duration = normalizeVideoDuration(modelId, requestedDuration)
 
   // Snap resolution to what the model actually supports.
   const resolution: VideoResolution = model.capabilities.resolutions.includes(parsedFields.data.resolution)
