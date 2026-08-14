@@ -33,6 +33,11 @@ export function useStyleAutoDetection(
         detected = stylePresets.find(p => p.value === 'Disney Modern 3D')
       } else if (styleText.includes('spider') || styleText.includes('verse')) {
         detected = stylePresets.find(p => p.value === 'Sony Spider-Verse')
+      } else if (
+        styleText.includes('digital clay') ||
+        (styleText.includes('clay') && (styleText.includes('computer-rendered') || styleText.includes('smooth 3d')))
+      ) {
+        detected = stylePresets.find(p => p.value === '3D Digital Clay')
       } else if (styleText.includes('clay') || styleText.includes('plasticine')) {
         detected = stylePresets.find(p => p.value === 'Clay 3D')
       } else if (styleText.includes('anime')) {

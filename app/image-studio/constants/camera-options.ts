@@ -63,7 +63,7 @@ export interface StylePreset {
   /**
    * Optional long-form text injected into the generation prompt in place of
    * the label. Use for styles whose name alone is too weak or ambiguous a
-   * signal for the image model (e.g. "Clay 3D"). Omit it and the label is
+   * signal for the image model (e.g. the clay presets). Omit it and the label is
    * sent verbatim, unchanged from historical behavior.
    */
   promptHint?: string
@@ -88,13 +88,21 @@ export const stylePresets: StylePreset[] = [
   { value: 'Laika', label: 'Laika', thumbnail: '/laika-stop-motion.jpg', description: 'Handcrafted textures, moody' },
   {
     value: 'Clay 3D',
-    label: 'Clay 3D',
+    label: 'Claymation',
     thumbnail: '/clay-3d-style.svg',
-    description: 'Stop-motion clay, thumbprint texture',
+    description: 'Handmade stop-motion clay with fingerprints and charming imperfections',
     // "Clay 3D"/"clay render" alone reads as untextured grey CGI to image
     // models — spell out the stop-motion photography look instead.
     promptHint:
       'stop-motion claymation film still: handmade plasticine puppet characters with visible fingerprints and sculpting tool marks, miniature handcrafted set with real fabric and paper props, macro photograph, shallow depth of field, soft diffused studio lighting',
+  },
+  {
+    value: '3D Digital Clay',
+    label: '3D Digital Clay',
+    thumbnail: '/3d-digital-clay-style.svg',
+    description: 'Smooth computer-rendered clay with clean, consistent forms',
+    promptHint:
+      'polished 3D digital clay animation: computer-rendered clay characters with smooth clean surfaces, refined rounded forms, precise symmetrical features, consistent geometry, soft subsurface shading, seamless materials, cinematic global illumination, high-end animated film render',
   },
   { value: 'Cartoon Saloon', label: 'Cartoon Saloon', thumbnail: '/cartoon-saloon-style.jpg', description: 'Flat decorative, Celtic motifs' },
   { value: 'Studio Trigger', label: 'Studio Trigger', thumbnail: '/studio-trigger-anime.jpg', description: 'Neon palettes, explosive motion' },

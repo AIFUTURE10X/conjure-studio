@@ -1,7 +1,7 @@
 // AI Helper option constants
 
 export const STYLE_OPTIONS = [
-  "3D Render", "Anime", "Cartoon Saloon", "Cartoon Style", "Clay 3D",
+  "3D Digital Clay", "3D Render", "Anime", "Cartoon Saloon", "Cartoon Style", "Claymation",
   "Comic Book", "Disney Modern 3D", "Kyoto Animation", "Laika", "Makoto Shinkai",
   "Oil Painting", "Pencil Sketch", "PhotoReal", "Pixar", "Realistic",
   "Sketch", "Sony Spider-Verse", "Studio Ghibli", "Studio Trigger",

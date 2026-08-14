@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="3D Digital Clay style example: a smooth computer-rendered clay character">
+  <defs>
+    <linearGradient id="digital-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe7df"/>
+      <stop offset="1" stop-color="#c9b6a5"/>
+    </linearGradient>
+    <radialGradient id="digital-body" cx="0.32" cy="0.22" r="0.9">
+      <stop offset="0" stop-color="#ffad80"/>
+      <stop offset="0.48" stop-color="#dd7549"/>
+      <stop offset="1" stop-color="#9e3f20"/>
+    </radialGradient>
+    <radialGradient id="digital-eye" cx="0.32" cy="0.24" r="0.82">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e9ddd0"/>
+    </radialGradient>
+    <filter id="digital-shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="digital-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+  </defs>
+
+  <rect width="400" height="400" fill="url(#digital-bg)"/>
+  <circle cx="142" cy="100" r="70" fill="#fff8ee" opacity="0.24" filter="url(#digital-glow)"/>
+  <ellipse cx="200" cy="374" rx="112" ry="18" fill="#624534" opacity="0.28" filter="url(#digital-shadow)"/>
+
+  <g fill="url(#digital-body)">
+    <ellipse cx="158" cy="352" rx="34" ry="22"/>
+    <ellipse cx="242" cy="352" rx="34" ry="22"/>
+    <path d="M132 268c-16 4-30 18-36 38-4 14 14 22 22 9 8-13 18-22 28-25z"/>
+    <path d="M268 268c16 4 30 18 36 38 4 14-14 22-22 9-8-13-18-22-28-25z"/>
+    <path d="M200 222c38 0 62 20 66 54l6 46c2 20-30 30-72 30s-74-10-72-30l6-46c4-34 28-54 66-54z"/>
+    <path d="M200 74c-4-18 6-32 18-36-2 14 4 22 10 28z"/>
+    <circle cx="200" cy="160" r="92"/>
+  </g>
+
+  <ellipse cx="160" cy="116" rx="30" ry="44" fill="#ffd8c0" opacity="0.36" transform="rotate(-28 160 116)"/>
+  <g>
+    <ellipse cx="170" cy="158" rx="23" ry="27" fill="url(#digital-eye)"/>
+    <ellipse cx="230" cy="158" rx="23" ry="27" fill="url(#digital-eye)"/>
+    <circle cx="175" cy="163" r="10" fill="#45291c"/>
+    <circle cx="235" cy="163" r="10" fill="#45291c"/>
+    <circle cx="171" cy="158" r="3.4" fill="#ffffff"/>
+    <circle cx="231" cy="158" r="3.4" fill="#ffffff"/>
+  </g>
+  <path d="M172 202c12 14 44 14 56 0" stroke="#873718" stroke-width="8" stroke-linecap="round" fill="none"/>
+</svg>
