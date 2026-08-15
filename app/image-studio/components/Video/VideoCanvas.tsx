@@ -21,6 +21,8 @@ import { SaveTemplateDialog, VideoTemplatesDialog } from './Templates'
 import { AssembleFilmDialog } from './AssembleFilmDialog'
 import { StoryModeCard } from './StoryMode/StoryModeCard'
 import { BrollCard } from './Broll/BrollCard'
+import { PhotoDirectorCard } from './PhotoDirector'
+import { clearDirectorProject } from './PhotoDirector/useDirectorProject'
 import { PromptLibraryModal } from '../PromptLibrary/PromptLibraryModal'
 import { CameraMotionChips } from './CameraMotionChips'
 import { VideoResultCard } from './VideoResultCard'
@@ -67,6 +69,7 @@ export function VideoCanvas() {
     state.setVideoSettings(DEFAULT_VIDEO_SETTINGS)
     state.setVideoStartFrame(null)
     state.setVideoEndFrame(null)
+    clearDirectorProject()
     clearJobs()
   }, [
     state.setVideoPrompt, state.setVideoSettings,
@@ -165,6 +168,12 @@ export function VideoCanvas() {
         aspectRatio={settings.aspectRatio}
         selectedModel={state.selectedModel}
         submitVideo={submitVideo}
+      />
+
+      <PhotoDirectorCard
+        submitVideo={submitVideo}
+        jobs={jobs}
+        onOpenAssemble={() => setShowAssemble(true)}
       />
 
       <BrollCard

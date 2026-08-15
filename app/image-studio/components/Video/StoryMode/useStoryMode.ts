@@ -28,7 +28,7 @@ interface UseStoryModeOptions {
   settings: VideoSettingsValue
   aspectRatio: string
   selectedModel: GenerationModel
-  submitVideo: (options: SubmitVideoOptions) => Promise<boolean>
+  submitVideo: (options: SubmitVideoOptions) => Promise<number | null>
 }
 
 export function useStoryMode({ settings, aspectRatio, selectedModel, submitVideo }: UseStoryModeOptions) {

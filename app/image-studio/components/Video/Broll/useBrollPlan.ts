@@ -42,7 +42,7 @@ interface UseBrollPlanOptions {
   settings: VideoSettingsValue
   aspectRatio: string
   selectedModel: GenerationModel
-  submitVideo: (options: SubmitVideoOptions) => Promise<boolean>
+  submitVideo: (options: SubmitVideoOptions) => Promise<number | null>
 }
 
 export function useBrollPlan({ settings, aspectRatio, selectedModel, submitVideo }: UseBrollPlanOptions) {

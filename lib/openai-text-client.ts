@@ -175,6 +175,27 @@ export async function generateOpenAIVisionText({
   )
 }
 
+export async function generateOpenAIMultiVisionText({
+  prompt,
+  images,
+  options = {},
+}: {
+  prompt: string
+  images: { base64: string; mimeType: string }[]
+  options?: OpenAITextOptions
+}): Promise<string> {
+  return callOpenAIResponses(
+    [
+      { type: "input_text", text: prompt },
+      ...images.map((image): OpenAIInputContent => ({
+        type: "input_image",
+        image_url: `data:${image.mimeType};base64,${image.base64}`,
+      })),
+    ],
+    options,
+  )
+}
+
 export function isOpenAIRateLimitError(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
   const status = error instanceof OpenAIServiceError ? error.status : undefined

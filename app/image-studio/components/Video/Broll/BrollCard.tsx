@@ -27,7 +27,7 @@ interface BrollCardProps {
   aspectRatio: string
   /** Image model for hero-beat keyframes (mirrors Story Mode). */
   selectedModel: GenerationModel
-  submitVideo: (options: SubmitVideoOptions) => Promise<boolean>
+  submitVideo: (options: SubmitVideoOptions) => Promise<number | null>
   /** All video jobs — the manifest export joins beats to their finished clips. */
   jobs: VideoJob[]
 }

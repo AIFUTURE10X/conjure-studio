@@ -53,6 +53,9 @@ jobs:
       - name: Contract — video history query
         run: npm run check:video-history-query
 
+      - name: Contract — photo director assembly
+        run: npm run check:director-assembly
+
       - name: Contract — Seedance 2.5
         run: npm run check:seedance-2-5
 

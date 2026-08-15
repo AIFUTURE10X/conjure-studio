@@ -112,7 +112,9 @@ export function useVideoGeneration() {
     return () => { cancelled = true; clearInterval(interval) }
   }, [pendingKey])
 
-  const submitVideo = useCallback(async (options: SubmitVideoOptions): Promise<boolean> => {
+  // Returns the created jobId (truthy — ids are positive) or null on failure,
+  // so multi-shot flows like the Photo Director can link shots to exact jobs.
+  const submitVideo = useCallback(async (options: SubmitVideoOptions): Promise<number | null> => {
     setIsSubmitting(true)
     try {
       const formData = new FormData()
@@ -158,11 +160,11 @@ export function useVideoGeneration() {
       ])
       toast.success('Video generation started — this can take a few minutes')
       logPromptUse(options.prompt, 'video')
-      return true
+      return data.jobId as number
     } catch (error) {
       console.error('[video] Submit failed:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to start video')
-      return false
+      return null
     } finally {
       setIsSubmitting(false)
     }
@@ -194,14 +196,14 @@ export function useVideoGeneration() {
     }
 
     if (model.extendMode === 'native') {
-      return submitVideo({ ...shared, duration: 7, extendVideoUrl: job.videoUrl })
+      return (await submitVideo({ ...shared, duration: 7, extendVideoUrl: job.videoUrl })) !== null
     }
 
     if (!lastFrameDataUrl) {
       toast.error('Could not capture the last frame of this clip')
       return false
     }
-    return submitVideo({ ...shared, duration: job.durationSeconds || 5, startFrameUrl: lastFrameDataUrl })
+    return (await submitVideo({ ...shared, duration: job.durationSeconds || 5, startFrameUrl: lastFrameDataUrl })) !== null
   }, [submitVideo])
 
   /** Prepend a pending post-production job (lipsync/enhance) returned by its API. */
