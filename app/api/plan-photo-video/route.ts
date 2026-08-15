@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { apiError, parseJson } from '@/lib/api/http'
-import { extractJson } from '@/lib/api/extract-json'
+import { LlmJsonError, parseLlmJson } from '@/lib/api/llm-json'
 import {
   continuityAssessmentSchema,
   directorBriefSchema,
@@ -34,6 +34,9 @@ export const maxDuration = 120
  * Planning is free (no credit guard), matching generate-script/plan-broll.
  */
 
+/** Generous: reasoning tokens share this budget, and a truncated reply is unparseable. */
+const MAX_OUTPUT_TOKENS = 8000
+
 const analysisSummarySchema = z.string().trim().min(20).max(6000)
 
 const conceptsBodySchema = z.object({
@@ -58,8 +61,10 @@ const storyboardBodySchema = z.object({
 
 const bodySchema = z.discriminatedUnion('stage', [conceptsBodySchema, storyboardBodySchema])
 
-const conceptsResponseSchema = z.object({ concepts: z.array(videoConceptSchema).min(3).max(5) })
-const storyboardResponseSchema = z.object({ shots: z.array(llmShotSchema).min(1).max(5) })
+// Deliberately loose bounds: the route slices to the display maximum. Getting
+// four usable concepts back beats rejecting the set for having six.
+const conceptsResponseSchema = z.object({ concepts: z.array(videoConceptSchema).min(1).max(10) })
+const storyboardResponseSchema = z.object({ shots: z.array(llmShotSchema).min(1).max(10) })
 
 /** Unique, stable concept ids even when the LLM repeats or omits them. */
 function snapConcepts(concepts: VideoConcept[]): VideoConcept[] {
@@ -95,21 +100,29 @@ export async function POST(request: NextRequest) {
 
   try {
     if (body.stage === 'concepts') {
-      const raw = await generateOpenAIText(
-        CONCEPTS_PROMPT(body.analysisSummary, body.continuity, body.brief),
-        { maxOutputTokens: 4000 },
-      )
-      const { concepts } = conceptsResponseSchema.parse(extractJson(raw))
-      return NextResponse.json({ concepts: gateConcepts(snapConcepts(concepts), body.continuity) })
+      const { concepts } = await parseLlmJson({
+        label: 'photo-director:concepts',
+        schema: conceptsResponseSchema,
+        generate: (repairHint) => generateOpenAIText(
+          CONCEPTS_PROMPT(body.analysisSummary, body.continuity, body.brief) + repairHint,
+          { maxOutputTokens: MAX_OUTPUT_TOKENS },
+        ),
+      })
+      return NextResponse.json({
+        concepts: gateConcepts(snapConcepts(concepts).slice(0, 5), body.continuity),
+      })
     }
 
-    const raw = await generateOpenAIText(
-      STORYBOARD_PROMPT(body.analysisSummary, body.brief, body.concept, body.photoCatalog, body.constraintSubjects),
-      { maxOutputTokens: 4000 },
-    )
-    const { shots } = storyboardResponseSchema.parse(extractJson(raw))
+    const { shots } = await parseLlmJson({
+      label: 'photo-director:storyboard',
+      schema: storyboardResponseSchema,
+      generate: (repairHint) => generateOpenAIText(
+        STORYBOARD_PROMPT(body.analysisSummary, body.brief, body.concept, body.photoCatalog, body.constraintSubjects) + repairHint,
+        { maxOutputTokens: MAX_OUTPUT_TOKENS },
+      ),
+    })
     return NextResponse.json({
-      shots: snapShots(shots, body.photoCatalog.length, body.concept.structure === 'continuous-transition'),
+      shots: snapShots(shots.slice(0, 5), body.photoCatalog.length, body.concept.structure === 'continuous-transition'),
     })
   } catch (error) {
     console.error("[photo-director] Planning failed:", error)
@@ -118,6 +131,9 @@ export async function POST(request: NextRequest) {
     }
     if (isOpenAIAuthError(error)) {
       return apiError(500, "provider_auth", "OpenAI API key is missing or invalid")
+    }
+    if (error instanceof LlmJsonError) {
+      return apiError(502, "plan_unusable", "The AI's plan came back malformed twice — press the button again")
     }
     return apiError(500, "plan_failed", "Could not build the plan — try adjusting your answers and retrying")
   }

@@ -2,6 +2,16 @@ import { z } from 'zod'
 import type { VideoModelId, VideoResolution } from './providers'
 import { CAMERA_MOVES, type CameraMove } from './camera-moves'
 
+/**
+ * Prose written by the model. Length caps are display budgets, not contracts —
+ * an over-long sentence gets trimmed rather than rejecting the whole plan (a
+ * 500-character rationale used to fail an otherwise perfect set of concepts).
+ * Hard validation is reserved for fields the code depends on: enums, photo
+ * indices, and the motion text that must be specific enough to render.
+ */
+const llmText = (max: number, min = 1) =>
+  z.string().min(min).transform((value) => value.trim().slice(0, max))
+
 /** Normalize LLM phrasing ("Push In", "push_in") onto the strict vocabulary. */
 export const cameraMoveSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s_]+/g, '-') : value),
@@ -56,11 +66,11 @@ export type PhotoReference = z.infer<typeof photoReferenceSchema>
 export const observationSchema = z.object({
   id: z.string(),
   /** Short claim, e.g. "king bed with white linens". */
-  label: z.string().min(1).max(160),
-  detail: z.string().max(500).catch(''),
+  label: llmText(160),
+  detail: llmText(500, 0).catch(''),
   /** 0-based indices of the photos this claim is visible in. */
-  photoIndices: z.array(z.number().int().min(0)).min(1),
-  confidence: z.number().min(0).max(1).catch(0.5),
+  photoIndices: z.array(z.coerce.number().int().min(0)).min(1).catch([0]),
+  confidence: z.coerce.number().min(0).max(1).catch(0.5),
 })
 
 export type ObservedFeature = z.infer<typeof observationSchema>
@@ -68,10 +78,10 @@ export type ObservedFeature = z.infer<typeof observationSchema>
 export const preservationConstraintSchema = z.object({
   id: z.string(),
   /** What must stay true, e.g. "floor-to-ceiling window, right wall". */
-  subject: z.string().min(1).max(160),
-  requirement: z.string().min(1).max(400),
+  subject: llmText(160),
+  requirement: llmText(400),
   /** Ready-to-append negative, e.g. "do not add extra windows". */
-  negativePhrase: z.string().min(1).max(300),
+  negativePhrase: llmText(300),
   severity: z.enum(['must', 'should']).catch('must'),
   source: z.enum(['ai', 'user']).default('ai'),
 })
@@ -79,13 +89,13 @@ export const preservationConstraintSchema = z.object({
 export type PreservationConstraint = z.infer<typeof preservationConstraintSchema>
 
 export const continuityAssessmentSchema = z.object({
-  sameLocationConfidence: z.number().min(0).max(1),
+  sameLocationConfidence: z.coerce.number().min(0).max(1).catch(0.5),
   viewpointRelation: z.enum(['same-view', 'adjacent-angles', 'opposite-angles', 'different-rooms', 'unclear']).catch('unclear'),
   /** ids of observed features shared between photos. */
   sharedObjectIds: z.array(z.string()).catch([]),
   riskLevel: riskTierSchema,
-  riskReasons: z.array(z.string().max(400)).catch([]),
-  recommendSeparateShots: z.boolean(),
+  riskReasons: z.array(llmText(400)).catch([]),
+  recommendSeparateShots: z.boolean().catch(true),
 })
 
 export type ContinuityAssessment = z.infer<typeof continuityAssessmentSchema>
@@ -96,11 +106,11 @@ export const multiPhotoAnalysisSchema = z.object({
   /** Probable but not directly visible — rendered as "likely, confirm?". */
   inferred: z.array(observationSchema).catch([]),
   /** Creative ideas, clearly hypothetical. */
-  suggested: z.array(z.object({ id: z.string(), idea: z.string().max(400) })).catch([]),
+  suggested: z.array(z.object({ id: z.string(), idea: llmText(400) })).catch([]),
   continuity: continuityAssessmentSchema,
-  bestOpeningPhotoIndex: z.number().int().min(0),
-  bestClosingPhotoIndex: z.number().int().min(0),
-  framingRationale: z.string().max(600).catch(''),
+  bestOpeningPhotoIndex: z.coerce.number().int().min(0).catch(0),
+  bestClosingPhotoIndex: z.coerce.number().int().min(0).catch(1),
+  framingRationale: llmText(600, 0).catch(''),
   preservation: z.array(preservationConstraintSchema).min(1),
 })
 
@@ -145,16 +155,16 @@ export type ConceptArchetype = z.infer<typeof conceptArchetypeSchema>
 
 export const videoConceptSchema = z.object({
   id: z.string(),
-  archetype: conceptArchetypeSchema,
-  title: z.string().min(1).max(100),
-  summary: z.string().min(1).max(500),
-  structure: conceptStructureSchema,
-  durationSeconds: z.number().int().min(6).max(30),
-  shotCount: z.number().int().min(1).max(5),
-  platformFit: z.array(z.string().max(60)).catch([]),
+  archetype: conceptArchetypeSchema.catch('two-shot-luxury'),
+  title: llmText(100),
+  summary: llmText(500),
+  structure: conceptStructureSchema.catch('two-shot'),
+  durationSeconds: z.coerce.number().int().min(4).max(30).catch(12),
+  shotCount: z.coerce.number().int().min(1).max(5).catch(2),
+  platformFit: z.array(llmText(60)).catch([]),
   cameraMoves: z.array(cameraMoveSchema).catch([]),
   fidelityRisk: riskTierSchema,
-  rationale: z.string().min(1).max(500),
+  rationale: llmText(500),
   /** Set ONLY by the deterministic gateConcepts() — never by the LLM. */
   disabled: z.boolean().default(false),
   disabledReason: z.string().optional(),
@@ -168,17 +178,18 @@ export type VideoConcept = z.infer<typeof videoConceptSchema>
 
 /** Shot as the LLM returns it — photo INDICES; the client remaps to ids. */
 export const llmShotSchema = z.object({
-  title: z.string().min(1).max(100),
-  sourcePhotoIndex: z.number().int().min(0),
-  endPhotoIndex: z.number().int().min(0).nullish(),
-  cameraMove: cameraMoveSchema,
+  title: llmText(100),
+  sourcePhotoIndex: z.coerce.number().int().min(0).catch(0),
+  endPhotoIndex: z.coerce.number().int().min(0).nullish().catch(null),
+  cameraMove: cameraMoveSchema.catch('static-ambient'),
   /**
    * Subject/lighting/mood motion ONLY — no camera language, no preservation
-   * rules. The system appends those deterministically.
+   * rules. The system appends those deterministically. The 10-character floor
+   * is load-bearing: assembleMotionPrompt refuses to render a generic shot.
    */
-  motionCore: z.string().min(10).max(700),
-  durationSeconds: z.number().int().min(4).max(8).catch(6),
-  mood: z.string().max(160).catch(''),
+  motionCore: llmText(700, 10),
+  durationSeconds: z.coerce.number().int().min(4).max(8).catch(6),
+  mood: llmText(160, 0).catch(''),
 })
 
 export type LlmShot = z.infer<typeof llmShotSchema>

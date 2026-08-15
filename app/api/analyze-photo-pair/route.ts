@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { apiError, parseFormData } from '@/lib/api/http'
-import { extractJson } from '@/lib/api/extract-json'
+import { LlmJsonError, parseLlmJson } from '@/lib/api/llm-json'
 import { multiPhotoAnalysisSchema, type MultiPhotoAnalysis } from '@/lib/video/photo-director-schema'
 import { ANALYZE_PHOTOS_PROMPT } from '@/lib/video/director-prompts'
 import {
@@ -74,14 +74,18 @@ export async function POST(request: NextRequest) {
       mimeType: file.type,
     })))
 
-    const raw = await generateOpenAIMultiVisionText({
-      prompt: ANALYZE_PHOTOS_PROMPT(files.length),
-      images,
-      options: { maxOutputTokens: 5000 },
+    const parsedAnalysis = await parseLlmJson({
+      label: 'photo-director:analysis',
+      schema: multiPhotoAnalysisSchema,
+      generate: (repairHint) => generateOpenAIMultiVisionText({
+        prompt: ANALYZE_PHOTOS_PROMPT(files.length) + repairHint,
+        images,
+        // Reasoning tokens share this budget; a truncated reply is unparseable.
+        options: { maxOutputTokens: 8000 },
+      }),
     })
 
-    const analysis = snapAnalysis(multiPhotoAnalysisSchema.parse(extractJson(raw)), files.length)
-    return NextResponse.json({ analysis })
+    return NextResponse.json({ analysis: snapAnalysis(parsedAnalysis, files.length) })
   } catch (error) {
     console.error("[photo-director] Analysis failed:", error)
     if (isOpenAIRateLimitError(error)) {
@@ -89,6 +93,9 @@ export async function POST(request: NextRequest) {
     }
     if (isOpenAIAuthError(error)) {
       return apiError(500, "provider_auth", "OpenAI API key is missing or invalid")
+    }
+    if (error instanceof LlmJsonError) {
+      return apiError(502, "analysis_unusable", "The AI's reading of your photos came back malformed twice — press Analyze again")
     }
     return apiError(500, "analysis_failed", "Could not analyze the photos together — try clearer, well-lit photos")
   }

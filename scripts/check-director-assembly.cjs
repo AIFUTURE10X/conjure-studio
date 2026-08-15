@@ -23,13 +23,18 @@ const MODULES = {
   './camera-moves': 'lib/video/camera-moves.ts',
   './director-assembly': 'lib/video/director-assembly.ts',
   './director-project': 'lib/video/director-project.ts',
+  './photo-director-schema': 'lib/video/photo-director-schema.ts',
 }
 
 const cache = {}
 function loadModule(specifier) {
   if (cache[specifier]) return cache[specifier]
   const file = MODULES[specifier]
-  if (!file) return {} // type-only imports (photo-director-schema) erase at transpile
+  if (!file) {
+    // Bare package specifiers (zod) resolve for real; unmapped relative paths
+    // are type-only imports, which erase at transpile.
+    return specifier.startsWith('.') ? {} : require(specifier)
+  }
   const { outputText } = ts.transpileModule(read(file), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
     fileName: file,
@@ -264,6 +269,54 @@ check('remap — indices outside the mapping are left alone', () => {
     [1, 0],
   )
   return JSON.stringify(remapped.observed[0].photoIndices) === JSON.stringify([5])
+})
+
+// --- schema leniency (model drift must not throw away a whole plan) -------
+
+const schema = loadModule('./photo-director-schema')
+
+check('leniency — an over-long rationale is trimmed, not rejected', () => {
+  // The shipped regression: a 900-char rationale failed the entire concept set
+  // with "Could not build the plan", losing four perfectly good concepts.
+  const parsed = schema.videoConceptSchema.parse({
+    id: 'c', archetype: 'two-shot-luxury', title: 'T', summary: 'S', structure: 'two-shot',
+    durationSeconds: 12, shotCount: 2, platformFit: [], cameraMoves: [],
+    fidelityRisk: 'low', rationale: 'x'.repeat(900),
+  })
+  return parsed.rationale.length === 500
+})
+
+check('leniency — model phrasing and stringified numbers are coerced', () => {
+  const parsed = schema.videoConceptSchema.parse({
+    id: 'c', archetype: 'two-shot-luxury', title: 'T', summary: 'S', structure: 'two-shot',
+    durationSeconds: '12', shotCount: '2', platformFit: [], cameraMoves: ['Push In'],
+    fidelityRisk: 'very low', rationale: 'r',
+  })
+  return parsed.durationSeconds === 12 && parsed.shotCount === 2 &&
+    parsed.cameraMoves[0] === 'push-in' && parsed.fidelityRisk === 'low'
+})
+
+check('leniency — an over-long motionCore is trimmed and indices coerced', () => {
+  const parsed = schema.llmShotSchema.parse({
+    title: 'Shot', sourcePhotoIndex: '1', endPhotoIndex: null,
+    cameraMove: 'lateral drift', motionCore: 'y'.repeat(1200), durationSeconds: '6', mood: 'calm',
+  })
+  return parsed.motionCore.length === 700 && parsed.sourcePhotoIndex === 1 &&
+    parsed.cameraMove === 'lateral-drift'
+})
+
+check('strictness — a too-short motionCore is still rejected', () => {
+  // The floor is load-bearing: assembleMotionPrompt refuses to render generic
+  // motion, so a vague shot must fail here rather than ship a bad prompt.
+  try {
+    schema.llmShotSchema.parse({
+      title: 'S', sourcePhotoIndex: 0, cameraMove: 'push-in',
+      motionCore: 'cinematic', durationSeconds: 6, mood: '',
+    })
+    return false
+  } catch {
+    return true
+  }
 })
 
 // --- wiring (source-level: call sites live inside React components) --------
