@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -56,9 +56,25 @@ export function BriefStep({ onPlanConcepts, isPlanning }: BriefStepProps) {
   const project = useDirectorProject()
   const [brief, setBrief] = useState<DirectorBrief>(project?.brief ?? DEFAULT_BRIEF)
 
-  const patch = (partial: Partial<DirectorBrief>) => setBrief((current) => ({ ...current, ...partial }))
+  // Answers are saved to the project as they're given, so stepping away to
+  // re-read the analysis (or anywhere else) never loses them. Text fields keep
+  // local state while typing and commit on blur.
+  const commit = (next: DirectorBrief) => {
+    setBrief(next)
+    setDirectorBrief(next)
+  }
+  const patch = (partial: Partial<DirectorBrief>) => commit({ ...brief, ...partial })
   const patchToggle = (key: keyof DirectorBrief['toggles'], value: boolean) =>
-    setBrief((current) => ({ ...current, toggles: { ...current.toggles, [key]: value } }))
+    commit({ ...brief, toggles: { ...brief.toggles, [key]: value } })
+  const patchText = (partial: Partial<DirectorBrief>) => setBrief((current) => ({ ...current, ...partial }))
+
+  // Blur normally commits the text fields, but flush on unmount too so answers
+  // survive any navigation path. Guarded by project id so a late flush can't
+  // land in a project the user just started fresh.
+  const latest = useRef(brief)
+  useEffect(() => { latest.current = brief }, [brief])
+  const projectId = project?.id
+  useEffect(() => () => { if (projectId) setDirectorBrief(latest.current, projectId) }, [projectId])
 
   const wantsText = brief.toggles.titleText || brief.toggles.captions || brief.toggles.cta
 
@@ -97,13 +113,13 @@ export function BriefStep({ onPlanConcepts, isPlanning }: BriefStepProps) {
 
       {wantsText && (
         <div className="grid grid-cols-2 gap-2">
-          <Input value={brief.hotelName} onChange={(e) => patch({ hotelName: e.target.value })} placeholder="Hotel name" aria-label="Hotel name"
+          <Input value={brief.hotelName} onChange={(e) => patchText({ hotelName: e.target.value })} onBlur={() => commit(brief)} placeholder="Hotel name" aria-label="Hotel name"
             className="h-8 bg-zinc-950 border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600" />
-          <Input value={brief.location} onChange={(e) => patch({ location: e.target.value })} placeholder="Location — e.g. Chiang Mai" aria-label="Location"
+          <Input value={brief.location} onChange={(e) => patchText({ location: e.target.value })} onBlur={() => commit(brief)} placeholder="Location — e.g. Chiang Mai" aria-label="Location"
             className="h-8 bg-zinc-950 border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600" />
-          <Input value={brief.message} onChange={(e) => patch({ message: e.target.value })} placeholder="Main message" aria-label="Main message"
+          <Input value={brief.message} onChange={(e) => patchText({ message: e.target.value })} onBlur={() => commit(brief)} placeholder="Main message" aria-label="Main message"
             className="h-8 bg-zinc-950 border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600" />
-          <Input value={brief.ctaText} onChange={(e) => patch({ ctaText: e.target.value })} placeholder="Call to action — e.g. Book direct" aria-label="Call to action"
+          <Input value={brief.ctaText} onChange={(e) => patchText({ ctaText: e.target.value })} onBlur={() => commit(brief)} placeholder="Call to action — e.g. Book direct" aria-label="Call to action"
             className="h-8 bg-zinc-950 border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600" />
         </div>
       )}

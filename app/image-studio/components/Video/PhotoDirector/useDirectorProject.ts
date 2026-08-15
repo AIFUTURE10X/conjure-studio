@@ -1,10 +1,10 @@
 "use client"
 
-import { useSyncExternalStore } from 'react'
+import { remapAnalysisPhotoIndices } from '@/lib/video/director-project'
+import { updateProject, useDirectorProject, writeProject } from './director-store'
 import type {
   ClipReview,
   DirectorBrief,
-  DirectorProject,
   DirectorStep,
   MultiPhotoAnalysis,
   PhotoReference,
@@ -15,77 +15,18 @@ import type {
 } from '@/lib/video/photo-director-schema'
 
 /**
- * Photo Director project store: module-level, localStorage-backed, observed via
- * useSyncExternalStore (the Concierge-plan pattern). Survives mode switches and
- * refresh without providers or prop threading. Generated clips are NOT stored
- * here — only job ids; live status joins from useVideoGeneration's jobs.
+ * Photo Director project actions. Store internals (persistence, subscription,
+ * the useDirectorProject hook) live in director-store.ts; this module is the
+ * vocabulary of things the workflow can do to a project.
  */
 
-const STORAGE_KEY = 'conjure-director-project'
-/** Stay under the ~5MB origin quota shared with presets/concierge keys. */
-const MAX_PERSIST_CHARS = 3_500_000
-
-let current: DirectorProject | null | undefined
-const listeners = new Set<() => void>()
-
-function read(): DirectorProject | null {
-  if (current !== undefined) return current
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? (JSON.parse(raw) as DirectorProject) : null
-    current = parsed && parsed.version === 1 ? parsed : null
-  } catch {
-    current = null
-  }
-  return current
-}
-
-function write(next: DirectorProject | null) {
-  current = next
-  try {
-    if (!next) {
-      localStorage.removeItem(STORAGE_KEY)
-    } else {
-      let serialized = JSON.stringify(next)
-      if (serialized.length > MAX_PERSIST_CHARS) {
-        // Too big for the quota: persist thumbnails only. Full-res stays in
-        // `current` for this session; after a reload the upload step offers
-        // re-attach for photos whose dataUrl is ''.
-        serialized = JSON.stringify({
-          ...next,
-          photos: next.photos.map((photo) => ({ ...photo, dataUrl: '' })),
-        })
-      }
-      localStorage.setItem(STORAGE_KEY, serialized)
-    }
-  } catch {
-    // Storage unavailable (private mode / quota) — the project still works for the session.
-  }
-  listeners.forEach((listener) => listener())
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-function update(mutate: (project: DirectorProject) => DirectorProject) {
-  const project = read()
-  if (!project) return
-  write(mutate(project))
-}
-
-export function useDirectorProject(): DirectorProject | null {
-  return useSyncExternalStore(subscribe, read, () => null)
-}
-
+export { useDirectorProject }
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
 
 export function startDirectorProject() {
-  write({
+  writeProject({
     version: 1,
     id: `dir-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: Date.now(),
@@ -108,20 +49,54 @@ export function startDirectorProject() {
 }
 
 export function clearDirectorProject() {
-  write(null)
+  writeProject(null)
 }
 
 export function setDirectorStep(step: DirectorStep) {
-  update((project) => ({ ...project, step }))
+  updateProject((project) => ({ ...project, step }))
 }
 
 export function setDirectorPhotos(photos: PhotoReference[]) {
-  update((project) => ({ ...project, photos }))
+  updateProject((project) => ({ ...project, photos }))
+}
+
+/**
+ * Append photos without touching the analysis: existing photo indices stay
+ * valid, so prior findings survive (the new photo simply isn't analyzed yet).
+ */
+export function appendDirectorPhotos(photos: PhotoReference[]) {
+  updateProject((project) => ({ ...project, photos: [...project.photos, ...photos] }))
+}
+
+/**
+ * Move a photo. Reordering renames what "Photo 1" means but not what the AI
+ * saw, so the analysis is remapped onto the new order instead of discarded.
+ */
+export function moveDirectorPhoto(fromIndex: number, direction: -1 | 1) {
+  updateProject((project) => {
+    const toIndex = fromIndex + direction
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= project.photos.length || toIndex >= project.photos.length) {
+      return project
+    }
+    const photos = [...project.photos]
+    ;[photos[fromIndex], photos[toIndex]] = [photos[toIndex], photos[fromIndex]]
+
+    const mapping = project.photos.map((_, index) => {
+      if (index === fromIndex) return toIndex
+      if (index === toIndex) return fromIndex
+      return index
+    })
+    return {
+      ...project,
+      photos,
+      analysis: project.analysis ? remapAnalysisPhotoIndices(project.analysis, mapping) : null,
+    }
+  })
 }
 
 /** Changing photos after analysis invalidates everything downstream. */
 export function resetDirectorAnalysis() {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     step: 'upload',
     analysis: null,
@@ -140,7 +115,7 @@ export function resetDirectorAnalysis() {
 }
 
 export function applyDirectorAnalysis(analysis: MultiPhotoAnalysis) {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     step: 'analysis',
     analysis,
@@ -152,7 +127,7 @@ export function applyDirectorAnalysis(analysis: MultiPhotoAnalysis) {
 }
 
 export function toggleObservedCorrection(id: string) {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     correctedObservedIds: project.correctedObservedIds.includes(id)
       ? project.correctedObservedIds.filter((item) => item !== id)
@@ -161,7 +136,7 @@ export function toggleObservedCorrection(id: string) {
 }
 
 export function setInferredVerdict(id: string, verdict: 'confirmed' | 'rejected' | 'none') {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     confirmedInferredIds: verdict === 'confirmed'
       ? [...new Set([...project.confirmedInferredIds, id])]
@@ -173,11 +148,11 @@ export function setInferredVerdict(id: string, verdict: 'confirmed' | 'rejected'
 }
 
 export function setCorrectionNote(note: string) {
-  update((project) => ({ ...project, correctionNote: note }))
+  updateProject((project) => ({ ...project, correctionNote: note }))
 }
 
 export function upsertConstraint(constraint: PreservationConstraint) {
-  update((project) => {
+  updateProject((project) => {
     const exists = project.constraints.some((item) => item.id === constraint.id)
     return {
       ...project,
@@ -189,37 +164,44 @@ export function upsertConstraint(constraint: PreservationConstraint) {
 }
 
 export function removeConstraint(id: string) {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     constraints: project.constraints.filter((item) => item.id !== id),
   }))
 }
 
-export function setDirectorBrief(brief: DirectorBrief) {
-  update((project) => ({ ...project, brief }))
+/**
+ * `expectedProjectId` guards late writes: the brief form flushes its text
+ * fields when it unmounts, which must not land in a project the user just
+ * started fresh.
+ */
+export function setDirectorBrief(brief: DirectorBrief, expectedProjectId?: string) {
+  updateProject((project) => (
+    expectedProjectId && project.id !== expectedProjectId ? project : { ...project, brief }
+  ))
 }
 
 export function setDirectorConcepts(concepts: VideoConcept[]) {
-  update((project) => ({ ...project, step: 'concepts', concepts }))
+  updateProject((project) => ({ ...project, step: 'concepts', concepts }))
 }
 
 export function selectDirectorConcept(conceptId: string) {
-  update((project) => ({ ...project, selectedConceptId: conceptId }))
+  updateProject((project) => ({ ...project, selectedConceptId: conceptId }))
 }
 
 export function setDirectorStoryboard(storyboard: StoryboardShot[]) {
-  update((project) => ({ ...project, step: 'storyboard', storyboard }))
+  updateProject((project) => ({ ...project, step: 'storyboard', storyboard }))
 }
 
 export function updateDirectorShot(shotId: string, patch: Partial<StoryboardShot>) {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     storyboard: project.storyboard.map((shot) => (shot.id === shotId ? { ...shot, ...patch } : shot)),
   }))
 }
 
 export function removeDirectorShot(shotId: string) {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     storyboard: project.storyboard
       .filter((shot) => shot.id !== shotId)
@@ -228,7 +210,7 @@ export function removeDirectorShot(shotId: string) {
 }
 
 export function moveDirectorShot(shotId: string, direction: -1 | 1) {
-  update((project) => {
+  updateProject((project) => {
     const shots = [...project.storyboard].sort((a, b) => a.order - b.order)
     const index = shots.findIndex((shot) => shot.id === shotId)
     const target = index + direction
@@ -239,7 +221,7 @@ export function moveDirectorShot(shotId: string, direction: -1 | 1) {
 }
 
 export function setRenderOverride(shotId: string, patch: Partial<PlannedRender>) {
-  update((project) => ({
+  updateProject((project) => ({
     ...project,
     renderOverrides: {
       ...project.renderOverrides,
@@ -251,7 +233,7 @@ export function setRenderOverride(shotId: string, patch: Partial<PlannedRender>)
 const EMPTY_REVIEW: ClipReview = { status: 'none', checklist: {} }
 
 export function recordShotJob(shotId: string, jobId: number, phase: 'draft' | 'final') {
-  update((project) => {
+  updateProject((project) => {
     const existing = project.shotJobs[shotId] ?? { draftJobIds: [], finalJobIds: [], review: EMPTY_REVIEW }
     return {
       ...project,
@@ -266,12 +248,12 @@ export function recordShotJob(shotId: string, jobId: number, phase: 'draft' | 'f
 }
 
 export function setShotReview(shotId: string, review: ClipReview) {
-  update((project) => {
+  updateProject((project) => {
     const existing = project.shotJobs[shotId] ?? { draftJobIds: [], finalJobIds: [], review: EMPTY_REVIEW }
     return { ...project, shotJobs: { ...project.shotJobs, [shotId]: { ...existing, review } } }
   })
 }
 
 export function setAssembledJob(jobId: number | null) {
-  update((project) => ({ ...project, assembledJobId: jobId, step: jobId ? 'done' : project.step }))
+  updateProject((project) => ({ ...project, assembledJobId: jobId, step: jobId ? 'done' : project.step }))
 }

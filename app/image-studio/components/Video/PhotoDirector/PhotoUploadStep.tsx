@@ -3,16 +3,28 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { ArrowDown, ArrowUp, ImagePlus, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import { ArrowDown, ArrowRight, ArrowUp, ImagePlus, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
 import { processPhotoFiles, hasExtremeDimensionMismatch } from './photo-intake'
-import { resetDirectorAnalysis, setDirectorPhotos, useDirectorProject } from './useDirectorProject'
+import {
+  appendDirectorPhotos,
+  moveDirectorPhoto,
+  resetDirectorAnalysis,
+  setDirectorPhotos,
+  setDirectorStep,
+  useDirectorProject,
+} from './useDirectorProject'
 import { MIN_PHOTOS, MAX_PHOTOS } from '../../../constants/photo-director'
-import type { PhotoReference } from '@/lib/video/photo-director-schema'
 
 interface PhotoUploadStepProps {
   onAnalyze: () => void
   isAnalyzing: boolean
 }
+
+/** A photo edit that would make an existing analysis wrong. */
+type PendingEdit = { kind: 'remove' | 'replace'; photoId: string }
 
 /** Step 1 — upload, reorder, replace, and remove the source photographs. */
 export function PhotoUploadStep({ onAnalyze, isAnalyzing }: PhotoUploadStepProps) {
@@ -20,18 +32,32 @@ export function PhotoUploadStep({ onAnalyze, isAnalyzing }: PhotoUploadStepProps
   const inputRef = useRef<HTMLInputElement>(null)
   const replaceRef = useRef<HTMLInputElement>(null)
   const [replaceId, setReplaceId] = useState<string | null>(null)
+  const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const photos = project?.photos ?? []
-  const hadAnalysis = Boolean(project?.analysis)
+  const hasAnalysis = Boolean(project?.analysis)
 
-  const applyPhotoChange = (next: PhotoReference[]) => {
-    // Changing the photo set invalidates any prior analysis and everything
-    // downstream of it — that's the one destructive transition in the flow.
-    if (hadAnalysis) {
+  const startReplace = (photoId: string) => {
+    setReplaceId(photoId)
+    replaceRef.current?.click()
+  }
+
+  /** Remove/replace makes a prior analysis wrong — clear it and everything downstream. */
+  const commitDestructive = (edit: PendingEdit) => {
+    if (hasAnalysis) {
       resetDirectorAnalysis()
-      toast.info('Photos changed — the previous analysis was cleared')
+      toast.info('Analysis cleared — these photos no longer match it')
     }
-    setDirectorPhotos(next)
+    if (edit.kind === 'remove') {
+      setDirectorPhotos(photos.filter((photo) => photo.id !== edit.photoId))
+    } else {
+      startReplace(edit.photoId)
+    }
+  }
+
+  const requestDestructive = (edit: PendingEdit) => {
+    if (hasAnalysis) setPendingEdit(edit)
+    else commitDestructive(edit)
   }
 
   const handleFiles = async (files: FileList | null) => {
@@ -40,7 +66,11 @@ export function PhotoUploadStep({ onAnalyze, isAnalyzing }: PhotoUploadStepProps
     try {
       const { photos: added, errors } = await processPhotoFiles(Array.from(files), photos)
       errors.forEach((message) => toast.error(message))
-      if (added.length > 0) applyPhotoChange([...photos, ...added])
+      // Appending keeps every existing photo index valid, so the analysis survives.
+      if (added.length > 0) {
+        appendDirectorPhotos(added)
+        if (hasAnalysis) toast.info('Photo added — re-analyze to include it in the AI\'s findings')
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -54,20 +84,12 @@ export function PhotoUploadStep({ onAnalyze, isAnalyzing }: PhotoUploadStepProps
       const { photos: added, errors } = await processPhotoFiles([files[0]], others)
       errors.forEach((message) => toast.error(message))
       if (added.length > 0) {
-        applyPhotoChange(photos.map((photo) => (photo.id === replaceId ? added[0] : photo)))
+        setDirectorPhotos(photos.map((photo) => (photo.id === replaceId ? added[0] : photo)))
       }
     } finally {
       setIsProcessing(false)
       setReplaceId(null)
     }
-  }
-
-  const move = (index: number, direction: -1 | 1) => {
-    const target = index + direction
-    if (target < 0 || target >= photos.length) return
-    const next = [...photos]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    applyPhotoChange(next)
   }
 
   const missingFullRes = photos.filter((photo) => !photo.dataUrl)
@@ -81,6 +103,22 @@ export function PhotoUploadStep({ onAnalyze, isAnalyzing }: PhotoUploadStepProps
         point out what must stay true, and build a shot plan around them. Order matters — Photo 1
         is your likely opening frame.
       </p>
+
+      {hasAnalysis && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#c99850]/30 bg-zinc-950 px-2.5 py-2">
+          <p className="flex-1 text-[11px] text-zinc-300 leading-4">
+            Your analysis and shot plan for these photos are saved — reordering keeps them.
+          </p>
+          <Button
+            onClick={() => setDirectorStep('analysis')}
+            size="sm"
+            className="h-6 px-2 text-[10px] bg-zinc-800 text-zinc-200 hover:bg-zinc-700 shrink-0"
+          >
+            Back to analysis
+            <ArrowRight className="w-3 h-3 ml-1" />
+          </Button>
+        </div>
+      )}
 
       {photos.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -101,30 +139,30 @@ export function PhotoUploadStep({ onAnalyze, isAnalyzing }: PhotoUploadStepProps
               )}
               <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
-                  onClick={() => move(index, -1)}
+                  onClick={() => moveDirectorPhoto(index, -1)}
                   disabled={index === 0}
-                  title="Move earlier"
+                  title="Move earlier — your analysis is kept"
                   className="p-1 rounded bg-black/70 text-zinc-300 hover:text-white disabled:opacity-40"
                 >
                   <ArrowUp className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={() => move(index, 1)}
+                  onClick={() => moveDirectorPhoto(index, 1)}
                   disabled={index === photos.length - 1}
-                  title="Move later"
+                  title="Move later — your analysis is kept"
                   className="p-1 rounded bg-black/70 text-zinc-300 hover:text-white disabled:opacity-40"
                 >
                   <ArrowDown className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={() => { setReplaceId(photo.id); replaceRef.current?.click() }}
+                  onClick={() => photo.dataUrl ? requestDestructive({ kind: 'replace', photoId: photo.id }) : startReplace(photo.id)}
                   title={photo.dataUrl ? 'Replace this photo' : 'Re-attach this photo'}
                   className="p-1 rounded bg-black/70 text-zinc-300 hover:text-white"
                 >
                   <RefreshCw className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={() => applyPhotoChange(photos.filter((item) => item.id !== photo.id))}
+                  onClick={() => requestDestructive({ kind: 'remove', photoId: photo.id })}
                   title="Remove this photo"
                   className="p-1 rounded bg-black/70 text-zinc-300 hover:text-red-400"
                 >
@@ -172,16 +210,46 @@ export function PhotoUploadStep({ onAnalyze, isAnalyzing }: PhotoUploadStepProps
             ? `Add at least ${MIN_PHOTOS} photos first`
             : missingFullRes.length > 0
               ? 'Re-attach the flagged photos first'
-              : 'Analyze the photos together — nothing is generated yet'}
+              : hasAnalysis
+                ? 'Run a fresh analysis — this replaces the saved findings and your corrections'
+                : 'Analyze the photos together — nothing is generated yet'}
           className="ml-auto font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:from-[#dbb56e] hover:to-[#c99850] disabled:opacity-50"
         >
           {isAnalyzing ? (
             <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analyzing…</>
           ) : (
-            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Analyze my photos</>
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />{hasAnalysis ? 'Re-analyze my photos' : 'Analyze my photos'}</>
           )}
         </Button>
       </div>
+
+      <Dialog open={pendingEdit !== null} onOpenChange={(open) => { if (!open) setPendingEdit(null) }}>
+        <DialogContent className="max-w-md bg-zinc-950 border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {pendingEdit?.kind === 'remove' ? 'Remove this photo?' : 'Replace this photo?'}
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              The AI&apos;s analysis was built from your current photos, so changing them clears it
+              along with your corrections, concepts, and shot plan. Generated clips are kept in your
+              video history. To change the running order instead, use the arrows — that keeps everything.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border border-zinc-800 transition-colors">
+                Cancel
+              </button>
+            </DialogClose>
+            <button
+              onClick={() => { if (pendingEdit) commitDestructive(pendingEdit); setPendingEdit(null) }}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black hover:opacity-90 transition-opacity"
+            >
+              {pendingEdit?.kind === 'remove' ? 'Remove photo' : 'Choose replacement'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

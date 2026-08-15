@@ -65,7 +65,7 @@ export function PhotoDirectorCard({ submitVideo, jobs, onOpenAssemble }: PhotoDi
           </p>
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
-              <DirectorStepRail current={project.step} onStepClick={setDirectorStep} />
+              <DirectorStepRail project={project} onStepClick={setDirectorStep} />
             </div>
             <Button
               onClick={() => { clearDirectorProject(); startDirectorProject() }}

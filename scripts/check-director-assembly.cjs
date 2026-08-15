@@ -22,6 +22,7 @@ const MODULES = {
   '../credits/cost-map': 'lib/credits/cost-map.ts',
   './camera-moves': 'lib/video/camera-moves.ts',
   './director-assembly': 'lib/video/director-assembly.ts',
+  './director-project': 'lib/video/director-project.ts',
 }
 
 const cache = {}
@@ -46,6 +47,7 @@ function loadModule(specifier) {
 }
 
 const assembly = loadModule('./director-assembly')
+const directorProject = loadModule('./director-project')
 const cameraMoves = loadModule('./camera-moves')
 const providers = loadModule('./providers')
 const costMap = loadModule('../credits/cost-map')
@@ -200,7 +202,81 @@ check('render rec — finals use final-tier models; transition finals support en
     providers.VIDEO_MODELS[transition.model].capabilities.endFrame === true
 })
 
+// --- step reachability (a step's work must never become unreachable) -------
+
+const project = (overrides) => ({
+  version: 1, id: 'p', createdAt: 0, step: 'upload', photos: [], analysis: null,
+  correctedObservedIds: [], confirmedInferredIds: [], rejectedInferredIds: [], correctionNote: '',
+  constraints: [], brief: null, concepts: null, selectedConceptId: null, storyboard: [],
+  renderOverrides: {}, shotJobs: {}, assembledJobId: null, ...overrides,
+})
+const ANALYSIS = {
+  observed: [{ id: 'bed', label: 'Bed', detail: '', photoIndices: [0, 1], confidence: 0.9 }],
+  inferred: [{ id: 'light', label: 'Daylight', detail: '', photoIndices: [1], confidence: 0.5 }],
+  suggested: [], continuity: continuity('low', 0.9),
+  bestOpeningPhotoIndex: 0, bestClosingPhotoIndex: 1, framingRationale: '', preservation: CONSTRAINTS,
+}
+
+check('reachability — stepping back to photos keeps the analysis reachable', () => {
+  // The regression this pins: navigation used to be walk-order based, so going
+  // back to 'upload' disabled every later step and stranded a paid analysis.
+  const back = project({ step: 'upload', analysis: ANALYSIS })
+  return directorProject.isDirectorStepReachable(back, 'analysis') === true &&
+    directorProject.isDirectorStepReachable(back, 'brief') === true
+})
+
+check('reachability — steps without their data stay locked', () => {
+  const fresh = project({ step: 'upload' })
+  return directorProject.isDirectorStepReachable(fresh, 'analysis') === false &&
+    directorProject.isDirectorStepReachable(fresh, 'concepts') === false &&
+    directorProject.isDirectorStepReachable(fresh, 'storyboard') === false &&
+    directorProject.isDirectorStepReachable(fresh, 'upload') === true
+})
+
+check('reachability — the current step is always reachable', () =>
+  directorProject.DIRECTOR_STEP_SEQUENCE.every((step) =>
+    directorProject.isDirectorStepReachable(project({ step }), step) === true))
+
+check('reachability — later work stays reachable from an earlier step', () => {
+  const deep = project({
+    step: 'analysis', analysis: ANALYSIS, brief: {}, concepts: [{}],
+    storyboard: [{ id: 's1' }], shotJobs: { s1: {} },
+  })
+  const reachable = directorProject.reachableDirectorSteps(deep)
+  return ['upload', 'analysis', 'brief', 'concepts', 'storyboard', 'preflight', 'generate']
+    .every((step) => reachable.includes(step)) && !reachable.includes('done')
+})
+
+// --- analysis remap on reorder (reordering must not discard findings) ------
+
+check('remap — swapping two photos rewrites every index reference', () => {
+  const mapping = [1, 0] // photo 0 and 1 swapped
+  const remapped = directorProject.remapAnalysisPhotoIndices(ANALYSIS, mapping)
+  return JSON.stringify(remapped.observed[0].photoIndices) === JSON.stringify([0, 1]) &&
+    JSON.stringify(remapped.inferred[0].photoIndices) === JSON.stringify([0]) &&
+    remapped.bestOpeningPhotoIndex === 1 &&
+    remapped.bestClosingPhotoIndex === 0
+})
+
+check('remap — indices outside the mapping are left alone', () => {
+  const remapped = directorProject.remapAnalysisPhotoIndices(
+    { ...ANALYSIS, observed: [{ ...ANALYSIS.observed[0], photoIndices: [5] }] },
+    [1, 0],
+  )
+  return JSON.stringify(remapped.observed[0].photoIndices) === JSON.stringify([5])
+})
+
 // --- wiring (source-level: call sites live inside React components) --------
+
+check('wiring — the step rail is driven by reachability, not walk order', () => {
+  const rail = read('app/image-studio/components/Video/PhotoDirector/DirectorStepRail.tsx')
+  return rail.includes('isDirectorStepReachable') && !/index < currentIndex\s*\n?\s*const isCurrent/.test(rail)
+})
+
+check('wiring — reordering photos goes through the analysis-preserving action', () => {
+  const upload = read('app/image-studio/components/Video/PhotoDirector/PhotoUploadStep.tsx')
+  return upload.includes('moveDirectorPhoto') && upload.includes('appendDirectorPhotos')
+})
 
 check('wiring — generation submits assembled prompts under the Shot N/M prefix', () => {
   const hook = read('app/image-studio/components/Video/PhotoDirector/useDirectorGeneration.ts')
