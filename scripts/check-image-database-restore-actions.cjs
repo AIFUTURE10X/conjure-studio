@@ -20,6 +20,7 @@ const equal = (received, expected, message) => {
 
 const ACTIONS_PATH = 'app/image-studio/components/ImageDatabaseBrowser/image-database-actions.ts'
 const BROWSER_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseBrowser.tsx'
+const CARD_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseCard.tsx'
 const HISTORY_ROUTE_PATH = 'app/api/history/route.ts'
 const FAVORITES_ROUTE_PATH = 'app/api/favorites/route.ts'
 
@@ -75,9 +76,17 @@ equal(restoredTargetsForUrl([
   { ...record, recordId: 'favorite:9', sourceId: '9', source: 'favorites' },
 ], record.url), { history: true, favorites: true }, 'Existing source URLs must disable duplicate restore actions.')
 
+// Source-level only (React components can't execute here): the restore buttons
+// live on ImageDatabaseCard; the browser renders the card and wires its
+// onRestoreHistory/onRestoreFavorite callbacks to the POST restore flow.
 const browser = read(BROWSER_PATH)
+const card = read(CARD_PATH)
 for (const label of ['Add to History', 'Add to Favorites']) {
-  assert(browser.includes(label), `${BROWSER_PATH} must expose ${label}.`)
+  assert(card.includes(label), `${CARD_PATH} must expose ${label}.`)
+}
+assert(/<ImageDatabaseCard\b/.test(browser), `${BROWSER_PATH} must render ImageDatabaseCard.`)
+for (const prop of ['onRestoreHistory', 'onRestoreFavorite']) {
+  assert(new RegExp(`${prop}=\\{`).test(browser), `${BROWSER_PATH} must wire ${prop} on ImageDatabaseCard.`)
 }
 assert(/method:\s*['"]POST['"]/.test(browser), `${BROWSER_PATH} must use explicit POST restore actions.`)
 
