@@ -19,7 +19,7 @@ export function DirectorStepRail({ project, onStepClick }: DirectorStepRailProps
   const currentIndex = DIRECTOR_STEPS.findIndex((step) => step.key === project.step)
 
   return (
-    <div className="flex items-center gap-1 flex-wrap" role="navigation" aria-label="Video director steps">
+    <div className="flex items-center gap-1.5 flex-wrap" role="navigation" aria-label="Video director steps">
       {DIRECTOR_STEPS.map((step, index) => {
         const isCurrent = step.key === project.step
         const isReachable = isDirectorStepReachable(project, step.key)
@@ -35,15 +35,15 @@ export function DirectorStepRail({ project, onStepClick }: DirectorStepRailProps
               : isReachable
                 ? `Go to ${step.label} — your work there is saved`
                 : `${step.label} — finish the earlier steps first`}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               isCurrent
                 ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
                 : isReachable
-                  ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 cursor-pointer'
-                  : 'bg-zinc-900 text-zinc-600 cursor-default'
+                  ? 'bg-zinc-800 text-white hover:bg-zinc-700 cursor-pointer'
+                  : 'bg-zinc-900 text-zinc-500 cursor-default'
             }`}
           >
-            {isReachable && !isCurrent && isBehind && <Check className="w-2.5 h-2.5" />}
+            {isReachable && !isCurrent && isBehind && <Check className="w-3 h-3 text-[#dbb56e]" />}
             {step.label}
           </button>
         )
