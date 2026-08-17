@@ -27,6 +27,18 @@ const checks = [
     },
   },
   {
+    // Source-level: the route imports Blob/Neon/credit-guard, so executing it
+    // here is impractical. Anchored to the specific default assignment rather
+    // than the whole file so a stray 'fal' elsewhere can't satisfy it.
+    name: 'remove-background defaults to fal when the caller omits a method',
+    pass: () => {
+      const source = read('app/api/remove-background/route.ts')
+      return /bgRemovalMethod = \(formData\.get\('bgRemovalMethod'\) as BackgroundRemovalMethod\) \|\| 'fal'/.test(source) &&
+        // The fal path must keep its PhotoRoom safety net for unset FAL_KEY.
+        /bgRemovalMethod === 'fal' && !isFalBgRemovalAvailable\(\)/.test(source)
+    },
+  },
+  {
     name: 'remove-background returns provider errors without generic 500',
     pass: () => {
       const source = read('app/api/remove-background/route.ts')

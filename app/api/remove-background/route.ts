@@ -54,7 +54,9 @@ async function handlePost(request: NextRequest) {
   try {
     const formData = await request.formData()
     const imageFile = formData.get('image') as File | null
-    let bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'photoroom'
+    // fal · BiRefNet is the app-wide default, so callers that omit the field
+    // (e.g. the Thumbnail subject cutout) get fal too rather than PhotoRoom.
+    let bgRemovalMethod = (formData.get('bgRemovalMethod') as BackgroundRemovalMethod) || 'fal'
     const cloudApiKey = formData.get('cloudApiKey') as string | null
 
     // Safety net: fal · BiRefNet is now the BG Remover default, but it needs
