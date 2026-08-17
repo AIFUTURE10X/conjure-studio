@@ -20,6 +20,10 @@ const equal = (received, expected, message) => {
 
 const ACTIONS_PATH = 'app/image-studio/components/ImageDatabaseBrowser/image-database-actions.ts'
 const BROWSER_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseBrowser.tsx'
+// The restore buttons were extracted out of the browser into a card component.
+// This check asserted the labels against BROWSER_PATH and silently rotted,
+// because it was never wired into CI and so never ran.
+const CARD_PATH = 'app/image-studio/components/ImageDatabaseBrowser/ImageDatabaseCard.tsx'
 const HISTORY_ROUTE_PATH = 'app/api/history/route.ts'
 const FAVORITES_ROUTE_PATH = 'app/api/favorites/route.ts'
 
@@ -76,9 +80,25 @@ equal(restoredTargetsForUrl([
 ], record.url), { history: true, favorites: true }, 'Existing source URLs must disable duplicate restore actions.')
 
 const browser = read(BROWSER_PATH)
+const card = read(CARD_PATH)
+
+// Labels live on the card. Asserting the string alone is weak — a label can
+// survive while the handler that makes it do anything is gone — so also assert
+// the browser wires a restore handler into the card for each target.
 for (const label of ['Add to History', 'Add to Favorites']) {
-  assert(browser.includes(label), `${BROWSER_PATH} must expose ${label}.`)
+  assert(card.includes(label), `${CARD_PATH} must expose ${label}.`)
 }
+for (const handler of ['onRestoreHistory', 'onRestoreFavorite']) {
+  assert(card.includes(handler), `${CARD_PATH} must accept ${handler}.`)
+  assert(
+    new RegExp(`${handler}=\\{`).test(browser),
+    `${BROWSER_PATH} must pass ${handler} to ${CARD_PATH}.`,
+  )
+}
+assert(
+  /restoreRecord\(record, 'history'\)/.test(browser) && /restoreRecord\(record, 'favorites'\)/.test(browser),
+  `${BROWSER_PATH} must route both restore targets through restoreRecord.`,
+)
 assert(/method:\s*['"]POST['"]/.test(browser), `${BROWSER_PATH} must use explicit POST restore actions.`)
 
 const historyRoute = read(HISTORY_ROUTE_PATH)

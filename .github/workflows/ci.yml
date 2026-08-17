@@ -92,6 +92,30 @@ jobs:
       - name: Contract — translation tool
         run: npm run check:translation-tool
 
+      - name: Contract — clay style presets
+        run: npm run check:clay-styles
+
+      - name: Contract — creation library
+        run: npm run check:creation-library
+
+      - name: Contract — creation metadata
+        run: npm run check:creation-metadata
+
+      - name: Contract — image database browser
+        run: npm run check:image-database-browser
+
+      - name: Contract — image database restore actions
+        run: npm run check:image-database-restore-actions
+
+      - name: Contract — image history retention
+        run: npm run check:image-history-retention
+
+      - name: Contract — image library board
+        run: npm run check:image-library-board
+
+      - name: Contract — landing page
+        run: npm run check:landing
+
       # Fails the build if package.json defines a check:* script that has no
       # step above. Every past history regression shipped past a guard that
       # existed but was never wired into CI — this makes that impossible.
