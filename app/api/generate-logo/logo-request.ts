@@ -4,6 +4,7 @@ import {
   normalizeLogoModel,
   normalizeLogoResolution,
   normalizeLogoTextMode,
+  normalizeTextPosition,
   parseLogoSeed,
   type BgRemovalMethod,
   type LogoAspectRatio,
@@ -11,6 +12,7 @@ import {
   type LogoReferenceMode,
   type LogoResolution,
   type LogoTextMode,
+  type TextPosition,
 } from '@/lib/logo-generation-contract'
 import type { OpenAIImageQuality } from '@/lib/openai-image-client'
 
@@ -28,6 +30,7 @@ export interface ParsedLogoGenerationRequest {
   resolution: LogoResolution
   imageQuality: OpenAIImageQuality
   textMode: LogoTextMode
+  textPosition: TextPosition
   seed?: number
   skipBgRemoval: boolean
 }
@@ -64,6 +67,7 @@ export async function parseLogoGenerationRequest(formData: FormData): Promise<Pa
     resolution: normalizeLogoResolution(formData.get('resolution') as string | null),
     imageQuality: normalizeImageQuality(formData.get('imageQuality') as string | null),
     textMode: normalizeLogoTextMode(formData.get('textMode') as string | null),
+    textPosition: normalizeTextPosition(formData.get('textPosition') as string | null),
     seed: parseLogoSeed(formData.get('seed') as string | null),
     skipBgRemoval: formData.get('skipBgRemoval') !== 'false',
   }

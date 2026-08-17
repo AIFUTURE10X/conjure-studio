@@ -25,6 +25,8 @@
     "check:image-references": "node scripts/check-image-references-ui.cjs",
     "check:landing": "node scripts/check-landing-page.cjs",
     "check:logo": "node scripts/check-logo-generator-contract.cjs",
+    "check:seed-capability": "node scripts/check-seed-model-capability.cjs",
+    "check:text-position": "node scripts/check-text-position.cjs",
     "check:logo-3d": "node scripts/check-logo-3d-extrude.cjs",
     "check:logo-3d-export": "node scripts/check-logo-3d-export.cjs",
     "check:openai-migration": "node scripts/check-openai-reliability-migration.cjs",

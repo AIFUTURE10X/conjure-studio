@@ -11,6 +11,7 @@ import {
   upscaleLogoIfNeeded,
 } from "./logo-image-pipeline"
 import { buildFreeFormLogoPrompt, buildLogoPrompt, buildReferenceLogoPrompt, type LogoBackgroundMode } from "./logo-prompts"
+import { applyTextPositionToPrompt, getTextPositionNegative } from "@/lib/text-position"
 import { sampleReferencePalette } from "./reference-palette"
 
 export const runtime = "nodejs"
@@ -68,9 +69,18 @@ async function handlePost(request: NextRequest) {
         ? buildFreeFormLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
         : buildLogoPrompt(logoRequest.prompt, logoRequest.style, logoRequest.textMode, backgroundMode)
 
-    // Append negative prompt if provided
-    if (logoRequest.negativePrompt?.trim()) {
-      enhancedPrompt += `\n\nAVOID these elements in the design:\n${logoRequest.negativePrompt.trim()}`
+    // Text placement directive. Applied after the base prompt so it reads as the
+    // most recent instruction, and a no-op when the setting is 'auto'.
+    enhancedPrompt = applyTextPositionToPrompt(enhancedPrompt, logoRequest.textPosition)
+
+    // Append negative prompt if provided, folding in the placement's own
+    // negatives so a chosen position is reinforced from both directions.
+    const positionNegative = getTextPositionNegative(logoRequest.textPosition)
+    const combinedNegative = [logoRequest.negativePrompt?.trim(), positionNegative]
+      .filter(Boolean)
+      .join(', ')
+    if (combinedNegative) {
+      enhancedPrompt += `\n\nAVOID these elements in the design:\n${combinedNegative}`
     }
 
     console.log("[Logo API] Using free-form generation:", useFreeFormPrompt)

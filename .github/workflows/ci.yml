@@ -29,6 +29,12 @@ jobs:
       - name: Contract — logo generator
         run: npm run check:logo
 
+      - name: Contract — seed/model capability
+        run: npm run check:seed-capability
+
+      - name: Contract — text position setting
+        run: npm run check:text-position
+
       - name: Contract — prompt merge
         run: npm run check:prompt-merge
 

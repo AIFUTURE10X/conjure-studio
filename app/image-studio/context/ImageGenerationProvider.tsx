@@ -211,6 +211,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
         count: state.imageCount,
         aspectRatio: state.aspectRatio,
         seed: state.seed,
+        textPosition: state.textPosition,
         referenceImage: referenceFile,
         referenceMode,
         maskImage: state.referenceImage?.maskFile,

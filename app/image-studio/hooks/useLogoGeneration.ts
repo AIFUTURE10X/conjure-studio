@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { downloadLogo as downloadLogoUtil } from '../utils/export-utils'
 import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
+import { DEFAULT_TEXT_POSITION } from '@/lib/text-position'
 import type {
   BgRemovalMethod,
   GeneratedLogo,
@@ -43,6 +44,7 @@ export function useLogoGeneration() {
       formData.append('resolution', options.resolution || DEFAULT_LOGO_GENERATION_SETTINGS.resolution)
       formData.append('model', options.model || DEFAULT_LOGO_GENERATION_SETTINGS.model)
       formData.append('textMode', options.textMode || DEFAULT_LOGO_GENERATION_SETTINGS.textMode)
+      formData.append('textPosition', options.textPosition || DEFAULT_TEXT_POSITION)
 
       if (options.negativePrompt) {
         formData.append('negativePrompt', options.negativePrompt)

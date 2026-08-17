@@ -9,6 +9,7 @@ import { parseFormData, parseFormFields } from "@/lib/api/http"
 import { resolveUserId } from "@/lib/api/identity"
 import { HistoryInsertError, hasGenerationHistoryDatabase, storeGenerationHistory } from "@/lib/db/generation-history-store"
 import { aspectRatioSchema, imageModelSchema, imageSizeSchema, userIdSchema } from "@/lib/validation/common"
+import { applyTextPositionToPrompt, DEFAULT_TEXT_POSITION, TEXT_POSITIONS } from "@/lib/text-position"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -47,6 +48,7 @@ const formSchema = z.object({
     aspectRatioSchema,
   ),
   referenceMode: z.enum(['inspire', 'replicate']).default('inspire'),
+  textPosition: z.enum(TEXT_POSITIONS).default(DEFAULT_TEXT_POSITION),
   seed: z.coerce.number().int().optional(),
   model: lenientModelSchema.default('gpt-image-2'),
   imageSize: lenientImageSizeSchema.default('1K'),
@@ -137,8 +139,10 @@ async function handlePost(request: NextRequest) {
 
   const parsedFields = parseFormFields(formData, formSchema)
   if (parsedFields.response) return parsedFields.response
-  const { prompt, count, aspectRatio, referenceMode, seed, model, imageQuality } = parsedFields.data
+  const { count, aspectRatio, referenceMode, seed, model, imageQuality, textPosition } = parsedFields.data
   const imageSize = model === "gemini-2.5-flash-image" ? "1K" : parsedFields.data.imageSize
+  // No-op unless the user picked a placement; keeps existing prompts identical.
+  const prompt = applyTextPositionToPrompt(parsedFields.data.prompt, textPosition)
 
   try {
     const referenceImageFile = formData.get('referenceImage') as File | null

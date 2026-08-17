@@ -261,6 +261,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
       resolution: state.resolution,
       selectedModel: state.selectedModel,
       textMode: state.textMode,
+      textPosition: state.textPosition,
       seedLocked: state.seedLocked,
       seedValue: state.seedValue,
       removeBackgroundOnly: state.removeBackgroundOnly,
@@ -429,6 +430,8 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
             setSelectedConcept={state.setSelectedConcept}
             selectedRenders={state.selectedRenders}
             setSelectedRenders={state.setSelectedRenders}
+            textPosition={state.textPosition}
+            setTextPosition={state.setTextPosition}
             seedLocked={state.seedLocked}
             setSeedLocked={state.setSeedLocked}
             seedValue={state.seedValue}

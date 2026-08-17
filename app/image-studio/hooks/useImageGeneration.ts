@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { logPromptUse } from '@/lib/prompt-log'
 import { getUserId } from '@/lib/user-id'
+import { DEFAULT_TEXT_POSITION, type TextPosition } from '@/lib/text-position'
 
 import { urlToBase64 } from '../utils/export-utils'
 
@@ -20,6 +21,8 @@ export interface GenerationOptions {
   count: number
   aspectRatio: string
   seed?: number | null
+  /** Where wording sits relative to the subject. 'auto' sends no directive. */
+  textPosition?: TextPosition
   referenceImage?: File
   referenceMode?: ReferenceMode
   maskImage?: File
@@ -125,6 +128,8 @@ export function useImageGeneration(
     if (options.seed !== null && options.seed !== undefined) {
       formData.append('seed', options.seed.toString())
     }
+
+    formData.append('textPosition', options.textPosition || DEFAULT_TEXT_POSITION)
 
     if (options.referenceImage) {
       formData.append('referenceImage', options.referenceImage)

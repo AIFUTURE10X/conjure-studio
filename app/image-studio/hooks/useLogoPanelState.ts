@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { DEFAULT_LOGO_GENERATION_SETTINGS } from '@/lib/logo-generation-contract'
+import { DEFAULT_TEXT_POSITION, type TextPosition } from '@/lib/text-position'
 import type { BgRemovalMethod, GeneratedLogo, LogoAspectRatio, LogoGenerationModel, LogoTextMode } from './useLogoGeneration'
 import { LogoConcept, LogoRenderTreatment, LogoResolution, LogoType, LogoTypographyDirection, LogoVisualStyle, RenderStyle } from '../constants/logo-constants'
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
@@ -41,6 +42,7 @@ export function useLogoPanelState({
   const [referenceImage, setReferenceImage] = useState<{ file: File; preview: string } | null>(null)
   const [referenceMode, setReferenceMode] = useState<'replicate' | 'inspire'>('replicate')
   const [removeBackgroundOnly, setRemoveBackgroundOnly] = useState(false)
+  const [textPosition, setTextPosition] = useState<TextPosition>(DEFAULT_TEXT_POSITION)
   const [seedLocked, setSeedLocked] = useState(false)
   const [seedValue, setSeedValue] = useState<number | undefined>()
 
@@ -104,6 +106,7 @@ export function useLogoPanelState({
     setReferenceMode('replicate')
     setShowTextEditor(false)
     setRemoveBackgroundOnly(false)
+    setTextPosition(DEFAULT_TEXT_POSITION)
     setSeedLocked(false)
     setSeedValue(undefined)
     setIsEraserMode(false)
@@ -145,6 +148,7 @@ export function useLogoPanelState({
     referenceImage, setReferenceImage,
     referenceMode, setReferenceMode,
     removeBackgroundOnly, setRemoveBackgroundOnly,
+    textPosition, setTextPosition,
     seedLocked, setSeedLocked,
     seedValue, setSeedValue,
 

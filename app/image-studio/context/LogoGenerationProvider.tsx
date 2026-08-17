@@ -156,6 +156,7 @@ export function LogoGenerationProvider({ children }: { children: ReactNode }) {
       resolution: state.resolution,
       selectedModel: state.selectedModel,
       textMode: state.textMode,
+      textPosition: state.textPosition,
       seedLocked: state.seedLocked,
       seedValue: state.seedValue,
       removeBackgroundOnly: state.removeBackgroundOnly,

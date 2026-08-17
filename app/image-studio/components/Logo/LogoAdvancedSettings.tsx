@@ -15,6 +15,9 @@ import {
   LOGO_MODEL_OPTIONS,
   LOGO_TEXT_MODE_OPTIONS
 } from '../../constants/logo-constants'
+import { modelSupportsSeed } from '@/lib/model-capabilities'
+import type { TextPosition } from '@/lib/text-position'
+import { TextPositionSelector } from '../TextPositionSelector'
 import { ASPECT_RATIO_OPTIONS, getAspectRatioDimensions } from '../../constants/toolbar-options'
 import { LogoStyleSelector } from './LogoStyleSelector'
 
@@ -41,6 +44,8 @@ interface LogoAdvancedSettingsProps {
   setSelectedConcept: (concept: LogoConcept | null) => void
   selectedRenders: RenderStyle[]
   setSelectedRenders: (renders: RenderStyle[]) => void
+  textPosition: TextPosition
+  setTextPosition: (position: TextPosition) => void
   seedLocked: boolean
   setSeedLocked: (locked: boolean) => void
   seedValue: number | undefined
@@ -74,6 +79,8 @@ export function LogoAdvancedSettings({
   setSelectedConcept,
   selectedRenders,
   setSelectedRenders,
+  textPosition,
+  setTextPosition,
   seedLocked,
   setSeedLocked,
   seedValue,
@@ -84,7 +91,7 @@ export function LogoAdvancedSettings({
   isRemovingBackground,
 }: LogoAdvancedSettingsProps) {
   const isDisabled = isGenerating || isRemovingBackground
-  const seedDisabled = isDisabled || selectedModel === 'gpt-image-2'
+  const seedDisabled = isDisabled || !modelSupportsSeed(selectedModel)
   const handleBackgroundRemovalToggle = (enabled: boolean) => {
     if (enabled) {
       setBgRemovalMethod(DEFAULT_LOGO_GENERATION_SETTINGS.bgRemovalMethod)
@@ -254,6 +261,13 @@ export function LogoAdvancedSettings({
               Higher resolutions may upscale after generation when the model returns a smaller native image
             </p>
           </div>
+
+          {/* Text Position */}
+          <TextPositionSelector
+            value={textPosition}
+            onChange={setTextPosition}
+            disabled={isDisabled}
+          />
 
           {/* Seed Lock Setting */}
           <div className="space-y-1.5">

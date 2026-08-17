@@ -15,16 +15,24 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { modelSupportsSeed, seedUnsupportedReason } from '@/lib/model-capabilities'
 
 interface SeedControlDropdownProps {
   seed: number | null
   onSeedChange: (seed: number | null) => void
+  /** Selected generation model — seed is inert on models whose API has no seed. */
+  selectedModel?: string
 }
 
-export function SeedControlDropdown({ seed, onSeedChange }: SeedControlDropdownProps) {
+export function SeedControlDropdown({ seed, onSeedChange, selectedModel }: SeedControlDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState(seed?.toString() || '')
   const [isLocked, setIsLocked] = useState(false)
+
+  // OpenAI's images API takes no seed, so the route drops it. Surface that
+  // instead of letting the control imply reproducibility it cannot deliver.
+  const seedUnsupported = !modelSupportsSeed(selectedModel)
+  const unsupportedReason = seedUnsupportedReason(selectedModel)
 
   const handleRandomize = () => {
     const randomSeed = Math.floor(Math.random() * 1000000)
@@ -63,7 +71,7 @@ export function SeedControlDropdown({ seed, onSeedChange }: SeedControlDropdownP
     }
   }
 
-  const displayValue = seed !== null ? seed.toString() : 'Random'
+  const displayValue = seedUnsupported ? 'N/A' : seed !== null ? seed.toString() : 'Random'
 
   return (
     <div className="flex items-center gap-2">
@@ -71,10 +79,13 @@ export function SeedControlDropdown({ seed, onSeedChange }: SeedControlDropdownP
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className="justify-between bg-zinc-800 border-[#c99850]/50 hover:border-[#c99850] hover:bg-zinc-800 text-white min-w-[200px] h-9"
+            title={unsupportedReason ?? undefined}
+            className={`justify-between bg-zinc-800 border-[#c99850]/50 hover:border-[#c99850] hover:bg-zinc-800 text-white min-w-[200px] h-9 ${
+              seedUnsupported ? 'opacity-50' : ''
+            }`}
           >
             <div className="flex items-center gap-2">
-              {isLocked ? (
+              {isLocked && !seedUnsupported ? (
                 <Lock className="w-3.5 h-3.5 text-[#c99850]" />
               ) : (
                 <Unlock className="w-3.5 h-3.5 text-white/50" />
@@ -89,22 +100,30 @@ export function SeedControlDropdown({ seed, onSeedChange }: SeedControlDropdownP
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-white">Seed Value</label>
               <span className="text-[10px] text-white/60 uppercase">
-                {isLocked ? 'Seed is locked' : 'Seed is unlocked'}
+                {seedUnsupported ? 'Unavailable' : isLocked ? 'Seed is locked' : 'Seed is unlocked'}
               </span>
             </div>
-            
+
+            {seedUnsupported && (
+              <p className="text-[10px] text-amber-300/90 leading-relaxed bg-amber-500/10 border border-amber-500/30 rounded-lg p-2">
+                {unsupportedReason} — its API accepts no seed, so locking one here would
+                not change the result. Switch to a Gemini model for reproducible output.
+              </p>
+            )}
+
             <div className="flex items-center gap-2 p-2 bg-zinc-900 rounded-lg border border-[#c99850]/30">
               <Button
                 onClick={handleToggleLock}
                 size="sm"
                 variant="ghost"
-                className={`flex-1 h-8 text-xs ${
-                  isLocked 
-                    ? 'bg-[#c99850] hover:bg-[#dbb56e] text-white' 
+                disabled={seedUnsupported}
+                className={`flex-1 h-8 text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isLocked && !seedUnsupported
+                    ? 'bg-[#c99850] hover:bg-[#dbb56e] text-white'
                     : 'bg-zinc-800 hover:bg-zinc-700 text-white/70'
                 }`}
               >
-                {isLocked ? (
+                {isLocked && !seedUnsupported ? (
                   <>
                     <Lock className="w-3 h-3 mr-1" />
                     Locked
@@ -125,23 +144,26 @@ export function SeedControlDropdown({ seed, onSeedChange }: SeedControlDropdownP
                 value={inputValue}
                 onChange={(e) => handleSeedChange(e.target.value)}
                 placeholder="Enter seed (e.g., 38240)"
-                className="flex-1 h-8 bg-zinc-900 border-[#c99850]/30 text-white text-xs"
-                disabled={isLocked}
+                className="flex-1 h-8 bg-zinc-900 border-[#c99850]/30 text-white text-xs disabled:opacity-50"
+                disabled={isLocked || seedUnsupported}
               />
               <Button
                 onClick={handleRandomize}
                 size="sm"
-                className="bg-[#c99850] hover:bg-[#dbb56e] text-white h-8 px-3 text-xs"
+                disabled={seedUnsupported}
+                className="bg-[#c99850] hover:bg-[#dbb56e] text-white h-8 px-3 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Random
               </Button>
             </div>
-            <p className="text-[10px] text-white/70 leading-relaxed">
-              {isLocked 
-                ? 'Seed is locked - same image will be generated with identical settings. Click "Locked" to unlock.'
-                : 'Seed changes with each generation for unique variations. Lock a seed to reproduce exact results.'
-              }
-            </p>
+            {!seedUnsupported && (
+              <p className="text-[10px] text-white/70 leading-relaxed">
+                {isLocked
+                  ? 'Seed is locked - same image will be generated with identical settings. Click "Locked" to unlock.'
+                  : 'Seed changes with each generation for unique variations. Lock a seed to reproduce exact results.'
+                }
+              </p>
+            )}
           </div>
         </PopoverContent>
       </Popover>

@@ -12,6 +12,7 @@
 import { Button } from '@/components/ui/button'
 import { RotateCcw, Upload } from 'lucide-react'
 import { SeedControlDropdown } from '../../SeedControlDropdown'
+import { TextPositionSelector } from '../../TextPositionSelector'
 import { ReferenceImageUpload } from '../../GeneratePanel/ReferenceImageUpload'
 import { PresetControls } from '../../GeneratePanel/PresetControls'
 import { CreativeDirectionPopover } from '../../Toolbar'
@@ -167,8 +168,16 @@ export function ImageSettingsRail() {
       </RailSection>
 
       <RailSection title="Advanced" onReset={resetAdvanced}>
+        <SettingField label="Text Position">
+          <TextPositionSelector
+            value={state.textPosition}
+            onChange={state.setTextPosition}
+            compact
+          />
+        </SettingField>
+
         <SettingField label="Seed">
-          <SeedControlDropdown seed={state.seed} onSeedChange={state.setSeed} />
+          <SeedControlDropdown seed={state.seed} onSeedChange={state.setSeed} selectedModel={state.selectedModel} />
         </SettingField>
 
         <SettingField label="Background Removal" suggestion={diff('bgRemovalMethod', imageBgRemovalMethod)}>

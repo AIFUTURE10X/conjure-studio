@@ -272,7 +272,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
               <PromptInputs mainPrompt={mainPrompt} negativePrompt={negativePrompt} onMainPromptChange={setMainPrompt} onNegativePromptChange={setNegativePrompt} />
               <ModelSelector selectedModel={selectedModel} onModelChange={m => setSelectedModel?.(m)} imageSize={imageSize} onImageSizeChange={s => setImageSize?.(s)} />
               <div className="flex items-center gap-2 flex-wrap">
-                <SeedControlDropdown seed={activeSeed} onSeedChange={setSeed} />
+                <SeedControlDropdown seed={activeSeed} onSeedChange={setSeed} selectedModel={selectedModel} />
                 <label className={`flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors ${photoRoomBgRemovalEnabled ? 'border-[#c99850]/60 bg-[#c99850]/10 text-[#f2d39d]' : 'border-zinc-700 bg-zinc-900 text-zinc-300'}`}>
                   <input
                     type="checkbox"

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } 
 import type { DotMatrixConfig } from '../constants/dot-matrix-config'
 import { SETTINGS_STORAGE_KEY } from '../constants/settings-defaults'
 import { DEFAULT_VIDEO_SETTINGS, type VideoSettingsValue } from '../constants/video-settings-defaults'
+import { DEFAULT_TEXT_POSITION, type TextPosition } from '@/lib/text-position'
 import {
   DEFAULT_CREATIVE_DIRECTION,
   normalizeCreativeDirection,
@@ -89,6 +90,8 @@ export interface ImageStudioState {
   setMainPrompt: (prompt: string) => void
   seed: number | null
   setSeed: (seed: number | null) => void
+  textPosition: TextPosition
+  setTextPosition: (position: TextPosition) => void
   imageSize: '1K' | '2K' | '4K'
   setImageSize: (size: '1K' | '2K' | '4K') => void
   selectedModel: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
@@ -178,6 +181,7 @@ export function useImageStudioState(): ImageStudioState {
   }, [])
 
   const [seed, setSeed] = useState<number | null>(null)
+  const [textPosition, setTextPosition] = useState<TextPosition>(DEFAULT_TEXT_POSITION)
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K')
   const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'>('gpt-image-2')
   const [useImageBgRemoval, setUseImageBgRemoval] = useState(true)
@@ -240,6 +244,7 @@ export function useImageStudioState(): ImageStudioState {
     negativePrompt: negativePromptState, setNegativePrompt,
     mainPrompt: mainPromptState, setMainPrompt,
     seed, setSeed,
+    textPosition, setTextPosition,
     imageSize, setImageSize,
     selectedModel, setSelectedModel,
     useImageBgRemoval, setUseImageBgRemoval,

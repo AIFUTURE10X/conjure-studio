@@ -1,3 +1,5 @@
+import { DEFAULT_TEXT_POSITION, normalizeTextPosition, type TextPosition } from './text-position'
+
 export const LOGO_ASPECT_RATIOS = [
   '1:1',
   '16:9',
@@ -65,6 +67,8 @@ export interface LogoGenerationOptions {
   referenceImage?: File
   referenceMode?: LogoReferenceMode
   bgRemovalMethod?: BgRemovalMethod
+  /** Where the wording sits relative to the mark. 'auto' emits no directive. */
+  textPosition?: TextPosition
   cloudApiKey?: string
   aspectRatio?: LogoAspectRatio
   resolution?: LogoResolution
@@ -149,6 +153,10 @@ export function normalizeLogoModel(input: string | null | undefined): LogoGenera
   const migrated = input ? migrations[input] || input : undefined
   return normalizeFromList(migrated, LOGO_GENERATION_MODELS, DEFAULT_LOGO_GENERATION_SETTINGS.model)
 }
+
+/** Re-exported so logo callers have one import for generation settings. */
+export { normalizeTextPosition, DEFAULT_TEXT_POSITION }
+export type { TextPosition }
 
 export function parseLogoSeed(input: string | null | undefined): number | undefined {
   if (!input) return undefined
