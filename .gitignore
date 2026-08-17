@@ -58,3 +58,6 @@ scripts/history-recovery.json
 # these local copies exist only for the offline gallery.
 assets/**/logos/
 assets/**/_to_delete/
+
+# Local output from scripts/compare-bg-removers.cjs
+bg-comparison/
