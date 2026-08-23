@@ -208,6 +208,9 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
         formData.append('image', file)
         // fal — same method as the BG Remover tool; server falls back to PhotoRoom.
         formData.append('bgRemovalMethod', 'fal')
+        // Generated results are graphics as often as photos; the graphic-tuned
+        // engine keeps logo fills intact where the photo matte hollows them out.
+        formData.append('isLogoContext', 'true')
         const result = await fetch('/api/remove-background', { method: 'POST', body: formData })
         const data = await result.json()
         if (!data.success || !data.image) throw new Error(data.error || 'Failed to remove background')

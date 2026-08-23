@@ -323,6 +323,9 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
       const formData = new FormData()
       formData.append('image', file)
       formData.append('bgRemovalMethod', imageBgRemovalMethod)
+      // Generated results are graphics as often as photos; the graphic-tuned
+      // engine keeps logo fills intact where the photo matte hollows them out.
+      formData.append('isLogoContext', 'true')
       const result = await fetch('/api/remove-background', { method: 'POST', body: formData })
       const data = await result.json()
       if (!data.success || !data.image) throw new Error(data.error || 'Failed to remove background')

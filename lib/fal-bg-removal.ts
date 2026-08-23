@@ -13,6 +13,7 @@
  */
 
 import { fal } from "@fal-ai/client"
+import sharp from "sharp"
 import { recoverBrightDetailOnDarkBackground } from "./bright-detail-recovery"
 
 /**
@@ -47,6 +48,29 @@ function extractImageUrl(result: unknown): string {
 }
 
 /**
+ * Bria leaves the original background RGB under fully transparent pixels,
+ * which bloats the PNG roughly 10x and halos in consumers that resize
+ * without premultiplying. Zero it out, keeping edge semi-transparency intact.
+ */
+async function clearRgbUnderTransparency(base64: string): Promise<string> {
+  const { data, info } = await sharp(Buffer.from(base64, 'base64'))
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) {
+      data[i] = 0
+      data[i + 1] = 0
+      data[i + 2] = 0
+    }
+  }
+  const png = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .png()
+    .toBuffer()
+  return png.toString('base64')
+}
+
+/**
  * Fetch result image and convert to base64.
  */
 async function fetchResultAsBase64(outputUrl: string): Promise<string> {
@@ -59,7 +83,13 @@ async function fetchResultAsBase64(outputUrl: string): Promise<string> {
 }
 
 export interface FalBgRemovalOptions {
-  /** Reserved for parity with other providers; BiRefNet Heavy already preserves text edges well. */
+  /**
+   * Logo/graphic context routes to Bria RMBG 2.0 instead of BiRefNet.
+   * BiRefNet's salient-object matte hollows out glowing/gradient fills on
+   * generated logos (neon bars lose their interiors); RMBG 2.0 keeps them.
+   * Judged on pixels via scripts/compare-bg-removers.cjs — BiRefNet Heavy
+   * stays the default for photo subjects (best-in-class hair/fine edges).
+   */
   isLogoContext?: boolean
 }
 
@@ -83,23 +113,31 @@ export async function removeBackgroundWithFal(
   fal.config({ credentials: apiKey })
 
   const mimeType = detectMimeType(imageBase64)
-  console.log("[fal BG Removal] Starting BiRefNet v2 background removal...")
-  console.log(`[fal BG Removal] Input MIME type: ${mimeType}, logo context: ${options?.isLogoContext === true}`)
+  const isLogoContext = options?.isLogoContext === true
+  const dataUri = `data:${mimeType};base64,${imageBase64}`
+  const endpoint = isLogoContext ? "fal-ai/bria/background/remove" : "fal-ai/birefnet/v2"
+  console.log(`[fal BG Removal] Starting ${isLogoContext ? 'Bria RMBG 2.0' : 'BiRefNet v2'} background removal...`)
+  console.log(`[fal BG Removal] Input MIME type: ${mimeType}, logo context: ${isLogoContext}`)
 
   try {
-    const result = await fal.subscribe("fal-ai/birefnet/v2", {
-      input: {
-        image_url: `data:${mimeType};base64,${imageBase64}`,
-        model: "General Use (Heavy)", // best edge quality; cost is negligible on fal
-        output_format: "png",          // PNG preserves alpha transparency
-        refine_foreground: true,       // cleaner edges on hair / fine detail
-      },
+    const result = await fal.subscribe(endpoint, {
+      input: isLogoContext
+        ? { image_url: dataUri }
+        : {
+            image_url: dataUri,
+            model: "General Use (Heavy)", // best edge quality; cost is negligible on fal
+            output_format: "png",          // PNG preserves alpha transparency
+            refine_foreground: true,       // cleaner edges on hair / fine detail
+          },
       logs: false,
     })
 
     const outputUrl = extractImageUrl(result)
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
-    const processedBase64 = await fetchResultAsBase64(outputUrl)
+    let processedBase64 = await fetchResultAsBase64(outputUrl)
+    if (isLogoContext) {
+      processedBase64 = await clearRgbUnderTransparency(processedBase64)
+    }
     // Restore faint bright detail (sparkles/glow) the matte drops on dark-bg
     // logos; no-op for non-dark/busy backgrounds.
     return await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
