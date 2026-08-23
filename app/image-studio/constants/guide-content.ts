@@ -120,7 +120,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           { name: 'Creative Direction', values: 'popover groups', description: 'Mood, lighting, palette, decorative elements — stackable art direction.' },
           { name: 'Seed', values: 'number / random', description: 'Fix the seed to reproduce a composition across runs.' },
           { name: 'Reference Image', values: 'upload', description: 'Guide generation with an image (replicate or inspire modes).' },
-          { name: 'Background Removal', values: 'fal · BiRefNet (default) / PhotoRoom / Off', description: 'Which engine the "Remove BG" action uses on results.' },
+          { name: 'Background Removal', values: 'fal · BEN2 (default) / Off', description: 'Whether the "Remove BG" action runs on results. BEN2 keeps glowing and gradient fills intact.' },
         ],
         more: [
           {
@@ -207,7 +207,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           {
             heading: 'Remove BG and Upscale, precisely',
             paragraphs: [
-              'Remove BG sends the image to the engine chosen in the rail: fal · BiRefNet (default — best edges on hair/fur, pay-per-use) or PhotoRoom. The cutout replaces the image in the grid; download gives you a transparent PNG. 1 credit.',
+              'Remove BG sends the image to fal · BEN2 (pay-per-use matting that keeps glowing and gradient fills). The cutout replaces the image in the grid; download gives you a transparent PNG. 1 credit.',
               'Upscale enlarges to 4K and swaps the result into the same grid slot — do it after you have picked the final image, not on every candidate. 2 credits.',
             ],
           },
@@ -669,7 +669,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: 'BG Remover',
         paragraphs: [
-          'Drop in any image for professional background removal. Default engine is fal · BiRefNet (top-tier edges, pay-as-you-go); PhotoRoom is the fallback. Also available as the "Remove BG" action on any generated image.',
+          'Drop in any image for professional background removal, powered by fal · BiRefNet (top-tier edges on hair and photo subjects, pay-as-you-go). Also available as the "Remove BG" action on any generated image, where the graphics-tuned BEN2 engine runs instead.',
         ],
       },
       {

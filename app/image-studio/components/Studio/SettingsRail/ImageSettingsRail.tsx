@@ -39,8 +39,7 @@ const IMAGE_SIZES = ['1K', '2K', '4K'] as const
 const STYLE_STRENGTHS = ['subtle', 'moderate', 'strong'] as const
 
 const BG_REMOVAL_CHIPS: ChipOption[] = [
-  { value: 'fal', label: 'fal · BiRefNet' },
-  { value: 'photoroom', label: 'PhotoRoom' },
+  { value: 'fal', label: 'fal · BEN2' },
   { value: 'none', label: 'Off' },
 ]
 
@@ -187,7 +186,7 @@ export function ImageSettingsRail() {
             onChange={(v) => setImageBgRemovalMethod(v as typeof imageBgRemovalMethod)}
           />
           <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
-            fal · BiRefNet (default) — pay-as-you-go, top-tier edges. Applied when you use Remove BG on a result.
+            fal · BEN2 (default) — pay-as-you-go matting that keeps glowing and gradient fills. Applied when you use Remove BG on a result.
           </p>
         </SettingField>
 

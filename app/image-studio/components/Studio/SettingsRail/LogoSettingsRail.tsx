@@ -38,8 +38,7 @@ const TEXT_MODE_OPTIONS = [
 ] as const
 
 const BG_REMOVAL_CHIPS: ChipOption[] = [
-  { value: 'fal', label: 'fal · BiRefNet' },
-  { value: 'photoroom', label: 'PhotoRoom' },
+  { value: 'fal', label: 'fal · BEN2' },
   { value: 'none', label: 'Off' },
 ]
 
@@ -182,7 +181,7 @@ export function LogoSettingsRail() {
             onChange={(v) => state.setBgRemovalMethod(v as typeof state.bgRemovalMethod)}
           />
           <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
-            fal · BiRefNet (default) — pay-as-you-go, top-tier edges. Off keeps the generated background.
+            fal · BEN2 (default) — pay-as-you-go matting that keeps glowing and gradient fills. Off keeps the generated background.
           </p>
         </SettingField>
 

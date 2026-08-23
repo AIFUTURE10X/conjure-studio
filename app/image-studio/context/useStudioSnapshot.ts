@@ -17,7 +17,7 @@ import { useStudioCore, useStudioLogoState } from './useStudio'
 import { useImageGenerationEngine } from './ImageGenerationProvider'
 
 function formatBackgroundRemovalProvider(method: string) {
-  if (method === 'fal') return 'fal · BiRefNet'
+  if (method === 'fal') return 'fal · BEN2'
   if (method === 'photoroom') return 'PhotoRoom'
   if (method === 'native-transparent') return 'Legacy transparent cleanup'
   if (method === 'none') return 'No background removal'

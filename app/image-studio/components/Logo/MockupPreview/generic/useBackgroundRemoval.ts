@@ -42,8 +42,8 @@ export function useBackgroundRemoval({
       const blob = await response.blob()
       const file = new File([blob], 'image.png', { type: 'image/png' })
 
-      // fal (BiRefNet) — same method as the working BG Remover tool; the
-      // server falls back to PhotoRoom automatically if FAL_KEY is unset.
+      // fal — with isLogoContext this runs BEN2, the graphics-tuned engine;
+      // the server falls back to PhotoRoom automatically if FAL_KEY is unset.
       const formData = new FormData()
       formData.append('image', file)
       formData.append('bgRemovalMethod', 'fal')
