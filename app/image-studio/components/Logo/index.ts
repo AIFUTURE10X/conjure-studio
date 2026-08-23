@@ -4,6 +4,7 @@ export { LogoAdvancedSettings } from './LogoAdvancedSettings'
 export { LogoPreviewPanel } from './LogoPreviewPanel'
 export { LogoActionButtons } from './LogoActionButtons'
 export { EraserToolModal } from './EraserToolModal'
+export { CropToolModal } from './CropToolModal'
 
 // Film/TV title-style reference library
 export { TitleStyleGallery, useTitleStyles } from './TitleStyles'

@@ -3,6 +3,7 @@
 import { toast } from 'sonner'
 import { TextOverlayEditor } from '../TextOverlayEditor'
 import { EraserToolModal } from '../Logo/EraserToolModal'
+import { CropToolModal } from '../Logo/CropToolModal'
 import { DotMatrixConfigurator } from '../Logo/DotMatrixConfigurator'
 import { UnifiedConfigurator } from '../Logo/UnifiedConfigurator'
 import { LogoWizard } from '../Logo/LogoWizard'
@@ -19,6 +20,7 @@ import { buildFullPrompt, buildNegativePromptForPreset } from '../../constants/p
 interface LogoPanelModalsProps {
   showTextEditor: boolean; setShowTextEditor: (show: boolean) => void
   isEraserMode: boolean; setIsEraserMode: (mode: boolean) => void
+  showCropTool: boolean; setShowCropTool: (show: boolean) => void
   showDotMatrixConfigurator: boolean; setShowDotMatrixConfigurator: (show: boolean) => void
   pendingLogoConfig?: Partial<DotMatrixConfig> | null; onClearPendingConfig?: () => void
   showUnifiedConfigurator: boolean; setShowUnifiedConfigurator: (show: boolean) => void
@@ -44,6 +46,7 @@ interface LogoPanelModalsProps {
 export function LogoPanelModals({
   showTextEditor, setShowTextEditor,
   isEraserMode, setIsEraserMode,
+  showCropTool, setShowCropTool,
   showDotMatrixConfigurator, setShowDotMatrixConfigurator,
   pendingLogoConfig, onClearPendingConfig,
   showUnifiedConfigurator, setShowUnifiedConfigurator,
@@ -205,6 +208,15 @@ export function LogoPanelModals({
         <EraserToolModal
           generatedLogo={generatedLogo}
           onClose={() => setIsEraserMode(false)}
+          onUpdateLogo={setLogo}
+        />
+      )}
+
+      {/* Crop Tool Modal */}
+      {showCropTool && generatedLogo && (
+        <CropToolModal
+          generatedLogo={generatedLogo}
+          onClose={() => setShowCropTool(false)}
           onUpdateLogo={setLogo}
         />
       )}

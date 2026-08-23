@@ -472,6 +472,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
               onShowTextEditor={() => state.setShowTextEditor(true)}
               onToggleEraserMode={() => state.setIsEraserMode(!state.isEraserMode)}
               isEraserMode={state.isEraserMode}
+              onShowCropTool={() => state.setShowCropTool(true)}
               onDownload={() => downloadLogo(generatedLogo)}
               onExportSvg={handleExportSvg}
               isExportingSvg={isExportingSvg}
@@ -536,6 +537,7 @@ export const LogoPanel = forwardRef<LogoPanelRef, LogoPanelProps>(function LogoP
       <LogoPanelModals
         showTextEditor={state.showTextEditor} setShowTextEditor={state.setShowTextEditor}
         isEraserMode={state.isEraserMode} setIsEraserMode={state.setIsEraserMode}
+        showCropTool={state.showCropTool} setShowCropTool={state.setShowCropTool}
         showDotMatrixConfigurator={state.showDotMatrixConfigurator} setShowDotMatrixConfigurator={state.setShowDotMatrixConfigurator}
         pendingLogoConfig={pendingLogoConfig} onClearPendingConfig={onClearPendingConfig}
         showUnifiedConfigurator={state.showUnifiedConfigurator} setShowUnifiedConfigurator={state.setShowUnifiedConfigurator}

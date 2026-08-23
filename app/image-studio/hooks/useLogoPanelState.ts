@@ -52,6 +52,7 @@ export function useLogoPanelState({
   // Modal visibility state
   const [showTextEditor, setShowTextEditor] = useState(false)
   const [isEraserMode, setIsEraserMode] = useState(false)
+  const [showCropTool, setShowCropTool] = useState(false)
   const [showDotMatrixConfigurator, setShowDotMatrixConfigurator] = useState(false)
   const [showUnifiedConfigurator, setShowUnifiedConfigurator] = useState(false)
   const [showLogoWizard, setShowLogoWizard] = useState(false)
@@ -158,6 +159,7 @@ export function useLogoPanelState({
     // Modal visibility state
     showTextEditor, setShowTextEditor,
     isEraserMode, setIsEraserMode,
+    showCropTool, setShowCropTool,
     showDotMatrixConfigurator, setShowDotMatrixConfigurator,
     showUnifiedConfigurator, setShowUnifiedConfigurator,
     showLogoWizard, setShowLogoWizard,

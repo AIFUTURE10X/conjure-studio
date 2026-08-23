@@ -14,6 +14,7 @@ import {
   Loader2,
   Sparkles,
   Scissors,
+  Crop,
   CreditCard,
   ALargeSmall,
   ChevronDown,
@@ -29,6 +30,7 @@ interface LogoActionButtonsProps {
   onShowTextEditor: () => void
   onToggleEraserMode: () => void
   isEraserMode: boolean
+  onShowCropTool: () => void
   onDownload: () => void
   onExportSvg: () => void
   isExportingSvg: boolean
@@ -52,6 +54,7 @@ export function LogoActionButtons({
   onShowTextEditor,
   onToggleEraserMode,
   isEraserMode,
+  onShowCropTool,
   onDownload,
   onExportSvg,
   isExportingSvg,
@@ -80,7 +83,7 @@ export function LogoActionButtons({
   }
 
   return (
-    <div className="grid grid-cols-7 gap-1">
+    <div className="grid grid-cols-9 gap-1">
       <Button
         onClick={onShowTextEditor}
         size="sm"
@@ -96,6 +99,14 @@ export function LogoActionButtons({
       >
         <Eraser className="w-3 h-3 mr-1" />
         Clean
+      </Button>
+      <Button
+        onClick={onShowCropTool}
+        size="sm"
+        className="h-8 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 text-xs"
+      >
+        <Crop className="w-3 h-3 mr-1" />
+        Crop
       </Button>
       <Button
         onClick={onRemoveBackground}
@@ -235,7 +246,7 @@ export function LogoActionButtons({
       </Button>
 
       {/* Second Row - Brand Kit, Real Font & Mockup Buttons */}
-      <div className="col-span-8 flex gap-1 mt-1">
+      <div className="col-span-9 flex gap-1 mt-1">
         <BrandKitButton generatedLogo={generatedLogo} />
         {onShowRealFontOverlay && (
             <Button

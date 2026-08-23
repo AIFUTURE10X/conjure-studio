@@ -219,6 +219,7 @@ export function LogoCanvas() {
                 onShowTextEditor={() => state.setShowTextEditor(true)}
                 onToggleEraserMode={() => state.setIsEraserMode(!state.isEraserMode)}
                 isEraserMode={state.isEraserMode}
+                onShowCropTool={() => state.setShowCropTool(true)}
                 onDownload={() => downloadLogo(generatedLogo)}
                 onExportSvg={handlers.handleExportSvg}
                 isExportingSvg={handlers.isExportingSvg}
@@ -295,6 +296,7 @@ export function LogoCanvas() {
         <LogoPanelModals
           showTextEditor={state.showTextEditor} setShowTextEditor={state.setShowTextEditor}
           isEraserMode={state.isEraserMode} setIsEraserMode={state.setIsEraserMode}
+          showCropTool={state.showCropTool} setShowCropTool={state.setShowCropTool}
           showDotMatrixConfigurator={state.showDotMatrixConfigurator} setShowDotMatrixConfigurator={state.setShowDotMatrixConfigurator}
           pendingLogoConfig={null} onClearPendingConfig={undefined}
           showUnifiedConfigurator={state.showUnifiedConfigurator} setShowUnifiedConfigurator={state.setShowUnifiedConfigurator}
