@@ -48,8 +48,8 @@ function extractImageUrl(result: unknown): string {
 }
 
 /**
- * Bria leaves the original background RGB under fully transparent pixels,
- * which bloats the PNG roughly 10x and halos in consumers that resize
+ * BEN2 (like Bria) leaves the original background RGB under fully transparent
+ * pixels, which bloats the PNG several-fold and halos in consumers that resize
  * without premultiplying. Zero it out, keeping edge semi-transparency intact.
  */
 async function clearRgbUnderTransparency(base64: string): Promise<string> {
@@ -84,11 +84,18 @@ async function fetchResultAsBase64(outputUrl: string): Promise<string> {
 
 export interface FalBgRemovalOptions {
   /**
-   * Logo/graphic context routes to Bria RMBG 2.0 instead of BiRefNet.
-   * BiRefNet's salient-object matte hollows out glowing/gradient fills on
-   * generated logos (neon bars lose their interiors); RMBG 2.0 keeps them.
-   * Judged on pixels via scripts/compare-bg-removers.cjs — BiRefNet Heavy
-   * stays the default for photo subjects (best-in-class hair/fine edges).
+   * Logo/graphic context routes to BEN2 instead of BiRefNet.
+   *
+   * BiRefNet is salient-object detection: a near-binary mask multiplied onto
+   * the source, so glowing/gradient fills score low and get punched out (neon
+   * bars come back as hollow outlines). Raising `operating_resolution` does not
+   * fix it — the failure is the model class. BEN2 uses confidence-guided
+   * matting and retained every fill with the sharpest type of anything fal
+   * hosts. BiRefNet Heavy stays the default for photo subjects, where its
+   * hair/fine-edge quality is best in class.
+   *
+   * Judged on pixels against a real PhotoRoom cutout via
+   * scripts/compare-bg-removers.cjs.
    */
   isLogoContext?: boolean
 }
@@ -115,8 +122,8 @@ export async function removeBackgroundWithFal(
   const mimeType = detectMimeType(imageBase64)
   const isLogoContext = options?.isLogoContext === true
   const dataUri = `data:${mimeType};base64,${imageBase64}`
-  const endpoint = isLogoContext ? "fal-ai/bria/background/remove" : "fal-ai/birefnet/v2"
-  console.log(`[fal BG Removal] Starting ${isLogoContext ? 'Bria RMBG 2.0' : 'BiRefNet v2'} background removal...`)
+  const endpoint = isLogoContext ? "fal-ai/ben/v2/image" : "fal-ai/birefnet/v2"
+  console.log(`[fal BG Removal] Starting ${isLogoContext ? 'BEN2' : 'BiRefNet v2'} background removal...`)
   console.log(`[fal BG Removal] Input MIME type: ${mimeType}, logo context: ${isLogoContext}`)
 
   try {
