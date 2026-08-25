@@ -1,5 +1,9 @@
 # Conjure Studio - Project Notes
 
+Part of Phil's AI OS — registry slug: `conjure-studio` (project id 21).
+Work state (tasks, findings, decisions) → the ai-os Neon DB tagged to that project;
+durable learnings → this file or the OS vault.
+
 ## 🚀 Deployment Workflow
 
 ### Branches
@@ -254,3 +258,11 @@ npx eslint --no-warn-ignored path/to/file.tsx
 
 &nbsp; 3. Add hex color to `COLOR\_HEX\_MAP` if using new colors
 
+
+## Conventions check (mandatory)
+
+After ANY code change, run `npm run check:conventions` and fix failures before
+reporting done. CI enforces the same check on every push; catching it locally is
+cheaper than a red X. Existing violations are grandfathered in
+`scripts/conventions-baseline.json` — never update the baseline to silence a
+NEW violation; fix the code instead.
