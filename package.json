@@ -40,7 +40,8 @@
     "start": "next start",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:install": "playwright install --with-deps chromium"
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "check:conventions": "node scripts/check-conventions.mjs"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
