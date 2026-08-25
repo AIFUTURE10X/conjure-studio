@@ -197,6 +197,14 @@ This is a single Next.js 16 (App Router, Turbopack) app at the repo root — no 
 - Apply migrations with `node scripts/run-sql.cjs scripts/<file>.sql` in numeric order (`004,005,002,006,007,008,009,010`). Prefer this over `run-migrations.js`, which `require`s `dotenv` (not installed) and only covers a subset.
 - Saving favorites/history *images* additionally needs `BLOB_READ_WRITE_TOKEN` (Vercel Blob); without it, reads and account/credits/auth writes still work but `POST /api/favorites` fails at blob upload.
 
+## Conventions check (mandatory)
+
+After ANY code change, run `npm run check:conventions` and fix failures before
+reporting done. CI enforces the same check on every push. Existing violations
+are grandfathered in `scripts/conventions-baseline.json`. Never update the
+baseline to silence a NEW violation; fix the code instead. Ratcheting DOWN
+after removed debt is the only legitimate baseline update.
+
 ### Notes
 - `npm run lint` reports many `no-explicit-any` warnings but **0 errors** — that is the expected baseline.
 - `next.config.mjs` lists native `serverExternalPackages` (`sharp`, `onnxruntime-node`, `@neplex/vectorizer`); `npm install` builds these. If background-removal/vectorize routes throw native errors, rerun `npm install`.
