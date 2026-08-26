@@ -81,12 +81,10 @@ function parseOpenAIError(body: string): OpenAIErrorBody["error"] {
   }
 }
 
-const OPENAI_REQUEST_TIMEOUT_MS = 100_000
-
 /** Every OpenAI image call goes through this so a hung request fails fast enough for the credit guard to refund it, instead of the route timing out first. */
-async function fetchOpenAI(url: string, init: RequestInit): Promise<Response> {
+async function fetchOpenAI(url: string, init: RequestInit, requestTimeoutMs: number): Promise<Response> {
   try {
-    return await fetch(url, { ...init, signal: AbortSignal.timeout(OPENAI_REQUEST_TIMEOUT_MS) })
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) })
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
       throw new Error("OpenAI request timed out")
@@ -104,6 +102,7 @@ export async function generateOpenAIImage({
   maskImageFile,
   n,
   exactSize,
+  requestTimeoutMs = 100_000,
 }: {
   prompt: string
   aspectRatio: AllowedRatio
@@ -117,6 +116,8 @@ export async function generateOpenAIImage({
   n?: number
   /** Exact "WxH" (edges divisible by 16, aspect 1:3-3:1) — overrides the imageSize bucket when set. */
   exactSize?: string
+  /** Per-call timeout so long-running routes can use their available budget. */
+  requestTimeoutMs?: number
 }) {
   const size = exactSize ?? getOpenAIImageSize(aspectRatio, imageSize)
   const apiKey = getOpenAIKey()
@@ -152,7 +153,7 @@ export async function generateOpenAIImage({
           Authorization: `Bearer ${apiKey}`,
         },
         body: formData,
-      })
+      }, requestTimeoutMs)
 
     let response = await postEdit(buildFormData(true))
     let body = await response.text()
@@ -198,7 +199,7 @@ export async function generateOpenAIImage({
       quality: imageQuality,
       output_format: "png",
     }),
-  })
+  }, requestTimeoutMs)
 
   const body = await response.text()
   if (!response.ok) {

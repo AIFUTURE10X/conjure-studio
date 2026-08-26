@@ -11,6 +11,8 @@ import { upscaleBase64WithSharp } from '@/lib/sharp-upscaler'
 import sharp from 'sharp'
 import type { ParsedLogoGenerationRequest } from './logo-request'
 
+const LOGO_OPENAI_REQUEST_TIMEOUT_MS = 240_000
+
 export interface LogoGenerationResult {
   success: boolean
   imageBase64?: string
@@ -65,6 +67,7 @@ export async function generateLogoBaseImage(
         imageQuality: request.imageQuality,
         outputBackground: 'auto',
         referenceImageFile: request.referenceImageFile,
+        requestTimeoutMs: LOGO_OPENAI_REQUEST_TIMEOUT_MS,
       })
 
       return {

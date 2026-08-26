@@ -236,6 +236,20 @@ const checks = [
       /referenceMode:\s*state\.referenceMode === 'replicate' \? 'replicate' : 'inspire'/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')),
   },
   {
+    name: 'logo generation can outlast the shared 100-second OpenAI image timeout without overrunning its route budget',
+    pass: () => {
+      const client = read('lib/openai-image-client.ts')
+      const pipeline = read('app/api/generate-logo/logo-image-pipeline.ts')
+      const route = read('app/api/generate-logo/route.ts')
+      return /requestTimeoutMs\?:\s*number/.test(client) &&
+        /requestTimeoutMs\s*=\s*100_000/.test(client) &&
+        /AbortSignal\.timeout\(requestTimeoutMs\)/.test(client) &&
+        /LOGO_OPENAI_REQUEST_TIMEOUT_MS\s*=\s*240_000/.test(pipeline) &&
+        /requestTimeoutMs:\s*LOGO_OPENAI_REQUEST_TIMEOUT_MS/.test(pipeline) &&
+        /maxDuration\s*=\s*300/.test(route)
+    },
+  },
+  {
     name: 'logo reference upload exposes the same Replicate Exact and Use as Inspiration choices as image generation',
     pass: () => {
       const source = read('app/image-studio/components/Studio/SettingsRail/LogoSettingsRail.tsx')
