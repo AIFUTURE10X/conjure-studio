@@ -15,6 +15,7 @@
 import { fal } from "@fal-ai/client"
 import sharp from "sharp"
 import { recoverBrightDetailOnDarkBackground } from "./bright-detail-recovery"
+import { preserveOpaqueSourceColors } from "./source-color-preservation"
 
 /**
  * Detect MIME type from base64 magic bytes so fal receives a correct data URI.
@@ -143,6 +144,7 @@ export async function removeBackgroundWithFal(
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
     let processedBase64 = await fetchResultAsBase64(outputUrl)
     if (isLogoContext) {
+      processedBase64 = await preserveOpaqueSourceColors(imageBase64, processedBase64)
       processedBase64 = await clearRgbUnderTransparency(processedBase64)
     }
     // Restore faint bright detail (sparkles/glow) the matte drops on dark-bg

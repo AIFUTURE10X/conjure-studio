@@ -236,6 +236,18 @@ const checks = [
       /referenceMode:\s*state\.referenceMode === 'replicate' \? 'replicate' : 'inspire'/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')),
   },
   {
+    name: 'logo reference upload exposes the same Replicate Exact and Use as Inspiration choices as image generation',
+    pass: () => {
+      const source = read('app/image-studio/components/Studio/SettingsRail/LogoSettingsRail.tsx')
+      return /Replicate Exact/.test(source) &&
+        /Use as Inspiration/.test(source) &&
+        /Generate an exact copy of this image \(ignores prompt\)/.test(source) &&
+        /Use image as style\/subject reference for your prompt/.test(source) &&
+        /setReferenceMode\('replicate'\)/.test(source) &&
+        /setReferenceMode\('inspire'\)/.test(source)
+    },
+  },
+  {
     name: 'logo history stores the actual background removal method used',
     pass: () => /bgRemovalMethod\?:\s*BgRemovalMethod/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')) &&
       /bgRemovalMethod:\s*logo\.bgRemovalMethod \|\| state\.bgRemovalMethod/.test(read('app/image-studio/components/LogoPanel/useLogoPanelGenerate.ts')),

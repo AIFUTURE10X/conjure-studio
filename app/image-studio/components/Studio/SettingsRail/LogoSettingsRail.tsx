@@ -10,7 +10,7 @@
  */
 
 import { useRef } from 'react'
-import { RotateCcw, Upload, X } from 'lucide-react'
+import { Copy, RotateCcw, Upload, Wand2, X } from 'lucide-react'
 import { SettingField } from './SettingField'
 import { RailSection } from './RailSection'
 import { ChipSelect, type ChipOption } from './ChipSelect'
@@ -236,21 +236,37 @@ export function LogoSettingsRail() {
                 <X className="w-3 h-3" />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-1">
-              {(['replicate', 'inspire'] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => state.setReferenceMode(m)}
-                  className={`h-7 rounded-md text-[11px] font-medium capitalize transition-colors ${
-                    state.referenceMode === m
-                      ? 'bg-linear-to-r from-[#c99850] to-[#dbb56e] text-black'
-                      : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => state.setReferenceMode('replicate')}
+                className={`flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-[10px] font-medium transition-colors ${
+                  state.referenceMode === 'replicate'
+                    ? 'border border-purple-500 bg-purple-600 text-white'
+                    : 'border border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white'
+                }`}
+              >
+                <Copy className="h-3 w-3 shrink-0" />
+                Replicate Exact
+              </button>
+              <button
+                type="button"
+                onClick={() => state.setReferenceMode('inspire')}
+                className={`flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-[10px] font-medium transition-colors ${
+                  state.referenceMode === 'inspire'
+                    ? 'border border-amber-500 bg-amber-600 text-white'
+                    : 'border border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white'
+                }`}
+              >
+                <Wand2 className="h-3 w-3 shrink-0" />
+                Use as Inspiration
+              </button>
             </div>
+            <p className="text-center text-[10px] leading-4 text-zinc-500">
+              {state.referenceMode === 'replicate'
+                ? 'Generate an exact copy of this image (ignores prompt)'
+                : 'Use image as style/subject reference for your prompt'}
+            </p>
             <label className="flex items-center gap-2 text-[11px] text-zinc-300 cursor-pointer">
               <input
                 type="checkbox"

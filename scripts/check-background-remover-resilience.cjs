@@ -22,6 +22,20 @@ function loadRecovery() {
   return mod.exports.recoverBrightDetailOnDarkBackground
 }
 
+function loadSourceColorPreservation() {
+  const ts = require('typescript')
+  const js = ts.transpileModule(read('lib/source-color-preservation.ts'), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+      esModuleInterop: true,
+    },
+  }).outputText
+  const mod = { exports: {} }
+  new Function('exports', 'require', 'module', js)(mod.exports, require, mod)
+  return mod.exports.preserveOpaqueSourceColors
+}
+
 /** Deterministic PRNG — no Math.random, so the check is reproducible. */
 function makeRng(seed) {
   let s = seed
@@ -129,6 +143,38 @@ const checks = [
         jsonReadIndex < okCheckIndex &&
         /data\.error/.test(source) &&
         /HTTP \$\{response\.status\}/.test(source)
+    },
+  },
+  {
+    name: 'logo matte preserves opaque source colors instead of provider-shifted RGB',
+    pass: async () => {
+      if (!fs.existsSync(path.join(root, 'lib/source-color-preservation.ts'))) return false
+      const preserveColors = loadSourceColorPreservation()
+      if (typeof preserveColors !== 'function') return false
+
+      const sharp = require('sharp')
+      const width = 3
+      const height = 1
+      const original = Buffer.from([
+        255, 255, 255, 255,
+        14, 25, 37, 255,
+        66, 154, 147, 255,
+      ])
+      const providerResult = Buffer.from([
+        255, 255, 255, 0,
+        11, 25, 41, 255,
+        54, 166, 159, 255,
+      ])
+      const toPng = (data) => sharp(data, { raw: { width, height, channels: 4 } }).png().toBuffer()
+      const outputBase64 = await preserveColors(
+        (await toPng(original)).toString('base64'),
+        (await toPng(providerResult)).toString('base64'),
+      )
+      const output = await sharp(Buffer.from(outputBase64, 'base64')).ensureAlpha().raw().toBuffer()
+
+      return output[3] === 0 &&
+        output[4] === 14 && output[5] === 25 && output[6] === 37 && output[7] === 255 &&
+        output[8] === 66 && output[9] === 154 && output[10] === 147 && output[11] === 255
     },
   },
   {

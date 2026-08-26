@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useCallback, useEffect } from 'react'
-import { Upload, X, GripHorizontal, Sparkles, Loader2, Copy, Lightbulb } from 'lucide-react'
+import { Upload, X, GripHorizontal, Sparkles, Loader2, Copy, Wand2 } from 'lucide-react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 interface ReferenceImage {
@@ -233,48 +233,55 @@ export function LogoPromptSection({
               </button>
             </div>
 
-            {/* Replicate / Inspire Mode Toggle */}
-            <div className="flex items-center gap-1 p-1 bg-zinc-800/50 rounded-lg border border-zinc-700">
+            {/* Replicate Exact / Use as Inspiration Mode Toggle */}
+            <div className="flex gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={() => setReferenceMode('replicate')}
                     disabled={isGenerating}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                       referenceMode === 'replicate'
-                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                        : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+                        ? 'bg-purple-600 text-white border border-purple-500'
+                        : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
                     }`}
                   >
                     <Copy className="w-3 h-3" />
-                    Replicate
+                    Replicate Exact
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p className="text-xs">Exact reproduction - ignores style settings</p>
+                  <p className="text-xs">Generate an exact copy of this image (ignores prompt)</p>
                 </TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={() => setReferenceMode('inspire')}
                     disabled={isGenerating}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                       referenceMode === 'inspire'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+                        ? 'bg-amber-600 text-white border border-amber-500'
+                        : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
                     }`}
                   >
-                    <Lightbulb className="w-3 h-3" />
-                    Inspire
+                    <Wand2 className="w-3 h-3" />
+                    Use as Inspiration
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p className="text-xs">Use as inspiration - applies style settings</p>
+                  <p className="text-xs">Use image as style/subject reference for your prompt</p>
                 </TooltipContent>
               </Tooltip>
             </div>
+            <p className="text-xs text-zinc-500 text-center">
+              {referenceMode === 'replicate'
+                ? 'Generate an exact copy of this image (ignores prompt)'
+                : 'Use image as style/subject reference for your prompt'}
+            </p>
           </div>
         )}
 
