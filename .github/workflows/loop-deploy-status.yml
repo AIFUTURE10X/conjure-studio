@@ -1,0 +1,105 @@
+# Stamps Vercel deploy state onto Loop Board cards.
+#
+# Vercel's git integration emits GitHub `deployment_status` events for every
+# Preview and Production deploy. On a terminal state this workflow finds the
+# PR for the deployed commit (open PR for previews, merged PR for the master
+# merge commit on production) plus its `Closes #N` issues, and stamps their
+# Loop Board cards: Deploy = "Preview ready" / "Live in prod" / "Deploy
+# failed", and Preview URL on preview successes.
+#
+# INERT until the LOOP_PROJECT_TOKEN secret exists (classic PAT, repo +
+# project scopes — the default GITHUB_TOKEN cannot write user-owned
+# Projects v2). Informational only: loop-approved stays the only review gate
+# and the human merge stays the only ship gate.
+name: loop-deploy-status
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loop-deploy-${{ github.event.deployment.sha }}-${{ github.event.deployment_status.environment }}
+  cancel-in-progress: false
+
+jobs:
+  stamp:
+    if: contains(fromJSON('["success","failure","error"]'), github.event.deployment_status.state)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stamp Deploy field on Loop Board
+        env:
+          GH_TOKEN: ${{ secrets.LOOP_PROJECT_TOKEN }}
+          STATE: ${{ github.event.deployment_status.state }}
+          DEPLOY_ENV: ${{ github.event.deployment_status.environment }}
+          DEPLOY_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          SHA: ${{ github.event.deployment.sha }}
+          REPO: ${{ github.repository }}
+          BOARD_TITLE: Loop Board
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "LOOP_PROJECT_TOKEN not set — skipping (inert until the secret exists)."
+            exit 0
+          fi
+
+          if [ "$STATE" != "success" ]; then
+            OPTION="Deploy failed"
+          elif printf '%s' "$DEPLOY_ENV" | grep -qi production; then
+            OPTION="Live in prod"
+          else
+            OPTION="Preview ready"
+          fi
+          echo "deployment: env=$DEPLOY_ENV state=$STATE -> $OPTION"
+
+          PR_NUMBERS=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[].number' || true)
+          if [ -z "$PR_NUMBERS" ]; then
+            echo "no PR associated with $SHA — nothing to stamp"
+            exit 0
+          fi
+
+          NUMBERS="$PR_NUMBERS"
+          for pr in $PR_NUMBERS; do
+            ISSUES=$(gh pr view "$pr" --repo "$REPO" --json body --jq .body \
+              | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) #[0-9]+' \
+              | grep -oE '[0-9]+' || true)
+            NUMBERS="$NUMBERS $ISSUES"
+          done
+          NUMBERS=$(printf '%s\n' $NUMBERS | sort -un)
+          echo "cards to stamp (PR + linked issues): $(echo $NUMBERS)"
+
+          # The board and its fields are shared across repos and may be edited
+          # by hand, so resolve every id fresh instead of hardcoding.
+          PROJECTS=$(gh project list --owner "@me" --format json --limit 30)
+          PROJ_NUM=$(printf '%s' "$PROJECTS" | jq -r ".projects[] | select(.title==\"$BOARD_TITLE\") | .number")
+          PROJ_ID=$(printf '%s' "$PROJECTS" | jq -r ".projects[] | select(.title==\"$BOARD_TITLE\") | .id")
+          if [ -z "$PROJ_NUM" ]; then
+            echo "no project titled '$BOARD_TITLE' for this token's user — skipping"
+            exit 0
+          fi
+
+          FIELDS=$(gh project field-list "$PROJ_NUM" --owner "@me" --format json)
+          DEPLOY_FIELD=$(printf '%s' "$FIELDS" | jq -r '.fields[] | select(.name=="Deploy") | .id')
+          OPTION_ID=$(printf '%s' "$FIELDS" | jq -r ".fields[] | select(.name==\"Deploy\") | .options[]? | select(.name==\"$OPTION\") | .id")
+          URL_FIELD=$(printf '%s' "$FIELDS" | jq -r '.fields[] | select(.name=="Preview URL") | .id')
+          if [ -z "$DEPLOY_FIELD" ] || [ -z "$OPTION_ID" ]; then
+            echo "Deploy field or '$OPTION' option missing on the board — run /loop-setup"
+            exit 0
+          fi
+
+          ITEMS=$(gh project item-list "$PROJ_NUM" --owner "@me" --format json --limit 500)
+          STAMPED=0
+          for n in $NUMBERS; do
+            for item in $(printf '%s' "$ITEMS" | jq -r ".items[] | select(.content.repository==\"$REPO\" and .content.number==$n) | .id"); do
+              echo "stamping item $item (#$n) -> $OPTION"
+              gh project item-edit --id "$item" --project-id "$PROJ_ID" \
+                --field-id "$DEPLOY_FIELD" --single-select-option-id "$OPTION_ID"
+              if [ "$OPTION" = "Preview ready" ] && [ -n "$DEPLOY_URL" ] && [ -n "$URL_FIELD" ]; then
+                gh project item-edit --id "$item" --project-id "$PROJ_ID" \
+                  --field-id "$URL_FIELD" --text "$DEPLOY_URL"
+              fi
+              STAMPED=$((STAMPED + 1))
+            done
+          done
+          echo "stamped $STAMPED card(s)"
