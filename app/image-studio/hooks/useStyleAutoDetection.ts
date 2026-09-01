@@ -18,11 +18,21 @@ export function useStyleAutoDetection(
 
     const styleText = styleAnalysisText.toLowerCase()
     
-    // Try exact matches first
-    let detected = stylePresets.find(preset => 
-      styleText.includes(preset.value.toLowerCase())
-    )
-    
+    // Noir outranks the exact-match pass below: "noir comic book panel" contains
+    // the literal "comic book", but the noir read is the more specific one.
+    let detected = ['noir', 'chiaroscuro', 'graphic novel'].some(signal => styleText.includes(signal))
+      ? stylePresets.find(p => p.value === 'Ink Noir')
+      : undefined
+
+    // Try exact matches first, longest value wins. Array order used to decide,
+    // so "Studio Ghibli hand-drawn anime" matched Anime (earlier in the list)
+    // over the more specific Studio Ghibli.
+    if (!detected) {
+      detected = stylePresets
+        .filter(preset => styleText.includes(preset.value.toLowerCase()))
+        .sort((a, b) => b.value.length - a.value.length)[0]
+    }
+
     // Partial matches for common variations
     if (!detected) {
       if (styleText.includes('ghibli')) {

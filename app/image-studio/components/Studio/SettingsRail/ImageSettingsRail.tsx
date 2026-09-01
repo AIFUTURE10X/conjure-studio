@@ -137,7 +137,13 @@ export function ImageSettingsRail() {
         </SettingField>
 
         <SettingField label="Style" suggestion={diff('style', state.selectedStylePreset)}>
-          <ChipSelect options={STYLE_CHIPS} value={state.selectedStylePreset} onChange={state.setSelectedStylePreset} />
+          <ChipSelect
+            options={STYLE_CHIPS}
+            value={state.selectedStylePreset}
+            onChange={state.setSelectedStylePreset}
+            columns={4}
+            panelWidth="wide"
+          />
         </SettingField>
       </RailSection>
 

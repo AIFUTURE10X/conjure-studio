@@ -81,6 +81,17 @@ export const stylePresets: StylePreset[] = [
   { value: 'Sketch', label: 'Sketch', thumbnail: '/pencil-sketch.png', description: 'Hand-drawn pencil textures' },
   { value: 'Pencil Sketch', label: 'Pencil Sketch', thumbnail: '/pencil-sketch-drawing.jpg', description: 'Detailed pencil drawing, cross-hatching, shading' },
   { value: 'Comic Book', label: 'Comic Book', thumbnail: '/comic-book-art.png', description: 'Bold style, halftone patterns' },
+  {
+    value: 'Ink Noir',
+    label: 'Ink Noir',
+    thumbnail: '/ink-noir-style.svg',
+    description: 'Modern graphic-novel ink, hard chiaroscuro, limited palette',
+    // "Noir" alone pulls image models toward desaturated 1940s film stills. Spell
+    // out the inked graphic-novel drawing so the contrast reads as brushwork
+    // rather than photographic lighting.
+    promptHint:
+      'modern graphic novel ink illustration: dramatic chiaroscuro with hard-edged spot blacks consuming most of the frame, a single bright key light carving the subject out of darkness, bold brush-inked contours of varying weight, cross-hatching and stippling for midtones, strictly limited palette of black and paper-white with one saturated accent color, flat unmodulated fills, no soft gradients or airbrushed shading, high-contrast noir comic panel art',
+  },
   { value: 'Studio Ghibli', label: 'Studio Ghibli', thumbnail: '/studio-ghibli-style.jpg', description: 'Hand-painted, pastoral nature' },
   { value: 'Makoto Shinkai', label: 'Makoto Shinkai', thumbnail: '/makoto-shinkai-anime.jpg', description: 'Soft 3D, expressive lighting' },
   { value: 'Disney Modern 3D', label: 'Disney Modern 3D', thumbnail: '/disney-3d-animation.jpg', description: 'High-finish animation, glossy' },

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Ink Noir style example: a black inked profile silhouette against a lit wall cut by venetian blind shadows, with an amber rim light">
+  <defs>
+    <clipPath id="noir-frame">
+      <rect width="400" height="400"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#noir-frame)">
+    <!-- the lit wall -->
+    <rect width="400" height="400" fill="#e9e3d5"/>
+
+    <!-- venetian blind shadows: the signature noir key light -->
+    <g transform="skewY(-12)" fill="#0b0b0e">
+      <rect x="-60" y="30" width="520" height="26" opacity="0.88"/>
+      <rect x="-60" y="86" width="520" height="26" opacity="0.88"/>
+      <rect x="-60" y="142" width="520" height="26" opacity="0.88"/>
+      <rect x="-60" y="198" width="520" height="26" opacity="0.88"/>
+      <rect x="-60" y="254" width="520" height="26" opacity="0.88"/>
+      <rect x="-60" y="310" width="520" height="26" opacity="0.88"/>
+      <rect x="-60" y="366" width="520" height="26" opacity="0.88"/>
+      <rect x="-60" y="422" width="520" height="26" opacity="0.88"/>
+    </g>
+
+    <!-- cross-hatching massing into the lower-left corner -->
+    <g stroke="#0b0b0e" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.55">
+      <path d="M20 300L64 356"/>
+      <path d="M14 340L52 388"/>
+      <path d="M46 356L74 392"/>
+      <path d="M8 380L30 400"/>
+      <path d="M356 60L392 104"/>
+      <path d="M374 44L400 76"/>
+    </g>
+
+    <!-- the figure, a single spot black: head and neck -->
+    <g fill="#0b0b0e">
+      <path d="M214 40C160 46 132 96 136 152C137 166 148 166 143 176L118 208C131 216 143 212 148 218C136 223 136 231 148 236C137 242 141 254 152 261C176 280 196 292 216 300L216 348L340 348L340 150C340 80 286 36 214 40Z"/>
+      <!-- swept hair mass, breaking the skull's egg contour -->
+      <path d="M188 72C180 30 224 10 270 20C320 30 348 70 344 122C334 86 306 60 268 54C232 48 202 54 188 72Z"/>
+      <!-- shoulders, cropped by the frame -->
+      <path d="M200 330C120 344 70 372 54 400L400 400L400 368C378 340 330 328 292 326Z"/>
+    </g>
+
+    <!-- lapel notch cut back out of the coat so it reads as a jacket -->
+    <g stroke="#e9e3d5" stroke-width="6" stroke-linecap="round" fill="none">
+      <path d="M228 334L268 394L306 332"/>
+    </g>
+
+    <!-- amber rim light riding the profile edge -->
+    <path
+      d="M214 40C160 46 132 96 136 152C137 166 148 166 143 176L118 208C131 216 143 212 148 218C136 223 136 231 148 236C137 242 141 254 152 261C176 280 196 292 216 300"
+      fill="none" stroke="#c99850" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M216 300L216 334C168 342 96 366 54 400" fill="none" stroke="#c99850" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+  </g>
+</svg>

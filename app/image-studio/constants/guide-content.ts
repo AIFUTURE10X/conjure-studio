@@ -113,7 +113,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           { name: 'AI Model', values: 'ChatGPT Images 2.0', description: 'The primary image model. 4 credits per image at any size.' },
           { name: 'Image Size', values: '1K / 2K / 4K', description: 'Output resolution tier.' },
           { name: 'Aspect Ratio', values: '1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 21:9…', description: 'Canvas shape. 9:16 for reels/shorts, 16:9 for YouTube.' },
-          { name: 'Style Preset', values: 'Realistic, PhotoReal, Pixar, Anime, Watercolor, 3D Render, Comic Book, Studio Ghibli + more', description: 'The overall look. Thumbnails preview each style.' },
+          { name: 'Style Preset', values: 'Realistic, PhotoReal, Pixar, Anime, Watercolor, 3D Render, Comic Book, Ink Noir, Studio Ghibli + more', description: 'The overall look. Thumbnails preview each style.' },
           { name: 'Style Strength', values: 'subtle / moderate / strong', description: 'How hard the style preset is pushed.' },
           { name: 'Camera Angle', values: 'Eye-level, Low-angle, High-angle, Aerial, Dutch, POV…', description: 'Framing direction added to the prompt.' },
           { name: 'Camera Lens', values: '14mm ultra-wide → 200mm telephoto, Macro', description: 'Lens character (depth, compression, distortion).' },

@@ -2,7 +2,7 @@
 
 export const STYLE_OPTIONS = [
   "3D Digital Clay", "3D Render", "Anime", "Cartoon Saloon", "Cartoon Style", "Claymation",
-  "Comic Book", "Disney Modern 3D", "Kyoto Animation", "Laika", "Makoto Shinkai",
+  "Comic Book", "Disney Modern 3D", "Ink Noir", "Kyoto Animation", "Laika", "Makoto Shinkai",
   "Oil Painting", "Pencil Sketch", "PhotoReal", "Pixar", "Realistic",
   "Sketch", "Sony Spider-Verse", "Studio Ghibli", "Studio Trigger",
   "Ufotable", "Watercolor"

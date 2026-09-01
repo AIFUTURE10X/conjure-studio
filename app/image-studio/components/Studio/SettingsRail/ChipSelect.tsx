@@ -7,6 +7,11 @@
  * instead of a vertical list — compact trigger in the rail, fast grid
  * picker on open. Long labels wrap rather than truncate.
  *
+ * The panel sizes to its content and only scrolls when the option grid is
+ * taller than the space Radix reports between the trigger and the viewport
+ * edge. Long lists (e.g. art styles) pass `panelWidth="wide"` with 4 columns
+ * so every option is visible in one go.
+ *
  * Options with a `thumbnail` (e.g. art-style examples) show a square preview
  * card pinned to the left edge of the dropdown box on hover.
  */
@@ -28,16 +33,31 @@ interface ChipSelectProps {
   options: readonly ChipOption[]
   value: string
   onChange: (value: string) => void
-  columns?: 2 | 3
+  columns?: 2 | 3 | 4
   placeholder?: string
+  /** 'trigger' matches the rail control; 'wide' breaks out for long option lists. */
+  panelWidth?: 'trigger' | 'wide'
 }
 
 const COLS_CLASS = {
   2: 'grid-cols-2',
   3: 'grid-cols-3',
+  4: 'grid-cols-4',
 } as const
 
-export function ChipSelect({ options, value, onChange, columns = 3, placeholder = 'Select' }: ChipSelectProps) {
+const PANEL_WIDTH_CLASS = {
+  trigger: 'w-[var(--radix-popover-trigger-width)] min-w-56',
+  wide: 'w-[26rem] max-w-[calc(100vw-2rem)]',
+} as const
+
+export function ChipSelect({
+  options,
+  value,
+  onChange,
+  columns = 3,
+  placeholder = 'Select',
+  panelWidth = 'trigger',
+}: ChipSelectProps) {
   const [open, setOpen] = useState(false)
   const [preview, setPreview] = useState<ChipOption | null>(null)
   const current = options.find((option) => option.value === value)
@@ -56,7 +76,8 @@ export function ChipSelect({ options, value, onChange, columns = 3, placeholder 
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="relative w-[var(--radix-popover-trigger-width)] min-w-56 border-zinc-700 bg-zinc-900 p-2"
+        collisionPadding={12}
+        className={`relative border-zinc-700 bg-zinc-900 p-2 ${PANEL_WIDTH_CLASS[panelWidth]}`}
       >
         {/* Hover preview, pinned just left of the dropdown box */}
         {preview?.thumbnail && (
@@ -73,7 +94,10 @@ export function ChipSelect({ options, value, onChange, columns = 3, placeholder 
           </div>
         )}
 
-        <div className="max-h-[300px] overflow-y-auto" onMouseLeave={() => setPreview(null)}>
+        <div
+          className="max-h-[calc(var(--radix-popover-content-available-height,80vh)-1rem)] overflow-y-auto"
+          onMouseLeave={() => setPreview(null)}
+        >
           <div className={`grid gap-1.5 ${COLS_CLASS[columns]}`}>
             {options.map((option) => {
               const active = option.value === value
