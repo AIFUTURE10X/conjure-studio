@@ -10,6 +10,8 @@ const HISTORY_STORE = 'history'
 interface CachedFavorite {
   id: string
   imageUrl: string
+  /** Url the image was displayed under when favorited; see FavoriteImage. */
+  sourceUrl?: string
   blob?: Blob
   timestamp: number
   metadata?: any

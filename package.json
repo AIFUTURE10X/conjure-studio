@@ -7,6 +7,7 @@
     "check:bg-remover": "node scripts/check-background-remover-resilience.cjs",
     "check:ci-coverage": "node scripts/check-ci-coverage.cjs",
     "check:clay-styles": "node scripts/check-clay-style-presets.cjs",
+    "check:favorites-toggle": "node scripts/check-favorites-toggle.cjs",
     "check:gemini-identity": "node scripts/check-gemini-inspire-identity.cjs",
     "check:ai-helper-scenarios": "node scripts/check-ai-helper-scenarios.cjs",
     "check:ai-helper-ui": "node scripts/check-ai-helper-ui-contract.cjs",

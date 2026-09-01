@@ -5,6 +5,15 @@ export interface FavoriteImage {
   id: string
   url: string
   blobUrl?: string
+  /**
+   * The url the image was displayed under when it was favorited, as opposed to
+   * `url`, which is the server's own blob copy. The grid only knows this one, so
+   * it is what the star is matched on. Absent for favorites saved from a `data:`
+   * URI, which are matched by content instead — see lib/favorites/identity.ts.
+   */
+  sourceUrl?: string
+  /** sha256 of the image bytes; the server's dedupe key. */
+  contentHash?: string
   timestamp: number
   metadata?: {
     ratio?: string
@@ -44,6 +53,7 @@ export async function addFavorite(
     await indexedDBHelper.cacheFavorite({
       id: favorite.id,
       imageUrl: favorite.url,
+      sourceUrl: favorite.sourceUrl,
       timestamp: favorite.timestamp,
       metadata
     })
@@ -57,14 +67,16 @@ export async function addFavorite(
     const cachedFavorite = {
       id: fallbackId,
       imageUrl,
+      sourceUrl: imageUrl,
       timestamp: Date.now(),
       metadata
     }
     await indexedDBHelper.cacheFavorite(cachedFavorite)
-    
+
     return {
       id: fallbackId,
       url: imageUrl,
+      sourceUrl: imageUrl,
       timestamp: Date.now(),
       metadata
     }
@@ -97,6 +109,7 @@ export async function getAllFavorites(): Promise<FavoriteImage[]> {
       return cached.map(c => ({
         id: c.id,
         url: c.imageUrl,
+        sourceUrl: c.sourceUrl,
         timestamp: c.timestamp,
         metadata: c.metadata
       }))

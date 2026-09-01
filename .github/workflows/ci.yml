@@ -116,6 +116,9 @@ jobs:
       - name: Contract — landing page
         run: npm run check:landing
 
+      - name: Contract — favorites toggle
+        run: npm run check:favorites-toggle
+
       # Fails the build if package.json defines a check:* script that has no
       # step above. Every past history regression shipped past a guard that
       # existed but was never wired into CI — this makes that impossible.
