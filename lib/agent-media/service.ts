@@ -128,6 +128,7 @@ export class MediaService {
     return { operationId: id, inputHash: op.quote.inputHash, brand: op.quote.request.brand,
       state: asset ? 'completed' : this.active.has(id) ? 'running' : 'needs_reconciliation',
       assets: asset ? [asset] : [], reservedMicros: op.quote.reserveMicros, actualCostMicros: cost?.actualMicros ?? null,
+      retainedResponse: this.store.exists(id, 'provider-response.bin'),
       costState: cost ? 'operator-recorded' : 'unreconciled', message: asset ? 'Original PNG retained in Conjure agent storage.' : 'Do not regenerate; inspect provider and durable operation records.' }
   }
   async asset(id: string): Promise<Asset> {

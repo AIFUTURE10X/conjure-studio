@@ -108,6 +108,14 @@ See [Microsoft's move contract](https://learn.microsoft.com/en-us/windows/win32/
 The image provider allows 240 seconds for slow text/reference requests. A timeout
 still remains an ambiguous outcome and does not authorize another purchase.
 
+An empty operation folder or reservation-only temporary file can be left before
+submission; ledger scans skip these incomplete starts. A missing reservation with
+submission/result/cost evidence blocks the ledger until its backup is restored.
+Bounded provider bytes are retained first as provider-response.bin. Unexpected or
+invalid image output remains quarantined there with retainedResponse=true and
+needs_reconciliation; it is never served as an approved image or repurchased.
+Inspect the original locally without changing the quoted operation or its approval.
+
 The tool surface does not delete originals, overwrite revisions, send messages or
 publish ads. Editing handoffs and hosted library synchronization remain later work.
 

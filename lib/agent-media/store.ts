@@ -46,7 +46,15 @@ export class MediaStore {
     try { durablePublish(temp, destination) } finally { if (existsSync(temp)) unlinkSync(temp) }
   }
   list() {
-    return readdirSync(this.root).filter(name => /^[a-f0-9]{64}$/.test(name) && lstatSync(this.path(name)).isDirectory())
+    return readdirSync(this.root).filter(name => {
+      if (!/^[a-f0-9]{64}$/.test(name) || !lstatSync(this.path(name)).isDirectory()) return false
+      if (this.exists(name, 'reserved.json')) return true
+      // An empty folder or interrupted reservation temp cannot have submitted.
+      // Any later artifact without a reservation is corruption, not free budget.
+      requireMedia(readdirSync(this.path(name)).every(file => /^reserved\.json\.[a-f0-9-]{36}\.tmp$/.test(file)),
+        'Operation ledger incomplete; restore the missing reservation')
+      return false
+    })
   }
   async lock<T>(work: () => Promise<T>): Promise<T> {
     const path = this.path('writer.lock')

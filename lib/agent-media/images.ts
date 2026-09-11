@@ -21,6 +21,12 @@ export async function loadReference(store: MediaStore, request: MediaRequest) {
   return bytes
 }
 export async function saveGenerated(store: MediaStore, operationId: string, brand: string, size: string, bytes: Buffer): Promise<Asset> {
+  // Keep the bounded original even if image decoding or quote validation fails.
+  // It is quarantined local evidence, never an approved MCP image resource.
+  requireMedia(bytes.length > 0 && bytes.length <= 8_000_000, 'Provider response exceeds the retention bound')
+  if (store.exists(operationId, 'provider-response.bin')) {
+    requireMedia(hash(readFileSync(store.path(operationId, 'provider-response.bin'))) === hash(bytes), 'Retained provider response differs; never overwrite it')
+  } else store.bytes([operationId, 'provider-response.bin'], bytes)
   const dimensions = await describePng(bytes)
   requireMedia(`${dimensions.width}x${dimensions.height}` === size, 'Provider image dimensions differ from the quote')
   const asset: Asset = { id: operationId, operationId, owner: store.owner, brand, sha256: hash(bytes), mimeType: 'image/png', ...dimensions }

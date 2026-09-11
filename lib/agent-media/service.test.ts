@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
@@ -140,4 +140,31 @@ test('documented forward-slash Windows storage paths resolve consistently', asyn
   f.config.dataRoot = f.root.replaceAll('\\', '/')
   const quote = await f.service.quote(request)
   assert.equal(quote.request.brand, 'sample'); assert.equal(f.calls, 0)
+})
+
+test('pre-reservation crash folders do not strand the budget or the next generation', async t => {
+  const f = await fixture(t), args = await f.quoted(), id = f.service.store.operationId(args.idempotencyKey)
+  mkdirSync(join(f.root, id))
+  writeFileSync(join(f.root, id, 'reserved.json.00000000-0000-4000-8000-000000000000.tmp'), 'Interrupted reservation write')
+  assert.equal(f.service.budget().totalMicros, 0)
+  assert.equal((await f.service.generate(args)).state, 'completed')
+  assert.equal(f.calls, 1)
+  // Missing reservation with possible provider evidence must still fail closed.
+  f.service.store.write('submitted.json', {}, 'a'.repeat(64))
+  assert.throws(() => f.service.budget(), /incomplete|reservation/i)
+})
+
+test('unexpected provider dimensions retain paid bytes without accepting an asset or repurchasing', async t => {
+  const f = await fixture(t), args = await f.quoted()
+  const bytes = await sharp({ create: { width: 8, height: 8, channels: 4, background: '#123456' } }).png().toBuffer()
+  let calls = 0
+  f.provider.generate = async () => { calls++; return bytes }
+  const op = await f.service.generate(args)
+  assert.equal(op.state, 'needs_reconciliation'); assert.deepEqual(op.assets, [])
+  assert.deepEqual(readFileSync(join(f.root, op.operationId, 'provider-response.bin')), bytes)
+  assert.equal(op.retainedResponse, true)
+  const restarted = new MediaService(() => f.config, f.provider, () => NOW)
+  assert.equal((await restarted.generate(args)).state, 'needs_reconciliation')
+  assert.equal(restarted.budget().totalMicros, 100000); assert.equal(calls, 1)
+  await assert.rejects(restarted.assetBytes(op.operationId))
 })
