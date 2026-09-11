@@ -298,8 +298,8 @@ export function LogoAdvancedSettings({
               />
             </div>
             <p className="text-[9px] text-zinc-500">
-              {selectedModel === 'gpt-image-2'
-                ? 'Seed lock is unavailable for ChatGPT Images 2.0'
+              {selectedModel === 'gpt-image-2.5-flare'
+                ? 'Seed lock is unavailable for ChatGPT Images 2.5'
                 : seedLocked
                   ? 'Generation will use the seed above for reproducible Gemini results'
                   : seedValue

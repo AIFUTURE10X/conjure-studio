@@ -14,7 +14,7 @@ import { applyTextPositionToPrompt, DEFAULT_TEXT_POSITION, TEXT_POSITIONS } from
 export const runtime = "nodejs"
 export const maxDuration = 300
 
-type OpenAIImageModel = "gpt-image-2"
+type OpenAIImageModel = "gpt-image-2.5-flare"
 type AppGenerationModel = GenerationModel | OpenAIImageModel
 
 // Old model names from saved presets migrate forward; unknown values fall
@@ -24,14 +24,15 @@ const MODEL_MIGRATIONS: Record<string, string> = {
   'gemini-2.5-flash-image': 'gemini-3.1-flash-image-preview',
   'gemini-2.0-flash-exp': 'gemini-3.1-flash-image-preview',
   'gemini-3-pro-image': 'gemini-3-pro-image-preview',
-  'chatgpt-image-generator-2': 'gpt-image-2',
-  'chatgpt-image-latest': 'gpt-image-2',
+  'chatgpt-image-generator-2': 'gpt-image-2.5-flare',
+  'chatgpt-image-latest': 'gpt-image-2.5-flare',
+  'gpt-image-2': 'gpt-image-2.5-flare',
 }
 
 const lenientModelSchema = z.preprocess((value) => {
-  if (typeof value !== 'string' || !value) return 'gpt-image-2'
+  if (typeof value !== 'string' || !value) return 'gpt-image-2.5-flare'
   const migrated = MODEL_MIGRATIONS[value] || value
-  return imageModelSchema.options.includes(migrated as never) ? migrated : 'gpt-image-2'
+  return imageModelSchema.options.includes(migrated as never) ? migrated : 'gpt-image-2.5-flare'
 }, imageModelSchema)
 
 const lenientImageSizeSchema = z.preprocess((value) => {
@@ -50,7 +51,7 @@ const formSchema = z.object({
   referenceMode: z.enum(['inspire', 'replicate']).default('inspire'),
   textPosition: z.enum(TEXT_POSITIONS).default(DEFAULT_TEXT_POSITION),
   seed: z.coerce.number().int().optional(),
-  model: lenientModelSchema.default('gpt-image-2'),
+  model: lenientModelSchema.default('gpt-image-2.5-flare'),
   imageSize: lenientImageSizeSchema.default('1K'),
   imageQuality: z.enum(['low', 'medium', 'high', 'auto']).default('medium'),
   // History metadata: identity + what the user actually typed + style context.
@@ -126,7 +127,7 @@ async function saveGenerationToHistory(
 }
 
 function isOpenAIImageModel(model: AppGenerationModel): model is OpenAIImageModel {
-  return model === "gpt-image-2"
+  return model === "gpt-image-2.5-flare"
 }
 
 async function handlePost(request: NextRequest) {

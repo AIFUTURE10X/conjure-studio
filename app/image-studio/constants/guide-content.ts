@@ -110,7 +110,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           'The "Negative" button opens a second box for things to avoid. "Save to…" auto-files new images into a collection. "Library" opens your saved prompts. "Improve with AI" hands your idea to the helper for a polished rewrite.',
         ],
         settings: [
-          { name: 'AI Model', values: 'ChatGPT Images 2.0', description: 'The primary image model. 4 credits per image at any size.' },
+          { name: 'AI Model', values: 'ChatGPT Images 2.5', description: 'The primary image model. 4 credits per image at any size.' },
           { name: 'Image Size', values: '1K / 2K / 4K', description: 'Output resolution tier.' },
           { name: 'Aspect Ratio', values: '1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 21:9…', description: 'Canvas shape. 9:16 for reels/shorts, 16:9 for YouTube.' },
           { name: 'Style Preset', values: 'Realistic, PhotoReal, Pixar, Anime, Watercolor, 3D Render, Comic Book, Ink Noir, Studio Ghibli + more', description: 'The overall look. Thumbnails preview each style.' },
@@ -689,7 +689,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: 'Credit costs',
         settings: [
-          { name: 'Image generation', values: '4 credits / image', description: 'ChatGPT Images 2.0, any size. A 10-image batch = 40 credits.' },
+          { name: 'Image generation', values: '4 credits / image', description: 'ChatGPT Images 2.5, any size. A 10-image batch = 40 credits.' },
           { name: 'Video · Seedance Fast', values: '3 credits / second', description: 'A 5s draft = 15 credits.' },
           { name: 'Video · Seedance 2.0', values: '6–8 credits / second', description: 'Higher rate with audio on. 4K doubles the total.' },
           { name: 'Video · Kling 3.0 Pro', values: '8–10 credits / second', description: 'Higher rate with audio on.' },

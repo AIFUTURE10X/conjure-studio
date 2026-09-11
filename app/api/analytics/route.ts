@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       jobs.push({
         kind: 'image',
         label: String(row.prompt ?? '').slice(0, 100),
-        credits: imageGenerationCost('gpt-image-2', '1K', count),
+        credits: imageGenerationCost('gpt-image-2.5-flare', '1K', count),
         units: count,
         timestamp: new Date(row.created_at as string).getTime(),
         status: 'completed',

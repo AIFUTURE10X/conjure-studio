@@ -44,9 +44,9 @@ async function handlePost(request: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
     }
 
-    if (logoRequest.bgRemovalMethod === 'native-transparent' && logoRequest.model !== 'gpt-image-2') {
+    if (logoRequest.bgRemovalMethod === 'native-transparent' && logoRequest.model !== 'gpt-image-2.5-flare') {
       return NextResponse.json(
-        { error: "Native transparent PNG requires ChatGPT Images 2.0" },
+        { error: "Native transparent PNG requires ChatGPT Images 2.5" },
         { status: 400 }
       )
     }

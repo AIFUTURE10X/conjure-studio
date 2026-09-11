@@ -299,7 +299,7 @@ except the pure data/types `thumbnail-constants.ts` (allowed).
 - [x] **AI Enhance** — upscale the subject/background in place via
   `/api/upscale-logo`.
 - [x] **AI Erase / Edit** — brush-mask inpaint: new `/api/thumbnail-edit` route
-  (gpt-image-2 `/images/edits` + a PNG mask, `maskImageFile` added to the OpenAI
+  (gpt-image-2.5-flare `/images/edits` + a PNG mask, `maskImageFile` added to the OpenAI
   client; cost key `thumbnailEdit`); `ThumbnailEditModal` paints the mask at
   native resolution. ⚠️ **UNTESTED in-browser** — verify on a preview before
   relying on it (mask semantics / model behavior may need tuning).

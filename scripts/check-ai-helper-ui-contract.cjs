@@ -462,7 +462,7 @@ const checks = [
         /Legacy PNG model mismatch/.test(preflight) &&
         /PNG cleanup off/.test(preflight) &&
         /logoTextMode !== 'exact-text-overlay'/.test(preflight) &&
-        /logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2'/.test(preflight) &&
+        /logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2.5-flare'/.test(preflight) &&
         /Use exact text overlay/.test(preflight) &&
         /turn off transparent PNG/.test(preflight)
     },
@@ -513,7 +513,7 @@ const checks = [
         /setUsePhotoRoomBgRemoval: \(enabled: boolean\) => void/.test(handler) &&
         /normalizeSuggestedImageModel/.test(handler) &&
         /model\.startsWith\('gemini-'\)/.test(handler) &&
-        /return 'gpt-image-2'/.test(handler) &&
+        /return 'gpt-image-2.5-flare'/.test(handler) &&
         /setSelectedModel\(normalizedModel\)/.test(handler) &&
         /setUsePhotoRoomBgRemoval\(true\)/.test(handler) &&
         /setUsePhotoRoomBgRemoval\(false\)/.test(handler) &&
@@ -660,7 +660,7 @@ const checks = [
         /set 4k/.test(sidebar) &&
         /textMode: 'exact-text-overlay'/.test(sidebar) &&
         /textMode: 'ai-text'/.test(sidebar) &&
-        /selectedModel: 'gpt-image-2'/.test(sidebar) &&
+        /selectedModel: 'gpt-image-2.5-flare'/.test(sidebar) &&
         /resolution: '4K'/.test(sidebar) &&
         /Logo settings updated:/.test(sidebar) &&
         /runDirectLogoSettingsCommand\(userInput\)/.test(sidebar)

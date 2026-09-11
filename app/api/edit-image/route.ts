@@ -6,7 +6,7 @@
  * or replace it from a prompt. The mask is optional — the "Edit in chat"
  * flow omits it, in which case `prompt` drives a whole-image edit instead
  * (everything outside the described change should stay unchanged). Uses
- * OpenAI's gpt-image-2 image-edit endpoint; a mask (transparent = edit here)
+ * OpenAI's gpt-image-2.5-flare image-edit endpoint; a mask (transparent = edit here)
  * scopes the change when one is provided.
  *
  * When a mask is present, two extra passes wrap the OpenAI call:

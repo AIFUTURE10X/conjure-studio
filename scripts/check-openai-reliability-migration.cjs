@@ -60,9 +60,9 @@ const checks = [
   },
   {
     name: 'general image generation defaults to OpenAI reliability path',
-    pass: () => /defaultModel: 'gpt-image-2'/.test(read('app/image-studio/constants/settings-defaults.ts')) &&
-      /useState<'gemini-3\.1-flash-image-preview' \| 'gemini-3-pro-image-preview' \| 'gpt-image-2'>\('gpt-image-2'\)/.test(read('app/image-studio/hooks/useImageStudioState.ts')) &&
-      /model: lenientModelSchema\.default\('gpt-image-2'\)/.test(read('app/api/generate-image/route.ts')),
+    pass: () => /defaultModel: 'gpt-image-2.5-flare'/.test(read('app/image-studio/constants/settings-defaults.ts')) &&
+      /useState<'gemini-3\.1-flash-image-preview' \| 'gemini-3-pro-image-preview' \| 'gpt-image-2.5-flare'>\('gpt-image-2.5-flare'\)/.test(read('app/image-studio/hooks/useImageStudioState.ts')) &&
+      /model: lenientModelSchema\.default\('gpt-image-2.5-flare'\)/.test(read('app/api/generate-image/route.ts')),
   },
   {
     name: 'OpenAI image quality supports predictable medium and high tiers',
@@ -71,7 +71,7 @@ const checks = [
       /state\.analysisMode === 'fast' \? 'low' : 'medium'/.test(read('app/image-studio/context/ImageGenerationProvider.tsx')),
   },
   {
-    name: 'gpt-image-2 calls do not request unsupported transparent backgrounds',
+    name: 'gpt-image-2.5-flare calls do not request unsupported transparent backgrounds',
     pass: () => {
       const source = read('lib/openai-image-client.ts')
       return /background:\s*"transparent"/.test(source) === false &&
@@ -80,7 +80,7 @@ const checks = [
     },
   },
   {
-    name: 'visible app model settings only expose ChatGPT Images 2.0',
+    name: 'visible app model settings only expose ChatGPT Images 2.5',
     pass: () => [
       'app/image-studio/constants/settings-defaults.ts',
       'app/image-studio/components/GeneratePanel/ModelSelector.tsx',
@@ -91,22 +91,22 @@ const checks = [
       'app/image-studio/components/Thumbnail/thumbnail-constants.ts',
     ].every((relativePath) => {
       const source = read(relativePath)
-      return /ChatGPT Images 2\.0/.test(source) &&
+      return /ChatGPT Images 2.5/.test(source) &&
         !/Gemini 3/.test(source) &&
         !/gemini-3\.1-flash-image-preview/.test(source) &&
         !/gemini-3-pro-image-preview/.test(source)
     }),
   },
   {
-    name: 'AI helper model commands only expose ChatGPT Images 2.0',
+    name: 'AI helper model commands only expose ChatGPT Images 2.5',
     pass: () => {
       const helper = read('app/image-studio/components/AIHelper/useAIHelperChatController.ts')
       const route = read('app/api/generate-prompt-suggestion/route.ts')
       return /use chatgpt images 2/.test(helper) &&
-        /selectedModel:\s*'gpt-image-2'/.test(helper) &&
+        /selectedModel:\s*'gpt-image-2.5-flare'/.test(helper) &&
         !/use gemini/.test(helper) &&
         !/selectedModel:\s*'gemini-/.test(helper) &&
-        /suggestions\.selectedModel \("gpt-image-2" only\)/.test(route) &&
+        /suggestions\.selectedModel \("gpt-image-2.5-flare" only\)/.test(route) &&
         !/suggestions\.selectedModel \("gemini/.test(route)
     },
   },
@@ -138,14 +138,14 @@ const checks = [
     },
   },
   {
-    name: 'thumbnail generator defaults to ChatGPT Images 2.0',
+    name: 'thumbnail generator defaults to ChatGPT Images 2.5',
     pass: () => {
       const constants = read('app/image-studio/components/Thumbnail/thumbnail-constants.ts')
       const utils = read('app/image-studio/components/Thumbnail/thumbnail-utils.ts')
       const generate = read('app/image-studio/components/Thumbnail/useThumbnailGenerate.ts')
-      return /THUMBNAIL_MODELS: ThumbnailModelOption\[\] = \[\s*\{ id: 'gpt-image-2', label: 'GPT', full: 'ChatGPT Images 2\.0' \},\s*\]/.test(constants) &&
-        /options\?\.model \|\| 'gpt-image-2'/.test(utils) &&
-        /form\.append\('model', 'gpt-image-2'\)/.test(generate) &&
+      return /THUMBNAIL_MODELS: ThumbnailModelOption\[\] = \[\s*\{ id: 'gpt-image-2.5-flare', label: 'GPT', full: 'ChatGPT Images 2.5' \},\s*\]/.test(constants) &&
+        /options\?\.model \|\| 'gpt-image-2.5-flare'/.test(utils) &&
+        /form\.append\('model', 'gpt-image-2.5-flare'\)/.test(generate) &&
         !/gemini-3\.1-flash-image-preview/.test(constants + utils + generate) &&
         !/gemini-3-pro-image-preview/.test(constants + utils + generate)
     },

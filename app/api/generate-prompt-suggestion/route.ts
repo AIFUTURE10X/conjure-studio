@@ -46,10 +46,10 @@ const CREATIVE_DIRECTION_OPTION_CONTEXT = [
 ].join("\n")
 
 const IMAGE_GENERATION_MODELS = [
-  'gpt-image-2',
+  'gpt-image-2.5-flare',
 ] as const
 
-const LOGO_HELPER_GENERATION_MODELS = ['gpt-image-2'] as const
+const LOGO_HELPER_GENERATION_MODELS = ['gpt-image-2.5-flare'] as const
 
 const IMAGE_BACKGROUND_REMOVAL_METHODS = ['photoroom', 'none'] as const
 
@@ -650,7 +650,7 @@ function isOperationalDiagnosticRequest(message: unknown): boolean {
 
 function formatGenerationModelLabel(model: string): string {
   if (!model) return 'unknown'
-  if (model === 'gpt-image-2') return 'ChatGPT Images 2.0 (gpt-image-2)'
+  if (model === 'gpt-image-2.5-flare') return 'ChatGPT Images 2.5 (gpt-image-2.5-flare)'
   if (model === 'gemini-3.1-flash-image-preview') return 'Gemini 3.1 Flash Image Preview'
   if (model === 'gemini-3-pro-image-preview') return 'Gemini 3 Pro Image Preview'
   return model
@@ -1745,7 +1745,7 @@ Based on the user's request${hasImageAnalysis ? " and the provided image analysi
 10. A Creative execution plan with 2-4 short steps showing how the prompt will satisfy the request before the user applies or generates
 11. A plannerDecision and promptQualityChecklist that show whether you asked, diagnosed, iterated, or produced a generation-ready prompt
 
-Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gpt-image-2" only) and suggestions.bgRemovalMethod ("photoroom" or "none"). Use "photoroom" when the user needs post-generation background removal/true PNG cleanup; use "none" when they want a normal image with its generated background kept.
+Image settings patch: when the request or active context needs real image-generator setting changes, include optional suggestions.selectedModel ("gpt-image-2.5-flare" only) and suggestions.bgRemovalMethod ("photoroom" or "none"). Use "photoroom" when the user needs post-generation background removal/true PNG cleanup; use "none" when they want a normal image with its generated background kept.
 
 Diagnostic-only questions:
 - If the user is asking why something happened, what API/model/background is being used, what went wrong, or what they should change, and they are not asking you to create/rewrite/generate, set "responseMode": "diagnostic".
@@ -2221,7 +2221,7 @@ User Request: ${message}
 
 Based on the user's request${logoAnalysis ? ' and the reference logo analysis' : ''}${lastLogoConfig || lastLogoPrompt ? ' (building upon the previous design if applicable)' : ''}, suggest appropriate general logo settings and a generation-ready logo prompt.
 Only include logoConfig keys when the user explicitly wants configurator-controlled effects such as dot matrix, 3D depth, metallic materials, glow, sparkles, or icon presets. For clean wordmark or reference-style typography requests, return an empty logoConfig and keep the prompt focused on typography, composition, palette, and background.
-Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", etc.), suggestions.selectedModel ("gpt-image-2" only), suggestions.logoType ("wordmark", "monogram", "icon-wordmark", "badge", "emblem", or "mascot"), suggestions.logoVisualStyle ("minimal", "luxury", "modern", "vintage", "boutique", "corporate", "tech", or "handcrafted"), suggestions.logoRenderTreatment ("flat-vector", "soft-3d", "metallic", "embossed", "foil", "glass", or "neon"), and suggestions.logoTypographyDirection ("clean-sans", "elegant-serif", "script", "geometric", "bold-display", or "reference-match"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup. Do not recommend native-transparent; it is a legacy compatibility mode.
+Logo settings patch: when the request or preflight context needs real generator setting changes, include optional suggestions.textMode ("ai-text" or "exact-text-overlay"), suggestions.bgRemovalMethod ("none", "photoroom", etc.), suggestions.selectedModel ("gpt-image-2.5-flare" only), suggestions.logoType ("wordmark", "monogram", "icon-wordmark", "badge", "emblem", or "mascot"), suggestions.logoVisualStyle ("minimal", "luxury", "modern", "vintage", "boutique", "corporate", "tech", or "handcrafted"), suggestions.logoRenderTreatment ("flat-vector", "soft-3d", "metallic", "embossed", "foil", "glass", or "neon"), and suggestions.logoTypographyDirection ("clean-sans", "elegant-serif", "script", "geometric", "bold-display", or "reference-match"). Use exact-text-overlay for exact spelling/real typography workflows; use photoroom for professional post-generation transparent PNG cleanup. Do not recommend native-transparent; it is a legacy compatibility mode.
 Remember to respond with a JSON object containing "message", "plannerDecision", "designBrief", "executionPlan", "promptQualityChecklist", "suggestions", "logoConfig", and "actions" as specified above.
 Working design brief requirement: Return designBrief as a compact string with "What I understood:", "What to preserve:", and "What changes next:" lines.
 Creative execution plan requirement: Return executionPlan as an array of 2-4 short steps that explain how the prompt will preserve the reference/current brief and make the requested change.

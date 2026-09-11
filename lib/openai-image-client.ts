@@ -1,6 +1,10 @@
 import type { ImageSize } from "@/lib/gemini-client"
 
 type AllowedRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "5:4" | "4:5"
+/** Wire model for every OpenAI image call. ChatGPT Images 2.5 Flare: same
+ *  price per token as gpt-image-2, higher quality, ~50% lower latency. */
+export const OPENAI_IMAGE_MODEL = 'gpt-image-2.5-flare'
+
 export type OpenAIImageQuality = "low" | "medium" | "high" | "auto"
 export type OpenAIImageBackground = "auto"
 
@@ -125,7 +129,7 @@ export async function generateOpenAIImage({
   if (referenceImageFile && referenceImageFile.size > 0) {
     const buildFormData = (includeModeration: boolean) => {
       const formData = new FormData()
-      formData.append("model", "gpt-image-2")
+      formData.append("model", OPENAI_IMAGE_MODEL)
       formData.append("prompt", prompt)
       formData.append("size", size)
       formData.append("quality", imageQuality)
@@ -192,7 +196,7 @@ export async function generateOpenAIImage({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-image-2",
+      model: OPENAI_IMAGE_MODEL,
       prompt,
       n: 1,
       size,

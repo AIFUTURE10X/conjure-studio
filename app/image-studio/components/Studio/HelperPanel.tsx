@@ -42,7 +42,7 @@ export function HelperPanel() {
   // A photo uploaded INSIDE the AI helper chat only ever became a text prompt —
   // its pixels were dropped, so "make a claymation of me" generated a stranger.
   // Carry that photo onto the board's reference slot when a helper suggestion is
-  // applied/generated, so the actual face reaches gpt-image-2's edit path. Refs
+  // applied/generated, so the actual face reaches gpt-image-2.5-flare's edit path. Refs
   // let these callbacks (defined before the controller exists) read the latest
   // uploaded images and current reference without stale closures.
   const uploadedImagesRef = useRef<string[]>([])
