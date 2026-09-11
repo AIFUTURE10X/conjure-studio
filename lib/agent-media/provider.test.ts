@@ -11,10 +11,10 @@ test('MCP provider reuses Conjure image service for text and reference inputs wi
     return new Response(JSON.stringify({ data: [{ b64_json: Buffer.from('synthetic-provider-result').toString('base64') }] }), { status: 200 })
   }
   try {
-    const request = { brand: 'sample', model: 'gpt-image-2' as const, prompt: 'Exact approved copy', aspectRatio: '1:1' as const, quality: 'medium' as const }
+    const request = { brand: 'sample', model: 'gpt-image-2.5-flare' as const, prompt: 'Exact approved copy', aspectRatio: '1:1' as const, quality: 'medium' as const }
     assert.equal((await conjureImageProvider.generate(request, '1024x1024')).toString(), 'synthetic-provider-result')
     assert.equal(calls[0].url, 'https://api.openai.com/v1/images/generations')
-    assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { model: 'gpt-image-2', prompt: request.prompt, n: 1, size: '1024x1024', quality: 'medium', output_format: 'png' })
+    assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { model: 'gpt-image-2.5-flare', prompt: request.prompt, n: 1, size: '1024x1024', quality: 'medium', output_format: 'png' })
     await conjureImageProvider.generate(request, '1024x1024', Buffer.from('synthetic-reference'))
     assert.equal(calls[1].url, 'https://api.openai.com/v1/images/edits')
     const form = calls[1].init?.body as FormData
@@ -41,7 +41,7 @@ test('slow text and reference jobs finish after 150 seconds without premature ti
     init.signal?.throwIfAborted()
     return new Response(JSON.stringify({ data: [{ b64_json: Buffer.from('slow-complete').toString('base64') }] }))
   })
-  const request = { brand: 'sample', model: 'gpt-image-2' as const, prompt: 'Slow fixture', aspectRatio: '1:1' as const, quality: 'high' as const }
+  const request = { brand: 'sample', model: 'gpt-image-2.5-flare' as const, prompt: 'Slow fixture', aspectRatio: '1:1' as const, quality: 'high' as const }
   for (const reference of [undefined, Buffer.from('synthetic-reference')]) {
     assert.equal((await conjureImageProvider.generate(request, '1024x1024', reference)).toString(), 'slow-complete')
   }

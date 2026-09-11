@@ -8,7 +8,7 @@ export const micros = z.number().int().min(1).max(20_000_000)
 export const imageRequest = z.object({
   brand: safeId,
   prompt: z.string().trim().min(1).max(12_000).refine(v => Buffer.byteLength(v) <= 16_000),
-  model: z.literal('gpt-image-2'),
+  model: z.literal('gpt-image-2.5-flare'),
   aspectRatio: z.enum(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9', '5:4', '4:5']),
   quality: z.enum(['low', 'medium', 'high']),
   reference: z.object({ id: sha256, sha256 }).strict().optional(),

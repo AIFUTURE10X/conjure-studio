@@ -9,7 +9,7 @@ import { MediaService } from './service'
 import { conjureImageProvider } from './provider'
 
 const NOW = new Date('2026-09-11T08:00:00.000Z')
-const request: MediaRequest = { brand: 'sample', prompt: 'Synthetic sample card', model: 'gpt-image-2', aspectRatio: '1:1', quality: 'medium' }
+const request: MediaRequest = { brand: 'sample', prompt: 'Synthetic sample card', model: 'gpt-image-2.5-flare', aspectRatio: '1:1', quality: 'medium' }
 async function fixture(t: test.TestContext) {
   const root = mkdtempSync(join(tmpdir(), 'conjure-media-'))
   t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 3 }))

@@ -27,7 +27,7 @@ test('real stdio handshake, tools, operator approval, restart and resource retri
     const tools = (await client.listTools()).tools.map(t => t.name)
     assert.deepEqual(tools.sort(), ['generate_images', 'get_assets', 'get_operation', 'quote_media', 'register_reference'])
     assert.ok(!tools.some(name => name.includes('approve')))
-    const quoted = await client.callTool({ name: 'quote_media', arguments: { brand: 'sample', prompt: 'Synthetic protocol card', model: 'gpt-image-2', aspectRatio: '1:1', quality: 'medium' } })
+    const quoted = await client.callTool({ name: 'quote_media', arguments: { brand: 'sample', prompt: 'Synthetic protocol card', model: 'gpt-image-2.5-flare', aspectRatio: '1:1', quality: 'medium' } })
     assert.ok(!quoted.isError)
     const quoteId = String(data(quoted).id), quote = operator.readQuote(quoteId)
     const args = { quoteId, inputHash: quote.inputHash, idempotencyKey: 'protocol-operation' }

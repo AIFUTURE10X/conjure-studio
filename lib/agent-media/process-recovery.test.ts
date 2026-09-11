@@ -21,7 +21,7 @@ test('killed submitter retains exposure; operator CLI refuses a live lock and re
   writeFileSync(configPath, JSON.stringify(config))
   let unexpectedCalls = 0
   const service = new MediaService(() => config, { async generate() { unexpectedCalls++; throw new Error('Unexpected purchase attempt') } })
-  const quote = await service.quote({ brand: 'sample', prompt: 'Synthetic process recovery', model: 'gpt-image-2', aspectRatio: '1:1', quality: 'medium' })
+  const quote = await service.quote({ brand: 'sample', prompt: 'Synthetic process recovery', model: 'gpt-image-2.5-flare', aspectRatio: '1:1', quality: 'medium' })
   await service.approve(quote.id, hash(quote), 'Synthetic operator')
   const args = { quoteId: quote.id, inputHash: quote.inputHash, idempotencyKey: 'killed-submit' }
   const id = service.store.operationId(args.idempotencyKey)

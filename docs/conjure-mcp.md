@@ -50,7 +50,7 @@ The MCP host must spawn this command as a stdio process. stdout carries protocol
 messages only. The official SDK supports this local transport:
 https://ts.sdk.modelcontextprotocol.io/server#stdio
 
-The provider currently remains Conjure's existing `gpt-image-2`, explicit
+The provider currently remains Conjure's existing `gpt-image-2.5-flare`, explicit
 low/medium/high quality, one 1K image and at most one PNG reference. Conjure's
 shared sizing function determines exact dimensions for all ten supported ratios.
 No model migration is implicit. The underlying service may retry an explicitly
