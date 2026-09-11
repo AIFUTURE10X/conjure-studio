@@ -27,3 +27,22 @@ test('MCP provider reuses Conjure image service for text and reference inputs wi
     else process.env.OPENAI_API_KEY = originalKey
   }
 })
+
+test('slow text and reference jobs finish after 150 seconds without premature timeout', async t => {
+  const key = process.env.OPENAI_API_KEY
+  process.env.OPENAI_API_KEY = 'synthetic-unit-test-key'
+  t.after(() => { if (key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = key })
+  t.mock.method(AbortSignal, 'timeout', (ms: number) => {
+    const controller = new AbortController()
+    if (ms <= 150_000) controller.abort(new DOMException('Synthetic 150-second job', 'TimeoutError'))
+    return controller.signal
+  })
+  t.mock.method(globalThis, 'fetch', async (_url: unknown, init: RequestInit) => {
+    init.signal?.throwIfAborted()
+    return new Response(JSON.stringify({ data: [{ b64_json: Buffer.from('slow-complete').toString('base64') }] }))
+  })
+  const request = { brand: 'sample', model: 'gpt-image-2' as const, prompt: 'Slow fixture', aspectRatio: '1:1' as const, quality: 'high' as const }
+  for (const reference of [undefined, Buffer.from('synthetic-reference')]) {
+    assert.equal((await conjureImageProvider.generate(request, '1024x1024', reference)).toString(), 'slow-complete')
+  }
+})

@@ -89,13 +89,24 @@ reservation, submission, cost and asset records belong together. Asset IDs and
 SHA-256 digests remain stable; Popcorn's PNG is an export copy. Agent assets currently
 live in this local store, not the hosted Conjure browser library.
 
-A writer lock spans provider work. Never remove it while its PID exists. After a
-crash, inspect writer.lock and confirm the process is gone. `unlock <config.json>
-<inspected-token>` checks the host and that PID before removing the lock. There is
-no timeout-based lock stealing. Unknown provider outcomes retain their reservation
+A writer lock spans provider work. Never remove a lock owned by a live writer.
+After a crash, inspect writer.lock. `unlock <config.json> <inspected-token>` checks
+the host, PID and process birth identity before removing the lock. A reused PID
+does not block recovery of the previous writer's lock. Legacy locks without birth
+identity require the PID to be absent; identity/permission errors leave the lock
+intact. There is no timeout-based lock stealing. Unknown provider outcomes retain their reservation
 and do not resubmit. Compare provider history/billing manually; do not invent a new
 idempotency key to bypass the record. Already saved PNG bytes recover a missing
 asset record without another purchase. Restore missing/corrupt PNGs from backup.
+
+Records use fsynced file contents followed by directory-entry flushes on POSIX.
+Windows uses the bundled PowerShell helper and native MoveFileExW WRITE_THROUGH
+for same-volume, non-replacing file/directory publication. If a required durable
+operation fails, submission stops; it never falls back to a best-effort write.
+Use local storage whose filesystem/hardware honors these durability operations.
+See [Microsoft's move contract](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw).
+The image provider allows 240 seconds for slow text/reference requests. A timeout
+still remains an ambiguous outcome and does not authorize another purchase.
 
 The tool surface does not delete originals, overwrite revisions, send messages or
 publish ads. Editing handoffs and hosted library synchronization remain later work.

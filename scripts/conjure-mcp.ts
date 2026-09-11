@@ -1,4 +1,4 @@
-import { readFileSync, unlinkSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { resolve } from 'node:path'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
@@ -6,6 +6,8 @@ import { configSchema, hash, requireMedia, sha256 } from '../lib/agent-media/con
 import { MediaService } from '../lib/agent-media/service'
 import { conjureImageProvider } from '../lib/agent-media/provider'
 import { createMediaServer } from '../lib/agent-media/mcp-server'
+import { processBirth } from '../lib/agent-media/process-identity'
+import { durableRemove } from '../lib/agent-media/durable-files'
 
 async function main() {
   const [command, configPath, ...args] = process.argv.slice(2)
@@ -41,12 +43,14 @@ async function main() {
     })
   } else {
     requireMedia(args.length === 1, 'Expected the inspected stale lock token')
-    const lock = service.store.read<{ token: string; pid: number; host: string }>('writer.lock')
+    const lock = service.store.read<{ token: string; pid: number; host: string; birth?: string }>('writer.lock')
     requireMedia(lock.token === args[0] && lock.host === hostname(), 'Lock token/host mismatch')
-    let alive = true
-    try { process.kill(lock.pid, 0) } catch (error) { alive = (error as NodeJS.ErrnoException).code !== 'ESRCH' }
-    requireMedia(!alive, 'Writer process is still present; do not unlock')
-    unlinkSync(service.store.path('writer.lock')); result = { unlocked: true }
+    const currentBirth = processBirth(lock.pid)
+    requireMedia(currentBirth === null || (typeof lock.birth === 'string' && lock.birth.length > 0 && currentBirth !== lock.birth),
+      'Writer process is still present or legacy identity is unknown; do not unlock')
+    const current = service.store.read<{ token: string }>('writer.lock')
+    requireMedia(current.token === lock.token, 'Lock changed during inspection')
+    durableRemove(service.store.path('writer.lock')); result = { unlocked: true }
   }
   process.stdout.write(JSON.stringify(result, null, 2) + '\n')
 }

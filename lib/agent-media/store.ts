@@ -1,8 +1,10 @@
-import { closeSync, existsSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, fsyncSync, lstatSync, openSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, parse, resolve } from 'node:path'
 import { hostname } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { requireMedia, safeId, hash } from './contracts'
+import { durableDirectory, durablePublish, durableRemove } from './durable-files'
+import { writerBirth } from './process-identity'
 
 export class MediaStore {
   readonly root: string
@@ -10,7 +12,7 @@ export class MediaStore {
     requireMedia(isAbsolute(root), 'Media dataRoot must be absolute')
     this.root = resolve(root)
     this.path()
-    mkdirSync(this.root, { recursive: true, mode: 0o700 })
+    durableDirectory(this.root)
     const identity = this.path('identity.json')
     if (!existsSync(identity)) this.write('identity.json', { owner, version: 1 })
     requireMedia(this.read<{ owner: string }>('identity.json').owner === owner, 'Store belongs to another operator')
@@ -37,24 +39,24 @@ export class MediaStore {
   }
   bytes(parts: string[], bytes: Buffer) {
     const destination = this.path(...parts)
-    mkdirSync(dirname(destination), { recursive: true, mode: 0o700 })
+    durableDirectory(dirname(destination))
     const temp = this.path(...parts.slice(0, -1), `${parts.at(-1)}.${randomUUID()}.tmp`)
     const fd = openSync(temp, 'wx', 0o600)
     try { writeFileSync(fd, bytes); fsyncSync(fd) } finally { closeSync(fd) }
-    try { linkSync(temp, destination) } finally { unlinkSync(temp) }
+    try { durablePublish(temp, destination) } finally { if (existsSync(temp)) unlinkSync(temp) }
   }
   list() {
     return readdirSync(this.root).filter(name => /^[a-f0-9]{64}$/.test(name) && lstatSync(this.path(name)).isDirectory())
   }
   async lock<T>(work: () => Promise<T>): Promise<T> {
     const path = this.path('writer.lock')
-    let fd: number
-    try { fd = openSync(path, 'wx', 0o600) } catch { throw new Error('Media store locked; wait for the active operation or inspect a stale lock') }
     const token = randomUUID()
+    const birth = writerBirth()
+    try { this.write('writer.lock', { pid: process.pid, host: hostname(), token, birth }) }
+    catch { throw new Error('Media store locked or durable lock failed; inspect operator state') }
     try {
-      writeFileSync(fd, JSON.stringify({ pid: process.pid, host: hostname(), token })); fsyncSync(fd)
       return await work()
-    } finally { closeSync(fd); unlinkSync(path) }
+    } finally { durableRemove(path) }
   }
   operationId(key: string) { safeId.parse(key); return hash([this.owner, key]) }
 }

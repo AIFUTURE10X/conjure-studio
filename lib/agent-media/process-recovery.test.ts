@@ -66,6 +66,10 @@ test('killed submitter retains exposure; operator CLI refuses a live lock and re
   writeFileSync(lockPath, JSON.stringify({ ...lock, host: 'different-fixture-host' }))
   assert.equal(operator('unlock', lock.token).status, 1)
   writeFileSync(lockPath, lockBytes)
+  // Simulate the dead writer's PID being reassigned to this unrelated live process.
+  writeFileSync(lockPath, JSON.stringify({ ...lock, pid: process.pid, birth: 'previous-process-incarnation' }))
+  assert.equal(operator('unlock', lock.token).status, 0, 'PID reuse must not strand a dead writer lock')
+  writeFileSync(lockPath, lockBytes)
   assert.equal(operator('unlock', lock.token).status, 0)
   assert.equal(existsSync(lockPath), false)
 
