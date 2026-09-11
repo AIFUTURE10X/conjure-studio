@@ -10,6 +10,7 @@ import { resolveUserId } from "@/lib/api/identity"
 import { HistoryInsertError, hasGenerationHistoryDatabase, storeGenerationHistory } from "@/lib/db/generation-history-store"
 import { aspectRatioSchema, imageModelSchema, imageSizeSchema, userIdSchema } from "@/lib/validation/common"
 import { applyTextPositionToPrompt, DEFAULT_TEXT_POSITION, TEXT_POSITIONS } from "@/lib/text-position"
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -90,6 +91,7 @@ async function saveGenerationToHistory(
 ): Promise<{ historySaved: boolean; historyId?: string; historyRetryUrls?: string[] }> {
   try {
     const userId = await resolveUserId(request, fields.userId ?? '')
+    setUsageContextUser(userId)
     if (!userId || !hasGenerationHistoryDatabase()) return { historySaved: false }
 
     let creativeDirection: unknown
@@ -141,6 +143,9 @@ async function handlePost(request: NextRequest) {
   const parsedFields = parseFormFields(formData, formSchema)
   if (parsedFields.response) return parsedFields.response
   const { count, aspectRatio, referenceMode, seed, model, imageQuality, textPosition } = parsedFields.data
+  // Attribute the provider rows to the caller before generating: the history
+  // save below resolves the same id, but only after the provider calls.
+  setUsageContextUser(await resolveUserId(request, parsedFields.data.userId ?? ''))
   const imageSize = model === "gemini-2.5-flash-image" ? "1K" : parsedFields.data.imageSize
   // No-op unless the user picked a placement; keeps existing prompts identical.
   const prompt = applyTextPositionToPrompt(parsedFields.data.prompt, textPosition)
@@ -267,4 +272,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('image_generation', imageFormCost, handlePost)
+export const POST = withUsage('generate-image', withCreditGuard('image_generation', imageFormCost, handlePost))

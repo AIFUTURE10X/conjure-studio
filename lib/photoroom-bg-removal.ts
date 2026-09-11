@@ -11,6 +11,10 @@
  * @see https://docs.photoroom.com/remove-background-api-basic-plan
  */
 
+import { elapsedMs, recordProviderUsage } from '@/lib/costs/record'
+
+const PHOTOROOM_USAGE = { provider: 'photoroom' as const, model: 'sdk.photoroom.com/v1/segment', operation: 'bg-removal' as const, units: { calls: 1 } }
+
 export class PhotoRoomBgRemovalError extends Error {
   status: number
   code: string
@@ -79,11 +83,13 @@ export async function removeBackgroundWithPhotoRoom(
       console.log("[PhotoRoom BG Removal] HD mode enabled for high-resolution output")
     }
 
+    const startedAt = Date.now()
     const response = await fetch('https://sdk.photoroom.com/v1/segment', {
       method: 'POST',
       headers,
       body: formData,
     })
+    void recordProviderUsage({ ...PHOTOROOM_USAGE, status: response.ok ? 'succeeded' : 'failed', error: response.ok ? undefined : `HTTP ${response.status}`, latencyMs: elapsedMs(startedAt) })
 
     if (!response.ok) {
       const errorText = await response.text()

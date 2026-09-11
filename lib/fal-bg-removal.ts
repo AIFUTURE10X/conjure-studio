@@ -14,6 +14,7 @@
 
 import { fal } from "@fal-ai/client"
 import sharp from "sharp"
+import { elapsedMs, recordProviderUsage } from "@/lib/costs/record"
 import { recoverBrightDetailOnDarkBackground } from "./bright-detail-recovery"
 import { preserveOpaqueSourceColors } from "./source-color-preservation"
 
@@ -127,6 +128,17 @@ export async function removeBackgroundWithFal(
   console.log(`[fal BG Removal] Starting ${isLogoContext ? 'BEN2' : 'BiRefNet v2'} background removal...`)
   console.log(`[fal BG Removal] Input MIME type: ${mimeType}, logo context: ${isLogoContext}`)
 
+  // BEN2 bills per megapixel of input; BiRefNet per compute second (issue #50).
+  const startedAt = Date.now()
+  let megapixels: number | undefined
+  try {
+    const meta = await sharp(Buffer.from(imageBase64, 'base64')).metadata()
+    if (meta.width && meta.height) megapixels = (meta.width * meta.height) / 1_000_000
+  } catch {
+    megapixels = undefined
+  }
+  const usageBase = { provider: 'fal' as const, model: endpoint, operation: 'bg-removal' as const, units: { calls: 1, megapixels } }
+
   try {
     const result = await fal.subscribe(endpoint, {
       input: isLogoContext
@@ -140,6 +152,7 @@ export async function removeBackgroundWithFal(
       logs: false,
     })
 
+    void recordProviderUsage({ ...usageBase, status: 'succeeded', latencyMs: elapsedMs(startedAt) })
     const outputUrl = extractImageUrl(result)
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
     let processedBase64 = await fetchResultAsBase64(outputUrl)
@@ -151,6 +164,7 @@ export async function removeBackgroundWithFal(
     // logos; no-op for non-dark/busy backgrounds.
     return await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
   } catch (error) {
+    void recordProviderUsage({ ...usageBase, status: 'failed', error: error instanceof Error ? error.message : String(error), latencyMs: elapsedMs(startedAt) })
     console.error('[fal BG Removal] Error:', error)
     throw error
   }

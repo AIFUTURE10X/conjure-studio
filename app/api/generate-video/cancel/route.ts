@@ -6,6 +6,7 @@ import { resolveUserId } from '@/lib/api/identity'
 import { refundReservation } from '@/lib/credits'
 import { cancelVideoJob, getVideoJobStatus } from '@/lib/video/fal-video-client'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 
@@ -36,10 +37,11 @@ interface VideoJobRow {
   credits_charged: number
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const parsed = await parseJson(request, bodySchema)
   if (parsed.response) return parsed.response
   const userId = await resolveUserId(request, parsed.data.userId)
+  setUsageContextUser(userId)
 
   try {
     const sql = getSQL()
@@ -89,3 +91,6 @@ export async function POST(request: NextRequest) {
     return apiError(500, 'internal_error', 'Failed to cancel the video job')
   }
 }
+
+
+export const POST = withUsage('generate-video/cancel', handlePostWithUsage)

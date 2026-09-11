@@ -8,6 +8,7 @@ import { resolveUserId } from '@/lib/api/identity'
 import { videoToolCost } from '@/lib/credits/cost-map'
 import { submitVideoJob } from '@/lib/video/fal-video-client'
 import { userIdSchema } from '@/lib/validation/common'
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -38,6 +39,7 @@ async function handlePost(request: NextRequest) {
   if (parsed.response) return parsed.response
   const { videoUrl, targetResolution } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
+  setUsageContextUser(userId)
 
   try {
     const endpoint = 'fal-ai/seedvr/upscale/video'
@@ -72,4 +74,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('video_upscale', videoToolCost('videoUpscale'), handlePost)
+export const POST = withUsage('enhance-video', withCreditGuard('video_upscale', videoToolCost('videoUpscale'), handlePost))

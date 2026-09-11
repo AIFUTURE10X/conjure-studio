@@ -7,6 +7,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 /**
  * POST /api/generate-script — Story Mode's front door. Turns an idea (or a
@@ -58,7 +59,7 @@ function extractJson(raw: string): unknown {
   return JSON.parse(trimmed.slice(start, end + 1))
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
   if (rateLimited) return rateLimited
 
@@ -83,3 +84,6 @@ export async function POST(request: NextRequest) {
     return apiError(500, "script_failed", "Could not write the script — try rephrasing your idea")
   }
 }
+
+
+export const POST = withUsage('generate-script', handlePostWithUsage)

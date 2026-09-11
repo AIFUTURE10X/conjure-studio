@@ -1,3 +1,6 @@
+import { elapsedMs, recordProviderUsage } from "@/lib/costs/record"
+import type { ProviderUsageUnits } from "@/lib/costs/provider-rates"
+
 const RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses"
 const DEFAULT_TEXT_MODEL = "gpt-5.4-mini"
 const DEFAULT_MAX_OUTPUT_TOKENS = 6000
@@ -23,6 +26,20 @@ interface OpenAIResponseOutputItem {
 interface OpenAIResponsePayload {
   output_text?: unknown
   output?: unknown
+  usage?: unknown
+}
+
+/** Token usage from a Responses API payload; cached input bills at the cached rate (issue #50). */
+function parseOpenAITextUsage(payload: OpenAIResponsePayload): ProviderUsageUnits | null {
+  const usage = payload.usage as Record<string, unknown> | undefined
+  if (!usage || typeof usage !== "object") return null
+  const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0)
+  const inputDetails = (usage.input_tokens_details ?? {}) as Record<string, unknown>
+  return {
+    text_tokens_in: num(usage.input_tokens),
+    cached_tokens_in: num(inputDetails.cached_tokens),
+    text_tokens_out: num(usage.output_tokens),
+  }
 }
 
 export class OpenAIServiceError extends Error {
@@ -116,7 +133,11 @@ async function callOpenAIResponses(content: OpenAIInputContent[], options: OpenA
   const baseDelay = Number(process.env.OPENAI_TEXT_RETRY_BASE_DELAY || 1000)
   let lastError: unknown
 
+  const model = getOpenAITextModel(options.model)
+  const usageBase = { provider: "openai" as const, model, operation: "text" as const }
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const startedAt = Date.now()
     try {
       const response = await fetch(RESPONSES_ENDPOINT, {
         method: "POST",
@@ -125,7 +146,7 @@ async function callOpenAIResponses(content: OpenAIInputContent[], options: OpenA
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: getOpenAITextModel(options.model),
+          model,
           input: [{ role: "user", content }],
           max_output_tokens: options.maxOutputTokens || DEFAULT_MAX_OUTPUT_TOKENS,
         }),
@@ -133,10 +154,14 @@ async function callOpenAIResponses(content: OpenAIInputContent[], options: OpenA
 
       const body = await response.text()
       if (!response.ok) {
+        void recordProviderUsage({ ...usageBase, status: "failed", units: {}, error: `HTTP ${response.status}`, latencyMs: elapsedMs(startedAt) })
         throw parseOpenAIError(response.status, body)
       }
 
-      return extractOpenAIText(JSON.parse(body) as OpenAIResponsePayload)
+      const payload = JSON.parse(body) as OpenAIResponsePayload
+      const usage = parseOpenAITextUsage(payload)
+      void recordProviderUsage({ ...usageBase, status: "succeeded", units: usage ?? {}, exact: Boolean(usage), latencyMs: elapsedMs(startedAt) })
+      return extractOpenAIText(payload)
     } catch (error) {
       lastError = error
       const status = error instanceof OpenAIServiceError ? error.status : undefined

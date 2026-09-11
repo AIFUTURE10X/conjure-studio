@@ -8,6 +8,7 @@ import { resolveUserId } from '@/lib/api/identity'
 import { videoToolCost } from '@/lib/credits/cost-map'
 import { submitVideoJob, uploadFrameToFal } from '@/lib/video/fal-video-client'
 import { userIdSchema } from '@/lib/validation/common'
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -49,6 +50,7 @@ async function handlePost(request: NextRequest) {
   if (parsedFields.response) return parsedFields.response
   const { videoUrl, mode, text, voiceId, voiceLanguage, voiceSpeed } = parsedFields.data
   const userId = await resolveUserId(request, parsedFields.data.userId)
+  setUsageContextUser(userId)
 
   try {
     let endpoint: string
@@ -105,4 +107,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('lipsync', videoToolCost('lipsync'), handlePost)
+export const POST = withUsage('lipsync', withCreditGuard('lipsync', videoToolCost('lipsync'), handlePost))

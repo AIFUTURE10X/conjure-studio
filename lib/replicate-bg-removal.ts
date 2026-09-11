@@ -10,6 +10,7 @@
  */
 
 import Replicate from "replicate"
+import { elapsedMs, recordProviderUsage } from "@/lib/costs/record"
 
 /**
  * Detect MIME type from base64 magic bytes
@@ -226,21 +227,32 @@ export async function removeBackgroundWithReplicate(
 
   let result: string
 
-  switch (model) {
-    case '851-labs':
-      result = await try851Labs(replicate, imageBase64)
-      console.log(`[Replicate BG Removal] Complete (851-labs), output size: ${result.length}`)
-      break
-    case 'recraft':
-      result = await tryRecraftAI(replicate, imageBase64)
-      console.log(`[Replicate BG Removal] Complete (Recraft), output size: ${result.length}`)
-      break
-    case 'bria':
-    default:
-      result = await tryBRIA(replicate, imageBase64, options)
-      console.log(`[Replicate BG Removal] Complete (BRIA), output size: ${result.length}`)
-      break
+  // Replicate bills these models per output image (issue #50).
+  const slug = model === '851-labs' ? '851-labs/background-remover' : model === 'recraft' ? 'recraft-ai/recraft-remove-background' : 'bria/remove-background'
+  const usageBase = { provider: 'replicate' as const, model: slug, operation: 'bg-removal' as const, units: { calls: 1 } }
+  const startedAt = Date.now()
+
+  try {
+    switch (model) {
+      case '851-labs':
+        result = await try851Labs(replicate, imageBase64)
+        console.log(`[Replicate BG Removal] Complete (851-labs), output size: ${result.length}`)
+        break
+      case 'recraft':
+        result = await tryRecraftAI(replicate, imageBase64)
+        console.log(`[Replicate BG Removal] Complete (Recraft), output size: ${result.length}`)
+        break
+      case 'bria':
+      default:
+        result = await tryBRIA(replicate, imageBase64, options)
+        console.log(`[Replicate BG Removal] Complete (BRIA), output size: ${result.length}`)
+        break
+    }
+  } catch (error) {
+    void recordProviderUsage({ ...usageBase, status: 'failed', error: error instanceof Error ? error.message : String(error), latencyMs: elapsedMs(startedAt) })
+    throw error
   }
+  void recordProviderUsage({ ...usageBase, status: 'succeeded', latencyMs: elapsedMs(startedAt) })
 
   return result
 }

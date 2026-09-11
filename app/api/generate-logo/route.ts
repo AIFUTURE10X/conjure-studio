@@ -13,6 +13,7 @@ import {
 import { buildFreeFormLogoPrompt, buildLogoPrompt, buildReferenceLogoPrompt, type LogoBackgroundMode } from "./logo-prompts"
 import { applyTextPositionToPrompt, getTextPositionNegative } from "@/lib/text-position"
 import { sampleReferencePalette } from "./reference-palette"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -138,4 +139,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('logo_generation', imageFormCost, handlePost)
+export const POST = withUsage('generate-logo', withCreditGuard('logo_generation', imageFormCost, handlePost))

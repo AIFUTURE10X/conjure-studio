@@ -6,6 +6,8 @@ import { apiError, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { refundReservation } from '@/lib/credits'
 import { getVideoJobStatus, getVideoJobResult } from '@/lib/video/fal-video-client'
+import { finalizeProviderUsage } from '@/lib/costs/record'
+import { operationForFalEndpoint, type ProviderUsageUnits } from '@/lib/costs/provider-rates'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
 
 export const runtime = "nodejs"
@@ -37,6 +39,29 @@ interface VideoJobRow {
   video_url: string | null
   credits_charged: number
   error: string | null
+  duration_seconds: number | null
+  resolution: string | null
+  has_audio: boolean
+}
+
+/**
+ * Units the fal endpoint bills on, from what the submit route stored (issue #50).
+ * The pending provider_usage row was written at submit; this prices it.
+ */
+function falUnitsForRow(row: VideoJobRow): ProviderUsageUnits {
+  const operation = operationForFalEndpoint(row.fal_endpoint)
+  const seconds = row.duration_seconds ?? undefined
+  if (operation === 'lipsync') return { input_seconds: seconds }
+  if (operation === 'compose') return { compute_seconds: seconds }
+  return { seconds, resolution: row.resolution ?? undefined, audio: row.has_audio }
+}
+
+function finalizeUsage(row: VideoJobRow, patch: { status: 'succeeded' | 'failed'; error?: string }) {
+  void finalizeProviderUsage(
+    row.fal_request_id,
+    { provider: 'fal', model: row.fal_endpoint, operation: operationForFalEndpoint(row.fal_endpoint) },
+    patch.status === 'succeeded' ? { status: 'succeeded', units: falUnitsForRow(row) } : { status: 'failed', error: patch.error },
+  )
 }
 
 function jobResponse(row: VideoJobRow) {
@@ -49,6 +74,7 @@ function jobResponse(row: VideoJobRow) {
 }
 
 async function refundFailedJob(sql: ReturnType<typeof getSQL>, row: VideoJobRow, message: string) {
+  finalizeUsage(row, { status: 'failed', error: message })
   await sql`
     UPDATE public.video_history
     SET status = 'failed', error = ${message.slice(0, 500)}, completed_at = NOW()
@@ -72,7 +98,8 @@ export async function GET(request: NextRequest) {
   try {
     const sql = getSQL()
     const rows = await sql`
-      SELECT id, user_id, status, fal_endpoint, fal_request_id, video_url, credits_charged, error
+      SELECT id, user_id, status, fal_endpoint, fal_request_id, video_url, credits_charged, error,
+             duration_seconds, resolution, has_audio
       FROM public.video_history
       WHERE id = ${parsed.data.jobId} AND user_id = ${userId}
     `
@@ -120,6 +147,7 @@ export async function GET(request: NextRequest) {
         SET status = 'completed', video_url = ${videoUrl}, completed_at = NOW()
         WHERE id = ${row.id} AND status = 'pending'
       `
+      finalizeUsage(row, { status: 'succeeded' })
       console.log(`[video] Job ${row.id} completed:`, videoUrl)
       return jobResponse({ ...row, status: 'completed', video_url: videoUrl })
     } catch (error) {

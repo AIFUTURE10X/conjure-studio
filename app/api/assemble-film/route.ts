@@ -9,6 +9,7 @@ import { videoToolCost } from '@/lib/credits/cost-map'
 import { runFalDirect, extractMediaUrl, submitVideoJob } from '@/lib/video/fal-video-client'
 import { getMusicStyle } from '@/app/image-studio/constants/film-assembly'
 import { userIdSchema } from '@/lib/validation/common'
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -65,6 +66,7 @@ async function handlePost(request: NextRequest) {
   if (parsed.response) return parsed.response
   const { clips, narration, music } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
+  setUsageContextUser(userId)
 
   const musicStyle = music ? getMusicStyle(music.styleId) : undefined
   const wantsMusic = Boolean(musicStyle && musicStyle.id !== 'none' && musicStyle.prompt)
@@ -131,4 +133,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('film_assembly', videoToolCost('filmAssembly'), handlePost)
+export const POST = withUsage('assemble-film', withCreditGuard('film_assembly', videoToolCost('filmAssembly'), handlePost))

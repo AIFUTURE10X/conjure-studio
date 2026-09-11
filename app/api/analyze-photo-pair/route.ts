@@ -9,6 +9,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -48,7 +49,7 @@ function snapAnalysis(analysis: MultiPhotoAnalysis, photoCount: number): MultiPh
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
   if (rateLimited) return rateLimited
 
@@ -100,3 +101,6 @@ export async function POST(request: NextRequest) {
     return apiError(500, "analysis_failed", "Could not analyze the photos together — try clearer, well-lit photos")
   }
 }
+
+
+export const POST = withUsage('analyze-photo-pair', handlePostWithUsage)

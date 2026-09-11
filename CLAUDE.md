@@ -43,7 +43,8 @@ These MUST be set in Vercel → Settings → Environment Variables (for ALL envi
 - **Billing**: Stripe Checkout credit packs (`lib/billing/packs.ts` — edit prices there); idempotent webhook grants on `checkout.session.completed`; buy page at `/credits`.
 - **Gating**: `withCreditGuard` (`lib/api/guard.ts`) wraps the 7 generation/transform routes — reserve → refund on failure. Controlled by `SAAS_ENFORCEMENT` (default off = legacy behavior).
 - **Legacy data**: signed-in users claim their anonymous device data via the account menu (`/api/account/claim`, single-claim per legacy id).
-- **Migrations**: apply with `node scripts/run-sql.cjs scripts/<file>.sql` (reads `.env.local`). 008/009/010 are applied to the production Neon DB.
+- **Migrations**: apply with `node scripts/run-sql.cjs scripts/<file>.sql` (reads `.env.local`). 008/009/010 and 017 (`provider_usage`, the per-call cost ledger) are applied to the production Neon DB.
+- **Provider cost ledger** (issue #50): every OpenAI / Gemini / fal / PhotoRoom / Replicate call made through the shared clients in `lib/` writes one `provider_usage` row via `lib/costs/record.ts`, priced by the rate card in `lib/costs/provider-rates.ts` (each rate carries `effectiveFrom` + the official `sourceUrl`; add a dated entry when a price changes, never edit an old one). Routes are wrapped with `withUsage('<route>', …)` from `lib/costs/route.ts` so rows carry feature + user. `npm run check:provider-costs` executes the pricing function; `node scripts/backfill-provider-usage.cjs` estimates pre-ledger history (idempotent).
 
 ### Deployment Checklist
 1. ✅ Test locally with `npm run build`

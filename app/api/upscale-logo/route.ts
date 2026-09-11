@@ -4,6 +4,7 @@ import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import sharp from 'sharp'
 import { upscaleWithRealESRGAN, isReplicateAvailable } from "@/lib/replicate-upscaler"
 import { upscaleBase64WithSharp } from "@/lib/sharp-upscaler"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -123,4 +124,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('upscale', flatCost('upscale'), handlePost)
+export const POST = withUsage('upscale-logo', withCreditGuard('upscale', flatCost('upscale'), handlePost))

@@ -10,6 +10,7 @@ import { videoGenerationCost } from '@/lib/credits/cost-map'
 import { getVideoModel, normalizeVideoDuration, VIDEO_MODEL_IDS, type VideoResolution } from '@/lib/video/providers'
 import { submitVideoJob, uploadFrameToFal } from '@/lib/video/fal-video-client'
 import { promptSchema, userIdSchema } from '@/lib/validation/common'
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -51,6 +52,7 @@ async function handlePost(request: NextRequest) {
   if (parsedFields.response) return parsedFields.response
   const { prompt, model: modelId, duration: requestedDuration, aspectRatio, generateAudio } = parsedFields.data
   const userId = await resolveUserId(request, parsedFields.data.userId)
+  setUsageContextUser(userId)
 
   const model = getVideoModel(modelId)
   if (!model) return apiError(400, 'invalid_request', `Unknown video model: ${modelId}`)
@@ -164,4 +166,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('video_generation', videoFormCost, handlePost)
+export const POST = withUsage('generate-video', withCreditGuard('video_generation', videoFormCost, handlePost))

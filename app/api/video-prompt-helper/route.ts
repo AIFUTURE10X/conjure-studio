@@ -8,6 +8,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 /**
  * POST /api/video-prompt-helper — conversational AI helper for video mode.
@@ -117,7 +118,7 @@ function sanitizeSettings(patch: z.infer<typeof responseSchema>['settings']) {
   return Object.keys(clean).length > 0 ? clean : undefined
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
   if (rateLimited) return rateLimited
 
@@ -165,3 +166,6 @@ export async function POST(request: NextRequest) {
     return apiError(500, "helper_failed", "The video helper hit an error — try rephrasing")
   }
 }
+
+
+export const POST = withUsage('video-prompt-helper', handlePostWithUsage)
