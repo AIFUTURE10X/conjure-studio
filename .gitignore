@@ -61,3 +61,7 @@ assets/**/_to_delete/
 
 # Local output from scripts/compare-bg-removers.cjs
 bg-comparison/
+
+# Local operator policy, approvals, paid reservations and media originals
+.conjure-agent/
+conjure-agent.local.json

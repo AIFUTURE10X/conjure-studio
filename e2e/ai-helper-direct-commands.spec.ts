@@ -14,6 +14,10 @@ const CREATIVE_REQUEST =
 test('creative request mentioning a resolution reaches the AI intact', async ({ page }) => {
   let requestedMessage: string | null = null
   await page.route('**/api/generate-prompt-suggestion', async (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ json: { availability: { auto: true, best: true, opus: false } } })
+    }
+    expect(route.request().method()).toBe('POST')
     requestedMessage = (route.request().postDataJSON() as { message?: string }).message ?? null
     await route.fulfill({ json: { message: 'MOCKED HELPER REPLY' } })
   })
@@ -31,6 +35,10 @@ test('creative request mentioning a resolution reaches the AI intact', async ({ 
 test('bare settings command still resolves locally without an AI call', async ({ page }) => {
   let apiCalls = 0
   await page.route('**/api/generate-prompt-suggestion', async (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ json: { availability: { auto: true, best: true, opus: false } } })
+    }
+    expect(route.request().method()).toBe('POST')
     apiCalls++
     await route.fulfill({ json: { message: 'MOCKED HELPER REPLY' } })
   })
