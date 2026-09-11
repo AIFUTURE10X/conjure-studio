@@ -35,16 +35,20 @@ function loadEnvLocal() {
   }
 }
 
-/** lib/costs/provider-rates.ts is pure (no imports), so it can be executed after a plain transpile. */
-function loadRates() {
-  const file = path.join(__dirname, '..', 'lib', 'costs', 'provider-rates.ts')
+/** lib/costs/provider-rates.ts is pure apart from its sibling rate-card module; both transpile the same way, every other require is stubbed. */
+function loadTsModule(file) {
   const { outputText } = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
     fileName: file,
   })
   const mod = { exports: {} }
-  new Function('exports', 'require', 'module', '__filename', '__dirname', outputText)(mod.exports, () => ({}), mod, file, path.dirname(file))
+  const localRequire = (id) => (id.startsWith('./') ? loadTsModule(path.join(path.dirname(file), `${id.slice(2)}.ts`)) : {})
+  new Function('exports', 'require', 'module', '__filename', '__dirname', outputText)(mod.exports, localRequire, mod, file, path.dirname(file))
   return mod.exports
+}
+
+function loadRates() {
+  return loadTsModule(path.join(__dirname, '..', 'lib', 'costs', 'provider-rates.ts'))
 }
 
 async function main() {
@@ -77,7 +81,8 @@ async function main() {
       units,
       unit_prices: priced.unitPrices,
       cost_usd: priced.costUsd,
-      confidence: priced.confidence === 'unpriced' ? 'unpriced' : 'estimated',
+      // A rate with no billable units (lipsync/upscale rows without a duration) stays unknown, never $0.
+      confidence: priced.confidence === 'rate' ? 'estimated' : priced.confidence,
       rate_effective_from: priced.rateEffectiveFrom,
       source_ref: sourceRef,
     })
@@ -114,6 +119,9 @@ async function main() {
     FROM public.video_history WHERE created_at < ${cutoff}
   `
   for (const row of videos) {
+    // Only completed or failed jobs are history; a job still pending at backfill
+    // time never finished and is not estimated (AC-7: completed rows).
+    if (row.status === 'pending') continue
     const operation = rates.operationForFalEndpoint(row.fal_endpoint)
     const seconds = Number(row.duration_seconds) || 0
     const units = operation === 'lipsync' ? { input_seconds: seconds }

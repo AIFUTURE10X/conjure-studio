@@ -7,6 +7,8 @@ import { refundReservation } from '@/lib/credits'
 import { cancelVideoJob, getVideoJobStatus } from '@/lib/video/fal-video-client'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
 import { withUsage, setUsageContextUser } from '@/lib/costs/route'
+import { finalizeProviderUsage } from '@/lib/costs/record'
+import { operationForFalEndpoint } from '@/lib/costs/provider-rates'
 
 export const runtime = "nodejs"
 
@@ -75,6 +77,12 @@ async function handlePostWithUsage(request: NextRequest) {
       SET status = 'failed', error = 'Canceled — credits refunded', completed_at = NOW()
       WHERE id = ${row.id} AND status = 'pending'
     `
+    // The poller stops on a non-pending row, so the ledger row must be closed here.
+    void finalizeProviderUsage(
+      row.fal_request_id,
+      { provider: 'fal', model: row.fal_endpoint, operation: operationForFalEndpoint(row.fal_endpoint) },
+      { status: 'failed', error: 'Canceled by user' },
+    )
     if (row.credits_charged > 0) {
       await refundReservation(
         row.user_id,

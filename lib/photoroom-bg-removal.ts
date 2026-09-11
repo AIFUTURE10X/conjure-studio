@@ -138,6 +138,8 @@ export async function removeBackgroundWithPhotoRoom(
       throw error
     }
 
+    // Not a PhotoRoom HTTP error (recorded above): the request itself failed.
+    void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'failed', error: error instanceof Error ? error.message : String(error) })
     console.error('[PhotoRoom BG Removal] API Error:', error)
     throw new PhotoRoomBgRemovalError(
       error instanceof Error ? error.message : 'PhotoRoom request failed',

@@ -4,7 +4,8 @@
  * Executes the shipped priceUsage() (transpiled with the repo's TypeScript)
  * against known inputs, so a wrong rate, a broken effective-date lookup, or an
  * unpriced endpoint silently becoming $0 fails CI. lib/costs/provider-rates.ts
- * is pure (no imports), so no stubbing is needed.
+ * is pure apart from its sibling rate-card module, which the loader below
+ * transpiles the same way; every other require is stubbed.
  *
  * Mutation-tested (see PR #50's Evidence): altering a rate, or making an
  * unknown endpoint return 0, makes this fail.
@@ -16,22 +17,26 @@ const ts = require('typescript')
 const root = process.cwd()
 const RATES_PATH = 'lib/costs/provider-rates.ts'
 
-function loadRates() {
-  const source = fs.readFileSync(path.join(root, RATES_PATH), 'utf8')
+/** Transpile a lib/costs module; relative sibling imports load the same way, everything else is stubbed. */
+function loadTsModule(relativePath) {
+  const source = fs.readFileSync(path.join(root, relativePath), 'utf8')
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName: RATES_PATH,
+    fileName: relativePath,
   })
   const mod = { exports: {} }
-  new Function('exports', 'require', 'module', '__filename', '__dirname', outputText)(mod.exports, () => ({}), mod, RATES_PATH, path.dirname(RATES_PATH))
+  const localRequire = (id) => (id.startsWith('./') ? loadTsModule(path.posix.join(path.posix.dirname(relativePath), `${id.slice(2)}.ts`)) : {})
+  new Function('exports', 'require', 'module', '__filename', '__dirname', outputText)(mod.exports, localRequire, mod, relativePath, path.dirname(relativePath))
   return mod.exports
 }
 
-const rates = loadRates()
+const rates = loadTsModule(RATES_PATH)
 const { priceUsage, defaultImageOutputTokens, RATE_CARD } = rates
 
 const failures = []
+let executed = 0
 function check(name, received, expected) {
+  executed += 1
   const ok = JSON.stringify(received) === JSON.stringify(expected)
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`)
   if (!ok) {
@@ -107,6 +112,14 @@ const unknown = price('fal', 'fal-ai/does-not-exist', 'video', { seconds: 5 })
 check('unknown endpoint → cost null', unknown.costUsd, null)
 check('unknown endpoint → confidence unpriced', unknown.confidence, 'unpriced')
 
+// A priced model with none of its billable units is unknown, never a free call
+// (lipsync / SeedVR jobs whose duration was not captured).
+const noUnits = price('fal', 'fal-ai/kling-video/lipsync/audio-to-video', 'lipsync', {})
+check('priced endpoint with no billable units → cost null', noUnits.costUsd, null)
+check('priced endpoint with no billable units → confidence unknown', noUnits.confidence, 'unknown')
+check('a $0 compute-second endpoint still prices (as $0, confidence rate), distinct from unknown',
+  price('fal', 'fal-ai/whisper', 'transcribe', { seconds: 30 }).confidence, 'rate')
+
 // Timeout / backfill estimates.
 check('default output tokens: gpt-image-2 medium 1024² = 1756', defaultImageOutputTokens('gpt-image-2', 'medium', '1024x1024'), 1756)
 check('default output tokens: 2.5 Flare low 1024² = 196', defaultImageOutputTokens('gpt-image-2.5-flare', 'low', '1024x1024'), 196)
@@ -120,4 +133,4 @@ if (failures.length > 0) {
   console.error(`\n${failures.length} provider cost check(s) failed`)
   process.exit(1)
 }
-console.log(`\nProvider cost checks passed (${RATE_CARD.length} rate entries, 27 executed cases)`)
+console.log(`\nProvider cost checks passed (${RATE_CARD.length} rate entries, ${executed} executed cases)`)

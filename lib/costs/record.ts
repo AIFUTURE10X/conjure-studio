@@ -10,6 +10,7 @@
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { after } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import {
   priceUsage,
@@ -133,7 +134,7 @@ export function buildProviderUsageRow(input: RecordUsageInput): ProviderUsageRow
   // the list-rate estimate is kept but its confidence is 'unknown'.
   const confidence: UsageConfidence =
     priced.confidence === 'unpriced' ? 'unpriced'
-      : input.status === 'timeout' ? 'unknown'
+      : priced.confidence === 'unknown' || input.status === 'timeout' ? 'unknown'
         : input.exact ? 'exact'
           : 'rate'
   return {
@@ -163,20 +164,45 @@ async function insertRow(row: ProviderUsageRow): Promise<void> {
 }
 
 /**
- * Record one provider call. Resolves once the write attempt finished; callers
- * on a response path should not await it (`void recordProviderUsage(...)`).
+ * Keep a serverless invocation alive until `work` settles. Inside a Next.js
+ * request scope `after()` does exactly that; outside one (tests, scripts) it
+ * throws and the promise simply runs in the current process.
+ */
+function keepAliveAfterResponse(work: Promise<unknown>): void {
+  try {
+    after(work)
+  } catch {
+    // Not in a request scope — nothing to extend.
+  }
+}
+
+async function writeRow(row: ProviderUsageRow): Promise<void> {
+  try {
+    await insertRow(row)
+  } catch (error) {
+    console.error('[provider-usage] failed to record usage:', error instanceof Error ? error.message : error)
+  }
+}
+
+/**
+ * Record one provider call. The insert is started immediately and handed to
+ * Next's `after()` so a Vercel instance is not frozen before it lands; callers
+ * on a response path do not await it (`void recordProviderUsage(...)`). The
+ * returned promise resolves with the row once the write attempt finished.
  * Never throws.
  */
 export async function recordProviderUsage(input: RecordUsageInput): Promise<ProviderUsageRow | null> {
-  let row: ProviderUsageRow | null = null
+  let row: ProviderUsageRow
   try {
     row = buildProviderUsageRow(input)
-    await insertRow(row)
-    return row
   } catch (error) {
-    console.error('[provider-usage] failed to record usage:', error instanceof Error ? error.message : error)
-    return row
+    console.error('[provider-usage] failed to build usage row:', error instanceof Error ? error.message : error)
+    return null
   }
+  const write = writeRow(row)
+  keepAliveAfterResponse(write)
+  await write
+  return row
 }
 
 export interface FinalizePatch {
@@ -190,7 +216,7 @@ async function finalizeRow(requestId: string, patch: FinalizePatch, priced: Pick
   if (finalizeOverride) return finalizeOverride(requestId, patch)
   const sql = getSql()
   if (!sql) return
-  await sql`
+  const updated = await sql`
     UPDATE public.provider_usage
     SET status = ${patch.status},
         units = COALESCE(${patch.units ? JSON.stringify(patch.units) : null}::jsonb, units),
@@ -200,7 +226,11 @@ async function finalizeRow(requestId: string, patch: FinalizePatch, priced: Pick
         rate_effective_from = ${priced.rate_effective_from},
         error = ${patch.error ? patch.error.slice(0, 500) : null}
     WHERE request_id = ${requestId} AND status = 'pending'
+    RETURNING id
   `
+  if (updated.length === 0) {
+    console.warn(`[provider-usage] no pending row to finalize for request ${requestId} (submit-time insert lost?)`)
+  }
 }
 
 /**
@@ -213,21 +243,25 @@ export async function finalizeProviderUsage(
   identity: { provider: Provider; model: string; operation: Operation },
   patch: FinalizePatch,
 ): Promise<void> {
-  try {
-    if (patch.status === 'failed') {
-      await finalizeRow(requestId, patch, { unit_prices: {}, cost_usd: 0, confidence: 'exact', rate_effective_from: null })
-      return
+  const work = (async () => {
+    try {
+      if (patch.status === 'failed') {
+        await finalizeRow(requestId, patch, { unit_prices: {}, cost_usd: 0, confidence: 'exact', rate_effective_from: null })
+        return
+      }
+      const priced = priceUsage({ ...identity, units: patch.units ?? {} }, patch.occurredAt ?? new Date())
+      await finalizeRow(requestId, patch, {
+        unit_prices: priced.unitPrices,
+        cost_usd: priced.costUsd,
+        confidence: priced.confidence === 'rate' ? 'rate' : priced.confidence,
+        rate_effective_from: priced.rateEffectiveFrom,
+      })
+    } catch (error) {
+      console.error('[provider-usage] failed to finalize usage:', error instanceof Error ? error.message : error)
     }
-    const priced = priceUsage({ ...identity, units: patch.units ?? {} }, patch.occurredAt ?? new Date())
-    await finalizeRow(requestId, patch, {
-      unit_prices: priced.unitPrices,
-      cost_usd: priced.costUsd,
-      confidence: priced.confidence === 'unpriced' ? 'unpriced' : 'rate',
-      rate_effective_from: priced.rateEffectiveFrom,
-    })
-  } catch (error) {
-    console.error('[provider-usage] failed to finalize usage:', error instanceof Error ? error.message : error)
-  }
+  })()
+  keepAliveAfterResponse(work)
+  await work
 }
 
 /** Milliseconds since `startedAt`, for latency_ms. */

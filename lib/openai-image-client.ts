@@ -102,13 +102,21 @@ function parseOpenAIImageUsage(data: unknown): ProviderUsageUnits | null {
   }
 }
 
+/** Our own deadline elapsed after the request was sent — OpenAI may still complete and bill it. */
+export class OpenAITimeoutError extends Error {
+  constructor() {
+    super("OpenAI request timed out")
+    this.name = "OpenAITimeoutError"
+  }
+}
+
 /** Every OpenAI image call goes through this so a hung request fails fast enough for the credit guard to refund it, instead of the route timing out first. */
 async function fetchOpenAI(url: string, init: RequestInit, requestTimeoutMs: number): Promise<Response> {
   try {
     return await fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) })
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
-      throw new Error("OpenAI request timed out")
+      throw new OpenAITimeoutError()
     }
     throw error
   }
@@ -259,7 +267,7 @@ export async function generateOpenAIImage(params: GenerateOpenAIImageParams) {
     return result
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    void recordProviderUsage({ ...base, status: /timed out/i.test(message) ? "timeout" : "failed", units: requested, error: message, latencyMs: elapsedMs(startedAt) })
+    void recordProviderUsage({ ...base, status: error instanceof OpenAITimeoutError ? "timeout" : "failed", units: requested, error: message, latencyMs: elapsedMs(startedAt) })
     throw error
   }
 }

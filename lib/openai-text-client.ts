@@ -165,6 +165,11 @@ async function callOpenAIResponses(content: OpenAIInputContent[], options: OpenA
     } catch (error) {
       lastError = error
       const status = error instanceof OpenAIServiceError ? error.status : undefined
+      // HTTP failures were recorded above; a rejected fetch (DNS, reset) or an
+      // unparseable 2xx body reaches here without a row, so record it now.
+      if (!(error instanceof OpenAIServiceError)) {
+        void recordProviderUsage({ ...usageBase, status: "failed", units: {}, error: error instanceof Error ? error.message : String(error), latencyMs: elapsedMs(startedAt) })
+      }
       if (attempt < maxAttempts && isRetryableStatus(status)) {
         await sleep(Math.min(8000, baseDelay * Math.pow(2, attempt - 1)))
         continue

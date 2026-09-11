@@ -69,6 +69,13 @@ test('a provider error costs nothing; an unknown model is unpriced, never 0', ()
   assert.equal(unpriced.confidence, 'unpriced')
 })
 
+test('a priced model with no billable units records unknown with a null cost, not $0', () => {
+  const row = buildProviderUsageRow({ provider: 'fal', model: 'fal-ai/kling-video/lipsync/audio-to-video', operation: 'lipsync', status: 'succeeded', units: {} })
+  assert.equal(row.cost_usd, null)
+  assert.equal(row.confidence, 'unknown')
+  assert.equal(row.rate_effective_from, '2025-01-01', 'the rate was found; only the units were missing')
+})
+
 test('without a database URL the recorder is a no-op that still returns the row', async () => {
   const saved = process.env.NEON_DATABASE_URL
   delete process.env.NEON_DATABASE_URL

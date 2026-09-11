@@ -44,17 +44,18 @@ function getSQL() {
 
 async function generateNarration(narration: NonNullable<z.infer<typeof bodySchema>['narration']>): Promise<string> {
   if (narration.engine === 'elevenlabs') {
+    // ElevenLabs bills per character of input text.
     const data = await runFalDirect('fal-ai/elevenlabs/tts/eleven-v3', {
       text: narration.text,
       voice: narration.voiceId,
       stability: 0.5,
-    })
+    }, { units: { characters: narration.text.length } })
     return extractMediaUrl(data)
   }
   const data = await runFalDirect('fal-ai/kling-video/v1/tts', {
     text: narration.text.slice(0, 500),
     voice_id: narration.voiceId,
-  })
+  }, { units: { calls: 1 } })
   return extractMediaUrl(data)
 }
 

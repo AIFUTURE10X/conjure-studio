@@ -89,6 +89,14 @@ async function handlePost(request: NextRequest) {
     const creditsCharged = isSaasEnforcementOn() ? videoToolCost('lipsync') : 0
 
     const sql = getSQL()
+    // Lipsync bills on the input clip's duration; when the clip came from this
+    // app's history the duration is known and the cost ledger can price it.
+    const source = await sql`
+      SELECT duration_seconds FROM public.video_history
+      WHERE video_url = ${videoUrl} AND duration_seconds IS NOT NULL
+      ORDER BY id DESC LIMIT 1
+    `
+    const sourceDuration = (source[0]?.duration_seconds as number | undefined) ?? null
     const rows = await sql`
       INSERT INTO public.video_history (
         user_id, prompt, model, fal_endpoint, fal_request_id, status,
@@ -96,7 +104,7 @@ async function handlePost(request: NextRequest) {
         aspect_ratio, has_audio, credits_charged
       ) VALUES (
         ${userId}, ${promptLabel}, 'kling-lipsync', ${endpoint}, ${requestId}, 'pending',
-        NULL, NULL, NULL, NULL, 'auto', TRUE, ${creditsCharged}
+        NULL, NULL, ${sourceDuration}, NULL, 'auto', TRUE, ${creditsCharged}
       )
       RETURNING id
     `

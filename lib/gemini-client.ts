@@ -213,7 +213,6 @@ export async function generateImageWithRetry({
         generateContentParams as Parameters<typeof geminiClient.models.generateContent>[0],
       )
 
-      usage.succeeded(response, effectiveImageSize)
       console.log(`[v0 SERVER] API response received`)
       console.log(`[v0 SERVER] Response object keys:`, Object.keys(response))
 
@@ -264,6 +263,7 @@ export async function generateImageWithRetry({
         throw new Error("No image data returned from Gemini API")
       }
 
+      usage.succeeded(response, effectiveImageSize) // only once the image is in hand; a no-image response is recorded once, as failed, by the catch
       console.log("[v0 SERVER] Image generation successful, base64 length:", imageBase64.length)
       return {
         success: true,

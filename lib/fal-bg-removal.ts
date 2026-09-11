@@ -129,15 +129,16 @@ export async function removeBackgroundWithFal(
   console.log(`[fal BG Removal] Input MIME type: ${mimeType}, logo context: ${isLogoContext}`)
 
   // BEN2 bills per megapixel of input; BiRefNet per compute second (issue #50).
+  // The header read overlaps the provider call so it adds no latency.
   const startedAt = Date.now()
-  let megapixels: number | undefined
-  try {
-    const meta = await sharp(Buffer.from(imageBase64, 'base64')).metadata()
-    if (meta.width && meta.height) megapixels = (meta.width * meta.height) / 1_000_000
-  } catch {
-    megapixels = undefined
+  const megapixelsPromise = sharp(Buffer.from(imageBase64, 'base64'))
+    .metadata()
+    .then((meta) => (meta.width && meta.height ? (meta.width * meta.height) / 1_000_000 : undefined))
+    .catch(() => undefined)
+  const usageFor = async (status: 'succeeded' | 'failed', error?: string) => {
+    const megapixels = await megapixelsPromise
+    void recordProviderUsage({ provider: 'fal', model: endpoint, operation: 'bg-removal', status, units: { calls: 1, megapixels }, error, latencyMs: elapsedMs(startedAt) })
   }
-  const usageBase = { provider: 'fal' as const, model: endpoint, operation: 'bg-removal' as const, units: { calls: 1, megapixels } }
 
   try {
     const result = await fal.subscribe(endpoint, {
@@ -152,7 +153,7 @@ export async function removeBackgroundWithFal(
       logs: false,
     })
 
-    void recordProviderUsage({ ...usageBase, status: 'succeeded', latencyMs: elapsedMs(startedAt) })
+    void usageFor('succeeded')
     const outputUrl = extractImageUrl(result)
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
     let processedBase64 = await fetchResultAsBase64(outputUrl)
@@ -164,7 +165,7 @@ export async function removeBackgroundWithFal(
     // logos; no-op for non-dark/busy backgrounds.
     return await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
   } catch (error) {
-    void recordProviderUsage({ ...usageBase, status: 'failed', error: error instanceof Error ? error.message : String(error), latencyMs: elapsedMs(startedAt) })
+    void usageFor('failed', error instanceof Error ? error.message : String(error))
     console.error('[fal BG Removal] Error:', error)
     throw error
   }

@@ -56,6 +56,14 @@ async function handlePost(request: NextRequest) {
     const creditsCharged = isSaasEnforcementOn() ? videoToolCost('videoUpscale') : 0
 
     const sql = getSQL()
+    // SeedVR bills on output megapixels (target resolution × frames); the frame
+    // count follows the source clip's duration when it came from this app's history.
+    const source = await sql`
+      SELECT duration_seconds FROM public.video_history
+      WHERE video_url = ${videoUrl} AND duration_seconds IS NOT NULL
+      ORDER BY id DESC LIMIT 1
+    `
+    const sourceDuration = (source[0]?.duration_seconds as number | undefined) ?? null
     const rows = await sql`
       INSERT INTO public.video_history (
         user_id, prompt, model, fal_endpoint, fal_request_id, status,
@@ -63,7 +71,7 @@ async function handlePost(request: NextRequest) {
         aspect_ratio, has_audio, credits_charged
       ) VALUES (
         ${userId}, ${'Enhanced (upscaled to ' + targetResolution + ')'}, 'seedvr-upscale', ${endpoint}, ${requestId}, 'pending',
-        NULL, NULL, NULL, ${targetResolution}, 'auto', FALSE, ${creditsCharged}
+        NULL, NULL, ${sourceDuration}, ${targetResolution}, 'auto', FALSE, ${creditsCharged}
       )
       RETURNING id
     `
