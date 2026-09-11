@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import sharp from 'sharp'
 import { type MediaConfig, type MediaRequest, hash } from './contracts'
 import { MediaService } from './service'
+import { conjureImageProvider } from './provider'
 
 const NOW = new Date('2026-09-11T08:00:00.000Z')
 const request: MediaRequest = { brand: 'sample', prompt: 'Synthetic sample card', model: 'gpt-image-2', aspectRatio: '1:1', quality: 'medium' }
@@ -167,4 +168,41 @@ test('unexpected provider dimensions retain paid bytes without accepting an asse
   assert.equal((await restarted.generate(args)).state, 'needs_reconciliation')
   assert.equal(restarted.budget().totalMicros, 100000); assert.equal(calls, 1)
   await assert.rejects(restarted.assetBytes(op.operationId))
+})
+
+test('valid retained provider response promotes after image publication failure and restart', async t => {
+  const f = await fixture(t), args = await f.quoted(), original = f.service.store.bytes.bind(f.service.store)
+  f.service.store.bytes = (parts, bytes) => {
+    if (parts.at(-1) === 'image.png') throw new Error('Synthetic image publication failure')
+    return original(parts, bytes)
+  }
+  try { await f.service.generate(args) } catch (error) { assert.match(String(error), /Synthetic image publication failure/) }
+  const id = f.service.store.operationId(args.idempotencyKey)
+  const retained = readFileSync(join(f.root, id, 'provider-response.bin'))
+  const restarted = new MediaService(() => f.config, f.provider, () => NOW)
+  assert.equal((await restarted.generate(args)).state, 'completed')
+  assert.deepEqual((await restarted.assetBytes(id)).bytes, retained)
+  assert.equal(f.calls, 1)
+})
+
+test('missing provider credentials fail before consuming a quote or budget and permit configured retry', async t => {
+  const f = await fixture(t), args = await f.quoted(), previous = process.env.OPENAI_API_KEY
+  delete process.env.OPENAI_API_KEY
+  t.after(() => { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous })
+  const bytes = await f.provider.generate(request, '1024x1024')
+  let calls = 0
+  t.mock.method(globalThis, 'fetch', async () => { calls++; return new Response(JSON.stringify({ data: [{ b64_json: bytes.toString('base64') }] })) })
+  const service = new MediaService(() => f.config, conjureImageProvider, () => NOW)
+  await assert.rejects(service.generate(args), /OPENAI_API_KEY|credentials/)
+  assert.equal(service.budget().totalMicros, 0); assert.equal(calls, 0)
+  process.env.OPENAI_API_KEY = 'synthetic-unit-test-key'
+  assert.equal((await service.generate(args)).state, 'completed'); assert.equal(calls, 1)
+})
+
+test('submission uses freshly read disabled policy instead of the previous allowed snapshot', async t => {
+  const f = await fixture(t), args = await f.quoted()
+  let reads = 0
+  const service = new MediaService(() => ({ ...structuredClone(f.config), allowPaid: ++reads < 3 }), f.provider, () => NOW)
+  await assert.rejects(service.generate(args), /disabled/)
+  assert.equal(service.budget().totalMicros, 0); assert.equal(f.calls, 0)
 })

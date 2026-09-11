@@ -115,6 +115,11 @@ Bounded provider bytes are retained first as provider-response.bin. Unexpected o
 invalid image output remains quarantined there with retainedResponse=true and
 needs_reconciliation; it is never served as an approved image or repurchased.
 Inspect the original locally without changing the quoted operation or its approval.
+If a retained response is a valid PNG matching the quote, operation recovery
+promotes those exact bytes after a restart; invalid/mismatched originals remain
+quarantined. The actual provider checks credential presence before any reservation,
+so missing local configuration consumes no quote or budget. Spending gates use the
+fresh policy snapshot loaded after local reference validation.
 
 The tool surface does not delete originals, overwrite revisions, send messages or
 publish ads. Editing handoffs and hosted library synchronization remain later work.

@@ -41,6 +41,7 @@ export interface Asset {
   byteLength: number; mimeType: 'image/png'; operationId?: string;
 }
 export interface Provider {
+  assertReady?(): void;
   generate(request: MediaRequest, size: string, reference?: Buffer): Promise<Buffer>;
 }
 export class MediaError extends Error {}

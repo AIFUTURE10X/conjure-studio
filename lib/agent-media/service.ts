@@ -82,14 +82,16 @@ export class MediaService {
   async generate(raw: unknown) {
     const args = generationArgs.parse(raw), id = this.store.operationId(args.idempotencyKey)
     return this.store.lock(async () => {
-      const quote = this.readQuote(args.quoteId), config = this.config(quote.request.brand)
+      const quote = this.readQuote(args.quoteId)
+      let config = this.config(quote.request.brand)
       requireMedia(quote.owner === config.owner && args.inputHash === quote.inputHash, 'Input hash does not match quote')
       if (this.store.exists(id, 'reserved.json')) {
         const previous = this.store.read<Operation>(id, 'reserved.json')
         requireMedia(previous.quote.id === quote.id, 'Idempotency key belongs to another quote')
         return this.operation(id)
       }
-      this.config(quote.request.brand, true)
+      const reference = await loadReference(this.store, quote.request)
+      config = this.config(quote.request.brand, true)
       requireMedia(config.allowPaid, 'Paid generation is disabled by the operator')
       requireMedia(!this.store.exists(`revoked-${quote.id}.json`), 'Quote approval revoked')
       requireMedia(Date.parse(quote.expiresAt) > this.clock().getTime() && quote.policyHash === hash(config.pricing), 'Quote expired or pricing changed; quote again')
@@ -97,9 +99,10 @@ export class MediaService {
       const approval = this.store.read<{ quoteHash: string; owner: string; approvedAt: string }>(`approval-${quote.id}.json`)
       requireMedia(approval.quoteHash === hash(quote) && approval.owner === config.owner && Date.parse(approval.approvedAt) <= this.clock().getTime(), 'Approval does not match quote')
       requireMedia(!this.operations().some(op => op.quote.id === quote.id), 'Quote approval has already been consumed')
-      const reference = await loadReference(this.store, quote.request), budget = this.budget()
+      const budget = this.budget()
       requireMedia(budget.dailyMicros + quote.reserveMicros <= config.dailyLimitMicros && budget.totalMicros + quote.reserveMicros <= config.totalLimitMicros, 'Operator budget exhausted')
       requireMedia(Date.parse(quote.expiresAt) > this.clock().getTime(), 'Quote expired while validating inputs')
+      this.provider.assertReady?.()
       const operation: Operation = { id, quote, approvalId: quote.id, createdAt: this.clock().toISOString() }
       this.store.write('reserved.json', operation, id)
       this.active.add(id)
@@ -122,6 +125,16 @@ export class MediaService {
     // Recover bytes already saved before a crash, without invoking the provider.
     if (!this.store.exists(id, 'asset.json') && this.store.exists(id, 'image.png')) {
       await saveGenerated(this.store, id, op.quote.request.brand, op.quote.size, readFileSync(this.store.path(id, 'image.png')))
+    }
+    if (!this.store.exists(id, 'asset.json') && !this.store.exists(id, 'image.png') && this.store.exists(id, 'provider-response.bin')) {
+      const bytes = readFileSync(this.store.path(id, 'provider-response.bin'))
+      let matchesQuote = false
+      try {
+        const dimensions = await describePng(bytes)
+        matchesQuote = `${dimensions.width}x${dimensions.height}` === op.quote.size
+      } catch { /* Invalid retained output remains quarantined, never submitted again. */ }
+      // Persistence errors propagate; they are not confused with invalid media.
+      if (matchesQuote) await saveGenerated(this.store, id, op.quote.request.brand, op.quote.size, bytes)
     }
     const asset = this.store.exists(id, 'asset.json') ? await this.asset(id) : null
     const cost = this.store.exists(id, 'cost.json') ? this.store.read<{ actualMicros: number }>(id, 'cost.json') : null
