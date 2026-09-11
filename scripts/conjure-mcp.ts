@@ -34,7 +34,7 @@ async function main() {
     requireMedia(args.length === 4, 'Expected operation ID, actual USD micros, evidence file and reviewer')
     const [id, amount, evidenceFile, reviewer] = args; sha256.parse(id)
     const actualMicros = Number(amount)
-    requireMedia(Number.isSafeInteger(actualMicros) && actualMicros >= 0 && actualMicros <= 1_000_000_000 && reviewer.trim(), 'Invalid cost/reviewer')
+    requireMedia(Number.isSafeInteger(actualMicros) && actualMicros >= 0 && actualMicros <= 1_000_000_000 && reviewer.trim() && reviewer.length <= 100, 'Invalid cost/reviewer')
     await service.operation(id)
     const source = readFileSync(resolve(evidenceFile)); requireMedia(source.length > 0 && source.length <= 5_000_000, 'Invalid evidence file')
     result = await service.store.lock(async () => {

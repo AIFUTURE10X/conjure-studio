@@ -35,7 +35,7 @@ export function createMediaServer(service: MediaService) {
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, args => run(async () => ({ ...(await service.asset(args.assetId)), uri: `conjure://assets/${args.assetId}` })))
   server.registerTool('register_reference', {
-    description: 'Store a rights-cleared local PNG in Conjure agent storage for a later quote. No external URL fetching and no paid generation. Keep binary content out of textual run logs.',
+    description: 'Programmatic local PNG transfer for a later quote; not a model-authored byte payload. Returns metadata, never logs input bytes. The caller controls its own argument traces. No URL fetching or paid generation.',
     inputSchema: referenceArgs,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, args => run(() => service.registerReference(args)))

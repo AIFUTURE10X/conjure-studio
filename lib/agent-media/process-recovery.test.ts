@@ -85,6 +85,7 @@ test('killed submitter retains exposure; operator CLI refuses a live lock and re
 
   const evidence = join(root, 'synthetic-invoice.txt')
   writeFileSync(evidence, 'Synthetic fixture only; no real provider charge')
+  assert.equal(operator('record-cost', id, '150000', evidence, 'x'.repeat(101)).status, 1, 'Cost reviewer must use the same bound as quote approval')
   assert.equal(operator('record-cost', id, '150000', evidence, 'Synthetic operator').status, 0)
   const costBytes = readFileSync(join(config.dataRoot, id, 'cost.json'))
   assert.equal(operator('record-cost', id, '1', evidence, 'Synthetic operator').status, 1)

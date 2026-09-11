@@ -23,6 +23,14 @@ Only configured brands are accessible. There is no HTTP listener, remote OAuth
 claim, public asset endpoint or global library enumeration. Hosted/multi-operator
 access requires a separate authenticated transactional implementation.
 
+`register_reference` is a programmatic byte-transfer interface. Popcorn invokes it
+directly from its local Node SDK client; it does not serialize the PNG into a
+model-authored tool call or print it in its textual run output. Conjure returns
+metadata and never logs that input. MCP hosts can independently retain payload
+traces, which this server cannot control. Do not expose this byte-input operation
+as a model-authored tool in another host; use an operator-side programmatic transfer
+and its returned reference ID. The local process/caller is part of the trust boundary.
+
 ## Startup and configuration
 
 Run `npm ci` in the Conjure checkout. Review
@@ -81,6 +89,13 @@ cost, including all ambiguous/failed operations. An unexpected overage blocks
 further work when limits are exhausted. The single operator's daily window is UTC;
 this local ledger cannot constrain direct studio use or other checkouts/accounts.
 Combined campaign exposure and account controls must be agreed before live use.
+
+The reservation cap deliberately includes HTTP authentication/validation failures
+and remains at least the original reservation even when an operator records actual
+cost zero. It is a conservative authorization cap, not a claim that the provider
+billed that amount. There is no automatic release or paid retry after an HTTP
+response; a new allowance requires separate operator policy review, preserving
+the full ledger. Missing local credentials are caught before reservation instead.
 
 ## Recovery, backups and storage
 
