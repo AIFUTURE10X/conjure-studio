@@ -7,7 +7,7 @@ import { resolveUserId } from '@/lib/api/identity'
 import { refundReservation } from '@/lib/credits'
 import { getVideoJobStatus, getVideoJobResult } from '@/lib/video/fal-video-client'
 import { finalizeProviderUsage } from '@/lib/costs/record'
-import { operationForFalEndpoint, type ProviderUsageUnits } from '@/lib/costs/provider-rates'
+import { falIdentityForVideoRow, falUnitsForVideoRow } from '@/lib/costs/video-units'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
 
 export const runtime = "nodejs"
@@ -44,23 +44,12 @@ interface VideoJobRow {
   has_audio: boolean
 }
 
-/**
- * Units the fal endpoint bills on, from what the submit route stored (issue #50).
- * The pending provider_usage row was written at submit; this prices it.
- */
-function falUnitsForRow(row: VideoJobRow): ProviderUsageUnits {
-  const operation = operationForFalEndpoint(row.fal_endpoint)
-  const seconds = row.duration_seconds ?? undefined
-  if (operation === 'lipsync') return { input_seconds: seconds }
-  if (operation === 'compose') return { compute_seconds: seconds }
-  return { seconds, resolution: row.resolution ?? undefined, audio: row.has_audio }
-}
-
+/** The pending provider_usage row was written at submit; this prices it from what the submit route stored (issue #50). */
 function finalizeUsage(row: VideoJobRow, patch: { status: 'succeeded' | 'failed'; error?: string }) {
   void finalizeProviderUsage(
     row.fal_request_id,
-    { provider: 'fal', model: row.fal_endpoint, operation: operationForFalEndpoint(row.fal_endpoint) },
-    patch.status === 'succeeded' ? { status: 'succeeded', units: falUnitsForRow(row) } : { status: 'failed', error: patch.error },
+    falIdentityForVideoRow(row),
+    patch.status === 'succeeded' ? { status: 'succeeded', units: falUnitsForVideoRow(row) } : { status: 'failed', error: patch.error },
   )
 }
 
@@ -74,12 +63,16 @@ function jobResponse(row: VideoJobRow) {
 }
 
 async function refundFailedJob(sql: ReturnType<typeof getSQL>, row: VideoJobRow, message: string) {
-  finalizeUsage(row, { status: 'failed', error: message })
-  await sql`
+  const closed = await sql`
     UPDATE public.video_history
     SET status = 'failed', error = ${message.slice(0, 500)}, completed_at = NOW()
     WHERE id = ${row.id} AND status = 'pending'
+    RETURNING id
   `
+  // Only the poll that actually closed the job finalizes the ledger row; the
+  // client polls every 5 s with no in-flight guard, so a racing poll would
+  // otherwise warn about a row that is already final.
+  if (closed.length > 0) finalizeUsage(row, { status: 'failed', error: message })
   if (row.credits_charged > 0) {
     await refundReservation(
       row.user_id,
@@ -142,12 +135,13 @@ export async function GET(request: NextRequest) {
         console.error(`[video] Blob upload failed for job ${row.id}, storing fal URL directly:`, error)
       }
 
-      await sql`
+      const closed = await sql`
         UPDATE public.video_history
         SET status = 'completed', video_url = ${videoUrl}, completed_at = NOW()
         WHERE id = ${row.id} AND status = 'pending'
+        RETURNING id
       `
-      finalizeUsage(row, { status: 'succeeded' })
+      if (closed.length > 0) finalizeUsage(row, { status: 'succeeded' })
       console.log(`[video] Job ${row.id} completed:`, videoUrl)
       return jobResponse({ ...row, status: 'completed', video_url: videoUrl })
     } catch (error) {

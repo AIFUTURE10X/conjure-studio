@@ -131,8 +131,10 @@ export async function removeBackgroundWithFal(
   // BEN2 bills per megapixel of input; BiRefNet per compute second (issue #50).
   // The header read overlaps the provider call so it adds no latency.
   const startedAt = Date.now()
-  const megapixelsPromise = sharp(Buffer.from(imageBase64, 'base64'))
-    .metadata()
+  // sharp() throws synchronously on an empty buffer, so the whole read lives
+  // inside the promise chain and can never escape.
+  const megapixelsPromise = Promise.resolve()
+    .then(() => sharp(Buffer.from(imageBase64, 'base64')).metadata())
     .then((meta) => (meta.width && meta.height ? (meta.width * meta.height) / 1_000_000 : undefined))
     .catch(() => undefined)
   const usageFor = async (status: 'succeeded' | 'failed', error?: string) => {
@@ -153,7 +155,6 @@ export async function removeBackgroundWithFal(
       logs: false,
     })
 
-    void usageFor('succeeded')
     const outputUrl = extractImageUrl(result)
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
     let processedBase64 = await fetchResultAsBase64(outputUrl)
@@ -163,7 +164,11 @@ export async function removeBackgroundWithFal(
     }
     // Restore faint bright detail (sparkles/glow) the matte drops on dark-bg
     // logos; no-op for non-dark/busy backgrounds.
-    return await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
+    const finalBase64 = await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
+    // Recorded only once the output is fetched and decoded: any throw above
+    // lands in the catch and is recorded exactly once, as failed.
+    void usageFor('succeeded')
+    return finalBase64
   } catch (error) {
     void usageFor('failed', error instanceof Error ? error.message : String(error))
     console.error('[fal BG Removal] Error:', error)

@@ -8,7 +8,7 @@ import { cancelVideoJob, getVideoJobStatus } from '@/lib/video/fal-video-client'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
 import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 import { finalizeProviderUsage } from '@/lib/costs/record'
-import { operationForFalEndpoint } from '@/lib/costs/provider-rates'
+import { falIdentityForVideoRow, falUnitsForVideoRow } from '@/lib/costs/video-units'
 
 export const runtime = "nodejs"
 
@@ -37,6 +37,9 @@ interface VideoJobRow {
   fal_endpoint: string
   fal_request_id: string
   credits_charged: number
+  duration_seconds: number | null
+  resolution: string | null
+  has_audio: boolean
 }
 
 async function handlePostWithUsage(request: NextRequest) {
@@ -48,7 +51,7 @@ async function handlePostWithUsage(request: NextRequest) {
   try {
     const sql = getSQL()
     const rows = await sql`
-      SELECT id, user_id, status, fal_endpoint, fal_request_id, credits_charged
+      SELECT id, user_id, status, fal_endpoint, fal_request_id, credits_charged, duration_seconds, resolution, has_audio
       FROM public.video_history
       WHERE id = ${parsed.data.jobId} AND user_id = ${userId}
     `
@@ -58,6 +61,10 @@ async function handlePostWithUsage(request: NextRequest) {
       return apiError(409, 'not_pending', `This job already ${row.status === 'completed' ? 'finished' : 'ended'}`)
     }
 
+    // A cancel that fal accepted while the job was still queued is never
+    // billed; one rejected after the render started may be, so the ledger
+    // keeps the estimate at confidence 'unknown' instead of booking it as free.
+    let mayStillBill = false
     try {
       await cancelVideoJob(row.fal_endpoint, row.fal_request_id)
     } catch (cancelError) {
@@ -66,6 +73,7 @@ async function handlePostWithUsage(request: NextRequest) {
       if (queueStatus === 'COMPLETED') {
         return apiError(409, 'too_late', 'Too late to cancel — the clip already finished and will appear shortly')
       }
+      mayStillBill = queueStatus !== 'IN_QUEUE'
       console.error(`[video] Cancel rejected for job ${row.id} (queue: ${queueStatus}):`, cancelError)
       // IN_PROGRESS (or unknown): the render may complete on fal's side, but
       // the user asked to stop — mark it canceled and refund; the poller
@@ -80,8 +88,10 @@ async function handlePostWithUsage(request: NextRequest) {
     // The poller stops on a non-pending row, so the ledger row must be closed here.
     void finalizeProviderUsage(
       row.fal_request_id,
-      { provider: 'fal', model: row.fal_endpoint, operation: operationForFalEndpoint(row.fal_endpoint) },
-      { status: 'failed', error: 'Canceled by user' },
+      falIdentityForVideoRow(row),
+      mayStillBill
+        ? { status: 'timeout', units: falUnitsForVideoRow(row), error: 'Canceled after the render started; fal may still bill it' }
+        : { status: 'failed', error: 'Canceled by user' },
     )
     if (row.credits_charged > 0) {
       await refundReservation(

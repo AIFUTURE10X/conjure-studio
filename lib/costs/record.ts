@@ -206,7 +206,8 @@ export async function recordProviderUsage(input: RecordUsageInput): Promise<Prov
 }
 
 export interface FinalizePatch {
-  status: 'succeeded' | 'failed'
+  /** `timeout`: the provider may still have completed and billed (e.g. a cancel that arrived after the render started). */
+  status: 'succeeded' | 'failed' | 'timeout'
   units?: ProviderUsageUnits
   error?: string
   occurredAt?: Date
@@ -253,7 +254,8 @@ export async function finalizeProviderUsage(
       await finalizeRow(requestId, patch, {
         unit_prices: priced.unitPrices,
         cost_usd: priced.costUsd,
-        confidence: priced.confidence === 'rate' ? 'rate' : priced.confidence,
+        // AC-5: a job the provider may still have billed keeps its estimate at confidence 'unknown'.
+        confidence: priced.confidence === 'rate' ? (patch.status === 'timeout' ? 'unknown' : 'rate') : priced.confidence,
         rate_effective_from: priced.rateEffectiveFrom,
       })
     } catch (error) {

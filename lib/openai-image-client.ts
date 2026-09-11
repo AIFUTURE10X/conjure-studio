@@ -97,6 +97,9 @@ function parseOpenAIImageUsage(data: unknown): ProviderUsageUnits | null {
   return {
     text_tokens_in: num(details.text_tokens),
     image_tokens_in: num(details.image_tokens),
+    // OpenAI reports one `cached_tokens` figure for image requests without
+    // saying which modality it covers; it is treated as cached image input
+    // ($2/1M), the higher of the two cached rates, so caching never under-prices.
     cached_image_tokens_in: num(details.cached_tokens),
     image_tokens_out: num(outDetails.image_tokens) || num(usage.output_tokens),
   }

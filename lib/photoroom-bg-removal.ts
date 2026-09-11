@@ -89,9 +89,8 @@ export async function removeBackgroundWithPhotoRoom(
       headers,
       body: formData,
     })
-    void recordProviderUsage({ ...PHOTOROOM_USAGE, status: response.ok ? 'succeeded' : 'failed', error: response.ok ? undefined : `HTTP ${response.status}`, latencyMs: elapsedMs(startedAt) })
-
     if (!response.ok) {
+      void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'failed', error: `HTTP ${response.status}`, latencyMs: elapsedMs(startedAt) })
       const errorText = await response.text()
       let errorMessage = `PhotoRoom API error: ${response.status}`
       let errorCode = 'photoroom_api_error'
@@ -129,6 +128,9 @@ export async function removeBackgroundWithPhotoRoom(
     // Response is binary PNG data
     const resultBuffer = await response.arrayBuffer()
     const resultBase64 = Buffer.from(resultBuffer).toString('base64')
+    // Recorded once the body is read: a body-read failure lands in the catch
+    // below and is recorded exactly once, as failed.
+    void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'succeeded', latencyMs: elapsedMs(startedAt) })
 
     console.log("[PhotoRoom BG Removal] Success! Professional-grade background removal complete")
     return resultBase64
