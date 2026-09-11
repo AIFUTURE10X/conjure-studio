@@ -90,8 +90,10 @@ export async function removeBackgroundWithPhotoRoom(
       body: formData,
     })
     if (!response.ok) {
-      void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'failed', error: `HTTP ${response.status}`, latencyMs: elapsedMs(startedAt) })
       const errorText = await response.text()
+      // Recorded after the body read: a mid-body failure lands in the catch
+      // below and is recorded exactly once.
+      void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'failed', error: `HTTP ${response.status}`, latencyMs: elapsedMs(startedAt) })
       let errorMessage = `PhotoRoom API error: ${response.status}`
       let errorCode = 'photoroom_api_error'
 

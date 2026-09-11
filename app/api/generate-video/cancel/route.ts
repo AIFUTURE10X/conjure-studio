@@ -61,9 +61,10 @@ async function handlePostWithUsage(request: NextRequest) {
       return apiError(409, 'not_pending', `This job already ${row.status === 'completed' ? 'finished' : 'ended'}`)
     }
 
-    // A cancel that fal accepted while the job was still queued is never
-    // billed; one rejected after the render started may be, so the ledger
-    // keeps the estimate at confidence 'unknown' instead of booking it as free.
+    // Only a cancel fal ACCEPTED is guaranteed unbilled. A rejected cancel may
+    // still render — even one fal reports as queued, if the cancel call itself
+    // failed — so the ledger keeps the estimate at confidence 'unknown' rather
+    // than booking it as free.
     let mayStillBill = false
     try {
       await cancelVideoJob(row.fal_endpoint, row.fal_request_id)
@@ -73,26 +74,31 @@ async function handlePostWithUsage(request: NextRequest) {
       if (queueStatus === 'COMPLETED') {
         return apiError(409, 'too_late', 'Too late to cancel — the clip already finished and will appear shortly')
       }
-      mayStillBill = queueStatus !== 'IN_QUEUE'
+      mayStillBill = true
       console.error(`[video] Cancel rejected for job ${row.id} (queue: ${queueStatus}):`, cancelError)
       // IN_PROGRESS (or unknown): the render may complete on fal's side, but
       // the user asked to stop — mark it canceled and refund; the poller
       // stops on the non-pending row.
     }
 
-    await sql`
+    const closed = await sql`
       UPDATE public.video_history
       SET status = 'failed', error = 'Canceled — credits refunded', completed_at = NOW()
       WHERE id = ${row.id} AND status = 'pending'
+      RETURNING id
     `
-    // The poller stops on a non-pending row, so the ledger row must be closed here.
-    void finalizeProviderUsage(
-      row.fal_request_id,
-      falIdentityForVideoRow(row),
-      mayStillBill
-        ? { status: 'timeout', units: falUnitsForVideoRow(row), error: 'Canceled after the render started; fal may still bill it' }
-        : { status: 'failed', error: 'Canceled by user' },
-    )
+    // The poller stops on a non-pending row, so the ledger row must be closed
+    // here — but only by the request that actually closed the job, so a cancel
+    // racing a completion poll does not warn about an already-final row.
+    if (closed.length > 0) {
+      void finalizeProviderUsage(
+        row.fal_request_id,
+        falIdentityForVideoRow(row),
+        mayStillBill
+          ? { status: 'timeout', units: falUnitsForVideoRow(row), error: 'Canceled after the job left the queue or its status was unknown; fal may still bill it' }
+          : { status: 'failed', error: 'Canceled by user' },
+      )
+    }
     if (row.credits_charged > 0) {
       await refundReservation(
         row.user_id,

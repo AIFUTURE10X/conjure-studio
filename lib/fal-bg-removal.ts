@@ -137,9 +137,11 @@ export async function removeBackgroundWithFal(
     .then(() => sharp(Buffer.from(imageBase64, 'base64')).metadata())
     .then((meta) => (meta.width && meta.height ? (meta.width * meta.height) / 1_000_000 : undefined))
     .catch(() => undefined)
-  const usageFor = async (status: 'succeeded' | 'failed', error?: string) => {
+  // latency_ms is the provider call only; the output fetch and post-processing
+  // that follow it are ours, not fal's.
+  const usageFor = async (status: 'succeeded' | 'failed', latencyMs: number, error?: string) => {
     const megapixels = await megapixelsPromise
-    void recordProviderUsage({ provider: 'fal', model: endpoint, operation: 'bg-removal', status, units: { calls: 1, megapixels }, error, latencyMs: elapsedMs(startedAt) })
+    void recordProviderUsage({ provider: 'fal', model: endpoint, operation: 'bg-removal', status, units: { calls: 1, megapixels }, error, latencyMs })
   }
 
   try {
@@ -154,6 +156,7 @@ export async function removeBackgroundWithFal(
           },
       logs: false,
     })
+    const providerMs = elapsedMs(startedAt)
 
     const outputUrl = extractImageUrl(result)
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
@@ -167,10 +170,10 @@ export async function removeBackgroundWithFal(
     const finalBase64 = await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
     // Recorded only once the output is fetched and decoded: any throw above
     // lands in the catch and is recorded exactly once, as failed.
-    void usageFor('succeeded')
+    void usageFor('succeeded', providerMs)
     return finalBase64
   } catch (error) {
-    void usageFor('failed', error instanceof Error ? error.message : String(error))
+    void usageFor('failed', elapsedMs(startedAt), error instanceof Error ? error.message : String(error))
     console.error('[fal BG Removal] Error:', error)
     throw error
   }
