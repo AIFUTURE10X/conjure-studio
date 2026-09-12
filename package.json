@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build && node scripts/check-online-workflow-bundle.cjs",
     "check:bg-remover": "node scripts/check-background-remover-resilience.cjs && node --import tsx --test scripts/dependency-compat.test.ts",
     "check:ci-coverage": "node scripts/check-ci-coverage.cjs",
     "check:clay-styles": "node scripts/check-clay-style-presets.cjs",
@@ -123,6 +123,7 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.181.2",
     "tsx": "4.23.13",
+    "workflow": "^4.8.8",
     "zod": "3.25.76"
   },
   "devDependencies": {
@@ -142,6 +143,8 @@
     "typescript-eslint": "^8.60.0"
   },
   "overrides": {
+    "undici@^7": "7.29.1",
+    "nanoid@^5": "5.1.16",
     "@imgly/background-removal-node": {
       "sharp": "0.35.4",
       "zod": "3.25.76",
