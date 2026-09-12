@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
 import { dispatchNextOutbox, executeGenerationOperation, reconcileGenerationTimeout } from './online-outbox'
 import { PostgresOnlineOperationStore } from './online-postgres-store'
+import { reconcileStaleOnlineOperations } from './online-generation-dispatch'
 
 const connectionString = process.env.POPCORN_TEST_DATABASE_URL
 
@@ -70,4 +71,36 @@ test('Postgres outbox atomically survives concurrent workers and ambiguous deliv
   assert.equal(await reconcileGenerationTimeout(second, ambiguousId,
     new Date('2026-09-12T10:06:00.000Z')), true)
   assert.equal((await second.readOperation(ambiguousId)).state, 'needs_reconciliation')
+})
+
+test('production reconciliation recovers durable assets and fences stale ambiguous dispatches by operator', {
+  skip: connectionString ? false : 'POPCORN_TEST_DATABASE_URL is required for the Neon integration',
+}, async t => {
+  const pool = new Pool({ connectionString, max: 8 })
+  const operatorId = `operator-${randomUUID()}`, ownerId = `owner-${randomUUID()}`
+  const otherOperatorId = `operator-${randomUUID()}`, otherOwnerId = `owner-${randomUUID()}`
+  const recoveredId = randomUUID(), ambiguousId = randomUUID(), otherId = randomUUID()
+  const store = new PostgresOnlineOperationStore(pool, ownerId, operatorId)
+  const otherStore = new PostgresOnlineOperationStore(pool, otherOwnerId, otherOperatorId)
+  t.after(async () => {
+    await pool.query('DELETE FROM conjure_media.assets WHERE owner_id = ANY($1)', [[ownerId, otherOwnerId]])
+    await pool.query('DELETE FROM conjure_media.operations WHERE owner_id = ANY($1)', [[ownerId, otherOwnerId]])
+    await pool.end()
+  })
+  for (const operationId of [recoveredId, ambiguousId]) {
+    await store.acceptOperation({ operationId, requestDigest: 'd'.repeat(64) })
+    assert.equal(await store.claimProviderDispatch(operationId, new Date('2026-09-12T10:00:00.000Z')), 'claimed')
+  }
+  await otherStore.acceptOperation({ operationId: otherId, requestDigest: 'e'.repeat(64) })
+  assert.equal(await otherStore.claimProviderDispatch(otherId, new Date('2026-09-12T10:00:00.000Z')), 'claimed')
+  await pool.query(`INSERT INTO conjure_media.assets
+    (id, operation_id, owner_id, campaign_id, brand, file_id, sha256, byte_length, width, height)
+    VALUES ($1,$2,$3,'campaign','sample','file', $4, 1, 1, 1)`,
+  [`asset-${recoveredId}`, recoveredId, ownerId, 'f'.repeat(64)])
+
+  assert.deepEqual(await reconcileStaleOnlineOperations(pool, operatorId,
+    new Date('2026-09-12T10:06:00.000Z'), 300_000, 20), { recovered: 1, needsReconciliation: 1 })
+  assert.equal((await store.readOperation(recoveredId)).state, 'ready')
+  assert.equal((await store.readOperation(ambiguousId)).state, 'needs_reconciliation')
+  assert.equal((await otherStore.readOperation(otherId)).state, 'generating')
 })
