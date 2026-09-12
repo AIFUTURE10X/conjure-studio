@@ -137,8 +137,9 @@ export async function removeBackgroundWithFal(
     .then(() => sharp(Buffer.from(imageBase64, 'base64')).metadata())
     .then((meta) => (meta.width && meta.height ? (meta.width * meta.height) / 1_000_000 : undefined))
     .catch(() => undefined)
-  // latency_ms is the provider call only; the output fetch and post-processing
-  // that follow it are ours, not fal's.
+  // latency_ms on a successful call is the provider call only; the output fetch
+  // and post-processing that follow it are ours, not fal's. A failed call
+  // reports elapsed time to the failure, wherever in that sequence it happened.
   const usageFor = async (status: 'succeeded' | 'failed', latencyMs: number, error?: string) => {
     const megapixels = await megapixelsPromise
     void recordProviderUsage({ provider: 'fal', model: endpoint, operation: 'bg-removal', status, units: { calls: 1, megapixels }, error, latencyMs })

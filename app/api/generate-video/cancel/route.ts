@@ -90,15 +90,26 @@ async function handlePostWithUsage(request: NextRequest) {
     // The poller stops on a non-pending row, so the ledger row must be closed
     // here — but only by the request that actually closed the job, so a cancel
     // racing a completion poll does not warn about an already-final row.
-    if (closed.length > 0) {
-      void finalizeProviderUsage(
-        row.fal_request_id,
-        falIdentityForVideoRow(row),
-        mayStillBill
-          ? { status: 'timeout', units: falUnitsForVideoRow(row), error: 'Canceled after the job left the queue or its status was unknown; fal may still bill it' }
-          : { status: 'failed', error: 'Canceled by user' },
-      )
+    // A concurrent poll can close the job between the status probe above and
+    // this UPDATE. Only the request that actually closed it may finalize the
+    // ledger row and refund: the completion path closes the row as `completed`
+    // without refunding, so refunding here regardless would hand back credits
+    // for a delivered video.
+    if (closed.length === 0) {
+      const [current] = await sql`
+        SELECT status, video_url FROM public.video_history WHERE id = ${row.id}
+      `
+      console.warn(`[video] Cancel for job ${row.id} lost the race; job already ${current?.status ?? 'closed'} — no refund, no ledger change`)
+      return NextResponse.json({ jobId: row.id, status: current?.status ?? 'failed', videoUrl: current?.video_url ?? null, canceled: false })
     }
+
+    void finalizeProviderUsage(
+      row.fal_request_id,
+      falIdentityForVideoRow(row),
+      mayStillBill
+        ? { status: 'timeout', units: falUnitsForVideoRow(row), error: 'Canceled after the job left the queue or its status was unknown; fal may still bill it' }
+        : { status: 'failed', error: 'Canceled by user' },
+    )
     if (row.credits_charged > 0) {
       await refundReservation(
         row.user_id,
