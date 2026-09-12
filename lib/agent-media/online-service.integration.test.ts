@@ -86,7 +86,7 @@ test('distinct approved quotes serialize the shared operator budget', {
     await pool.query('DELETE FROM conjure_media.quotes WHERE owner_id = $1', [ownerId])
     await pool.end()
   })
-  const makeQuote = async prompt => {
+  const makeQuote = async (prompt: string) => {
     const quote = await service.createQuote({ operatorId, ownerId, campaignId: 'campaign-race',
       request: { brand: 'sample', prompt, model: 'gpt-image-2.5-flare', aspectRatio: '1:1', quality: 'medium' },
       composition: { mode: 'concept', headline: prompt, body: 'Body', cta: 'Learn more' } })
@@ -94,8 +94,8 @@ test('distinct approved quotes serialize the shared operator budget', {
     return quote
   }
   const [firstQuote, secondQuote] = await Promise.all([makeQuote('First quote'), makeQuote('Second quote')])
-  let arrivals = 0, release
-  const gate = new Promise(resolve => { release = resolve })
+  let arrivals = 0, release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
   const racingPool = new Proxy(pool, { get(target, property, receiver) {
     if (property !== 'connect') return Reflect.get(target, property, receiver)
     return async () => {
@@ -105,13 +105,13 @@ test('distinct approved quotes serialize the shared operator budget', {
           const value = Reflect.get(clientTarget, clientProperty, clientReceiver)
           return typeof value === 'function' ? value.bind(clientTarget) : value
         }
-        return async (...args) => {
+        return async (...args: unknown[]) => {
           const statement = String(args[0])
           const budgetBoundary = /pg_advisory_xact_lock|FROM conjure_media\.operations WHERE owner_id = \$1/.test(statement)
           if (budgetBoundary && !synchronized) {
             synchronized = true;arrivals += 1;if (arrivals === 2) release();await gate
           }
-          return clientTarget.query(...args)
+          return Reflect.apply(clientTarget.query, clientTarget, args)
         }
       } })
     }
