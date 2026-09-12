@@ -171,13 +171,20 @@ export class OnlineMediaService {
         if (existing.rows[0].quote_id !== quote.id) throw new Error('Idempotency key belongs to another quote')
         return this.readOperation(operationId, client)
       }
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [`${quote.operatorId}:${quote.ownerId}`])
+      const budgetNow = this.clock()
+      this.assertPolicy(quote.operatorId, quote.brand, budgetNow, true)
+      if (quote.expiresAt <= budgetNow.toISOString() || quote.policyDigest !== hash(this.policy)) {
+        throw new Error('Quote expired or pricing changed while reserving budget')
+      }
       const budget = (await client.query<{ daily: string; total: string }>(`
         SELECT
           coalesce(sum(greatest(reserved_micros, coalesce(actual_micros, 0)))
             FILTER (WHERE created_at >= date_trunc('day', $2::timestamptz)), 0)::text AS daily,
           coalesce(sum(greatest(reserved_micros, coalesce(actual_micros, 0))), 0)::text AS total
         FROM conjure_media.operations WHERE owner_id = $1
-      `, [quote.ownerId, now])).rows[0]
+      `, [quote.ownerId, budgetNow])).rows[0]
       if (Number(budget.daily) + quote.reservedMicros > this.policy.dailyLimitMicros
         || Number(budget.total) + quote.reservedMicros > this.policy.totalLimitMicros) {
         throw new Error('Operator budget exhausted')
@@ -189,7 +196,7 @@ export class OnlineMediaService {
         VALUES ($1,$2,$3,$4,'queued',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14)
       `, [operationId, quote.operatorId, quote.ownerId, quote.requestDigest, quote.id, approval.id,
         quote.campaignId, quote.brand, quote.request, quote.referenceFileId,
-        quote.referenceSha256, quote.composition, quote.reservedMicros, now])
+        quote.referenceSha256, quote.composition, quote.reservedMicros, budgetNow])
       await client.query(`
         INSERT INTO conjure_media.costs (operation_id, reserved_micros)
         VALUES ($1,$2)

@@ -67,3 +67,62 @@ test('online quote approval and operation reservation are exact, capped and idem
   const finalCount = await pool.query('SELECT count(*)::int AS count FROM conjure_media.operations WHERE owner_id = $1', [ownerId])
   assert.equal(finalCount.rows[0].count, 2)
 })
+
+test('distinct approved quotes serialize the shared operator budget', {
+  skip: connectionString ? false : 'POPCORN_TEST_DATABASE_URL is required for the Neon integration',
+}, async t => {
+  const pool = new Pool({ connectionString, max: 8 }), ownerId = randomUUID(), operatorId = `github:${randomUUID()}`
+  const policy: OnlinePolicy = { operatorId, brands: ['sample'], allowPaid: true,
+    dailyLimitMicros: 150000, totalLimitMicros: 150000, expiresAt: '2026-09-13T00:00:00.000Z',
+    pricing: { checkedAt: '2026-09-12T00:00:00.000Z', expiresAt: '2026-09-13T00:00:00.000Z',
+      source: 'https://example.com/synthetic-pricing', reserves: { low: 50000, medium: 100000, high: 200000 },
+      referenceExtraMicros: 50000 } }
+  const service = new OnlineMediaService(pool, policy, () => NOW)
+  t.after(async () => {
+    await pool.query('DELETE FROM conjure_media.costs WHERE operation_id IN (SELECT id FROM conjure_media.operations WHERE owner_id = $1)', [ownerId])
+    await pool.query('DELETE FROM conjure_media.outbox WHERE operation_id IN (SELECT id FROM conjure_media.operations WHERE owner_id = $1)', [ownerId])
+    await pool.query('DELETE FROM conjure_media.operations WHERE owner_id = $1', [ownerId])
+    await pool.query('DELETE FROM conjure_media.approvals WHERE owner_id = $1', [ownerId])
+    await pool.query('DELETE FROM conjure_media.quotes WHERE owner_id = $1', [ownerId])
+    await pool.end()
+  })
+  const makeQuote = async prompt => {
+    const quote = await service.createQuote({ operatorId, ownerId, campaignId: 'campaign-race',
+      request: { brand: 'sample', prompt, model: 'gpt-image-2.5-flare', aspectRatio: '1:1', quality: 'medium' },
+      composition: { mode: 'concept', headline: prompt, body: 'Body', cta: 'Learn more' } })
+    await service.approve({ quoteId: quote.id, quoteDigest: hash(quote), reviewer: 'Phil' })
+    return quote
+  }
+  const [firstQuote, secondQuote] = await Promise.all([makeQuote('First quote'), makeQuote('Second quote')])
+  let arrivals = 0, release
+  const gate = new Promise(resolve => { release = resolve })
+  const racingPool = new Proxy(pool, { get(target, property, receiver) {
+    if (property !== 'connect') return Reflect.get(target, property, receiver)
+    return async () => {
+      const client = await target.connect();let synchronized = false
+      return new Proxy(client, { get(clientTarget, clientProperty, clientReceiver) {
+        if (clientProperty !== 'query') {
+          const value = Reflect.get(clientTarget, clientProperty, clientReceiver)
+          return typeof value === 'function' ? value.bind(clientTarget) : value
+        }
+        return async (...args) => {
+          const statement = String(args[0])
+          const budgetBoundary = /pg_advisory_xact_lock|FROM conjure_media\.operations WHERE owner_id = \$1/.test(statement)
+          if (budgetBoundary && !synchronized) {
+            synchronized = true;arrivals += 1;if (arrivals === 2) release();await gate
+          }
+          return clientTarget.query(...args)
+        }
+      } })
+    }
+  } })
+  const racing = new OnlineMediaService(racingPool, policy, () => NOW)
+  const results = await Promise.allSettled([
+    racing.createOperation({ quoteId: firstQuote.id, idempotencyKey: 'first-operation' }),
+    racing.createOperation({ quoteId: secondQuote.id, idempotencyKey: 'second-operation' }),
+  ])
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1)
+  assert.equal(results.filter(result => result.status === 'rejected').length, 1)
+  const reserved = await pool.query('SELECT coalesce(sum(reserved_micros), 0)::int AS total FROM conjure_media.operations WHERE owner_id = $1', [ownerId])
+  assert.equal(reserved.rows[0].total, 100000)
+})
