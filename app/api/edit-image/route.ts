@@ -28,6 +28,7 @@ import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { closestRatio, exactOpenAISize } from "@/lib/image-aspect"
 import { hygieneMask, pixelLockComposite } from "@/lib/edit-mask"
 import { uploadEditImage } from "@/lib/edit-upload"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -127,4 +128,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard("imageEdit", editImageCost, handlePost)
+export const POST = withUsage('edit-image', withCreditGuard("imageEdit", editImageCost, handlePost))

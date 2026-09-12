@@ -8,6 +8,7 @@ import { resolveUserId } from '@/lib/api/identity'
 import { videoToolCost } from '@/lib/credits/cost-map'
 import { submitVideoJob } from '@/lib/video/fal-video-client'
 import { userIdSchema } from '@/lib/validation/common'
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -38,6 +39,7 @@ async function handlePost(request: NextRequest) {
   if (parsed.response) return parsed.response
   const { videoUrl, targetResolution } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
+  setUsageContextUser(userId)
 
   try {
     const endpoint = 'fal-ai/seedvr/upscale/video'
@@ -49,11 +51,22 @@ async function handlePost(request: NextRequest) {
       output_quality: 'high',
     }
 
+    const sql = getSQL()
+    // SeedVR bills on output megapixels (target resolution × frames); the frame
+    // count follows the source clip's duration when it came from this app's
+    // history. Looked up before the fal submit (a database failure here must
+    // not orphan a submitted, billed job) and scoped to the caller's own rows.
+    const source = await sql`
+      SELECT duration_seconds FROM public.video_history
+      WHERE user_id = ${userId} AND video_url = ${videoUrl} AND duration_seconds IS NOT NULL
+      ORDER BY id DESC LIMIT 1
+    `
+    const sourceDuration = (source[0]?.duration_seconds as number | undefined) ?? null
+
     console.log("[enhance-video] Submitting job:", { endpoint, targetResolution })
     const requestId = await submitVideoJob(endpoint, input)
     const creditsCharged = isSaasEnforcementOn() ? videoToolCost('videoUpscale') : 0
 
-    const sql = getSQL()
     const rows = await sql`
       INSERT INTO public.video_history (
         user_id, prompt, model, fal_endpoint, fal_request_id, status,
@@ -61,7 +74,7 @@ async function handlePost(request: NextRequest) {
         aspect_ratio, has_audio, credits_charged
       ) VALUES (
         ${userId}, ${'Enhanced (upscaled to ' + targetResolution + ')'}, 'seedvr-upscale', ${endpoint}, ${requestId}, 'pending',
-        NULL, NULL, NULL, ${targetResolution}, 'auto', FALSE, ${creditsCharged}
+        NULL, NULL, ${sourceDuration}, ${targetResolution}, 'auto', FALSE, ${creditsCharged}
       )
       RETURNING id
     `
@@ -72,4 +85,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('video_upscale', videoToolCost('videoUpscale'), handlePost)
+export const POST = withUsage('enhance-video', withCreditGuard('video_upscale', videoToolCost('videoUpscale'), handlePost))

@@ -1,4 +1,6 @@
 import type { ImageSize } from "@/lib/gemini-client"
+import { elapsedMs, recordProviderUsage } from "@/lib/costs/record"
+import { defaultImageOutputTokens, type ProviderUsageUnits } from "@/lib/costs/provider-rates"
 
 type AllowedRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "5:4" | "4:5"
 /** Wire model for every OpenAI image call. ChatGPT Images 2.5 Flare: same
@@ -85,19 +87,45 @@ function parseOpenAIError(body: string): OpenAIErrorBody["error"] {
   }
 }
 
+/** Token usage OpenAI reports on every image response; recorded as the exact cost basis (issue #50). */
+function parseOpenAIImageUsage(data: unknown): ProviderUsageUnits | null {
+  const usage = (data as { usage?: Record<string, unknown> } | null)?.usage
+  if (!usage || typeof usage !== "object") return null
+  const details = (usage.input_tokens_details ?? {}) as Record<string, unknown>
+  const outDetails = (usage.output_tokens_details ?? {}) as Record<string, unknown>
+  const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0)
+  return {
+    text_tokens_in: num(details.text_tokens),
+    image_tokens_in: num(details.image_tokens),
+    // OpenAI reports one `cached_tokens` figure for image requests without
+    // saying which modality it covers; it is treated as cached image input
+    // ($2/1M), the higher of the two cached rates, so caching never under-prices.
+    cached_image_tokens_in: num(details.cached_tokens),
+    image_tokens_out: num(outDetails.image_tokens) || num(usage.output_tokens),
+  }
+}
+
+/** Our own deadline elapsed after the request was sent — OpenAI may still complete and bill it. */
+export class OpenAITimeoutError extends Error {
+  constructor() {
+    super("OpenAI request timed out")
+    this.name = "OpenAITimeoutError"
+  }
+}
+
 /** Every OpenAI image call goes through this so a hung request fails fast enough for the credit guard to refund it, instead of the route timing out first. */
 async function fetchOpenAI(url: string, init: RequestInit, requestTimeoutMs: number): Promise<Response> {
   try {
     return await fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) })
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
-      throw new Error("OpenAI request timed out")
+      throw new OpenAITimeoutError()
     }
     throw error
   }
 }
 
-export async function generateOpenAIImage({
+async function generateOpenAIImageRaw({
   prompt,
   aspectRatio,
   imageSize,
@@ -186,7 +214,7 @@ export async function generateOpenAIImage({
     if (imagesBase64.length === 0) {
       throw new Error("No image data returned from OpenAI API")
     }
-    return { imageBase64: imagesBase64[0], imagesBase64, size }
+    return { imageBase64: imagesBase64[0], imagesBase64, size, usage: parseOpenAIImageUsage(data) }
   }
 
   const response = await fetchOpenAI("https://api.openai.com/v1/images/generations", {
@@ -216,5 +244,33 @@ export async function generateOpenAIImage({
     throw new Error("No image data returned from OpenAI API")
   }
 
-  return { imageBase64, imagesBase64: [imageBase64], size }
+  return { imageBase64, imagesBase64: [imageBase64], size, usage: parseOpenAIImageUsage(data) }
+}
+
+type GenerateOpenAIImageParams = Parameters<typeof generateOpenAIImageRaw>[0]
+
+/**
+ * Generate or edit an image and record the call in the provider usage ledger.
+ * The provider's own token usage is the cost basis; a timeout after the
+ * request was sent records the list-rate estimate for what was requested,
+ * since OpenAI may still have completed and billed it.
+ */
+export async function generateOpenAIImage(params: GenerateOpenAIImageParams) {
+  const startedAt = Date.now()
+  const size = params.exactSize ?? getOpenAIImageSize(params.aspectRatio, params.imageSize)
+  const isEdit = Boolean(params.referenceImageFile && params.referenceImageFile.size > 0)
+  const requested: ProviderUsageUnits = {
+    image_tokens_out: defaultImageOutputTokens(OPENAI_IMAGE_MODEL, params.imageQuality, size) * Math.max(1, params.n ?? 1),
+    quality: params.imageQuality,
+  }
+  const base = { provider: "openai" as const, model: OPENAI_IMAGE_MODEL, operation: isEdit ? ("image-edit" as const) : ("image-generate" as const) }
+  try {
+    const result = await generateOpenAIImageRaw(params)
+    void recordProviderUsage({ ...base, status: "succeeded", units: result.usage ?? requested, exact: Boolean(result.usage), latencyMs: elapsedMs(startedAt) })
+    return result
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    void recordProviderUsage({ ...base, status: error instanceof OpenAITimeoutError ? "timeout" : "failed", units: requested, error: message, latencyMs: elapsedMs(startedAt) })
+    throw error
+  }
 }

@@ -30,6 +30,7 @@ import {
   LOGO_BACKGROUND_REMOVAL_METHODS,
   LOGO_TEXT_MODES,
 } from "@/lib/logo-generation-contract"
+import { withUsage } from '@/lib/costs/route'
 
 export async function GET() {
   return NextResponse.json({
@@ -1480,7 +1481,7 @@ function normalizeImagePromptSuggestions(rawSuggestions: unknown): ImagePromptSu
   }
 }
 
-export async function POST(request: Request) {
+async function handlePostWithUsage(request: Request) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
   if (rateLimited) return rateLimited
 
@@ -2362,3 +2363,6 @@ Action schema:
     )
   }
 }
+
+
+export const POST = withUsage('generate-prompt-suggestion', handlePostWithUsage)

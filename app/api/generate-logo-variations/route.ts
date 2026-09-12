@@ -6,6 +6,7 @@ import {
   isOpenAIRateLimitError,
   OpenAIServiceError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 /**
  * Generate 3 distinct logo direction variations from a brand brief.
@@ -120,7 +121,7 @@ function normalize(raw: unknown): NormalizedVariation[] {
     .slice(0, 3)
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   if (!hasOpenAITextApiKey()) {
     return NextResponse.json({ error: "OPENAI_API_KEY is not configured." }, { status: 500 })
   }
@@ -159,3 +160,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
+
+
+export const POST = withUsage('generate-logo-variations', handlePostWithUsage)

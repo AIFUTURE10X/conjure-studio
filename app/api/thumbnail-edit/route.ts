@@ -13,6 +13,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { closestRatio, exactOpenAISize } from "@/lib/image-aspect"
 import { uploadEditImage } from "@/lib/edit-upload"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -68,4 +69,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard("thumbnailEdit", flatCost("thumbnailEdit"), handlePost)
+export const POST = withUsage('thumbnail-edit', withCreditGuard("thumbnailEdit", flatCost("thumbnailEdit"), handlePost))
