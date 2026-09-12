@@ -3,7 +3,7 @@
  *
  * Masked inpainting for the thumbnail editor — erase an object (fill from the
  * surroundings) or replace the masked area from a prompt. Uses OpenAI's
- * gpt-image-2 image-edit endpoint with a mask (transparent = edit here).
+ * gpt-image-2.5-flare image-edit endpoint with a mask (transparent = edit here).
  */
 
 import { type NextRequest, NextResponse } from "next/server"
@@ -13,6 +13,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { closestRatio, exactOpenAISize } from "@/lib/image-aspect"
 import { uploadEditImage } from "@/lib/edit-upload"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -68,4 +69,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard("thumbnailEdit", flatCost("thumbnailEdit"), handlePost)
+export const POST = withUsage('thumbnail-edit', withCreditGuard("thumbnailEdit", flatCost("thumbnailEdit"), handlePost))

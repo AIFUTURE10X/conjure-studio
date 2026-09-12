@@ -7,6 +7,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 /**
  * POST /api/write-narration — write a voiceover script timed to a film's
@@ -18,7 +19,7 @@ const bodySchema = z.object({
   targetSeconds: z.number().min(4).max(300),
 })
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
   if (rateLimited) return rateLimited
 
@@ -51,3 +52,6 @@ Rules: evocative but restrained; short sentences; present or past tense picked t
     return apiError(500, "narration_failed", "Could not write the narration")
   }
 }
+
+
+export const POST = withUsage('write-narration', handlePostWithUsage)

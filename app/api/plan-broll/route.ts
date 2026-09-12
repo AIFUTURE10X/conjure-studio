@@ -7,6 +7,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 /**
  * POST /api/plan-broll — turns a voiceover transcript into a list of
@@ -68,7 +69,7 @@ function extractJson(raw: string): unknown {
   return JSON.parse(trimmed.slice(start, end + 1))
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
   if (rateLimited) return rateLimited
 
@@ -93,3 +94,6 @@ export async function POST(request: NextRequest) {
     return apiError(500, "broll_plan_failed", "Could not plan B-roll — try a longer or clearer transcript")
   }
 }
+
+
+export const POST = withUsage('plan-broll', handlePostWithUsage)

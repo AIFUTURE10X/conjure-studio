@@ -13,6 +13,7 @@ import {
 import { buildFreeFormLogoPrompt, buildLogoPrompt, buildReferenceLogoPrompt, type LogoBackgroundMode } from "./logo-prompts"
 import { applyTextPositionToPrompt, getTextPositionNegative } from "@/lib/text-position"
 import { sampleReferencePalette } from "./reference-palette"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -44,9 +45,9 @@ async function handlePost(request: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
     }
 
-    if (logoRequest.bgRemovalMethod === 'native-transparent' && logoRequest.model !== 'gpt-image-2') {
+    if (logoRequest.bgRemovalMethod === 'native-transparent' && logoRequest.model !== 'gpt-image-2.5-flare') {
       return NextResponse.json(
-        { error: "Native transparent PNG requires ChatGPT Images 2.0" },
+        { error: "Native transparent PNG requires ChatGPT Images 2.5" },
         { status: 400 }
       )
     }
@@ -138,4 +139,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('logo_generation', imageFormCost, handlePost)
+export const POST = withUsage('generate-logo', withCreditGuard('logo_generation', imageFormCost, handlePost))

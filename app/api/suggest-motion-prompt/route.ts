@@ -8,6 +8,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 /**
  * Suggest a motion-only prompt for image-to-video from a start frame.
@@ -49,7 +50,7 @@ async function imageUrlToBase64(imageUrl: string): Promise<{ base64: string; mim
   return { mimeType, base64: Buffer.from(buffer).toString("base64") }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
@@ -80,3 +81,6 @@ export async function POST(request: NextRequest) {
     return apiError(500, "suggestion_failed", error instanceof Error ? error.message : "Could not suggest a motion prompt")
   }
 }
+
+
+export const POST = withUsage('suggest-motion-prompt', handlePostWithUsage)

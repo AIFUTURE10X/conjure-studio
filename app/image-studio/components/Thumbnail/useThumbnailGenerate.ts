@@ -157,7 +157,7 @@ export function useThumbnailGenerate({ setConfig, configRef }: Deps) {
       )
       form.append('aspectRatio', '16:9')
       form.append('count', '1')
-      form.append('model', 'gpt-image-2')
+      form.append('model', 'gpt-image-2.5-flare')
       form.append('imageSize', '2K')
       form.append('referenceImage', blob, 'background.png')
       form.append('referenceMode', 'inspire')

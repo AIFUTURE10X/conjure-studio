@@ -1,6 +1,6 @@
 "use client"
 
-export type GenerationModel = 'gpt-image-2'
+export type GenerationModel = 'gpt-image-2.5-flare'
 export type ImageSize = '1K' | '2K' | '4K'
 
 interface ModelSelectorProps {
@@ -25,14 +25,14 @@ export function ModelSelector({
         </label>
         <div className="grid grid-cols-1 gap-2">
           <button
-            onClick={() => onModelChange('gpt-image-2')}
+            onClick={() => onModelChange('gpt-image-2.5-flare')}
             className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              selectedModel === 'gpt-image-2'
+              selectedModel === 'gpt-image-2.5-flare'
                 ? 'bg-[#c99850] text-black'
                 : 'bg-zinc-900 text-white/70 hover:bg-zinc-700 border border-[#c99850]/30'
             }`}
           >
-            <div className="font-bold">ChatGPT Images 2.0</div>
+            <div className="font-bold">ChatGPT Images 2.5</div>
             <div className="text-[10px] opacity-70">OpenAI</div>
           </button>
         </div>

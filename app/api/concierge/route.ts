@@ -9,6 +9,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 /**
  * POST /api/concierge — the Studio Concierge planner. Takes a freeform
@@ -137,7 +138,7 @@ function sanitizeVideo(video: z.infer<typeof planSchema>['video']) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.helper)
   if (rateLimited) return rateLimited
 
@@ -174,3 +175,6 @@ export async function POST(request: NextRequest) {
     return apiError(500, "concierge_failed", "The concierge hit an error — try rephrasing")
   }
 }
+
+
+export const POST = withUsage('concierge', handlePostWithUsage)

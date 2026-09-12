@@ -314,7 +314,7 @@ export interface ThumbnailModelOption {
 }
 
 export const THUMBNAIL_MODELS: ThumbnailModelOption[] = [
-  { id: 'gpt-image-2', label: 'GPT', full: 'ChatGPT Images 2.0' },
+  { id: 'gpt-image-2.5-flare', label: 'GPT', full: 'ChatGPT Images 2.5' },
 ]
 
 export const THUMBNAIL_SIZES = ['1K', '2K', '4K'] as const

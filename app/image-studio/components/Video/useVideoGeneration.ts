@@ -241,6 +241,16 @@ export function useVideoGeneration() {
         // 409 too_late: the clip finished — leave it pending so the next poll lands it.
         throw new Error(data?.error?.message || data?.error || `Cancel failed (${response.status})`)
       }
+      // canceled:false means a status poll closed the job first: it was
+      // delivered and charged, and nothing was refunded. Leave it pending so
+      // the next poll lands the clip, exactly as the 409 above does.
+      if (data?.canceled === false) {
+        // The race can be lost to a failed poll too, so word it from the status.
+        toast.info(data?.status === 'completed'
+          ? 'Too late to cancel — your clip finished'
+          : 'Too late to cancel — the job already ended')
+        return false
+      }
       setJobs((current) => current.map((item) => (
         item.jobId === job.jobId
           ? { ...item, status: 'failed' as const, error: 'Canceled — credits refunded' }

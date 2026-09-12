@@ -25,7 +25,7 @@ export const imageModelSchema = z.enum([
   'gemini-3.1-flash-image-preview',
   'gemini-3-pro-image-preview',
   'gemini-2.5-flash-image',
-  'gpt-image-2',
+  'gpt-image-2.5-flare',
 ])
 
 export const imageSizeSchema = z.enum(['1K', '2K', '4K'])

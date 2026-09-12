@@ -80,7 +80,7 @@ export async function postGenerateImage(
   form.append('prompt', buildThumbnailBgPrompt(idea, stylePrompt))
   form.append('aspectRatio', '16:9')
   form.append('count', String(count))
-  form.append('model', options?.model || 'gpt-image-2')
+  form.append('model', options?.model || 'gpt-image-2.5-flare')
   form.append('imageSize', options?.imageSize || '1K')
   if (options?.referenceImage) {
     const blob = await (await fetch(options.referenceImage)).blob()

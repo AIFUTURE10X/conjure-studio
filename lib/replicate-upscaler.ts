@@ -10,6 +10,10 @@
  */
 
 import Replicate from "replicate"
+import { elapsedMs, recordProviderUsage } from "@/lib/costs/record"
+
+// Replicate bills Real-ESRGAN per output image (issue #50).
+const ESRGAN_USAGE = { provider: 'replicate' as const, model: 'nightmareai/real-esrgan', operation: 'upscale' as const, units: { calls: 1 } }
 
 export type UpscaleScale = 2 | 4
 
@@ -45,16 +49,24 @@ export async function upscaleWithRealESRGAN(
 
   // Real-ESRGAN model - excellent for logos and illustrations
   // nightmareai/real-esrgan is fast, reliable, and produces sharp results
-  const output = await replicate.run(
-    "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164291a4e9f4d1f99e80c524ef4db37e5a1f890",
-    {
-      input: {
-        image: `data:image/png;base64,${imageBase64}`,
-        scale: scale,
-        face_enhance: false // Set true for portraits with faces
+  const startedAt = Date.now()
+  let output: unknown
+  try {
+    output = await replicate.run(
+      "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164291a4e9f4d1f99e80c524ef4db37e5a1f890",
+      {
+        input: {
+          image: `data:image/png;base64,${imageBase64}`,
+          scale: scale,
+          face_enhance: false // Set true for portraits with faces
+        }
       }
-    }
-  )
+    )
+  } catch (error) {
+    void recordProviderUsage({ ...ESRGAN_USAGE, status: 'failed', error: error instanceof Error ? error.message : String(error), latencyMs: elapsedMs(startedAt) })
+    throw error
+  }
+  void recordProviderUsage({ ...ESRGAN_USAGE, status: 'succeeded', latencyMs: elapsedMs(startedAt) })
 
   console.log("[Replicate Upscaler] Model completed, fetching result...")
 

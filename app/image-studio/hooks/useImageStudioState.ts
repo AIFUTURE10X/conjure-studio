@@ -94,8 +94,8 @@ export interface ImageStudioState {
   setTextPosition: (position: TextPosition) => void
   imageSize: '1K' | '2K' | '4K'
   setImageSize: (size: '1K' | '2K' | '4K') => void
-  selectedModel: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'
-  setSelectedModel: (model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2') => void
+  selectedModel: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2.5-flare'
+  setSelectedModel: (model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2.5-flare') => void
   useImageBgRemoval: boolean
   setUseImageBgRemoval: (enabled: boolean) => void
   usePhotoRoomBgRemoval: boolean
@@ -183,7 +183,7 @@ export function useImageStudioState(): ImageStudioState {
   const [seed, setSeed] = useState<number | null>(null)
   const [textPosition, setTextPosition] = useState<TextPosition>(DEFAULT_TEXT_POSITION)
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K')
-  const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2'>('gpt-image-2')
+  const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2.5-flare'>('gpt-image-2.5-flare')
   const [useImageBgRemoval, setUseImageBgRemoval] = useState(true)
   const [usePhotoRoomBgRemoval, setUsePhotoRoomBgRemoval] = useState(true)
   const [creativeDirectionState, setCreativeDirectionState] = useState<CreativeDirectionState>(DEFAULT_CREATIVE_DIRECTION)

@@ -10,7 +10,7 @@ export type ImageModelId =
   | 'gemini-3.1-flash-image-preview'
   | 'gemini-3-pro-image-preview'
   | 'gemini-2.5-flash-image'
-  | 'gpt-image-2'
+  | 'gpt-image-2.5-flare'
 
 export type ImageSize = '1K' | '2K' | '4K'
 
@@ -18,7 +18,7 @@ const IMAGE_GENERATION_COSTS: Record<ImageModelId, Record<ImageSize, number>> = 
   'gemini-3.1-flash-image-preview': { '1K': 1, '2K': 2, '4K': 4 },
   'gemini-2.5-flash-image': { '1K': 1, '2K': 2, '4K': 4 },
   'gemini-3-pro-image-preview': { '1K': 2, '2K': 3, '4K': 5 },
-  'gpt-image-2': { '1K': 4, '2K': 4, '4K': 4 },
+  'gpt-image-2.5-flare': { '1K': 4, '2K': 4, '4K': 4 },
 }
 
 /** Cost of generating `count` images on a model at a size. Unknown inputs fall back to the most expensive tier so misconfig never undercharges. */

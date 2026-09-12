@@ -8,6 +8,7 @@ import {
   getOpenAITextApiKeyNames,
   hasOpenAITextApiKey,
 } from "@/lib/openai-text-client"
+import { withUsage } from '@/lib/costs/route'
 
 interface EnhancedLogoPromptResponse {
   enhancedPrompt?: unknown
@@ -59,7 +60,7 @@ function cleanPlainTextPrompt(responseText: string): string {
 
 const postBodySchema = z.object({ prompt: z.string().trim().min(1, 'Prompt is required').max(10_000) })
 
-export async function POST(request: Request) {
+async function handlePostWithUsage(request: Request) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
@@ -113,3 +114,6 @@ Enhanced prompt JSON:`
     )
   }
 }
+
+
+export const POST = withUsage('enhance-logo-prompt', handlePostWithUsage)

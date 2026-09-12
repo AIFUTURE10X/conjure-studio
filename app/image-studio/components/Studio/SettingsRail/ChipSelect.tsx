@@ -14,6 +14,12 @@
  *
  * Options with a `thumbnail` (e.g. art-style examples) show a square preview
  * card pinned to the left edge of the dropdown box on hover.
+ *
+ * Radix reports the trigger width and the available height in viewport px,
+ * but under the interface zoom (CSS `zoom` on <html>, lib/ui-zoom.ts) this
+ * content renders at zoom×, so every such value — and `100vw` — is divided
+ * by --ui-zoom. Without it the panel opened at double width at 200%. The
+ * positioning half of that bug is handled globally in app/globals.css.
  */
 
 import { useState } from 'react'
@@ -46,8 +52,8 @@ const COLS_CLASS = {
 } as const
 
 const PANEL_WIDTH_CLASS = {
-  trigger: 'w-[var(--radix-popover-trigger-width)] min-w-56',
-  wide: 'w-[26rem] max-w-[calc(100vw-2rem)]',
+  trigger: 'w-[calc(var(--radix-popover-trigger-width)/var(--ui-zoom,1))] min-w-56',
+  wide: 'w-[26rem] max-w-[calc(100vw/var(--ui-zoom,1)-2rem)]',
 } as const
 
 export function ChipSelect({
@@ -95,7 +101,7 @@ export function ChipSelect({
         )}
 
         <div
-          className="max-h-[calc(var(--radix-popover-content-available-height,80vh)-1rem)] overflow-y-auto"
+          className="max-h-[calc(var(--radix-popover-content-available-height,80vh)/var(--ui-zoom,1)-1rem)] overflow-y-auto"
           onMouseLeave={() => setPreview(null)}
         >
           <div className={`grid gap-1.5 ${COLS_CLASS[columns]}`}>

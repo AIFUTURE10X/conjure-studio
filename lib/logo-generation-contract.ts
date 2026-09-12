@@ -18,7 +18,7 @@ export const LOGO_RESOLUTIONS = ['1K', '2K', '4K'] as const
 export const LOGO_GENERATION_MODELS = [
   'gemini-3.1-flash-image-preview',
   'gemini-3-pro-image-preview',
-  'gpt-image-2',
+  'gpt-image-2.5-flare',
 ] as const
 
 export const LOGO_TEXT_MODES = ['ai-text', 'exact-text-overlay'] as const
@@ -95,7 +95,7 @@ export interface GeneratedLogo {
 export const DEFAULT_LOGO_GENERATION_SETTINGS = {
   aspectRatio: '1:1',
   resolution: '1K',
-  model: 'gpt-image-2',
+  model: 'gpt-image-2.5-flare',
   textMode: 'ai-text',
   bgRemovalMethod: 'fal',
 } satisfies {
@@ -147,8 +147,9 @@ export function normalizeLogoModel(input: string | null | undefined): LogoGenera
     'gemini-2.5-flash-image': 'gemini-3.1-flash-image-preview',
     'gemini-2.0-flash-exp': 'gemini-3.1-flash-image-preview',
     'gemini-3-pro-image': 'gemini-3-pro-image-preview',
-    'chatgpt-image-generator-2': 'gpt-image-2',
-    'chatgpt-image-latest': 'gpt-image-2',
+    'chatgpt-image-generator-2': 'gpt-image-2.5-flare',
+    'chatgpt-image-latest': 'gpt-image-2.5-flare',
+    'gpt-image-2': 'gpt-image-2.5-flare',
   }
   const migrated = input ? migrations[input] || input : undefined
   return normalizeFromList(migrated, LOGO_GENERATION_MODELS, DEFAULT_LOGO_GENERATION_SETTINGS.model)

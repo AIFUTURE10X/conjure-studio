@@ -201,8 +201,8 @@ export function LogoGenerationProvider({ children }: { children: ReactNode }) {
       state.setSelectedModel(settings.selectedModel)
     }
     if (isAllowedSetting(settings.bgRemovalMethod, LOGO_BACKGROUND_REMOVAL_METHODS)) {
-      if (settings.bgRemovalMethod === 'native-transparent' && settings.selectedModel !== 'gpt-image-2') {
-        state.setSelectedModel('gpt-image-2')
+      if (settings.bgRemovalMethod === 'native-transparent' && settings.selectedModel !== 'gpt-image-2.5-flare') {
+        state.setSelectedModel('gpt-image-2.5-flare')
       }
       state.setBgRemovalMethod(settings.bgRemovalMethod)
     }

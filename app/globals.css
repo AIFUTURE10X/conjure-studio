@@ -71,6 +71,26 @@
     background-color: #09090b;
   }
 
+  /* Interface zoom is a CSS `zoom` on <html> (lib/ui-zoom.ts). Chrome 128+
+     standardized zoom so getBoundingClientRect() returns zoomed viewport px,
+     but Floating UI still applies its computed translate() inside the zoomed
+     root, so every Radix popper (Popover, Select, DropdownMenu, Tooltip)
+     landed at zoom× its real offset — off-screen at 200%, which reads as
+     "the dropdown does not open". Counter-zoom the popper wrapper so the
+     translate is in true viewport px, then re-zoom the content inside so it
+     renders at the interface scale. Floating UI merged a currentCSSZoom fix
+     (floating-ui#3492, 2026-08-09) that is not in any release yet; this stays
+     correct once it ships because the wrapper then reports zoom 1. Radix
+     size vars (--radix-*-trigger-width, -available-height) are handed over
+     in viewport px, so consumers divide them by --ui-zoom (see ChipSelect,
+     components/ui/select.tsx). */
+  [data-radix-popper-content-wrapper] {
+    zoom: calc(1 / var(--ui-zoom, 1));
+  }
+  [data-radix-popper-content-wrapper] > * {
+    zoom: var(--ui-zoom, 1);
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));

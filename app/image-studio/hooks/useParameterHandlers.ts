@@ -21,7 +21,7 @@ interface UseParameterHandlersOptions {
   setAnalysisMode: (mode: 'fast' | 'quality') => void
   setSeed: (seed: number | null) => void
   setImageSize: (size: '1K' | '2K' | '4K') => void
-  setSelectedModel: (model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2') => void
+  setSelectedModel: (model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2.5-flare') => void
   setCreativeDirection: (creativeDirection: CreativeDirectionState) => void
   setAnalysisResults: (results: AnalysisResultsState) => void
   setGeneratedImages: (images: any[]) => void
@@ -32,21 +32,21 @@ export interface ParameterHandlers {
   handleResetAll: () => void
 }
 
-const migrateModelName = (model: string): 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2' => {
+const migrateModelName = (model: string): 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2.5-flare' => {
   if (
-    model === 'gpt-image-2' ||
+    model === 'gpt-image-2.5-flare' ||
     model === 'chatgpt-image-generator-2' ||
     model === 'chatgpt-image-latest' ||
     model.startsWith('gemini-')
   ) {
-    return 'gpt-image-2'
+    return 'gpt-image-2.5-flare'
   }
-  return 'gpt-image-2'
+  return 'gpt-image-2.5-flare'
 }
 
 const normalizeImageSizeForModel = (
   imageSize: string | undefined,
-  model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2',
+  model: 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview' | 'gpt-image-2.5-flare',
 ): '1K' | '2K' | '4K' => {
   return imageSize === '2K' || imageSize === '4K' ? imageSize : '1K'
 }
@@ -97,7 +97,7 @@ export function useParameterHandlers({
       if (paramsToRestore.seed !== undefined) setSeed(paramsToRestore.seed)
       const selectedModel = paramsToRestore.selectedModel
         ? migrateModelName(paramsToRestore.selectedModel)
-        : 'gpt-image-2'
+        : 'gpt-image-2.5-flare'
       setImageSize(normalizeImageSizeForModel(paramsToRestore.imageSize, selectedModel))
       if (paramsToRestore.selectedModel) setSelectedModel(selectedModel)
       setCreativeDirection(normalizeCreativeDirection(paramsToRestore.creativeDirection))
@@ -133,7 +133,7 @@ export function useParameterHandlers({
     setStyleStrength('moderate')
     setSeed(null)
     setImageSize('1K')
-    setSelectedModel('gpt-image-2')
+    setSelectedModel('gpt-image-2.5-flare')
     setCreativeDirection(DEFAULT_CREATIVE_DIRECTION)
     setAnalysisResults({
       subjects: [],

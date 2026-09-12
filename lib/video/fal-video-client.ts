@@ -8,6 +8,19 @@
  */
 
 import { fal } from "@fal-ai/client"
+import { elapsedMs, recordProviderUsage } from "@/lib/costs/record"
+import { operationForFalEndpoint, type Operation, type ProviderUsageUnits } from "@/lib/costs/provider-rates"
+
+/**
+ * What a fal call consumed, for the provider usage ledger (issue #50). fal
+ * reports no billing on its responses, so callers pass the units the
+ * endpoint bills on (seconds + resolution, characters, ...); omitted units
+ * record the call itself.
+ */
+export interface FalUsage {
+  units?: ProviderUsageUnits
+  operation?: Operation
+}
 
 function configureFal(): void {
   const apiKey = process.env.FAL_KEY
@@ -66,10 +79,20 @@ export async function uploadFrameToFal(file: File): Promise<string> {
 export async function submitVideoJob(
   endpoint: string,
   input: Record<string, unknown>,
+  usage?: FalUsage,
 ): Promise<string> {
   configureFal()
-  const { request_id: requestId } = await withFalErrors(endpoint, () => fal.queue.submit(endpoint, { input }))
-  if (!requestId) throw new Error("fal queue submit returned no request id")
+  const base = { provider: "fal" as const, model: endpoint, operation: usage?.operation ?? operationForFalEndpoint(endpoint) }
+  let requestId: string | undefined
+  try {
+    requestId = (await withFalErrors(endpoint, () => fal.queue.submit(endpoint, { input }))).request_id
+    if (!requestId) throw new Error("fal queue submit returned no request id")
+  } catch (error) {
+    void recordProviderUsage({ ...base, status: "failed", units: usage?.units ?? {}, error: error instanceof Error ? error.message : String(error) })
+    throw error
+  }
+  // Pending until the status poller learns the outcome (finalizeProviderUsage).
+  void recordProviderUsage({ ...base, status: "pending", units: usage?.units ?? {}, requestId })
   return requestId
 }
 
@@ -81,14 +104,24 @@ export async function submitVideoJob(
 export async function runFalDirect(
   endpoint: string,
   input: Record<string, unknown>,
+  usage?: FalUsage,
 ): Promise<Record<string, unknown>> {
   configureFal()
-  const result = await withFalErrors(endpoint, () => fal.subscribe(endpoint, { input, logs: false }))
-  const data = (result as { data?: unknown })?.data ?? result
-  if (!data || typeof data !== "object") {
-    throw new Error(`fal ${endpoint} returned no data`)
+  const startedAt = Date.now()
+  const base = { provider: "fal" as const, model: endpoint, operation: usage?.operation ?? operationForFalEndpoint(endpoint) }
+  const units = usage?.units ?? { calls: 1 }
+  try {
+    const result = await withFalErrors(endpoint, () => fal.subscribe(endpoint, { input, logs: false }))
+    const data = (result as { data?: unknown })?.data ?? result
+    if (!data || typeof data !== "object") {
+      throw new Error(`fal ${endpoint} returned no data`)
+    }
+    void recordProviderUsage({ ...base, status: "succeeded", units, latencyMs: elapsedMs(startedAt) })
+    return data as Record<string, unknown>
+  } catch (error) {
+    void recordProviderUsage({ ...base, status: "failed", units, error: error instanceof Error ? error.message : String(error), latencyMs: elapsedMs(startedAt) })
+    throw error
   }
-  return data as Record<string, unknown>
 }
 
 /** Pull a media URL out of the varying fal output shapes ({video:{url}}, {audio:{url}}, {url}, {video_url}). */

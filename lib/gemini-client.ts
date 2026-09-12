@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai"
+import { beginGeminiAttempt } from "@/lib/gemini-usage"
 import { getGeminiApiKey, getGeminiApiKeyNames } from "@/lib/gemini-api-key"
 
 let client: GoogleGenAI | null = null
@@ -138,13 +139,9 @@ export async function generateImageWithRetry({
   const effectiveImageSize = model === "gemini-2.5-flash-image" ? "1K" : imageSize
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const usage = beginGeminiAttempt(model, Boolean(referenceImage))
     try {
-      console.log(`[v0 SERVER] Gemini attempt ${attempt}/${maxAttempts}`)
-      console.log(`[v0 SERVER] Model: ${model}`)
-      console.log(`[v0 SERVER] Aspect Ratio: ${aspectRatio}`)
-      console.log(`[v0 SERVER] Image Size: ${effectiveImageSize}`)
-      console.log(`[v0 SERVER] Has reference image: ${!!referenceImage}`)
-      console.log(`[v0 SERVER] Seed: ${seed !== undefined ? seed : 'random'}`)
+      console.log(`[v0 SERVER] Gemini attempt ${attempt}/${maxAttempts}`, { model, aspectRatio, imageSize: effectiveImageSize, hasReference: !!referenceImage, seed: seed !== undefined ? seed : 'random' })
 
       const geminiClient = getClient()
 
@@ -266,6 +263,7 @@ export async function generateImageWithRetry({
         throw new Error("No image data returned from Gemini API")
       }
 
+      usage.succeeded(response, effectiveImageSize) // only once the image is in hand; a no-image response is recorded once, as failed, by the catch
       console.log("[v0 SERVER] Image generation successful, base64 length:", imageBase64.length)
       return {
         success: true,
@@ -274,6 +272,7 @@ export async function generateImageWithRetry({
       }
     } catch (err: any) {
       console.error(`[v0 SERVER] Attempt ${attempt} error:`, err.message)
+      usage.failed(err)
 
       if (err.response) {
         console.error(`[v0 SERVER] Error response:`, JSON.stringify(err.response, null, 2).substring(0, 500))

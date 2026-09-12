@@ -87,7 +87,7 @@ export const GeneratePanel = forwardRef<{ triggerGenerate: () => void; isGenerat
       isFavorite, toggleFavorite, onParametersSave, onClearPrompt, onRestoreParameters,
       generatedImages, setGeneratedImages, onOpenLightbox,
       seed: controlledSeed, setSeed: setControlledSeed,
-      imageSize = '1K', setImageSize, selectedModel = 'gpt-image-2', setSelectedModel,
+      imageSize = '1K', setImageSize, selectedModel = 'gpt-image-2.5-flare', setSelectedModel,
       useImageBgRemoval: controlledUseImageBgRemoval, onImageBgRemovalChange,
       usePhotoRoomBgRemoval: controlledUsePhotoRoomBgRemoval, onPhotoRoomBgRemovalChange,
       generationMode = 'quality', creativeDirection,

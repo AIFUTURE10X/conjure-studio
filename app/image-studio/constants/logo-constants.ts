@@ -114,7 +114,7 @@ export const BG_REMOVAL_METHODS: Array<{
     label: 'Legacy transparent PNG',
     description: 'OpenAI generation with local transparent cleanup; PhotoRoom is more reliable',
     badge: 'Legacy',
-    requiresModel: 'gpt-image-2',
+    requiresModel: 'gpt-image-2.5-flare',
   },
   {
     value: 'photoroom',
@@ -151,8 +151,8 @@ export const LOGO_MODEL_OPTIONS: Array<{
   description: string
 }> = [
   {
-    value: 'gpt-image-2',
-    label: 'ChatGPT Images 2.0',
+    value: 'gpt-image-2.5-flare',
+    label: 'ChatGPT Images 2.5',
     description: 'OpenAI latest',
   },
 ]

@@ -5,6 +5,7 @@ import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { writeFile, mkdir, access } from 'fs/promises'
 import path from 'path'
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -598,4 +599,4 @@ export async function GET() {
   })
 }
 
-export const POST = withCreditGuard('mockup_photo', flatCost('mockupPhoto'), handlePost)
+export const POST = withUsage('generate-mockup-photos', withCreditGuard('mockup_photo', flatCost('mockupPhoto'), handlePost))
