@@ -39,9 +39,12 @@ export async function POST(request: NextRequest) {
     await client.query('BEGIN')
     await ensureCreationMetadataPoolSchema(client)
 
-    // favorites — UNIQUE(user_id, image_url): drop legacy rows the target
-    // already has, then collapse duplicates within the legacy set (keep the
-    // newest; tie-break on id) so re-keying can't violate the constraint.
+    // favorites — UNIQUE(user_id, image_url) AND the partial
+    // UNIQUE(user_id, content_hash): drop legacy rows the target already has,
+    // then collapse duplicates within the legacy set (keep the newest;
+    // tie-break on id) so re-keying can't violate EITHER constraint. Both keys
+    // need the same pair of deletes; the content_hash pass is what stops the
+    // same image held under two urls from aborting the claim with 23505.
     // created_at has no NOT NULL constraint, so COALESCE to the epoch —
     // a NULL on both sides would otherwise make each comparison unknown,
     // skip both deletes, and abort the whole claim on the unique index.
@@ -58,6 +61,34 @@ export async function POST(request: NextRequest) {
            SELECT 1 FROM favorites keep
            WHERE keep.user_id = ANY($1::text[]) AND keep.id <> f.id
              AND keep.image_url = f.image_url
+             AND (
+               COALESCE(keep.created_at, 'epoch'::timestamp) > COALESCE(f.created_at, 'epoch'::timestamp)
+               OR (
+                 COALESCE(keep.created_at, 'epoch'::timestamp) = COALESCE(f.created_at, 'epoch'::timestamp)
+                 AND keep.id > f.id
+               )
+             )
+         )`,
+      [legacyUserIds],
+    )
+    await client.query(
+      `DELETE FROM favorites f
+       WHERE f.user_id = ANY($1::text[])
+         AND f.content_hash IS NOT NULL
+         AND EXISTS (
+           SELECT 1 FROM favorites g
+           WHERE g.user_id = $2 AND g.content_hash = f.content_hash
+         )`,
+      [legacyUserIds, targetUserId],
+    )
+    await client.query(
+      `DELETE FROM favorites f
+       WHERE f.user_id = ANY($1::text[])
+         AND f.content_hash IS NOT NULL
+         AND EXISTS (
+           SELECT 1 FROM favorites keep
+           WHERE keep.user_id = ANY($1::text[]) AND keep.id <> f.id
+             AND keep.content_hash = f.content_hash
              AND (
                COALESCE(keep.created_at, 'epoch'::timestamp) > COALESCE(f.created_at, 'epoch'::timestamp)
                OR (
