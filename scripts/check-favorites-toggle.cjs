@@ -9,7 +9,9 @@ const IDENTITY_PATH = 'lib/favorites/identity.ts'
 const ROUTE_PATH = 'app/api/favorites/route.ts'
 const HOOK_PATH = 'app/image-studio/components/SimpleFavorites.tsx'
 const SERVICE_PATH = 'lib/db/dbService.ts'
-const MIGRATION_PATH = 'scripts/016_favorites_source_url.sql'
+const MIGRATION_PATH = 'scripts/018_favorites_source_url.sql'
+const ACCOUNT_CLAIM_PATH = 'app/api/account/claim/route.ts'
+const DEVICE_CLAIM_PATH = 'app/api/device/claim/route.ts'
 
 /**
  * Pins the favorites star.
@@ -266,6 +268,30 @@ const checks = [
         // Partial, so legacy rows (content_hash IS NULL, duplicates included)
         // cannot block the migration on an existing database.
         /CREATE UNIQUE INDEX IF NOT EXISTS favorites_user_content_hash_key[\s\S]*?WHERE content_hash IS NOT NULL/.test(migration)
+    },
+  },
+  {
+    // Source-level (a route needs a database to execute): anchored to the
+    // specific statement, not the file. The content_hash unique index is a
+    // SECOND key on favorites, and every place that re-keys rows has to clear
+    // collisions on both or the whole claim transaction dies with 23505 —
+    // taking history, logos and videos down with it.
+    name: 'claim — both merge paths pre-delete collisions on content_hash, not just image_url',
+    pass: () => [ACCOUNT_CLAIM_PATH, DEVICE_CLAIM_PATH].every((claimPath) => {
+      const source = read(claimPath)
+      return /DELETE FROM favorites f[\s\S]*?g\.image_url = f\.image_url/.test(source) &&
+        /DELETE FROM favorites f[\s\S]*?f\.content_hash IS NOT NULL[\s\S]*?g\.content_hash = f\.content_hash/.test(source)
+    }),
+  },
+  {
+    // Rows predating content addressing have content_hash NULL, so the hash
+    // lookup cannot see them; without a url fallback the first click on a
+    // legacy favorite inserts the duplicate this whole check exists to prevent.
+    name: 'save — pre-hash rows are matched by url and adopt the hash instead of duplicating',
+    pass: () => {
+      const route = read(ROUTE_PATH)
+      return /content_hash IS NULL[\s\S]*?image_url = \$\{imageUrl\} OR blob_url = \$\{imageUrl\} OR source_url = \$\{imageUrl\}/.test(route) &&
+        /UPDATE public\.favorites SET content_hash = \$\{contentHash\}[\s\S]*?NOT EXISTS/.test(route)
     },
   },
 ]
