@@ -62,6 +62,8 @@ const popcornURL = () => {
 
 const serviceHeaders = (ownerId?: string) => ({
   authorization: `Bearer ${process.env.POPCORN_AGENT_MEDIA_TOKEN ?? ''}`,
+  ...(process.env.POPCORN_VERCEL_PROTECTION_BYPASS
+    ? { 'x-vercel-protection-bypass': process.env.POPCORN_VERCEL_PROTECTION_BYPASS } : {}),
   'content-type': 'application/json',
   ...(ownerId ? { 'x-popcorn-owner-id': ownerId } : {}),
 })

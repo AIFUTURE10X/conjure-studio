@@ -13,10 +13,14 @@ test('online workflow uses one provider call and delivers one verified file id',
 }, async t => {
   const ownerId = randomUUID(), campaignId = `campaign-${randomUUID()}`
   const service = onlineService(), originalFetch = globalThis.fetch
+  const originalProtectionBypass = process.env.POPCORN_VERCEL_PROTECTION_BYPASS
+  process.env.POPCORN_VERCEL_PROTECTION_BYPASS = 'synthetic-vercel-bypass'
   const image = await sharp({ create: { width: 1024, height: 1024, channels: 4, background: '#f4b942' } }).png().toBuffer()
   let providerCalls = 0, deliveredBytes = 0, completed = 0
   t.after(async () => {
     globalThis.fetch = originalFetch
+    if (originalProtectionBypass === undefined) delete process.env.POPCORN_VERCEL_PROTECTION_BYPASS
+    else process.env.POPCORN_VERCEL_PROTECTION_BYPASS = originalProtectionBypass
     await onlinePool.query('DELETE FROM conjure_media.assets WHERE owner_id = $1', [ownerId])
     await onlinePool.query('DELETE FROM conjure_media.costs WHERE operation_id IN (SELECT id FROM conjure_media.operations WHERE owner_id = $1)', [ownerId])
     await onlinePool.query('DELETE FROM conjure_media.outbox WHERE operation_id IN (SELECT id FROM conjure_media.operations WHERE owner_id = $1)', [ownerId])
@@ -28,20 +32,26 @@ test('online workflow uses one provider call and delivers one verified file id',
   globalThis.fetch = async (input, init) => {
     const url = String(input)
     if (url === 'https://api.openai.com/v1/images/generations') {
+      assert.equal(new Headers(init?.headers).has('x-vercel-protection-bypass'), false)
       providerCalls += 1
       return new Response(JSON.stringify({ data: [{ b64_json: image.toString('base64') }],
         usage: { input_tokens_details: { text_tokens: 50 }, output_tokens_details: { image_tokens: 439 } } }))
     }
     if (url.endsWith('/api/internal/generated-files/reserve')) {
+      assert.equal(new Headers(init?.headers).get('x-vercel-protection-bypass'), 'synthetic-vercel-bypass')
+      assert.doesNotMatch(String(init?.body), /synthetic-vercel-bypass/)
       const body = JSON.parse(String(init?.body))
       assert.equal(body.ownerId, ownerId);assert.equal(body.campaignId, campaignId)
       return Response.json({ file: { id: '11111111-1111-4111-8111-111111111111' }, uploadUrl: 'http://127.0.0.1:9999/upload' })
     }
     if (url.endsWith('/upload')) {
+      assert.equal(new Headers(init?.headers).has('x-vercel-protection-bypass'), false)
       deliveredBytes = Buffer.from(init?.body as Uint8Array).length
       return Response.json({ url: 'https://synthetic.private.blob.vercel-storage.com/file.png' })
     }
     if (url.endsWith('/api/internal/generated-files/complete')) {
+      assert.equal(new Headers(init?.headers).get('x-vercel-protection-bypass'), 'synthetic-vercel-bypass')
+      assert.doesNotMatch(String(init?.body), /synthetic-vercel-bypass/)
       completed += 1
       return Response.json({ file: { id: '11111111-1111-4111-8111-111111111111' } })
     }
