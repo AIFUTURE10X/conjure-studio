@@ -127,8 +127,6 @@ async function recordActualCost(operationId: string, request: { quality: string 
 }
 
 export async function processOnlineGeneration(operationId: string) {
-  'use step'
-
   const service = onlineService(), operation = await service.readOperation(operationId)
   const store = new PostgresOnlineOperationStore(onlinePool, operation.owner_id)
   return executeGenerationOperation(store, async () => {

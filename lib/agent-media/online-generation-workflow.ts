@@ -1,7 +1,7 @@
-import { processOnlineGeneration } from './online-generation'
+import { runOnlineGenerationStep } from './online-generation-step'
 
 export async function onlineGenerationWorkflow(operationId: string) {
   'use workflow'
 
-  return processOnlineGeneration(operationId)
+  return runOnlineGenerationStep(operationId)
 }
