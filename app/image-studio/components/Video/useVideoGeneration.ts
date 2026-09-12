@@ -245,7 +245,10 @@ export function useVideoGeneration() {
       // delivered and charged, and nothing was refunded. Leave it pending so
       // the next poll lands the clip, exactly as the 409 above does.
       if (data?.canceled === false) {
-        toast.info('Too late to cancel — your clip finished')
+        // The race can be lost to a failed poll too, so word it from the status.
+        toast.info(data?.status === 'completed'
+          ? 'Too late to cancel — your clip finished'
+          : 'Too late to cancel — the job already ended')
         return false
       }
       setJobs((current) => current.map((item) => (
