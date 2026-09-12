@@ -65,3 +65,4 @@ bg-comparison/
 # Local operator policy, approvals, paid reservations and media originals
 .conjure-agent/
 conjure-agent.local.json
+/.swc
