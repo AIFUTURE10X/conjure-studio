@@ -177,15 +177,20 @@ export async function POST(request: NextRequest) {
     // Match those by url instead, and adopt the hash so the fast path serves
     // every later click. This is the backfill: it happens per row, on use,
     // rather than needing every image refetched up front.
-    const legacy = await sql`
+    //
+    // Gated on sourceUrl (http(s) only): a freshly generated image arrives as a
+    // multi-MB data: URI, which has no stored url to match and must never be
+    // sent into a WHERE clause — that payload is what has taken this app's
+    // write paths down before.
+    const legacy = sourceUrl ? await sql`
       SELECT id, image_url, blob_url, source_url, content_hash, prompt, created_at,
              aspect_ratio, style_preset, dimensions, file_size, parameters
       FROM public.favorites
       WHERE user_id = ${userId}
         AND content_hash IS NULL
-        AND (image_url = ${imageUrl} OR blob_url = ${imageUrl} OR source_url = ${imageUrl})
+        AND (image_url = ${sourceUrl} OR blob_url = ${sourceUrl} OR source_url = ${sourceUrl})
       LIMIT 1
-    `
+    ` : []
     if (legacy[0]) {
       console.info('[v0] API: Matched a pre-hash favorite by url, adopting its hash:', legacy[0].id)
       if (contentHash) {

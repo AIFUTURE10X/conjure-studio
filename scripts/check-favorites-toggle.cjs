@@ -290,8 +290,10 @@ const checks = [
     name: 'save — pre-hash rows are matched by url and adopt the hash instead of duplicating',
     pass: () => {
       const route = read(ROUTE_PATH)
-      return /content_hash IS NULL[\s\S]*?image_url = \$\{imageUrl\} OR blob_url = \$\{imageUrl\} OR source_url = \$\{imageUrl\}/.test(route) &&
-        /UPDATE public\.favorites SET content_hash = \$\{contentHash\}[\s\S]*?NOT EXISTS/.test(route)
+      return /content_hash IS NULL[\s\S]*?image_url = \$\{sourceUrl\} OR blob_url = \$\{sourceUrl\} OR source_url = \$\{sourceUrl\}/.test(route) &&
+        /UPDATE public\.favorites SET content_hash = \$\{contentHash\}[\s\S]*?NOT EXISTS/.test(route) &&
+        // Gated on sourceUrl so a multi-MB data: URI never reaches a WHERE clause.
+        /const legacy = sourceUrl \? await sql`/.test(route)
     },
   },
 ]
