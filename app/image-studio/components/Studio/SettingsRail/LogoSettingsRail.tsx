@@ -29,7 +29,7 @@ import {
 import type { LogoSettingsSuggestionPatch } from '../../../context/suggestion-patch'
 
 const LOGO_MODEL_OPTIONS = [
-  { value: 'gpt-image-2', label: 'ChatGPT Images 2.0' },
+  { value: 'gpt-image-2.5-flare', label: 'ChatGPT Images 2.5' },
 ] as const
 
 const TEXT_MODE_OPTIONS = [

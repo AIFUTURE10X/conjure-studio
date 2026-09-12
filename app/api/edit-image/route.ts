@@ -6,7 +6,7 @@
  * or replace it from a prompt. The mask is optional — the "Edit in chat"
  * flow omits it, in which case `prompt` drives a whole-image edit instead
  * (everything outside the described change should stay unchanged). Uses
- * OpenAI's gpt-image-2 image-edit endpoint; a mask (transparent = edit here)
+ * OpenAI's gpt-image-2.5-flare image-edit endpoint; a mask (transparent = edit here)
  * scopes the change when one is provided.
  *
  * When a mask is present, two extra passes wrap the OpenAI call:
@@ -28,6 +28,7 @@ import { generateOpenAIImage } from "@/lib/openai-image-client"
 import { closestRatio, exactOpenAISize } from "@/lib/image-aspect"
 import { hygieneMask, pixelLockComposite } from "@/lib/edit-mask"
 import { uploadEditImage } from "@/lib/edit-upload"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -127,4 +128,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard("imageEdit", editImageCost, handlePost)
+export const POST = withUsage('edit-image', withCreditGuard("imageEdit", editImageCost, handlePost))

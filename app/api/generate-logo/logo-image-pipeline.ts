@@ -25,8 +25,8 @@ export interface LogoBackgroundRemovalResult {
   bgRemovalMethod: ParsedLogoGenerationRequest['bgRemovalMethod']
 }
 
-export function isOpenAIImageModel(model: ParsedLogoGenerationRequest['model']): model is 'gpt-image-2' {
-  return model === 'gpt-image-2'
+export function isOpenAIImageModel(model: ParsedLogoGenerationRequest['model']): model is 'gpt-image-2.5-flare' {
+  return model === 'gpt-image-2.5-flare'
 }
 
 export function shouldUseFreeFormPrompt(request: ParsedLogoGenerationRequest): boolean {
@@ -77,7 +77,7 @@ export async function generateLogoBaseImage(
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate logo with ChatGPT Images 2.0',
+        error: error instanceof Error ? error.message : 'Failed to generate logo with ChatGPT Images 2.5',
       }
     }
   }

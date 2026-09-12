@@ -191,7 +191,7 @@ This is a single Next.js 16 (App Router, Turbopack) app at the repo root — no 
 - What REQUIRES secrets: actual AI image/prompt generation and the AI Helper need `OPENAI_API_KEY`; Gemini keys are optional only for legacy fallback/model-picker paths. DB-backed history/favorites/auth/credits need `NEON_DATABASE_URL` (+ `DATABASE_URL` alias); apply migrations with `node scripts/run-sql.cjs scripts/<file>.sql` or `node run-migrations.js`. Stripe billing only matters when `SAAS_ENFORCEMENT=on`. See `.env.example` for the full annotated list.
 
 ### AI generation (provider/model caveat)
-- The Image Studio visible model settings default to **"ChatGPT Images 2.0"** (`gpt-image-2`) for reliability and use `OPENAI_API_KEY`.
+- The Image Studio visible model settings default to **"ChatGPT Images 2.5"** (`gpt-image-2.5-flare`) for reliability and use `OPENAI_API_KEY`.
 - Gemini models remain only as optional legacy fallback/model-picker compatibility paths. Do not reintroduce Gemini choices into visible model settings unless the product decision changes.
 - DB-backed routes (`/api/favorites`, `/api/history`, `/api/logo-history`, auth, credits) throw `No database connection string configured` unless `NEON_DATABASE_URL` is a real Postgres connection string (`postgres://...`); these failures are non-fatal to the rest of the app. Set `DATABASE_URL` to the same value (the image-analysis routes read that alias).
 - Apply migrations with `node scripts/run-sql.cjs scripts/<file>.sql` in numeric order (`004,005,002,006,007,008,009,010`). Prefer this over `run-migrations.js`, which `require`s `dotenv` (not installed) and only covers a subset.
@@ -208,3 +208,13 @@ after removed debt is the only legitimate baseline update.
 ### Notes
 - `npm run lint` reports many `no-explicit-any` warnings but **0 errors** — that is the expected baseline.
 - `next.config.mjs` lists native `serverExternalPackages` (`sharp`, `onnxruntime-node`, `@neplex/vectorizer`); `npm install` builds these. If background-removal/vectorize routes throw native errors, rerun `npm install`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -8,6 +8,7 @@ import {
   isOpenAIAuthError,
   isOpenAIRateLimitError,
 } from '@/lib/openai-text-client'
+import { withUsage } from '@/lib/costs/route'
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024
 
@@ -138,7 +139,7 @@ JSON shape:
 }`
 }
 
-export async function POST(request: NextRequest) {
+async function handlePostWithUsage(request: NextRequest) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
@@ -202,3 +203,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+
+export const POST = withUsage('translate-design-text', handlePostWithUsage)

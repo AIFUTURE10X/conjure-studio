@@ -136,7 +136,7 @@ const checks = [
   },
   {
     name: 'logo API rejects native transparency for non-OpenAI models',
-    pass: () => /Native transparent PNG requires ChatGPT Images 2\.0/.test(read('app/api/generate-logo/route.ts')),
+    pass: () => /Native transparent PNG requires ChatGPT Images 2.5/.test(read('app/api/generate-logo/route.ts')),
   },
   {
     name: 'default logo background removal uses Fal without Replicate',
@@ -145,10 +145,10 @@ const checks = [
   },
   {
     name: 'default logo model uses ChatGPT Images when Gemini key is optional',
-    pass: () => /model:\s*'gpt-image-2'/.test(read('lib/logo-generation-contract.ts')) &&
+    pass: () => /model:\s*'gpt-image-2.5-flare'/.test(read('lib/logo-generation-contract.ts')) &&
       /useState<LogoGenerationModel>\(DEFAULT_LOGO_GENERATION_SETTINGS\.model\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
       /setSelectedModel\(DEFAULT_LOGO_GENERATION_SETTINGS\.model\)/.test(read('app/image-studio/hooks/useLogoPanelState.ts')) &&
-      /value: 'gpt-image-2', label: 'ChatGPT Images 2\.0'/.test(read('app/image-studio/components/Studio/SettingsRail/LogoSettingsRail.tsx')),
+      /value: 'gpt-image-2.5-flare', label: 'ChatGPT Images 2.5'/.test(read('app/image-studio/components/Studio/SettingsRail/LogoSettingsRail.tsx')),
   },
   {
     name: 'logo generation applies selected background removal by default',

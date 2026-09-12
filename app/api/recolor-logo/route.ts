@@ -15,6 +15,7 @@ import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { put } from "@vercel/blob"
 import sharp from "sharp"
 import { generateOpenAIImage } from "@/lib/openai-image-client"
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -165,4 +166,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('recolor', flatCost('recolor'), handlePost)
+export const POST = withUsage('recolor-logo', withCreditGuard('recolor', flatCost('recolor'), handlePost))

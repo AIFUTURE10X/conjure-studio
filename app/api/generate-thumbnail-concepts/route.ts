@@ -12,6 +12,7 @@ import {
   THUMBNAIL_TEMPLATES,
   type ThumbnailConcept,
 } from "@/app/image-studio/components/Thumbnail/thumbnail-constants"
+import { withUsage } from '@/lib/costs/route'
 
 const templateIds = THUMBNAIL_TEMPLATES.map((t) => t.id)
 const styleIds = THUMBNAIL_AI_STYLES.map((s) => s.id)
@@ -75,7 +76,7 @@ function parseConcepts(text: string): ThumbnailConcept[] {
     .filter((c) => c.headline && c.backgroundPrompt)
 }
 
-export async function POST(request: Request) {
+async function handlePostWithUsage(request: Request) {
   const rateLimited = await enforceRateLimit(request, RATE_LIMITS.transform)
   if (rateLimited) return rateLimited
 
@@ -108,3 +109,6 @@ export async function POST(request: Request) {
     )
   }
 }
+
+
+export const POST = withUsage('generate-thumbnail-concepts', handlePostWithUsage)

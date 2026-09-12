@@ -6,6 +6,8 @@ import { apiError, parseParams } from '@/lib/api/http'
 import { resolveUserId } from '@/lib/api/identity'
 import { refundReservation } from '@/lib/credits'
 import { getVideoJobStatus, getVideoJobResult } from '@/lib/video/fal-video-client'
+import { finalizeProviderUsage } from '@/lib/costs/record'
+import { falIdentityForVideoRow, falUnitsForVideoRow } from '@/lib/costs/video-units'
 import { numericIdSchema, userIdSchema } from '@/lib/validation/common'
 
 export const runtime = "nodejs"
@@ -37,6 +39,18 @@ interface VideoJobRow {
   video_url: string | null
   credits_charged: number
   error: string | null
+  duration_seconds: number | null
+  resolution: string | null
+  has_audio: boolean
+}
+
+/** The pending provider_usage row was written at submit; this prices it from what the submit route stored (issue #50). */
+function finalizeUsage(row: VideoJobRow, patch: { status: 'succeeded' | 'failed'; error?: string }) {
+  void finalizeProviderUsage(
+    row.fal_request_id,
+    falIdentityForVideoRow(row),
+    patch.status === 'succeeded' ? { status: 'succeeded', units: falUnitsForVideoRow(row) } : { status: 'failed', error: patch.error },
+  )
 }
 
 function jobResponse(row: VideoJobRow) {
@@ -49,11 +63,16 @@ function jobResponse(row: VideoJobRow) {
 }
 
 async function refundFailedJob(sql: ReturnType<typeof getSQL>, row: VideoJobRow, message: string) {
-  await sql`
+  const closed = await sql`
     UPDATE public.video_history
     SET status = 'failed', error = ${message.slice(0, 500)}, completed_at = NOW()
     WHERE id = ${row.id} AND status = 'pending'
+    RETURNING id
   `
+  // Only the poll that actually closed the job finalizes the ledger row; the
+  // client polls every 5 s with no in-flight guard, so a racing poll would
+  // otherwise warn about a row that is already final.
+  if (closed.length > 0) finalizeUsage(row, { status: 'failed', error: message })
   if (row.credits_charged > 0) {
     await refundReservation(
       row.user_id,
@@ -72,7 +91,8 @@ export async function GET(request: NextRequest) {
   try {
     const sql = getSQL()
     const rows = await sql`
-      SELECT id, user_id, status, fal_endpoint, fal_request_id, video_url, credits_charged, error
+      SELECT id, user_id, status, fal_endpoint, fal_request_id, video_url, credits_charged, error,
+             duration_seconds, resolution, has_audio
       FROM public.video_history
       WHERE id = ${parsed.data.jobId} AND user_id = ${userId}
     `
@@ -115,11 +135,13 @@ export async function GET(request: NextRequest) {
         console.error(`[video] Blob upload failed for job ${row.id}, storing fal URL directly:`, error)
       }
 
-      await sql`
+      const closed = await sql`
         UPDATE public.video_history
         SET status = 'completed', video_url = ${videoUrl}, completed_at = NOW()
         WHERE id = ${row.id} AND status = 'pending'
+        RETURNING id
       `
+      if (closed.length > 0) finalizeUsage(row, { status: 'succeeded' })
       console.log(`[video] Job ${row.id} completed:`, videoUrl)
       return jobResponse({ ...row, status: 'completed', video_url: videoUrl })
     } catch (error) {

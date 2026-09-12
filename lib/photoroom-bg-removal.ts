@@ -11,6 +11,10 @@
  * @see https://docs.photoroom.com/remove-background-api-basic-plan
  */
 
+import { elapsedMs, recordProviderUsage } from '@/lib/costs/record'
+
+const PHOTOROOM_USAGE = { provider: 'photoroom' as const, model: 'sdk.photoroom.com/v1/segment', operation: 'bg-removal' as const, units: { calls: 1 } }
+
 export class PhotoRoomBgRemovalError extends Error {
   status: number
   code: string
@@ -79,14 +83,17 @@ export async function removeBackgroundWithPhotoRoom(
       console.log("[PhotoRoom BG Removal] HD mode enabled for high-resolution output")
     }
 
+    const startedAt = Date.now()
     const response = await fetch('https://sdk.photoroom.com/v1/segment', {
       method: 'POST',
       headers,
       body: formData,
     })
-
     if (!response.ok) {
       const errorText = await response.text()
+      // Recorded after the body read: a mid-body failure lands in the catch
+      // below and is recorded exactly once.
+      void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'failed', error: `HTTP ${response.status}`, latencyMs: elapsedMs(startedAt) })
       let errorMessage = `PhotoRoom API error: ${response.status}`
       let errorCode = 'photoroom_api_error'
 
@@ -123,6 +130,9 @@ export async function removeBackgroundWithPhotoRoom(
     // Response is binary PNG data
     const resultBuffer = await response.arrayBuffer()
     const resultBase64 = Buffer.from(resultBuffer).toString('base64')
+    // Recorded once the body is read: a body-read failure lands in the catch
+    // below and is recorded exactly once, as failed.
+    void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'succeeded', latencyMs: elapsedMs(startedAt) })
 
     console.log("[PhotoRoom BG Removal] Success! Professional-grade background removal complete")
     return resultBase64
@@ -132,6 +142,8 @@ export async function removeBackgroundWithPhotoRoom(
       throw error
     }
 
+    // Not a PhotoRoom HTTP error (recorded above): the request itself failed.
+    void recordProviderUsage({ ...PHOTOROOM_USAGE, status: 'failed', error: error instanceof Error ? error.message : String(error) })
     console.error('[PhotoRoom BG Removal] API Error:', error)
     throw new PhotoRoomBgRemovalError(
       error instanceof Error ? error.message : 'PhotoRoom request failed',

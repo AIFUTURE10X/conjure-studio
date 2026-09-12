@@ -1,0 +1,18 @@
+{
+  "owner": "replace-with-operator-id",
+  "brands": ["askconciergeai"],
+  "dataRoot": "C:/Projects/Conjure Studio/.conjure-agent",
+  "allowPaid": false,
+  "dailyLimitMicros": 1000000,
+  "totalLimitMicros": 1000000,
+  "policyExpiresAt": "2026-09-11T00:00:00.000Z",
+  "pricing": {
+    "currency": "USD",
+    "source": "https://developers.openai.com/api/docs/guides/image-generation",
+    "reviewedBy": "EXAMPLE-ONLY-NOT-APPROVED",
+    "checkedAt": "2026-09-10T00:00:00.000Z",
+    "expiresAt": "2026-09-11T00:00:00.000Z",
+    "reserves": { "low": 100000, "medium": 200000, "high": 500000 },
+    "referenceExtraMicros": 100000
+  }
+}

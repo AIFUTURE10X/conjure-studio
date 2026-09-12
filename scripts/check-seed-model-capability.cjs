@@ -35,7 +35,7 @@ const checks = [
     pass: () => {
       const { modelSupportsSeed, seedUnsupportedReason } = loadCapabilities()
       const cases = [
-        ['gpt-image-2', false],
+        ['gpt-image-2.5-flare', false],
         ['gemini-3.1-flash-image-preview', true],
         ['gemini-3-pro-image-preview', true],
         ['gemini-2.5-flash-image', true],
@@ -52,8 +52,8 @@ const checks = [
       }
       // The reason string is what the UI renders; it must exist exactly when
       // seed is unsupported, and be absent otherwise.
-      if (!seedUnsupportedReason('gpt-image-2')) {
-        console.log('     expected a seedUnsupportedReason for gpt-image-2, received none')
+      if (!seedUnsupportedReason('gpt-image-2.5-flare')) {
+        console.log('     expected a seedUnsupportedReason for gpt-image-2.5-flare, received none')
         ok = false
       }
       if (seedUnsupportedReason('gemini-3-pro-image-preview') !== null) {

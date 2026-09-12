@@ -152,7 +152,7 @@ export function ImageGenerationProvider({ children }: { children: ReactNode }) {
     // the prominent "Subject Images" grid — but only the former used to be sent
     // as pixels, so a selfie dropped in the grid produced a stranger. Fall back
     // to the selected/first subject image so the front-and-center upload also
-    // reaches gpt-image-2's identity-preserving edit path.
+    // reaches gpt-image-2.5-flare's identity-preserving edit path.
     const subjectReferenceFile =
       uploadState.subjectImages.find((img) => img.selected)?.file ?? uploadState.subjectImages[0]?.file
     const referenceFile = state.referenceImage?.file ?? subjectReferenceFile

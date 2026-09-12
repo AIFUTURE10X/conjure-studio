@@ -78,11 +78,11 @@ export function getPromptPreflightIssues({ mode, currentPromptSettings = {}, upl
     })
   }
 
-  if (mode === 'logo' && logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2') {
+  if (mode === 'logo' && logoBgRemovalMethod === 'native-transparent' && logoSelectedModel !== 'gpt-image-2.5-flare') {
     issues.push({
       label: 'Legacy PNG model mismatch',
       detail: 'Legacy transparent PNG cleanup is tied to OpenAI generation; PhotoRoom is the more reliable transparent PNG path.',
-      fixPrompt: 'Check this logo setup for transparent PNG output. Prefer PhotoRoom cleanup after generation, or switch the model to ChatGPT Images 2.0 for the legacy local-cleanup path.',
+      fixPrompt: 'Check this logo setup for transparent PNG output. Prefer PhotoRoom cleanup after generation, or switch the model to ChatGPT Images 2.5 for the legacy local-cleanup path.',
     })
   }
 

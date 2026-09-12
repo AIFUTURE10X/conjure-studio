@@ -4,6 +4,7 @@ import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { apiError, parseFormData } from '@/lib/api/http'
 import { videoToolCost } from '@/lib/credits/cost-map'
 import { runFalDirect, uploadFrameToFal } from '@/lib/video/fal-video-client'
+import { withUsage } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -62,4 +63,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('transcription', videoToolCost('transcribe'), handlePost)
+export const POST = withUsage('transcribe', withCreditGuard('transcription', videoToolCost('transcribe'), handlePost))

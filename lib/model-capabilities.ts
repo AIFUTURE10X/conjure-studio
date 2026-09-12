@@ -12,7 +12,7 @@
  */
 
 /** Models routed through OpenAI's images API rather than the Gemini client. */
-const OPENAI_IMAGE_MODELS = ['gpt-image-2'] as const
+const OPENAI_IMAGE_MODELS = ['gpt-image-2.5-flare'] as const
 
 /**
  * Whether `model` honors a caller-supplied seed.
@@ -27,5 +27,5 @@ export function modelSupportsSeed(model: string | null | undefined): boolean {
 
 /** Why the seed control is inert, for UI copy. Null when seed is supported. */
 export function seedUnsupportedReason(model: string | null | undefined): string | null {
-  return modelSupportsSeed(model) ? null : 'Seed is unavailable for ChatGPT Images 2.0'
+  return modelSupportsSeed(model) ? null : 'Seed is unavailable for ChatGPT Images 2.5'
 }

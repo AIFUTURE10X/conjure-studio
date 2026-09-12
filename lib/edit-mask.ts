@@ -110,7 +110,7 @@ export async function hygieneMask(
  * feathered seam.
  *
  * Output keeps the ORIGINAL's exact dimensions: the result is resized to
- * match (gpt-image-2's returned canvas can drift slightly from what was
+ * match (gpt-image-2.5-flare's returned canvas can drift slightly from what was
  * requested), never the other way around, so locked pixels aren't distorted
  * by an intermediate resize of the original.
  */

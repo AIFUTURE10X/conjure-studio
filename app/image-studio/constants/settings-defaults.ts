@@ -26,7 +26,7 @@ export const DEFAULT_SETTINGS: ImageStudioSettings = {
     showAdvancedOptions: true,  // Show advanced by default
   },
   api: {
-    defaultModel: 'gpt-image-2',
+    defaultModel: 'gpt-image-2.5-flare',
   },
 }
 
@@ -77,7 +77,7 @@ export const SETTING_DEFINITIONS = {
         description: 'Which model to use for image generation',
         type: 'select' as const,
         options: [
-          { value: 'gpt-image-2', label: 'ChatGPT Images 2.0' },
+          { value: 'gpt-image-2.5-flare', label: 'ChatGPT Images 2.5' },
         ],
       },
     },

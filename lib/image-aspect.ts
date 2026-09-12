@@ -26,7 +26,7 @@ const clampEdge = (value: number) =>
   Math.min(EXACT_SIZE_MAX_EDGE, Math.max(EXACT_SIZE_MIN_EDGE, Math.round(value / 16) * 16))
 
 /**
- * gpt-image-2 accepts arbitrary WxH (each edge divisible by 16, aspect
+ * gpt-image-2.5-flare accepts arbitrary WxH (each edge divisible by 16, aspect
  * between 1:3 and 3:1) instead of only its fixed size buckets. Returns the
  * exact size to request so an edit's output keeps the source's aspect ratio
  * instead of drifting to the nearest bucket; undefined when the source

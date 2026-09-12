@@ -9,6 +9,7 @@ import { videoToolCost } from '@/lib/credits/cost-map'
 import { runFalDirect, extractMediaUrl, submitVideoJob } from '@/lib/video/fal-video-client'
 import { getMusicStyle } from '@/app/image-studio/constants/film-assembly'
 import { userIdSchema } from '@/lib/validation/common'
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -43,17 +44,18 @@ function getSQL() {
 
 async function generateNarration(narration: NonNullable<z.infer<typeof bodySchema>['narration']>): Promise<string> {
   if (narration.engine === 'elevenlabs') {
+    // ElevenLabs bills per character of input text.
     const data = await runFalDirect('fal-ai/elevenlabs/tts/eleven-v3', {
       text: narration.text,
       voice: narration.voiceId,
       stability: 0.5,
-    })
+    }, { units: { characters: narration.text.length } })
     return extractMediaUrl(data)
   }
   const data = await runFalDirect('fal-ai/kling-video/v1/tts', {
     text: narration.text.slice(0, 500),
     voice_id: narration.voiceId,
-  })
+  }, { units: { calls: 1 } })
   return extractMediaUrl(data)
 }
 
@@ -65,6 +67,7 @@ async function handlePost(request: NextRequest) {
   if (parsed.response) return parsed.response
   const { clips, narration, music } = parsed.data
   const userId = await resolveUserId(request, parsed.data.userId)
+  setUsageContextUser(userId)
 
   const musicStyle = music ? getMusicStyle(music.styleId) : undefined
   const wantsMusic = Boolean(musicStyle && musicStyle.id !== 'none' && musicStyle.prompt)
@@ -131,4 +134,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('film_assembly', videoToolCost('filmAssembly'), handlePost)
+export const POST = withUsage('assemble-film', withCreditGuard('film_assembly', videoToolCost('filmAssembly'), handlePost))

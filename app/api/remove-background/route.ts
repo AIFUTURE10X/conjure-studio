@@ -11,6 +11,7 @@ import { removeBackgroundSmart } from "@/lib/smart-bg-removal"
 import { removeBackgroundWithPixelcut } from "@/lib/pixelcut-bg-removal"
 import { isPhotoRoomBgRemovalError, removeBackgroundWithPhotoRoom } from "@/lib/photoroom-bg-removal"
 import { removeBackgroundWithFal, isFalBgRemovalAvailable } from "@/lib/fal-bg-removal"
+import { withUsage, setUsageContextUser } from '@/lib/costs/route'
 
 interface BgRemovalResult {
   transparentBase64: string
@@ -72,6 +73,7 @@ async function handlePost(request: NextRequest) {
     // identity wins over the client-supplied id when signed in.
     const clientUserId = formData.get('userId') as string | null
     const userId = clientUserId ? await resolveUserId(request, clientUserId) : null
+    if (userId) setUsageContextUser(userId)
     const prompt = formData.get('prompt') as string | null
     const seed = formData.get('seed') as string | null
     const style = formData.get('style') as string | null
@@ -248,4 +250,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withCreditGuard('background_removal', flatCost('removeBackground'), handlePost)
+export const POST = withUsage('remove-background', withCreditGuard('background_removal', flatCost('removeBackground'), handlePost))

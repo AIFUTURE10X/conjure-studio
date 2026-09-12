@@ -49,7 +49,7 @@ interface UseAISuggestionsHandlerProps {
 
 const normalizeSuggestedImageModel = (model?: string): GenerationModel | null => {
   if (!model) return null
-  if (model === 'gpt-image-2' || model.startsWith('gemini-')) return 'gpt-image-2'
+  if (model === 'gpt-image-2.5-flare' || model.startsWith('gemini-')) return 'gpt-image-2.5-flare'
   return null
 }
 

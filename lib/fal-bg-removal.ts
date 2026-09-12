@@ -14,6 +14,7 @@
 
 import { fal } from "@fal-ai/client"
 import sharp from "sharp"
+import { elapsedMs, recordProviderUsage } from "@/lib/costs/record"
 import { recoverBrightDetailOnDarkBackground } from "./bright-detail-recovery"
 import { preserveOpaqueSourceColors } from "./source-color-preservation"
 
@@ -127,6 +128,23 @@ export async function removeBackgroundWithFal(
   console.log(`[fal BG Removal] Starting ${isLogoContext ? 'BEN2' : 'BiRefNet v2'} background removal...`)
   console.log(`[fal BG Removal] Input MIME type: ${mimeType}, logo context: ${isLogoContext}`)
 
+  // BEN2 bills per megapixel of input; BiRefNet per compute second (issue #50).
+  // The header read overlaps the provider call so it adds no latency.
+  const startedAt = Date.now()
+  // sharp() throws synchronously on an empty buffer, so the whole read lives
+  // inside the promise chain and can never escape.
+  const megapixelsPromise = Promise.resolve()
+    .then(() => sharp(Buffer.from(imageBase64, 'base64')).metadata())
+    .then((meta) => (meta.width && meta.height ? (meta.width * meta.height) / 1_000_000 : undefined))
+    .catch(() => undefined)
+  // latency_ms on a successful call is the provider call only; the output fetch
+  // and post-processing that follow it are ours, not fal's. A failed call
+  // reports elapsed time to the failure, wherever in that sequence it happened.
+  const usageFor = async (status: 'succeeded' | 'failed', latencyMs: number, error?: string) => {
+    const megapixels = await megapixelsPromise
+    void recordProviderUsage({ provider: 'fal', model: endpoint, operation: 'bg-removal', status, units: { calls: 1, megapixels }, error, latencyMs })
+  }
+
   try {
     const result = await fal.subscribe(endpoint, {
       input: isLogoContext
@@ -139,6 +157,7 @@ export async function removeBackgroundWithFal(
           },
       logs: false,
     })
+    const providerMs = elapsedMs(startedAt)
 
     const outputUrl = extractImageUrl(result)
     console.log("[fal BG Removal] Success, output URL:", outputUrl)
@@ -149,8 +168,13 @@ export async function removeBackgroundWithFal(
     }
     // Restore faint bright detail (sparkles/glow) the matte drops on dark-bg
     // logos; no-op for non-dark/busy backgrounds.
-    return await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
+    const finalBase64 = await recoverBrightDetailOnDarkBackground(imageBase64, processedBase64)
+    // Recorded only once the output is fetched and decoded: any throw above
+    // lands in the catch and is recorded exactly once, as failed.
+    void usageFor('succeeded', providerMs)
+    return finalBase64
   } catch (error) {
+    void usageFor('failed', elapsedMs(startedAt), error instanceof Error ? error.message : String(error))
     console.error('[fal BG Removal] Error:', error)
     throw error
   }

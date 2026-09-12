@@ -61,7 +61,7 @@ const hasPromptText = (value?: string) => Boolean(value && value.trim())
 
 const formatModelLabel = (model?: string) => {
   if (!model) return 'No model'
-  if (model === 'gpt-image-2') return 'Model: ChatGPT Images 2.0'
+  if (model === 'gpt-image-2.5-flare') return 'Model: ChatGPT Images 2.5'
   if (model === 'gemini-3-pro-image-preview') return 'Model: Gemini 3 Pro'
   if (model === 'gemini-3.1-flash-image-preview') return 'Model: Gemini 3.1 Flash'
   return `Model: ${model}`

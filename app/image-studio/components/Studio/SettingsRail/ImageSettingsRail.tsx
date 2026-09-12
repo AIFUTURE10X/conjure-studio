@@ -32,7 +32,7 @@ import {
 import type { ImageSettingsPatch } from '../../../context/suggestion-patch'
 
 const MODEL_OPTIONS = [
-  { value: 'gpt-image-2', label: 'ChatGPT Images 2.0' },
+  { value: 'gpt-image-2.5-flare', label: 'ChatGPT Images 2.5' },
 ] as const
 
 const IMAGE_SIZES = ['1K', '2K', '4K'] as const
@@ -72,7 +72,7 @@ export function ImageSettingsRail() {
   // Section-level resets restore only that group's fields to their defaults,
   // leaving the prompt, uploads, and generated results untouched.
   const resetOutput = () => {
-    state.setSelectedModel('gpt-image-2')
+    state.setSelectedModel('gpt-image-2.5-flare')
     state.setImageSize('1K')
     state.setAspectRatio('1:1')
     state.setSelectedStylePreset('Realistic')
