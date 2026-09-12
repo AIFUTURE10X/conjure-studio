@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { addFavorite, getAllFavorites, removeFavorite, clearAllFavorites, type FavoriteImage } from '@/lib/db/dbService'
+import { findFavoriteByUrl } from '@/lib/favorites/identity'
 
 // Re-export components for backward compatibility
 export { FavoriteButton } from './Favorites/FavoriteButton'
@@ -61,7 +62,10 @@ export function useFavorites() {
 
     try {
       const currentFavorites = await getAllFavorites()
-      const exists = currentFavorites.find(f => f.url === url)
+      // Local state is checked first: it holds the source url for images
+      // favorited from a `data:` URI, which the server deliberately does not
+      // persist, so it is the more complete view of what is already starred.
+      const exists = findFavoriteByUrl(favorites, url) ?? findFavoriteByUrl(currentFavorites, url)
 
       console.log('[v0] Toggle favorite:', { url, exists: !!exists, alreadyFavorited: !!exists })
 
@@ -72,7 +76,9 @@ export function useFavorites() {
       } else {
         console.log('[v0] Adding new favorite')
         const newFavorite = await addFavorite(url, metadata)
-        setFavorites(prev => [newFavorite, ...prev])
+        // The server dedupes by image content, so this can return a row already
+        // held in state under a different url form — replace it, never stack.
+        setFavorites(prev => [newFavorite, ...prev.filter(f => f.id !== newFavorite.id)])
       }
     } catch (error) {
       console.error('[v0] Error toggling favorite:', error)
@@ -85,7 +91,7 @@ export function useFavorites() {
     }
   }
 
-  const isFavorite = (url: string) => favorites.some(f => f.url === url)
+  const isFavorite = (url: string) => Boolean(findFavoriteByUrl(favorites, url))
   const isToggling = (url: string) => togglingUrls.has(url)
 
   const clearAll = async () => {
