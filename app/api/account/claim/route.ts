@@ -60,12 +60,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // favorites has UNIQUE(user_id, image_url): drop legacy rows the account
-    // already has before re-parenting the rest.
+    // favorites has two unique keys — UNIQUE(user_id, image_url) and the
+    // partial UNIQUE(user_id, content_hash) — so drop legacy rows the account
+    // already holds under EITHER before re-parenting the rest. Missing the
+    // content_hash twin aborts this whole transaction with 23505 exactly when
+    // the same image is held under two different urls, which is the case the
+    // content-addressed save path creates.
     await client.query(
       `DELETE FROM favorites f
        WHERE f.user_id = ANY($1::text[])
          AND EXISTS (SELECT 1 FROM favorites g WHERE g.user_id = $2 AND g.image_url = f.image_url)`,
+      [legacyUserIds, user.id],
+    )
+    await client.query(
+      `DELETE FROM favorites f
+       WHERE f.user_id = ANY($1::text[])
+         AND f.content_hash IS NOT NULL
+         AND EXISTS (
+           SELECT 1 FROM favorites g
+           WHERE g.user_id = $2 AND g.content_hash = f.content_hash
+         )`,
       [legacyUserIds, user.id],
     )
 

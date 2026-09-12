@@ -171,6 +171,49 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Rows saved before content addressing have no hash, so the lookup above
+    // cannot see them and the first click on a legacy favorite would insert a
+    // duplicate — the very bug this PR fixes, reintroduced for existing data.
+    // Match those by url instead, and adopt the hash so the fast path serves
+    // every later click. This is the backfill: it happens per row, on use,
+    // rather than needing every image refetched up front.
+    //
+    // Gated on sourceUrl (http(s) only): a freshly generated image arrives as a
+    // multi-MB data: URI, which has no stored url to match and must never be
+    // sent into a WHERE clause — that payload is what has taken this app's
+    // write paths down before.
+    const legacy = sourceUrl ? await sql`
+      SELECT id, image_url, blob_url, source_url, content_hash, prompt, created_at,
+             aspect_ratio, style_preset, dimensions, file_size, parameters
+      FROM public.favorites
+      WHERE user_id = ${userId}
+        AND content_hash IS NULL
+        AND (image_url = ${sourceUrl} OR blob_url = ${sourceUrl} OR source_url = ${sourceUrl})
+      LIMIT 1
+    ` : []
+    if (legacy[0]) {
+      console.info('[v0] API: Matched a pre-hash favorite by url, adopting its hash:', legacy[0].id)
+      if (contentHash) {
+        // Guarded so adopting the hash can never collide with a row that
+        // already carries it (the partial unique index would raise 23505).
+        const adopted = await sql`
+          UPDATE public.favorites SET content_hash = ${contentHash}
+          WHERE id = ${legacy[0].id} AND content_hash IS NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM public.favorites other
+              WHERE other.user_id = ${userId} AND other.content_hash = ${contentHash}
+            )
+          RETURNING id
+        `
+        if (adopted[0]) legacy[0].content_hash = contentHash
+      }
+      if (sourceUrl && !legacy[0].source_url) {
+        await sql`UPDATE public.favorites SET source_url = ${sourceUrl} WHERE id = ${legacy[0].id}`
+        legacy[0].source_url = sourceUrl
+      }
+      return NextResponse.json({ alreadyExists: true, favorite: toFavorite(legacy[0], imageUrl) })
+    }
+
     let blobUrl: string
     if (restoreOnlyIfMissing) {
       // Database-browser records already point at durable public storage.
