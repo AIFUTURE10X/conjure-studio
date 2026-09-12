@@ -87,14 +87,12 @@ async function handlePostWithUsage(request: NextRequest) {
       WHERE id = ${row.id} AND status = 'pending'
       RETURNING id
     `
-    // The poller stops on a non-pending row, so the ledger row must be closed
-    // here — but only by the request that actually closed the job, so a cancel
-    // racing a completion poll does not warn about an already-final row.
     // A concurrent poll can close the job between the status probe above and
     // this UPDATE. Only the request that actually closed it may finalize the
     // ledger row and refund: the completion path closes the row as `completed`
     // without refunding, so refunding here regardless would hand back credits
-    // for a delivered video.
+    // for a delivered video. The loser reports the job's real state with
+    // canceled:false; the client leaves it polling so the clip still lands.
     if (closed.length === 0) {
       const [current] = await sql`
         SELECT status, video_url FROM public.video_history WHERE id = ${row.id}
